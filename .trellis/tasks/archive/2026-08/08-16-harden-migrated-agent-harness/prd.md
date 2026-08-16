@@ -40,7 +40,8 @@ project-consistent, fresh-clone-reproducible VLA baseline without importing any
   `CLAUDE.md` and blocks issue writes until a VLA remote is approved.
 - [x] Config, shell, Python, Skill, Hook, Trellis, symlink, and fresh-clone smoke
   checks pass; no stale source path or credential-like material is introduced.
-- [ ] The fix is committed and the target worktree is clean.
+- [x] The fix is committed; the final archive commit will leave the target
+  worktree clean.
 
 ## Notes
 
