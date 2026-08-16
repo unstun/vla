@@ -1,0 +1,22 @@
+# Block destructive git/file operations in the project harness by default.
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Destructive reset would discard project or user changes; inspect git status and create a commit instead.",
+    match = ["git reset --hard", "git reset --hard HEAD"],
+)
+
+prefix_rule(
+    pattern = ["git", "checkout", "--"],
+    decision = "forbidden",
+    justification = "Path checkout would discard local edits; use git diff and an explicit patch instead.",
+    match = ["git checkout -- AGENTS.md"],
+)
+
+prefix_rule(
+    pattern = ["rm", "-rf"],
+    decision = "prompt",
+    justification = "Recursive deletion needs explicit review in the academic harness.",
+    match = ["rm -rf /tmp/example", "rm -rf build"],
+)
