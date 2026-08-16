@@ -1,57 +1,75 @@
 # Project And Vendor Skills
 
-This repository has two skill sources:
+This repository has two Skill sources:
 
-1. Project-owned research skills are tracked as real directories in
-   `.agents/skills/` and linked into `.claude/skills/`.
-2. Matt Pocock's promoted skills are linked from the ignored live clone
-   `.skills-upstream/`.
+1. Project-owned Skills are real tracked directories in `.agents/skills/`.
+2. Matt Pocock's promoted Skills come from the ignored checkout
+   `.skills-upstream/` at the exact revision in `vendor-skills.lock`.
 
-Project-owned skills take precedence if a vendor skill later uses the same
-name. `sync-skills.sh` will not replace a tracked project skill.
+`sync-skills.sh` restores the locked Vendor checkout and builds discovery links
+without replacing any real project or platform directory.
 
-## Matt Pocock's skills
+## Discovery Layout
 
-The 20 curated ("promoted") skills from
-[mattpocock/skills](https://github.com/mattpocock/skills) are wired into this
-project for **both** coding agents:
+| Host | Project Skills | Vendor Skills |
+|---|---|---|
+| Codex and Agent-Skills hosts | `.agents/skills/` real directories | `.agents/skills/` generated links |
+| Claude Code | `.claude/skills/` generated or tracked links | `.claude/skills/` generated links |
+| Cursor | `.cursor/skills/` generated links plus Trellis-managed real directories | `.cursor/skills/` generated links |
 
-| Agent       | Discovery path    | How                                            |
-| ----------- | ----------------- | ---------------------------------------------- |
-| Claude Code | `.claude/skills/` | project-level skills                           |
-| Codex       | `.agents/skills/` | Agent-Skills standard (scanned from repo root) |
+Project-owned Skills always win on a name collision. Claude Code keeps its
+built-in `/code-review`; Codex and Cursor receive the Vendor version.
 
-Vendor entries in both folders are relative **symlinks** into the live clone at
-`.skills-upstream/` (git-ignored). Project-owned entries remain in the
-repository.
+## Fresh Clone Or Repair
 
-## Updating (author-driven — you don't maintain anything)
+Run from the repository root:
 
 ```bash
-git -C .skills-upstream pull   # pull the author's latest
-./sync-skills.sh               # re-link (also picks up any newly promoted skills)
+./sync-skills.sh
 ```
 
-Restart Codex afterwards so it re-scans skills. Claude Code picks them up on the
-next session.
+The script:
 
-## Using them
+- clones the canonical Vendor repository when missing;
+- rejects a wrong origin or dirty Vendor checkout;
+- checks out the full locked commit in detached mode;
+- mirrors project-owned Skills to Claude Code and Cursor;
+- links the promoted Vendor set into all three discovery locations.
 
-- Type `/<skill-name>` in either agent, e.g. `/grill-me`, `/tdd`, `/triage`.
-- Run `/ask-matt` — it's the router that maps which skill fits your situation.
-- Run `/setup-matt-pocock-skills` once to configure the issue tracker, triage
-  labels, and docs location the skills use.
+Restart the host after synchronization so it re-scans project Skills.
 
-## Notes / caveats
+## Updating The Vendor Pin
 
-- **`code-review`.** Claude Code ships a built-in `/code-review`, and a project
-  skill of the same name would *fully shadow* it. So `sync-skills.sh` excludes
-  `code-review` from `.claude/skills/` (via `CLAUDE_EXCLUDE`) — Claude Code keeps
-  its built-in `/code-review`, while Codex keeps Matt's `/code-review`. To change
-  this, edit `CLAUDE_EXCLUDE` in `sync-skills.sh` and re-run it.
-- **User-invoked skills.** Skills with `disable-model-invocation: true`
-  (e.g. `grill-me`) are human-only in Claude Code. Codex doesn't honor that flag,
-  so the model there may also trigger them. Harmless, just a behavior difference.
-- **Fresh clones of this project** won't have `.skills-upstream/` (it's
-  git-ignored), so the symlinks would dangle. Re-clone upstream and re-run
-  `./sync-skills.sh` to restore them.
+Do not run `git pull` as an update mechanism. Update only through a reviewed
+Harness change:
+
+1. Fetch and inspect the upstream history:
+
+   ```bash
+   git -C .skills-upstream fetch origin
+   git -C .skills-upstream log --oneline --decorate -20 origin/main
+   ```
+
+2. Review the new promoted manifest and affected Skill content.
+3. Change `vendor.commit` in `vendor-skills.lock` to the selected full commit.
+4. Run `./sync-skills.sh` and the Harness validation suite.
+5. Commit the lock-file change with its review evidence.
+
+## Project Setup Skill
+
+This project provides a safe project-owned `setup-matt-pocock-skills` override.
+It may verify or update `docs/agents/` after Dr Sun approves a tracker change,
+but it must never edit the single-line `CLAUDE.md` wrapper and must not create
+issues or labels while the VLA repository has no approved remote.
+
+The repository is already configured for local use; setup is not a required
+first-run step.
+
+## Notes
+
+- Vendor links and `.skills-upstream/` are generated and intentionally ignored;
+  `vendor-skills.lock` and `sync-skills.sh` are the reproducible source.
+- Skills marked `disable-model-invocation: true` may be human-only in Claude
+  Code; other hosts may not honor that field.
+- Host-level discovery is distinct from file-level readiness. If a host changes
+  its Skill discovery behavior, verify it live before claiming compatibility.

@@ -23,7 +23,6 @@ These guides help you **ask the right questions before coding**.
 |-------|---------|-------------|
 | [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
 | [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
-| [Hardware Geometry Evidence Guide](./hardware-geometry-evidence-guide.md) | Separate official visual, collision-proxy, printable, and adapted geometry evidence | Importing robot or sensor CAD/mesh assets |
 
 ---
 
@@ -65,17 +64,6 @@ These guides help you **ask the right questions before coding**.
 3. **Variable misreading**: Not tracing a variable to its actual definition (e.g., Map keyed by path vs name)
 
 **Verification rule**: Every CRITICAL/WARNING finding must be verified against the actual code before prioritizing. Budget ~35% false-positive rate for AI reviews.
-
-### When Working With Robot Or Sensor Geometry
-
-- [ ] Importing CAD, URDF, DAE, STL, or other manufacturer geometry
-- [ ] Converting open visual meshes into collision or printable geometry
-- [ ] Mixing official parts with image-estimated mounts
-- [ ] Reporting collision or clearance for non-watertight sources
-
-→ Read [Hardware Geometry Evidence Guide](./hardware-geometry-evidence-guide.md)
-
----
 
 ## Pre-Modification Rule (CRITICAL)
 

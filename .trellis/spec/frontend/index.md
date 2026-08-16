@@ -1,12 +1,13 @@
 # Frontend Development Guidelines
 
-> Best practices for frontend development in this project.
+> Deferred frontend guidance for the VLA project.
 
 ---
 
 ## Overview
 
-This directory contains guidelines for frontend development. Fill in each file with your project's specific conventions.
+No user interface or frontend framework has been selected. Every frontend file
+is a scaffold and must not be treated as an active project convention.
 
 ---
 
@@ -14,25 +15,20 @@ This directory contains guidelines for frontend development. Fill in each file w
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | To fill |
-| [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | To fill |
-| [State Management](./state-management.md) | Local state, global state, server state | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
-| [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
+| [Directory Structure](./directory-structure.md) | Component/page/hook organization | Deferred: no frontend |
+| [Component Guidelines](./component-guidelines.md) | Component patterns and composition | Deferred: no frontend |
+| [Hook Guidelines](./hook-guidelines.md) | Hooks and data fetching | Deferred: no frontend |
+| [State Management](./state-management.md) | Client and server state | Deferred: no frontend |
+| [Quality Guidelines](./quality-guidelines.md) | Code and test standards | Deferred: no frontend |
+| [Type Safety](./type-safety.md) | Types and validation | Deferred: no frontend |
 
 ---
 
-## How to Fill These Guidelines
+## Activation Gate
 
-For each guideline file:
-
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
-
-The goal is to help AI assistants and new team members understand how YOUR project works.
+Activate these files only after an actual UI is selected or imported. Replace
+template text with evidence from the chosen codebase; do not invent a framework
+or architecture in advance.
 
 ---
 

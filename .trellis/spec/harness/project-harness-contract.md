@@ -29,8 +29,9 @@ python3 ./.trellis/scripts/get_context.py --mode packages
 ### Vendor skill refresh
 
 ```bash
-git -C .skills-upstream pull
 ./sync-skills.sh
+git -C .skills-upstream rev-parse HEAD
+git config -f vendor-skills.lock --get vendor.commit
 ```
 
 ### Hook payloads
@@ -47,10 +48,19 @@ git -C .skills-upstream pull
 - `.trellis/config.yaml` sets `session_auto_commit: false`.
 - Trellis-generated platform files remain managed by Trellis.
 - Project-owned skills are real tracked directories in `.agents/skills/`.
-- Claude Code discovers project skills through tracked symlinks in
-  `.claude/skills/`.
-- Vendor skills are ignored symlinks into `.skills-upstream/`.
+- Claude Code and Cursor discover project skills through generated or tracked
+  links in `.claude/skills/` and `.cursor/skills/` unless a Trellis-managed real
+  directory already owns the name.
+- Vendor skills are ignored symlinks into `.skills-upstream/`; their canonical
+  repository and full commit are tracked in `vendor-skills.lock`.
 - `sync-skills.sh` must never replace a real project-owned skill directory.
+- `sync-skills.sh` restores the locked Vendor commit before rebuilding links;
+  wrong-origin and dirty Vendor checkouts fail closed.
+- The project-owned `setup-matt-pocock-skills` override preserves the exact
+  single-line `CLAUDE.md` wrapper and blocks tracker writes until a VLA remote
+  is approved.
+- Repository-wide extension ignores for research evidence are forbidden. Large
+  local-only bytes require a reviewed path-specific rule and tracked manifest.
 - `.pipeline/` stores reviewed research and experiment state.
 - `bigmemory/` stores current and durable project state.
 - Automatic staging or committing is forbidden.
@@ -68,8 +78,12 @@ Runtime environment:
 
 | Condition | Required behavior |
 |---|---|
-| `.skills-upstream` missing | `sync-skills.sh` exits with a clone instruction; tracked project skills remain intact. |
-| Vendor and project skill names collide | Project-owned real directory wins; vendor link is skipped. |
+| `.skills-upstream` missing | `sync-skills.sh` clones the canonical repository and checks out the lock-file commit. |
+| First synchronization after clone | Materialize a clean worktree before the dirty-check; a `--no-checkout` clone appears as a deleted worktree and must not be used here. |
+| Vendor origin differs or checkout is dirty | Abort without replacing links or changing the lock. |
+| Vendor and project skill names collide | Project-owned real directory wins and its platform links are preserved. |
+| A platform Skill path is a real directory | Preserve it; never replace it with a generated link. |
+| Broad PDF/image/video/archive/CAD ignore is proposed | Reject it; use a reviewed path-specific artifact rule. |
 | Hot-zone file missing or older than 24 hours | Hook prints a warning; it does not edit or commit. |
 | AI edits `reviewed: true` trusted Markdown | Post-tool hook resets it to `reviewed: false`. |
 | TOML, JSON, YAML, Python, or shell syntax invalid | Validation fails before staging. |
@@ -79,9 +93,10 @@ Runtime environment:
 ## 5. Good / Base / Bad Cases
 
 - Good: add a project skill as a real `.agents/skills/<name>/` directory,
-  expose it with a Claude symlink, validate both, and stage only owned paths.
-- Base: refresh vendor links with `sync-skills.sh`; no tracked diff is expected
-  unless the synchronization contract changed.
+  regenerate Claude/Cursor links, validate discovery, and stage only the real
+  Skill plus intentional tracked Harness paths.
+- Base: run `sync-skills.sh`; the resolved Vendor HEAD equals the tracked lock,
+  all generated links resolve, and no tracked diff is produced.
 - Bad: copy all of `machine-dog-nav/.pipeline`, its Trellis tasks, or experiment
   memory into this project and present that history as VLA state.
 
@@ -93,6 +108,9 @@ cat .trellis/.version
 python3 ./.trellis/scripts/task.py validate <task-name>
 python3 ./.trellis/scripts/get_context.py --mode packages
 python3 -m compileall -q .trellis/scripts .codex/hooks .claude/hooks .cursor/hooks .agents/skills
+./sync-skills.sh
+test "$(git -C .skills-upstream rev-parse HEAD)" = \
+  "$(git config -f vendor-skills.lock --get vendor.commit)"
 find .claude .codex .agents/skills -type f -name '*.sh' -print \
   | while read -r file; do bash -n "$file"; done
 git diff --check -- . \
@@ -109,7 +127,17 @@ Assertion points:
 - Prompt hooks emit expected keyword-gated output.
 - Codex hook output parses as JSON.
 - Project skill links resolve to `SKILL.md`.
+- Codex, Claude Code, and Cursor discovery directories expose project Skills;
+  generated Vendor links resolve to the locked checkout.
+- A temporary fresh clone with no `.skills-upstream/` can run
+  `./sync-skills.sh`; repeating the test with a wrong origin or dirty Vendor
+  index fails before link regeneration.
+- `CLAUDE.md` is byte-for-byte `@AGENTS.md\n`.
+- Representative `.pdf`, `.png`, `.mp4`, `.zip`, and `.step` evidence paths are
+  not ignored globally.
 - No migrated skill contains a hard-coded `machine-dog-nav` project path.
+- No active VLA Skill or spec references Medical AI, Dr. Claw, or unimported
+  SCAN/Go2/V12/forest runtime contracts.
 - Staged paths exclude `docs/research/` unless that task explicitly owns it.
 - Trellis-managed templates are kept byte-for-byte as installed even when an
   upstream Markdown template contains trailing-space formatting.

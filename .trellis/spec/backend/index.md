@@ -1,12 +1,14 @@
 # Backend Development Guidelines
 
-> Best practices for backend development in this project.
+> Pre-baseline backend guidance for the VLA project.
 
 ---
 
 ## Overview
 
-This directory contains guidelines for backend development. Fill in each file with your project's specific conventions.
+No backend implementation has been imported. Only the pre-baseline quality and
+evidence contract is active; the other files remain scaffolds until real code
+establishes conventions.
 
 ---
 
@@ -14,24 +16,20 @@ This directory contains guidelines for backend development. Fill in each file wi
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | To fill |
-| [Error Handling](./error-handling.md) | Error types, handling strategies | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Navigation integration contracts and evidence gates | Active |
-| [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |
+| [Directory Structure](./directory-structure.md) | Module organization and file layout | Deferred: no imported backend |
+| [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | Deferred: no database selected |
+| [Error Handling](./error-handling.md) | Error types and propagation | Deferred: no runtime selected |
+| [Quality Guidelines](./quality-guidelines.md) | Baseline, interface, and evidence gates | Active |
+| [Logging Guidelines](./logging-guidelines.md) | Structured logging and run identity | Deferred: no runtime selected |
 
 ---
 
-## How to Fill These Guidelines
+## Activation Gate
 
-For each guideline file:
-
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
-
-The goal is to help AI assistants and new team members understand how YOUR project works.
+After a clean baseline is imported, inspect real code before activating a
+guideline. Document actual paths, commands, tests, and anti-patterns; do not
+copy conventions from `machine-dog-nav` merely because it is the candidate
+source.
 
 ---
 

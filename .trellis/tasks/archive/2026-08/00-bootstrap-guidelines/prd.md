@@ -21,15 +21,15 @@ the rest conversationally.
 
 ## Status
 
-- [x] Fill backend guidelines from the committed `machine-dog-nav` harness snapshot
-- [x] Fill frontend guidelines from the committed `machine-dog-nav` harness snapshot
-- [x] Preserve existing examples and add a VLA-specific harness contract
+- [x] Install backend and frontend placeholder scaffolds
+- [x] Add a VLA-specific Harness contract
+- [x] Mark package conventions deferred until implementation is imported
 
-The reusable settings were imported from committed source tree
+The reusable Harness settings were imported from committed source tree
 `f7efd89b04865c8dedf00a76b9812697c1558ca8`. Source tasks, experiments,
-mutable memory, and uncommitted working-tree changes were excluded. Backend and
-frontend implementation conventions remain provisional until VLA code is
-actually imported and reviewed.
+mutable memory, implementation-specific runtime contracts, and uncommitted
+working-tree changes are not VLA project truth. Backend and frontend
+conventions remain deferred until code is actually imported and reviewed.
 
 ---
 

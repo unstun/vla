@@ -97,10 +97,16 @@ and project state.
    - claim boundary if the run is incomplete.
 8. Store research PDFs, source snapshots, run logs, configurations, models, and
    evaluation artifacts inside the project using date/topic/purpose paths.
+9. Do not hide research evidence with repository-wide extension ignores. Large
+   local-only bytes require a reviewed path-specific ignore entry plus tracked
+   provenance, SHA-256, storage location, and regeneration instructions.
 
 ## Project State Layout
 
 - `.trellis/`: tasks, workflow, specifications, and session journals.
+- `.agents/skills/`: canonical real directories for project-owned Skills.
+- `vendor-skills.lock` + `sync-skills.sh`: exact Vendor Skill source and
+  cross-host discovery-link restoration.
 - `.pipeline/`: reviewed research indexes, terminology, surveys, experiment
   records, templates, and external task packages.
 - `bigmemory/热区/`: current status, recent changes, and open decisions.
@@ -110,6 +116,8 @@ and project state.
 
 Existing repository conventions remain active:
 
+- `CLAUDE.md` remains exactly the single-line `@AGENTS.md` wrapper. Setup or
+  Vendor Skills must not edit it.
 - A GitHub issue tracker is not configured until this repository has an
   approved remote. See `docs/agents/issue-tracker.md`; never fall through to
   the `machine-dog-nav` tracker.
