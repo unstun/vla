@@ -26,3 +26,24 @@ Archived the referenced survey conversation, verified both package hashes and ar
 ### Status
 
 [OK] **Completed**
+
+
+## Session 2: Migrate VLA repository into phdproject
+
+**Date**: 2026-08-18
+**Task**: Migrate VLA repository into phdproject
+**Branch**: `main`
+
+### Summary
+
+Moved the complete VLA repository to /Users/sun/tongbu/study/phdproject/vla without an old-path symlink; preserved Git, nested Vendor state, research evidence, and relative links; updated live path declarations and passed full harness validation.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f5f9f8f` | (see git log) |
+
+### Status
+
+[OK] **Completed**
