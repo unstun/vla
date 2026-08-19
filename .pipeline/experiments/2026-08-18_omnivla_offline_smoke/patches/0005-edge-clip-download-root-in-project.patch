@@ -1,0 +1,18 @@
+--- a/inference/utils_policy.py
++++ b/inference/utils_policy.py
+@@ -41,7 +41,14 @@
+             mha_num_attention_layers=config["mha_num_attention_layers"],
+             mha_ff_dim_factor=config["mha_ff_dim_factor"],
+         )  
+-        text_encoder, preprocess = clip.load(config["clip_type"])    
++        # [local] Keep the CLIP text-encoder weights inside the project instead of
++        # ~/.cache/clip (AGENTS.md rule 8). download_root=None is clip.load's own
++        # default, so an unset OMNIVLA_CLIP_ROOT reproduces upstream exactly.
++        clip_root = os.environ.get("OMNIVLA_CLIP_ROOT")
++        print(f"[local] clip download_root: {clip_root!r}")
++        text_encoder, preprocess = clip.load(config["clip_type"], download_root=clip_root)
++        print(f"[local] clip weights resolved to: "
++              f"{os.path.join(clip_root, 'ViT-B-32.pt') if clip_root else '~/.cache/clip/ViT-B-32.pt'}")
+         text_encoder.to(torch.float32)    
+     else:
+         raise ValueError(f"Invalid model type: {model_type}")

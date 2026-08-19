@@ -47,3 +47,55 @@ Moved the complete VLA repository to /Users/sun/tongbu/study/phdproject/vla with
 ### Status
 
 [OK] **Completed**
+
+
+## Session 3: OmniVLA offline reproduction — pinned import and edge smoke
+
+**Date**: 2026-08-18
+**Task**: `08-18-omnivla-offline-smoke`
+**Branch**: `main`
+
+### Summary
+
+Imported OmniVLA at pinned commit `5182600cb4a9ee07684e17cdd2a6cbafc56b8a68` as a
+byte-identical snapshot with a SHA-256 manifest, recorded checkpoint provenance for
+`omnivla-edge` (downloaded, hash-verified) and `omnivla-original` (manifest only),
+relocated the CLIP ViT-B/32 weights into the project, built an isolated conda env in
+which all official pins installed exactly, and ran the official
+`inference/run_omnivla_edge.py` eight times on CPU. Two upstream blockers were found
+and fixed by patch against a working copy, never the snapshot: `pyproject.toml` is
+invalid TOML (blocks `pip install -e .` on every platform) and `Tensor.get_device()`
+returns `-1` on CPU. Outputs are shape `(8, 4)`, finite, deterministic across
+identical configurations, and match the authors' shipped reference figure visually
+(mean absolute pixel difference 0.0208/255, differences confined to the trajectory
+curve). The 8B probe stopped at a pre-declared 22 GB memory guard.
+
+### Evidence
+
+- `.pipeline/experiments/2026-08-18_omnivla_offline_smoke/README.md`
+- `.pipeline/experiments/2026-08-18_omnivla_offline_smoke/decision_log.md`
+- `third_party/2026-08-18_omnivla_5182600/PROVENANCE.md`
+
+### Labels
+
+`imported` for the source and all checkpoint identities; `reproduced` for
+OmniVLA-edge only, with the caveat "macOS arm64 / CPU / float32 / no FlashAttention /
+patches 0001-0005, not the official CUDA environment"; `omnivla-original` remains
+manifest-level `imported` with no forward pass. Nothing `integrated` or `validated`,
+and no Lite3 claim.
+
+### Next Gate
+
+Dr Sun reviews the evidence bundle and patch series; a GPU host must be designated
+before the official 8B reproduction, and the Lite3 input/action contract remains
+undefined.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| — | not committed by the executing sub-agent; review and commit belong to the primary session |
+
+### Status
+
+[OK] **Completed** (implementation and follow-ups; awaiting review)

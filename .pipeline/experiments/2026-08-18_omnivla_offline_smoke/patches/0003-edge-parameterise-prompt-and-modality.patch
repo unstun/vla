@@ -1,0 +1,53 @@
+--- a/inference/run_omnivla_edge.py
++++ b/inference/run_omnivla_edge.py
+@@ -490,19 +490,34 @@
+ # ===============================================================
+ # Main Entry
+ # ===============================================================
++def envflag(name, default):
++    """[local addition] Read a boolean modality switch from the environment.
++
++    Upstream expects the user to hand-edit the flags below (README step 3:
++    "modify the settings around line 425"). The offline sweep needs the same
++    switches without editing the file between runs. Defaults are the upstream
++    values, so an unset environment reproduces upstream behaviour exactly.
++    """
++    v = os.environ.get(name)
++    return default if v is None else v.strip().lower() in ("1", "true", "yes", "on")
++
++
+ if __name__ == "__main__":
+     # select modality
+-    pose_goal = False
+-    satellite = False
+-    image_goal = False
+-    lan_prompt = True
++    pose_goal = envflag("OMNIVLA_POSE_GOAL", False)
++    satellite = envflag("OMNIVLA_SATELLITE", False)
++    image_goal = envflag("OMNIVLA_IMAGE_GOAL", False)
++    lan_prompt = envflag("OMNIVLA_LAN_PROMPT", True)
++    print(f"[local] modality flags: pose_goal={pose_goal} satellite={satellite} "
++          f"image_goal={image_goal} lan_prompt={lan_prompt}")
+ 
+     imgsize = (96, 96)    
+     imgsize_clip = (224, 224)
+ 
+     # Goal definitions
+     # language prompt
+-    lan_inst_prompt = "blue trash bin"
++    lan_inst_prompt = os.environ.get("OMNIVLA_PROMPT", "blue trash bin")
++    print(f"[local] language prompt: {lan_inst_prompt!r}")
+     
+     # GPS signal
+     goal_lat, goal_lon, goal_compass = 37.8738930785863, -122.26746181032362, 0.0
+@@ -556,7 +571,9 @@
+ 
+     # Run inference
+     inference = Inference(
+-        save_dir="./inference",
++        # [local addition] keep each run's figure in its own artifact directory
++        # instead of overwriting inference/1_ex_omnivla_edge.jpg in the tree.
++        save_dir=os.environ.get("OMNIVLA_RUN_DIR") or "./inference",
+         lan_inst_prompt=lan_inst_prompt,
+         goal_utm=goal_utm,
+         goal_compass=goal_compass,
