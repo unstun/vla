@@ -50,7 +50,7 @@ Use this skill before selecting or importing an external navigation codebase.
 
 ## Safety and source boundary
 
-- `/Users/sun/vla` is the only VLA project source of truth.
+- `/Users/sun/tongbu/study/phdproject/vla` is the only VLA project source of truth.
 - The local `machine-dog-nav` checkout is a read-only baseline until a clean
   commit is explicitly selected and imported.
 - Upstream source directories are read-only references during survey.

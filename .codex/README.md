@@ -29,7 +29,7 @@ configuration is loaded only after this repository is trusted.
 
 ## Source boundary
 
-The local `/Users/sun/vla` checkout is the VLA source of truth. The local
-`machine-dog-nav` checkout, upstream clones, and remote workspaces are references
-or execution copies until their pinned source and local sync-back evidence are
-recorded here.
+The local `/Users/sun/tongbu/study/phdproject/vla` checkout is the VLA source
+of truth. The local `machine-dog-nav` checkout, upstream clones, and remote
+workspaces are references or execution copies until their pinned source and
+local sync-back evidence are recorded here.

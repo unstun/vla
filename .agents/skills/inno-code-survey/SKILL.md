@@ -98,7 +98,7 @@ the topic directory.
 Use the strongest justified label only:
 
 - `surveyed`: sources inspected;
-- `imported`: pinned code brought into `/Users/sun/vla`;
+- `imported`: pinned code brought into `/Users/sun/tongbu/study/phdproject/vla`;
 - `reproduced`: original upstream procedure ran with recorded evidence;
 - `integrated`: behavior works through this repository;
 - `validated`: the declared project acceptance test passed.

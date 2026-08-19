@@ -6,7 +6,7 @@ as_of: 2026-08-16
 
 > **本地导入说明（2026-08-16）：** 本文主体来自会话
 > `6a817fcc-aad0-83e8-97c2-c299b1f2df8f` 生成的隔离 staging 包，原文的
-> “项目未挂载”描述仅指生成时环境。现已在 `/Users/sun/vla` 完成压缩包哈希、
+> “项目未挂载”描述仅指生成时环境。现已在 `/Users/sun/tongbu/study/phdproject/vla` 完成压缩包哈希、
 > 归档安全、294 项内部检查、24 篇 PDF 身份、46 个来源 URL 和 19 个固定 commit
 > 的本地复核。复核修正与证据边界见
 > [`import_audit.zh.md`](2026-08-16_lite3_vla_open_source_reproduction_survey/import_audit.zh.md)。

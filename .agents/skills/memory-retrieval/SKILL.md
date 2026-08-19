@@ -54,7 +54,7 @@ Codex 子代理调用形状：
 {
   "agent_type": "memory-retriever",
   "fork_context": false,
-  "message": "查询意图: $ARGUMENTS\n项目目录: /Users/sun/vla\n要求: 只读检索 bigmemory/ 和 .pipeline/；返回 <= 800 字；列出来源文件。"
+  "message": "查询意图: $ARGUMENTS\n项目目录: /Users/sun/tongbu/study/phdproject/vla\n要求: 只读检索 bigmemory/ 和 .pipeline/；返回 <= 800 字；列出来源文件。"
 }
 ```
 
@@ -64,7 +64,7 @@ Claude Code 子代理调用形状：
 Agent({
   description: "Memory retrieval for session",
   subagent_type: "memory-retriever",
-  prompt: "查询意图: $ARGUMENTS\n项目路径: /Users/sun/vla"
+  prompt: "查询意图: $ARGUMENTS\n项目路径: /Users/sun/tongbu/study/phdproject/vla"
 })
 ```
 

@@ -1,6 +1,6 @@
 # Lite3 VLA Research Project
 
-> Scope: `/Users/sun/vla/**`.
+> Scope: `/Users/sun/tongbu/study/phdproject/vla/**`.
 > Source of truth: this file (`AGENTS.md`). `CLAUDE.md` imports it through
 > `@AGENTS.md`.
 
@@ -59,8 +59,8 @@ This is a long-horizon PhD research project.
 
 ## Source Of Truth And Sync Gate
 
-The local `/Users/sun/vla` repository is the only source of truth for VLA code
-and project state.
+The local `/Users/sun/tongbu/study/phdproject/vla` repository is the only
+source of truth for VLA code and project state.
 
 - `/Users/sun/tongbu/study/phdproject/machine-dog-nav` and other upstream
   repositories are read-only references until deliberately imported.

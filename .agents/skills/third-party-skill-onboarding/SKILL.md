@@ -1,6 +1,6 @@
 ---
 name: third-party-skill-onboarding
-description: Use when Dr Sun asks to evaluate, install, copy, or adapt third-party skills from another repository into `/Users/sun/vla` or another project-local `.agents/skills` directory.
+description: Use when Dr Sun asks to evaluate, install, copy, or adapt third-party skills from another repository into `/Users/sun/tongbu/study/phdproject/vla` or another project-local `.agents/skills` directory.
 ---
 
 # Third-Party Skill Onboarding

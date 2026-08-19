@@ -8,7 +8,7 @@ paper result or upstream repository has been reproduced.
 - `surveyed`: primary material was inspected.
 - `reproduced`: the upstream procedure was run with recorded evidence.
 - `imported`: a pinned source snapshot exists inside this repository.
-- `integrated`: the behavior works inside `/Users/sun/vla`.
+- `integrated`: the behavior works inside `/Users/sun/tongbu/study/phdproject/vla`.
 - `validated`: the declared project acceptance test passed.
 
 ## Directories

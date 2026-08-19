@@ -11,7 +11,7 @@ as_of: 2026-08-16
 Both survey archives attached to conversation
 `6a817fcc-aad0-83e8-97c2-c299b1f2df8f` were downloaded in full, and their
 hashes match the values stated in that conversation. The report, 24 paper PDFs,
-repository audit, and source register are now archived under `/Users/sun/vla`.
+repository audit, and source register are now archived under `/Users/sun/tongbu/study/phdproject/vla`.
 The strongest evidence label is `surveyed`. No candidate repository, model, or
 dataset was imported; no dependency installation, inference, simulation,
 training, or robot actuation was performed.
