@@ -32,5 +32,5 @@ Unknown or changed safety fields fail closed at startup.
 Omitting `--mode` uses the config default (`shadow`). The controller owns one
 priority order: damping/explicit stop, Retroid or WASD manual input, fresh
 explicitly R1-authorized active VLA, then zero. `W/S` command forward/reverse,
-`A/D` command yaw, and `X` returns keyboard input to neutral. Manual takeover
-latches VLA off; release and press R1 again to re-arm.
+`A/D` command yaw, and `X` explicitly commands zero/stop. Manual takeover or
+`X` latches VLA off; release and press R1 again to re-arm.
