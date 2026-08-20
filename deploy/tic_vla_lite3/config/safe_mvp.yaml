@@ -1,0 +1,37 @@
+mode: shadow
+protocol:
+  schema: tic-vla-lite3.body-command.v1
+  max_datagram_bytes: 1024
+  vla_timeout_ms: 500
+limits:
+  vx_min_mps: 0.0
+  vx_max_mps: 0.30
+  vy_mps: 0.0
+  wz_abs_max_radps: 0.20
+  vx_slew_mps2: 0.30
+  wz_slew_radps2: 0.40
+trajectory:
+  points: 30
+  lookahead_m: 1.0
+  min_path_m: 0.05
+  max_segment_m: 1.0
+  max_path_m: 15.0
+  max_age_s: 0.50
+  yaw_filter_alpha: 0.35
+  curvature_epsilon: 0.000001
+  curvature_speed_gain: 0.20
+  yaw_feedforward_gain: 0.50
+  yaw_feedback_gain: 0.80
+observation:
+  delayed_context_s: [9.0, 6.0, 3.0, 0.0]
+  history_tolerance_s: 1.0
+  max_frame_age_s: 0.25
+  max_state_age_s: 0.25
+live_source:
+  host: 192.168.1.103
+  allowed_orin_source_as_seen_by_xavier: 192.168.1.120
+  rgb_topic: /camera/color/image_raw
+  state_topic: /aft_mapped_to_init
+  width: 640
+  height: 480
+  orientation: camera_color_optical_frame_unmodified

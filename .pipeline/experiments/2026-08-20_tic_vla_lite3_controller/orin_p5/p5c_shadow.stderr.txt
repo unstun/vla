@@ -1,0 +1,17 @@
+Setting `pad_token_id` to `eos_token_id`:None for open-end generation.
+Traceback (most recent call last):
+  File "/usr/lib/python3.8/runpy.py", line 194, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.8/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_lite3_controller/deploy/tic_vla_lite3/src/tic_vla_lite3/shadow_service.py", line 168, in <module>
+    main()
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_lite3_controller/deploy/tic_vla_lite3/src/tic_vla_lite3/shadow_service.py", line 76, in main
+    observation = bridge.receive()
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_lite3_controller/deploy/tic_vla_lite3/src/tic_vla_lite3/live_bridge.py", line 95, in receive
+    return decode_record(self._stream, time.monotonic())
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_lite3_controller/deploy/tic_vla_lite3/src/tic_vla_lite3/live_bridge.py", line 49, in decode_record
+    metadata_size = struct.unpack("!I", _read_exact(stream, 4))[0]
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_lite3_controller/deploy/tic_vla_lite3/src/tic_vla_lite3/live_bridge.py", line 42, in _read_exact
+    raise EOFError("observation_bridge_closed")
+EOFError: observation_bridge_closed
