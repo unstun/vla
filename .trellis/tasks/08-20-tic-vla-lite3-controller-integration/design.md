@@ -1,5 +1,15 @@
 # Technical design: TIC-VLA to Lite3 minimal closed loop
 
+## Active MVP v2 amendment
+
+The service has one explicit mode projection onto the existing
+`body-command.v1` packet. Configuration defaults to `shadow`; `active` is a
+deliberate CLI/config choice. The controller remains the only eligibility and
+arbitration owner. Its Retroid-plus-VLA interface samples a minimal nonblocking
+WASD component; both manual sources feed the same pure arbiter. R1
+release/re-press is the common re-arm gesture. Tests use fake waypoint/runtime
+boundaries and sockets only, without constructing a motor-send path.
+
 ## 1. Design intent
 
 This design keeps each existing component in its proper role:

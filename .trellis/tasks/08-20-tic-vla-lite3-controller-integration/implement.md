@@ -2,6 +2,10 @@
 
 ## Execution status (2026-08-20)
 
+- Active MVP v2 reopened implementation for explicit active mode,
+  Retroid/WASD takeover, latched manual ownership, and local no-motor tests.
+  P5 remains blocked/not complete; P6 remains unstarted and unauthorized.
+
 - P0-P4: implemented and directly tested. Evidence is under
   `.pipeline/experiments/2026-08-20_tic_vla_lite3_controller/`.
 - P5: blocked, not complete. The furthest real end-to-end shadow attempt was

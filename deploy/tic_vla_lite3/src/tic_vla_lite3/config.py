@@ -1,4 +1,4 @@
-"""Strict loader for the reviewed shadow safety configuration."""
+"""Strict loader for the reviewed TIC-VLA runtime configuration."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from .trajectory_adapter import AdapterConfig
 
 @dataclasses.dataclass(frozen=True)
 class ShadowConfig:
+    mode: str
     adapter: AdapterConfig
     delayed_context_s: Tuple[float, float, float, float]
     history_tolerance_s: float
@@ -41,11 +42,11 @@ def _number(value: object, name: str, *, minimum: float,
     return result
 
 
-def load_shadow_config(path: Path) -> ShadowConfig:
+def load_config(path: Path) -> ShadowConfig:
     root = _keys(yaml.safe_load(path.read_text(encoding="utf-8")), {
         "mode", "protocol", "limits", "trajectory", "observation", "live_source"
     }, "root")
-    if root["mode"] != "shadow":
+    if root["mode"] not in ("shadow", "active"):
         raise ValueError("mode")
     protocol = _keys(root["protocol"], {
         "schema", "max_datagram_bytes", "vla_timeout_ms"
@@ -115,9 +116,14 @@ def load_shadow_config(path: Path) -> ShadowConfig:
     if not (adapter.min_path_m <= adapter.lookahead_m <= adapter.max_path_m):
         raise ValueError("trajectory_order")
     result = ShadowConfig(
-        adapter, delays,
+        str(root["mode"]), adapter, delays,
         _number(observation["history_tolerance_s"], "history_tolerance_s", minimum=0.0),
         _number(observation["max_frame_age_s"], "max_frame_age_s", minimum=0.0),
         _number(observation["max_state_age_s"], "max_state_age_s", minimum=0.0),
     )
     return result
+
+
+def load_shadow_config(path: Path) -> ShadowConfig:
+    """Compatibility entry point retained for existing scripts."""
+    return load_config(path)

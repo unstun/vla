@@ -1,4 +1,4 @@
-"""Live shadow-only TIC-VLA service. This module cannot select active mode."""
+"""Live TIC-VLA service. Shadow is default; active requires explicit selection."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from .config import load_shadow_config
+from .config import ShadowConfig, load_config
 from .frame_source import DelayedFrameBuffer
 from .live_bridge import LiveBridgeClient
 from .model_runtime import (AsyncModelRuntime, PINNED_BASE_REVISION,
@@ -26,12 +26,36 @@ def append_jsonl(path: Path, value: dict) -> None:
                                 allow_nan=False) + "\n")
 
 
+def resolve_mode(requested: Optional[str], config: ShadowConfig) -> str:
+    """Resolve one audited service mode; omission preserves shadow by default."""
+    mode = config.mode if requested is None else requested
+    if mode not in ("shadow", "active"):
+        raise ValueError("mode")
+    return mode
+
+
+def command_from_proposal(session_id: str, plan_sequence: int,
+                          source_frame_sequence: int,
+                          reasoning_generation: int, mode: str,
+                          proposed: object) -> BodyCommand:
+    """Create the sole body-command packet projection used by live service."""
+    if mode not in ("shadow", "active"):
+        raise ValueError("mode")
+    valid = bool(getattr(proposed, "valid"))
+    return BodyCommand(
+        session_id, plan_sequence, source_frame_sequence, reasoning_generation,
+        mode, valid, float(getattr(proposed, "vx_mps")) if valid else 0.0,
+        0.0, float(getattr(proposed, "wz_radps")) if valid else 0.0)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dynav-overlay", required=True, type=Path)
     parser.add_argument("--base-model", required=True, type=Path)
     parser.add_argument("--checkpoint", required=True, type=Path)
     parser.add_argument("--config", required=True, type=Path)
+    parser.add_argument("--mode", choices=("shadow", "active"), default=None,
+                        help="explicitly select active; omitted uses config (shadow by default)")
     parser.add_argument("--instruction", required=True)
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--bridge-host", default="192.168.1.103")
@@ -46,9 +70,10 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     frame_dir = args.output_dir / "frames"
     frame_dir.mkdir(parents=True, exist_ok=True)
-    log_path = args.output_dir / "shadow.jsonl"
+    config = load_config(args.config)
+    mode = resolve_mode(args.mode, config)
+    log_path = args.output_dir / (mode + ".jsonl")
     udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    config = load_shadow_config(args.config)
     history = DelayedFrameBuffer(max(config.delayed_context_s) + 2.0)
     adapter = TrajectoryAdapter(config.adapter)
     generation_references = ReasoningReferenceBuffer()
@@ -57,8 +82,8 @@ def main() -> None:
     observed_generation: Optional[int] = None
     generation_observed_s: Optional[float] = None
     manifest = {
-        "schema": "tic-vla-lite3.shadow-run.v1",
-        "mode": "shadow",
+        "schema": "tic-vla-lite3.service-run.v2",
+        "mode": mode,
         "motor_command_sent": False,
         "instruction": args.instruction,
         "session_id": args.session_id,
@@ -139,11 +164,9 @@ def main() -> None:
             except ValueError as exc:
                 proposed = adapter.zero(str(exc))
             plan_sequence += 1
-            packet = BodyCommand(
+            packet = command_from_proposal(
                 args.session_id, plan_sequence, observation.frame.sequence,
-                reasoning_generation, "shadow", proposed.valid,
-                proposed.vx_mps if proposed.valid else 0.0, 0.0,
-                proposed.wz_radps if proposed.valid else 0.0)
+                reasoning_generation, mode, proposed)
             payload = encode_command(packet)
             udp.sendto(payload, (args.controller_host, args.controller_port))
             udp_sent_s = time.monotonic()
@@ -168,7 +191,7 @@ def main() -> None:
                 "vx_mps": packet.vx_mps,
                 "vy_mps": packet.vy_mps,
                 "wz_radps": packet.wz_radps,
-                "mode": "shadow",
+                "mode": mode,
                 "motor_command_sent": False,
                 "packet_bytes": len(payload),
             })

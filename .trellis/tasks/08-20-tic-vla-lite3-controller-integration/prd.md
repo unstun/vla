@@ -1,5 +1,18 @@
 # Integrate TIC-VLA with the Lite3 locomotion controller
 
+## Active MVP v2 frozen amendment (2026-08-20)
+
+This task includes local implementation and no-motor verification of the active
+body-command path. Shadow remains the default; active requires explicit mode
+selection. The single controller arbiter owns command selection with fixed
+priority: `joint damping / explicit stop > Retroid or WASD manual > fresh
+explicitly authorized active VLA > zero`. Either manual source cancels VLA
+ownership; neutral input never resumes it, and R1 must be released and pressed
+again. Existing caps, watchdogs, damping, lower faults, and trajectory-adapter
+acceleration behavior are unchanged. VLA cannot write `target_mode`, stand,
+enter RL mode, or send joint targets. No motor actuation, P6, long remote run,
+APK, web console, encryption, complex identity, or obstacle veto is authorized.
+
 ## Goal
 
 Build the smallest complete Lite3 VLA loop:

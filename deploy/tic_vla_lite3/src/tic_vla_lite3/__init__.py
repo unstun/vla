@@ -1,4 +1,4 @@
-"""Fail-closed TIC-VLA to Lite3 shadow integration."""
+"""TIC-VLA to Lite3 body-command integration; shadow remains the default."""
 
 from .protocol import BodyCommand, ProtocolError, decode_command, encode_command
 from .trajectory_adapter import AdapterConfig, BodyVelocity, TrajectoryAdapter
