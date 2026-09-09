@@ -5,6 +5,20 @@ reviewed: false
 
 # Literature And Upstream Index
 
+## 2026-09-09: LightNav-0 official-demo preparation
+
+Dr Sun selected [LightNav-0](https://github.com/lightorigins/LightNav-0).
+Source `d83fbfb9748ca6b497a2f2a7f4a3e95e2110e40c` is imported; the official
+MuJoCo default TurtleBot case is prepared, not executed. The model revision
+is `826dc5fbfa37afa8293d2e336d329b6ffc0bfb64`. See the
+[dated source survey](../survey/2026-09-09_lightnav0_official_demo_upstream_survey.md)
+and [session handoff](../handoffs/2026-09-09_vla_lightnav0_handoff.md).
+The older survey overview below is historical and does not override this update.
+
+> [待核查] Automated archive gate lacked the host/import context and did not
+> complete successfully. Local source hashes and the saved SSH snapshot verify
+> these facts; manual checks passed, but an automated PASS is not claimed.
+
 This index records the 24 papers and 21 upstream repositories inspected in the
 2026-08-16 Lite3 VLA survey. Every entry remains `surveyed`: no upstream source
 code, checkpoint, dataset, or runtime result has been imported into the project.

@@ -1,0 +1,40 @@
+topic: lightnav0_official_demo
+date: 2026-09-09
+status: imported
+repositories:
+  - name: LightNav-0
+    canonical_url: https://github.com/lightorigins/LightNav-0
+    project_page: https://lightorigins.cn/en/blog/lightnav-0
+    license: Apache-2.0; bundled Ai2 ProcTHOR assets CC-BY-4.0
+    default_branch: main
+    pinned_commit: d83fbfb9748ca6b497a2f2a7f4a3e95e2110e40c
+    paper: https://arxiv.org/abs/2608.30935
+    robot_platforms: [TurtleBot]
+    simulator: MuJoCo; official default kinematic TurtleBot demo
+    ros_version: not_required_for_demo
+    sensors: [single_front_RGB]
+    locomotion_interface: official CasADi/IPOPT MPC and kinematic unicycle integration
+    dependencies:
+      - Python 3.11 inference environment
+      - transformers==5.8.0
+      - vllm==0.19.1
+      - nvidia-cutlass-dsl==4.5.2
+      - Separate uv project for mujoco_demo
+    model_or_dataset_links:
+      - https://huggingface.co/LightOriginsHQ/LightNav-0/tree/826dc5fbfa37afa8293d2e336d329b6ffc0bfb64
+      - https://github.com/allenai/molmospaces/tree/c89e1f5481af56fd25ef4efb76bdced9b726ec6a
+    original_install_command: 'pip install -e ".[vllm,video]"'
+    original_demo_command: 'cd mujoco_demo && ./run.sh --vln-server ws://127.0.0.1:8050'
+    local_source_path: references/upstream/2026-09-09_lightnav0_official_demo/source/LightNav-0
+    reproduction_status: not_run
+    evidence_paths:
+      - .pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/setup/upstream_file_manifest.json
+      - .pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/setup/asset_verification.json
+      - .pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/setup/model_source.json
+    notes: User-selected official demo; package prepared for manual Opus execution.
+selection:
+  recommended_first_target: bundled MuJoCo val_2 TurtleBot demo
+  reason: Official self-contained scene/client/controller and default instruction; no gated Habitat scene dependency.
+  unresolved_questions:
+    - Actual pinned vLLM stack compatibility and BF16 runtime memory on rented4090.
+    - Default-case task completion and native stopping performance.
