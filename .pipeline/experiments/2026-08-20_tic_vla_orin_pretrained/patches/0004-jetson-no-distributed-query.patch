@@ -1,0 +1,20 @@
+diff --git a/scripts/run_offline_cuda.py b/scripts/run_offline_cuda.py
+--- a/scripts/run_offline_cuda.py
++++ b/scripts/run_offline_cuda.py
+@@ -20,4 +20,10 @@ import torch
+ from ticvla.models.ticvla import TICVLA
+ 
+ 
++def install_single_process_distributed_query_shim():
++    """Provide the read-only query used by InternVL on non-distributed Jetson Torch."""
++    if not hasattr(torch.distributed, "is_initialized"):
++        torch.distributed.is_initialized = lambda: False
++
++
+ def sha256(path: Path) -> str:
+@@ -129,4 +135,5 @@ def main():
+ 
+     if not torch.cuda.is_available():
+         raise RuntimeError("CUDA is not available")
++    install_single_process_distributed_query_shim()
+     checkpoint_hash = sha256(args.checkpoint)

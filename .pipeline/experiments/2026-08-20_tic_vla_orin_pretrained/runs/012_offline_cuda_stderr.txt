@@ -1,0 +1,17 @@
+Setting `pad_token_id` to `eos_token_id`:None for open-end generation.
+Traceback (most recent call last):
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/work/orin_scripts/run_offline_cuda.py", line 305, in <module>
+    main()
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/work/orin_scripts/run_offline_cuda.py", line 192, in main
+    response, waypoints, prompt = model.predict(
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/work/ticvla/models/ticvla.py", line 640, in predict
+    vlm_outputs = self.vlm(
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/work/orin_scripts/run_offline_cuda.py", line 95, in timed
+    result = original(*args, **kwargs)
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/hf_cache/modules/transformers_modules/InternVL3-1B/modeling_internvl_chat.py", line 115, in forward
+    if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
+AttributeError: module 'torch.distributed' has no attribute 'is_initialized'

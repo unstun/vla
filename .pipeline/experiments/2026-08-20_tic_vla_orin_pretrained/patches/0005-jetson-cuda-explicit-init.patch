@@ -1,0 +1,10 @@
+diff --git a/scripts/run_offline_cuda.py b/scripts/run_offline_cuda.py
+--- a/scripts/run_offline_cuda.py
++++ b/scripts/run_offline_cuda.py
+@@ -153,5 +153,6 @@ def main():
+     gc.collect()
+ 
+     device = torch.device("cuda:0")
++    torch.cuda.init()
+     torch.cuda.empty_cache()
+     torch.cuda.reset_peak_memory_stats(device)

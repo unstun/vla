@@ -1,0 +1,44 @@
+Traceback (most recent call last):
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/work/orin_scripts/run_offline_cuda.py", line 305, in <module>
+    main()
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/work/orin_scripts/run_offline_cuda.py", line 192, in main
+    response, waypoints, prompt = model.predict(
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/work/ticvla/models/ticvla.py", line 583, in predict
+    generated_response = self.vlm.chat(
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/work/orin_scripts/run_offline_cuda.py", line 95, in timed
+    result = original(*args, **kwargs)
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/hf_cache/modules/transformers_modules/InternVL3-1B/modeling_internvl_chat.py", line 291, in chat
+    generation_output = self.generate(
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/hf_cache/modules/transformers_modules/InternVL3-1B/modeling_internvl_chat.py", line 340, in generate
+    outputs = self.language_model.generate(
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/python_deps/transformers/generation/utils.py", line 1977, in generate
+    synced_gpus = (is_deepspeed_zero3_enabled() or is_fsdp_managed_module(self)) and dist.get_world_size() > 1
+  File "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/python_deps/transformers/integrations/fsdp.py", line 29, in is_fsdp_managed_module
+    import torch.distributed.fsdp
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/distributed/fsdp/__init__.py", line 1, in <module>
+    from .flat_param import FlatParameter
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/distributed/fsdp/flat_param.py", line 30, in <module>
+    from torch.distributed._tensor import DTensor
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/distributed/_tensor/__init__.py", line 6, in <module>
+    import torch.distributed._tensor.ops
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/distributed/_tensor/ops/__init__.py", line 2, in <module>
+    from .embedding_ops import *  # noqa: F403
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/distributed/_tensor/ops/embedding_ops.py", line 6, in <module>
+    from torch.distributed._tensor.api import _Partial, DTensorSpec, Replicate, Shard
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/distributed/_tensor/api.py", line 8, in <module>
+    import torch.distributed._tensor.dispatch as op_dispatch
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/distributed/_tensor/dispatch.py", line 10, in <module>
+    from torch.distributed._tensor.device_mesh import DeviceMesh
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/distributed/_tensor/device_mesh.py", line 6, in <module>
+    import torch.distributed._functional_collectives as funcol
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/distributed/_functional_collectives.py", line 7, in <module>
+    import torch.distributed.distributed_c10d as c10d
+  File "/home/nvidia/.local/lib/python3.8/site-packages/torch/distributed/distributed_c10d.py", line 17, in <module>
+    from torch._C._distributed_c10d import (
+ModuleNotFoundError: No module named 'torch._C._distributed_c10d'; 'torch._C' is not a package

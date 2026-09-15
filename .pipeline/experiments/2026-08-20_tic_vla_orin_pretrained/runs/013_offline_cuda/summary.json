@@ -1,0 +1,990 @@
+{
+  "all_measured_waypoints_finite": true,
+  "checkpoint_path": "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/checkpoints/TIC-VLA-model.ckpt",
+  "checkpoint_sha256": "376263f89fad0f42c267d85655019232edc91d36e214e23424804dd4cd42e036",
+  "claim_boundary": "Offline receive-only compatibility test using one non-DynaNav Lite3 image. The delayed and current frames repeat the same image; robot state and ego-motion are neutral placeholders. This does not validate temporal reasoning, planning reliability, navigation, obstacle avoidance, robot control, or safety.",
+  "device": {
+    "architecture": "aarch64",
+    "capability": [
+      8,
+      7
+    ],
+    "name": "Orin",
+    "python": "3.8.10",
+    "torch": "2.1.0a0+41361538.nv23.06",
+    "torch_cuda": "11.4"
+  },
+  "environment": {
+    "HF_HOME": "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/hf_cache",
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1"
+  },
+  "image_path": "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/inputs/frame.jpg",
+  "image_sha256": "c982be19a4b55213252902c4cc957a7e74903a6f253fc2378f512e0051237f09",
+  "input_contract": {
+    "delayed_current_same_image": true,
+    "ego_motion_placeholder": "neutral dx=0, dy=0 in robot_state",
+    "instruction": "Move forward safely and efficiently.",
+    "official_dynanav_sample": false,
+    "robot_state": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "single_offline_lite3_image": true,
+    "time_delay_seconds": 0.0
+  },
+  "measured_count": 3,
+  "measured_end_to_end_seconds": [
+    13.498413863999303,
+    14.117549394999514,
+    13.88161462500284
+  ],
+  "measured_waypoint_shapes": [
+    [
+      1,
+      30,
+      2
+    ],
+    [
+      1,
+      30,
+      2
+    ],
+    [
+      1,
+      30,
+      2
+    ]
+  ],
+  "model_load_cuda_memory": {
+    "allocated_bytes": 1929859072,
+    "peak_allocated_bytes": 1929859072,
+    "peak_reserved_bytes": 1967128576,
+    "reserved_bytes": 1967128576
+  },
+  "model_load_seconds": 7.438209369007382,
+  "model_path": "/home/nvidia/sun/vla_exec/2026-08-20_tic_vla_orin_pretrained/models/InternVL3-1B",
+  "records": [
+    {
+      "component_timers": {
+        "action_expert": {
+          "calls": 1,
+          "seconds": [
+            0.013046049993135966
+          ],
+          "total_seconds": 0.013046049993135966
+        },
+        "extract_feature": {
+          "calls": 3,
+          "seconds": [
+            2.5144959190074587,
+            0.15026560198748484,
+            0.14277086399670225
+          ],
+          "total_seconds": 2.807532384991646
+        },
+        "vlm_chat": {
+          "calls": 1,
+          "seconds": [
+            15.371084548998624
+          ],
+          "total_seconds": 15.371084548998624
+        },
+        "vlm_forward": {
+          "calls": 1,
+          "seconds": [
+            0.3136104709992651
+          ],
+          "total_seconds": 0.3136104709992651
+        }
+      },
+      "end_to_end_seconds": 15.95624745200621,
+      "full_prompt": "SYSTEM:\nYou are a physical mobile robot assigned to perform navigation tasks.\nYou are provided with a video consisting of visual observations, including historical and current frames.\n\n\nUSER:\nThe navigation instruction is: Move forward safely and efficiently.\nUse reasoning to predict the future target waypoints. First describe the relevant visual/navigation evidence, then return the future target waypoints for the next 3s, 6s, and 9s in format: (x, y, theta). Each waypoint represents the cumulative offset from the current position (total displacement over 3s, 6s, or 9s),where x is positive for forward, y is positive for left, and theta is the heading angle in radians.",
+      "index": 0,
+      "language_output": "<think>\nI am in a cafeteria near a doorway, with a portable cart ahead-right and a worker ahead. The cart is the critical obstacle. It seems stationary but may move. I have begun a gentle rightward alignment toward the exit. Next I continue forward, shift slightly right to clear, then return leftward progress while yielding and keeping safe clearance.\n</think>\n<answer>(0.54, -0.45, -0.69), (0.91, -0.63, -0.60), (0.90, -0.65, -0.62)</answer>",
+      "name": "warmup",
+      "peak_cuda_allocated_bytes": 2194432512,
+      "peak_cuda_reserved_bytes": 2241855488,
+      "phase": "warmup",
+      "sensors_after": {
+        "power_available": false,
+        "power_sysfs_raw": {},
+        "tegrastats_lines": [
+          "08-20-2026 17:47:57 RAM 9934/62800MB (lfb 9583x4MB) SWAP 0/31400MB (cached 0MB) CPU [28%@806,18%@806,23%@806,17%@806,18%@883,21%@883,19%@883,20%@883,20%@729,17%@729,24%@729,19%@729] EMC_FREQ 0% GR3D_FREQ 18% CV0@-256C CPU@44.093C Tboard@33C SOC2@40.25C Tdiode@33.5C SOC0@40.531C CV1@-256C GPU@39.156C tj@44.093C SOC1@40.968C CV2@-256C"
+        ],
+        "tegrastats_stderr": "",
+        "thermal_celsius": {
+          "CPU-therm": 44.218,
+          "CV0-therm": -256.0,
+          "CV1-therm": -256.0,
+          "CV2-therm": -256.0,
+          "GPU-therm": 40.406,
+          "SOC0-therm": 40.843,
+          "SOC1-therm": 41.218,
+          "SOC2-therm": 40.531,
+          "Tboard_tegra": 33.0,
+          "Tdiode_tegra": 33.0,
+          "tj-therm": 44.375
+        },
+        "timestamp_unix": 1787219278.7514791
+      },
+      "sensors_before": {
+        "power_available": false,
+        "power_sysfs_raw": {},
+        "tegrastats_lines": [
+          "08-20-2026 17:47:39 RAM 9506/62800MB (lfb 9715x4MB) SWAP 0/31400MB (cached 0MB) CPU [31%@729,24%@729,29%@729,22%@729,18%@729,16%@729,18%@729,16%@729,23%@883,19%@883,20%@883,20%@883] EMC_FREQ 0% GR3D_FREQ 38% CV0@-256C CPU@43.75C Tboard@33C SOC2@39.906C Tdiode@33C SOC0@40.281C CV1@-256C GPU@38.718C tj@43.75C SOC1@40.75C CV2@-256C"
+        ],
+        "tegrastats_stderr": "",
+        "thermal_celsius": {
+          "CPU-therm": 43.875,
+          "CV0-therm": -256.0,
+          "CV1-therm": -256.0,
+          "CV2-therm": -256.0,
+          "GPU-therm": 38.562,
+          "SOC0-therm": 40.25,
+          "SOC1-therm": 40.937,
+          "SOC2-therm": 39.937,
+          "Tboard_tegra": 33.0,
+          "Tdiode_tegra": 33.0,
+          "tj-therm": 43.656
+        },
+        "timestamp_unix": 1787219260.7507842
+      },
+      "waypoint_all_finite": true,
+      "waypoint_dtype_model": "torch.float32",
+      "waypoint_dtype_saved": "float32",
+      "waypoint_shape": [
+        1,
+        30,
+        2
+      ],
+      "waypoints": [
+        [
+          [
+            -0.02483007311820984,
+            -0.0034272968769073486
+          ],
+          [
+            -0.07759810984134674,
+            -0.025218069553375244
+          ],
+          [
+            -0.06837865710258484,
+            -0.009284868836402893
+          ],
+          [
+            -0.06886701285839081,
+            -0.026944555342197418
+          ],
+          [
+            -0.0694163590669632,
+            -0.029136836528778076
+          ],
+          [
+            -0.07090143859386444,
+            -0.02854752540588379
+          ],
+          [
+            -0.050581589341163635,
+            -0.030682414770126343
+          ],
+          [
+            -0.035873591899871826,
+            -0.03751014173030853
+          ],
+          [
+            -0.044060900807380676,
+            -0.03303709626197815
+          ],
+          [
+            -0.04611550271511078,
+            -0.05374641716480255
+          ],
+          [
+            -0.006122708320617676,
+            -0.04902714490890503
+          ],
+          [
+            -0.02478449046611786,
+            -0.05681823194026947
+          ],
+          [
+            -0.030654355883598328,
+            -0.06946469098329544
+          ],
+          [
+            -0.008631497621536255,
+            -0.07438793778419495
+          ],
+          [
+            0.006093114614486694,
+            -0.08009254932403564
+          ],
+          [
+            0.003831043839454651,
+            -0.07658523321151733
+          ],
+          [
+            -0.03223961591720581,
+            -0.0880386233329773
+          ],
+          [
+            -0.025722891092300415,
+            -0.07982960343360901
+          ],
+          [
+            0.01640094816684723,
+            -0.08974437415599823
+          ],
+          [
+            -0.00663071870803833,
+            -0.09300760924816132
+          ],
+          [
+            -0.0046282559633255005,
+            -0.09631490707397461
+          ],
+          [
+            -0.015686094760894775,
+            -0.11363708972930908
+          ],
+          [
+            -0.006136059761047363,
+            -0.11560575664043427
+          ],
+          [
+            -0.045762479305267334,
+            -0.11415767669677734
+          ],
+          [
+            0.0047952234745025635,
+            -0.1490292102098465
+          ],
+          [
+            -0.01049080491065979,
+            -0.13184763491153717
+          ],
+          [
+            0.014310449361801147,
+            -0.1502150148153305
+          ],
+          [
+            -0.005864143371582031,
+            -0.1524786353111267
+          ],
+          [
+            -0.0016701817512512207,
+            -0.1612570583820343
+          ],
+          [
+            0.006703823804855347,
+            -0.1574295312166214
+          ]
+        ]
+      ]
+    },
+    {
+      "component_timers": {
+        "action_expert": {
+          "calls": 1,
+          "seconds": [
+            0.013657236006110907
+          ],
+          "total_seconds": 0.013657236006110907
+        },
+        "extract_feature": {
+          "calls": 3,
+          "seconds": [
+            0.17468322400236502,
+            0.14974914299091324,
+            0.14551016500627156
+          ],
+          "total_seconds": 0.46994253199954983
+        },
+        "vlm_chat": {
+          "calls": 1,
+          "seconds": [
+            12.97665426900494
+          ],
+          "total_seconds": 12.97665426900494
+        },
+        "vlm_forward": {
+          "calls": 1,
+          "seconds": [
+            0.27910912699007895
+          ],
+          "total_seconds": 0.27910912699007895
+        }
+      },
+      "end_to_end_seconds": 13.498413863999303,
+      "full_prompt": "SYSTEM:\nYou are a physical mobile robot assigned to perform navigation tasks.\nYou are provided with a video consisting of visual observations, including historical and current frames.\n\n\nUSER:\nThe navigation instruction is: Move forward safely and efficiently.\nUse reasoning to predict the future target waypoints. First describe the relevant visual/navigation evidence, then return the future target waypoints for the next 3s, 6s, and 9s in format: (x, y, theta). Each waypoint represents the cumulative offset from the current position (total displacement over 3s, 6s, or 9s),where x is positive for forward, y is positive for left, and theta is the heading angle in radians.",
+      "index": 1,
+      "language_output": "<think>\nI am in a cafeteria near a desk and an uneven wheelchair with a rack on my right. The wheelchair is the key obstacle ahead-right and seems stationary. I have begun a gentle rightward alignment, continuing the move-forward step. Next I will nudge right, go forward, pass safely, then correct left and continue.\n</think>\n<answer>(-0.00, 0.00, 1.76), (-0.16, -0.18, -2.29), (-0.71, -0.27, -2.79)</answer>",
+      "name": "measured_1",
+      "peak_cuda_allocated_bytes": 2192968704,
+      "peak_cuda_reserved_bytes": 2241855488,
+      "phase": "measured",
+      "sensors_after": {
+        "power_available": false,
+        "power_sysfs_raw": {},
+        "tegrastats_lines": [
+          "08-20-2026 17:48:15 RAM 9938/62800MB (lfb 9580x4MB) SWAP 0/31400MB (cached 0MB) CPU [22%@729,27%@729,15%@729,17%@729,21%@729,18%@729,19%@729,20%@729,18%@1113,28%@1113,24%@1113,20%@1113] EMC_FREQ 0% GR3D_FREQ 19% CV0@-256C CPU@44.25C Tboard@33C SOC2@40.187C Tdiode@33.5C SOC0@40.687C CV1@-256C GPU@39.062C tj@44.031C SOC1@41.125C CV2@-256C"
+        ],
+        "tegrastats_stderr": "",
+        "thermal_celsius": {
+          "CPU-therm": 44.468,
+          "CV0-therm": -256.0,
+          "CV1-therm": -256.0,
+          "CV2-therm": -256.0,
+          "GPU-therm": 40.5,
+          "SOC0-therm": 40.906,
+          "SOC1-therm": 41.062,
+          "SOC2-therm": 40.625,
+          "Tboard_tegra": 33.0,
+          "Tdiode_tegra": 34.25,
+          "tj-therm": 44.468
+        },
+        "timestamp_unix": 1787219296.370477
+      },
+      "sensors_before": {
+        "power_available": false,
+        "power_sysfs_raw": {},
+        "tegrastats_lines": [
+          "08-20-2026 17:47:59 RAM 9934/62800MB (lfb 9583x4MB) SWAP 0/31400MB (cached 0MB) CPU [25%@729,26%@729,19%@729,18%@729,17%@1190,16%@1190,17%@1190,17%@1190,21%@1036,20%@1036,15%@1036,22%@1036] EMC_FREQ 0% GR3D_FREQ 20% CV0@-256C CPU@43.906C Tboard@33C SOC2@40.093C Tdiode@33.25C SOC0@40.5C CV1@-256C GPU@39.312C tj@43.906C SOC1@40.937C CV2@-256C"
+        ],
+        "tegrastats_stderr": "",
+        "thermal_celsius": {
+          "CPU-therm": 43.812,
+          "CV0-therm": -256.0,
+          "CV1-therm": -256.0,
+          "CV2-therm": -256.0,
+          "GPU-therm": 38.937,
+          "SOC0-therm": 40.468,
+          "SOC1-therm": 41.187,
+          "SOC2-therm": 40.125,
+          "Tboard_tegra": 33.0,
+          "Tdiode_tegra": 33.5,
+          "tj-therm": 43.968
+        },
+        "timestamp_unix": 1787219280.8137383
+      },
+      "waypoint_all_finite": true,
+      "waypoint_dtype_model": "torch.float32",
+      "waypoint_dtype_saved": "float32",
+      "waypoint_shape": [
+        1,
+        30,
+        2
+      ],
+      "waypoints": [
+        [
+          [
+            -0.05797953903675079,
+            0.0031597018241882324
+          ],
+          [
+            -0.08086252212524414,
+            -0.020187586545944214
+          ],
+          [
+            -0.08354231715202332,
+            -0.005113057792186737
+          ],
+          [
+            -0.08511029183864594,
+            -0.01949160546064377
+          ],
+          [
+            -0.0766272097826004,
+            -0.01979292929172516
+          ],
+          [
+            -0.07522030174732208,
+            -0.02059033513069153
+          ],
+          [
+            -0.05759383738040924,
+            -0.0155133455991745
+          ],
+          [
+            -0.05036936700344086,
+            -0.025321975350379944
+          ],
+          [
+            -0.05485960841178894,
+            -0.020285487174987793
+          ],
+          [
+            -0.06902295351028442,
+            -0.03362087905406952
+          ],
+          [
+            -0.05284452438354492,
+            -0.03182242810726166
+          ],
+          [
+            -0.053035736083984375,
+            -0.040134087204933167
+          ],
+          [
+            -0.06855741143226624,
+            -0.0447501540184021
+          ],
+          [
+            -0.060302093625068665,
+            -0.05097547173500061
+          ],
+          [
+            -0.042461007833480835,
+            -0.05331863462924957
+          ],
+          [
+            -0.05858917534351349,
+            -0.0497552752494812
+          ],
+          [
+            -0.08385661244392395,
+            -0.05773152410984039
+          ],
+          [
+            -0.06570839881896973,
+            -0.05311363935470581
+          ],
+          [
+            -0.03707759082317352,
+            -0.0625716894865036
+          ],
+          [
+            -0.057449549436569214,
+            -0.05687522888183594
+          ],
+          [
+            -0.06411468982696533,
+            -0.07538488507270813
+          ],
+          [
+            -0.06664250791072845,
+            -0.0730433315038681
+          ],
+          [
+            -0.05956234037876129,
+            -0.08179469406604767
+          ],
+          [
+            -0.09337970614433289,
+            -0.07762451469898224
+          ],
+          [
+            -0.07775850594043732,
+            -0.10054905712604523
+          ],
+          [
+            -0.09098556637763977,
+            -0.0821794867515564
+          ],
+          [
+            -0.050116196274757385,
+            -0.1010986715555191
+          ],
+          [
+            -0.08840173482894897,
+            -0.10190713405609131
+          ],
+          [
+            -0.08725357055664062,
+            -0.11491577327251434
+          ],
+          [
+            -0.0809614509344101,
+            -0.10353747010231018
+          ]
+        ]
+      ]
+    },
+    {
+      "component_timers": {
+        "action_expert": {
+          "calls": 1,
+          "seconds": [
+            0.013430498001980595
+          ],
+          "total_seconds": 0.013430498001980595
+        },
+        "extract_feature": {
+          "calls": 3,
+          "seconds": [
+            0.181004263999057,
+            0.15096405999793205,
+            0.14475096500245854
+          ],
+          "total_seconds": 0.4767192889994476
+        },
+        "vlm_chat": {
+          "calls": 1,
+          "seconds": [
+            13.600383272991166
+          ],
+          "total_seconds": 13.600383272991166
+        },
+        "vlm_forward": {
+          "calls": 1,
+          "seconds": [
+            0.2809177900053328
+          ],
+          "total_seconds": 0.2809177900053328
+        }
+      },
+      "end_to_end_seconds": 14.117549394999514,
+      "full_prompt": "SYSTEM:\nYou are a physical mobile robot assigned to perform navigation tasks.\nYou are provided with a video consisting of visual observations, including historical and current frames.\n\n\nUSER:\nThe navigation instruction is: Move forward safely and efficiently.\nUse reasoning to predict the future target waypoints. First describe the relevant visual/navigation evidence, then return the future target waypoints for the next 3s, 6s, and 9s in format: (x, y, theta). Each waypoint represents the cumulative offset from the current position (total displacement over 3s, 6s, or 9s),where x is positive for forward, y is positive for left, and theta is the heading angle in radians.",
+      "index": 2,
+      "language_output": "<think>\nI am in a cafeteria near a desk and a portable cart, with a small rise in view. The critical obstacle is the wheeled stool in front, likely stationary. I just finished a gentle rightward arc and am straightening. Next I will move forward, veer slightly right, bypass them, yield as needed, and continue toward the more level, safely.\n</think>\n<answer>(0.55, -0.48, -0.72), (0.34, -0.49, -0.97), (0.65, -0.00, -0.00)</answer>",
+      "name": "measured_2",
+      "peak_cuda_allocated_bytes": 2195164160,
+      "peak_cuda_reserved_bytes": 2246049792,
+      "phase": "measured",
+      "sensors_after": {
+        "power_available": false,
+        "power_sysfs_raw": {},
+        "tegrastats_lines": [
+          "08-20-2026 17:48:33 RAM 9943/62800MB (lfb 9579x4MB) SWAP 0/31400MB (cached 0MB) CPU [28%@729,19%@729,15%@729,16%@729,26%@729,20%@729,21%@729,26%@729,33%@729,24%@729,22%@729,30%@729] EMC_FREQ 0% GR3D_FREQ 19% CV0@-256C CPU@44.25C Tboard@33C SOC2@40.343C Tdiode@33.5C SOC0@40.687C CV1@-256C GPU@39.156C tj@44.25C SOC1@41.156C CV2@-256C"
+        ],
+        "tegrastats_stderr": "",
+        "thermal_celsius": {
+          "CPU-therm": 44.468,
+          "CV0-therm": -256.0,
+          "CV1-therm": -256.0,
+          "CV2-therm": -256.0,
+          "GPU-therm": 40.531,
+          "SOC0-therm": 41.031,
+          "SOC1-therm": 41.218,
+          "SOC2-therm": 40.625,
+          "Tboard_tegra": 33.0,
+          "Tdiode_tegra": 34.25,
+          "tj-therm": 44.468
+        },
+        "timestamp_unix": 1787219314.6032796
+      },
+      "sensors_before": {
+        "power_available": false,
+        "power_sysfs_raw": {},
+        "tegrastats_lines": [
+          "08-20-2026 17:48:17 RAM 9938/62800MB (lfb 9580x4MB) SWAP 0/31400MB (cached 0MB) CPU [22%@729,16%@729,17%@729,23%@729,16%@729,21%@729,21%@729,20%@729,17%@729,17%@729,19%@729,21%@729] EMC_FREQ 0% GR3D_FREQ 2% CV0@-256C CPU@44.125C Tboard@33C SOC2@40.187C Tdiode@33.25C SOC0@40.5C CV1@-256C GPU@39.343C tj@44.125C SOC1@40.937C CV2@-256C"
+        ],
+        "tegrastats_stderr": "",
+        "thermal_celsius": {
+          "CPU-therm": 44.031,
+          "CV0-therm": -256.0,
+          "CV1-therm": -256.0,
+          "CV2-therm": -256.0,
+          "GPU-therm": 39.187,
+          "SOC0-therm": 40.562,
+          "SOC1-therm": 41.0,
+          "SOC2-therm": 40.187,
+          "Tboard_tegra": 33.0,
+          "Tdiode_tegra": 33.5,
+          "tj-therm": 44.187
+        },
+        "timestamp_unix": 1787219298.42829
+      },
+      "waypoint_all_finite": true,
+      "waypoint_dtype_model": "torch.float32",
+      "waypoint_dtype_saved": "float32",
+      "waypoint_shape": [
+        1,
+        30,
+        2
+      ],
+      "waypoints": [
+        [
+          [
+            -0.04997238516807556,
+            0.003040701150894165
+          ],
+          [
+            -0.07650719583034515,
+            -0.02117389440536499
+          ],
+          [
+            -0.06445538997650146,
+            -0.006344974040985107
+          ],
+          [
+            -0.06309273838996887,
+            -0.019852004945278168
+          ],
+          [
+            -0.06023445725440979,
+            -0.022052273154258728
+          ],
+          [
+            -0.059903740882873535,
+            -0.021961629390716553
+          ],
+          [
+            -0.04223419725894928,
+            -0.019637465476989746
+          ],
+          [
+            -0.030833840370178223,
+            -0.02579239010810852
+          ],
+          [
+            -0.03283458948135376,
+            -0.024403780698776245
+          ],
+          [
+            -0.039108097553253174,
+            -0.036615073680877686
+          ],
+          [
+            -0.018561556935310364,
+            -0.03706039488315582
+          ],
+          [
+            -0.020183995366096497,
+            -0.044380053877830505
+          ],
+          [
+            -0.030085265636444092,
+            -0.05230901390314102
+          ],
+          [
+            -0.009865760803222656,
+            -0.05756816267967224
+          ],
+          [
+            0.012682348489761353,
+            -0.06086525321006775
+          ],
+          [
+            0.0023983418941497803,
+            -0.05818280577659607
+          ],
+          [
+            -0.025288939476013184,
+            -0.06597568094730377
+          ],
+          [
+            -0.009496569633483887,
+            -0.053652092814445496
+          ],
+          [
+            0.037613049149513245,
+            -0.06614695489406586
+          ],
+          [
+            0.011551648378372192,
+            -0.057088226079940796
+          ],
+          [
+            0.019897595047950745,
+            -0.06996354460716248
+          ],
+          [
+            0.021140456199645996,
+            -0.08235353231430054
+          ],
+          [
+            0.02553558349609375,
+            -0.0783165991306305
+          ],
+          [
+            -0.00399547815322876,
+            -0.07293309271335602
+          ],
+          [
+            0.044395655393600464,
+            -0.09990903735160828
+          ],
+          [
+            0.0214422345161438,
+            -0.08290079236030579
+          ],
+          [
+            0.05381852388381958,
+            -0.09535878896713257
+          ],
+          [
+            0.028587520122528076,
+            -0.09785674512386322
+          ],
+          [
+            0.0508294403553009,
+            -0.10174855589866638
+          ],
+          [
+            0.046532779932022095,
+            -0.09299762547016144
+          ]
+        ]
+      ]
+    },
+    {
+      "component_timers": {
+        "action_expert": {
+          "calls": 1,
+          "seconds": [
+            0.011622249992797151
+          ],
+          "total_seconds": 0.011622249992797151
+        },
+        "extract_feature": {
+          "calls": 3,
+          "seconds": [
+            0.18315327499294654,
+            0.15106483599811327,
+            0.13968340599967632
+          ],
+          "total_seconds": 0.4739015169907361
+        },
+        "vlm_chat": {
+          "calls": 1,
+          "seconds": [
+            13.371213291000458
+          ],
+          "total_seconds": 13.371213291000458
+        },
+        "vlm_forward": {
+          "calls": 1,
+          "seconds": [
+            0.27537188700807746
+          ],
+          "total_seconds": 0.27537188700807746
+        }
+      },
+      "end_to_end_seconds": 13.88161462500284,
+      "full_prompt": "SYSTEM:\nYou are a physical mobile robot assigned to perform navigation tasks.\nYou are provided with a video consisting of visual observations, including historical and current frames.\n\n\nUSER:\nThe navigation instruction is: Move forward safely and efficiently.\nUse reasoning to predict the future target waypoints. First describe the relevant visual/navigation evidence, then return the future target waypoints for the next 3s, 6s, and 9s in format: (x, y, theta). Each waypoint represents the cumulative offset from the current position (total displacement over 3s, 6s, or 9s),where x is positive for forward, y is positive for left, and theta is the heading angle in radians.",
+      "index": 3,
+      "language_output": "<think>\nI am in a cafeteria by a desk, with a parked utility cart front-right and a lab mat left. The cart is the key obstacle and seems stationary. I have been moving forward with a gentle rightward arc, aligning to keep. Next I continue forward, veer slightly right to clear, then return left toward the distant the path, slowly.\n</think>\n<answer>(-0.03, -0.03, -2.29), (-0.64, -0.15, -2.91), (-1.21, -0.15, -2.94)</answer>",
+      "name": "measured_3",
+      "peak_cuda_allocated_bytes": 2195139584,
+      "peak_cuda_reserved_bytes": 2246049792,
+      "phase": "measured",
+      "sensors_after": {
+        "power_available": false,
+        "power_sysfs_raw": {},
+        "tegrastats_lines": [
+          "08-20-2026 17:48:51 RAM 9980/62800MB (lfb 9529x4MB) SWAP 0/31400MB (cached 0MB) CPU [38%@1190,35%@1190,27%@1190,32%@1190,23%@729,31%@729,20%@729,19%@729,23%@729,32%@729,31%@729,24%@729] EMC_FREQ 0% GR3D_FREQ 24% CV0@-256C CPU@44.312C Tboard@33C SOC2@40.375C Tdiode@33.75C SOC0@40.875C CV1@-256C GPU@39.343C tj@44.312C SOC1@41.343C CV2@-256C"
+        ],
+        "tegrastats_stderr": "",
+        "thermal_celsius": {
+          "CPU-therm": 45.031,
+          "CV0-therm": -256.0,
+          "CV1-therm": -256.0,
+          "CV2-therm": -256.0,
+          "GPU-therm": 40.75,
+          "SOC0-therm": 41.0,
+          "SOC1-therm": 41.281,
+          "SOC2-therm": 40.781,
+          "Tboard_tegra": 33.0,
+          "Tdiode_tegra": 34.25,
+          "tj-therm": 45.031
+        },
+        "timestamp_unix": 1787219332.5897915
+      },
+      "sensors_before": {
+        "power_available": false,
+        "power_sysfs_raw": {},
+        "tegrastats_lines": [
+          "08-20-2026 17:48:35 RAM 9942/62800MB (lfb 9579x4MB) SWAP 0/31400MB (cached 0MB) CPU [20%@729,20%@729,31%@729,14%@729,20%@806,25%@806,19%@806,22%@806,16%@729,19%@729,17%@729,20%@729] EMC_FREQ 0% GR3D_FREQ 18% CV0@-256C CPU@44.187C Tboard@33C SOC2@40.281C Tdiode@33.25C SOC0@40.687C CV1@-256C GPU@39.281C tj@44.187C SOC1@41.062C CV2@-256C"
+        ],
+        "tegrastats_stderr": "",
+        "thermal_celsius": {
+          "CPU-therm": 44.031,
+          "CV0-therm": -256.0,
+          "CV1-therm": -256.0,
+          "CV2-therm": -256.0,
+          "GPU-therm": 39.093,
+          "SOC0-therm": 40.656,
+          "SOC1-therm": 41.218,
+          "SOC2-therm": 40.25,
+          "Tboard_tegra": 33.0,
+          "Tdiode_tegra": 33.5,
+          "tj-therm": 44.031
+        },
+        "timestamp_unix": 1787219316.6539354
+      },
+      "waypoint_all_finite": true,
+      "waypoint_dtype_model": "torch.float32",
+      "waypoint_dtype_saved": "float32",
+      "waypoint_shape": [
+        1,
+        30,
+        2
+      ],
+      "waypoints": [
+        [
+          [
+            -0.0531233549118042,
+            0.0005370378494262695
+          ],
+          [
+            -0.08041612803936005,
+            -0.022684752941131592
+          ],
+          [
+            -0.08301961421966553,
+            -0.006651192903518677
+          ],
+          [
+            -0.08528319001197815,
+            -0.022354640066623688
+          ],
+          [
+            -0.08176669478416443,
+            -0.024257153272628784
+          ],
+          [
+            -0.08392927050590515,
+            -0.0221254825592041
+          ],
+          [
+            -0.06800971925258636,
+            -0.01882070302963257
+          ],
+          [
+            -0.05940432846546173,
+            -0.02940620481967926
+          ],
+          [
+            -0.06402391195297241,
+            -0.02291741967201233
+          ],
+          [
+            -0.07456351816654205,
+            -0.03801664710044861
+          ],
+          [
+            -0.05992013216018677,
+            -0.03411757946014404
+          ],
+          [
+            -0.05691401660442352,
+            -0.04506118595600128
+          ],
+          [
+            -0.0729394406080246,
+            -0.04927892982959747
+          ],
+          [
+            -0.062058672308921814,
+            -0.05340544879436493
+          ],
+          [
+            -0.04093664884567261,
+            -0.057977788150310516
+          ],
+          [
+            -0.06321732699871063,
+            -0.050924718379974365
+          ],
+          [
+            -0.08084623515605927,
+            -0.06435485184192657
+          ],
+          [
+            -0.06597352027893066,
+            -0.05984288454055786
+          ],
+          [
+            -0.035606399178504944,
+            -0.06614099442958832
+          ],
+          [
+            -0.05196233093738556,
+            -0.06841066479682922
+          ],
+          [
+            -0.05775400996208191,
+            -0.07710230350494385
+          ],
+          [
+            -0.06324112415313721,
+            -0.07812884449958801
+          ],
+          [
+            -0.054695308208465576,
+            -0.08371399343013763
+          ],
+          [
+            -0.09335628151893616,
+            -0.08026331663131714
+          ],
+          [
+            -0.07165484130382538,
+            -0.10087758302688599
+          ],
+          [
+            -0.08711875975131989,
+            -0.0860249251127243
+          ],
+          [
+            -0.04679588973522186,
+            -0.09822291135787964
+          ],
+          [
+            -0.07304175198078156,
+            -0.10546822845935822
+          ],
+          [
+            -0.06900104880332947,
+            -0.10670080780982971
+          ],
+          [
+            -0.07393985986709595,
+            -0.09803830087184906
+          ]
+        ]
+      ]
+    }
+  ],
+  "sensors_after_load": {
+    "power_available": false,
+    "power_sysfs_raw": {},
+    "tegrastats_lines": [
+      "08-20-2026 17:47:37 RAM 9505/62800MB (lfb 9715x4MB) SWAP 0/31400MB (cached 0MB) CPU [22%@729,24%@729,17%@729,21%@729,17%@1190,18%@1190,18%@1190,17%@1190,17%@729,13%@729,21%@729,15%@729] EMC_FREQ 0% GR3D_FREQ 26% CV0@-256C CPU@43.656C Tboard@33C SOC2@39.937C Tdiode@33C SOC0@40.375C CV1@-256C GPU@38.968C tj@43.562C SOC1@40.781C CV2@-256C"
+    ],
+    "tegrastats_stderr": "",
+    "thermal_celsius": {
+      "CPU-therm": 44.25,
+      "CV0-therm": -256.0,
+      "CV1-therm": -256.0,
+      "CV2-therm": -256.0,
+      "GPU-therm": 38.687,
+      "SOC0-therm": 40.5,
+      "SOC1-therm": 40.906,
+      "SOC2-therm": 39.968,
+      "Tboard_tegra": 33.0,
+      "Tdiode_tegra": 33.0,
+      "tj-therm": 43.843
+    },
+    "timestamp_unix": 1787219258.6969657
+  },
+  "sensors_before_load": {
+    "power_available": false,
+    "power_sysfs_raw": {},
+    "tegrastats_lines": [
+      "08-20-2026 17:47:28 RAM 7556/62800MB (lfb 10164x4MB) SWAP 0/31400MB (cached 0MB) CPU [21%@883,16%@883,21%@883,20%@883,17%@806,16%@806,15%@806,17%@806,19%@1190,19%@1190,17%@1190,21%@1190] EMC_FREQ 0% GR3D_FREQ 32% CV0@-256C CPU@44.062C Tboard@32C SOC2@39.968C Tdiode@33C SOC0@40.406C CV1@-256C GPU@38.781C tj@44.062C SOC1@40.812C CV2@-256C"
+    ],
+    "tegrastats_stderr": "",
+    "thermal_celsius": {
+      "CPU-therm": 45.093,
+      "CV0-therm": -256.0,
+      "CV1-therm": -256.0,
+      "CV2-therm": -256.0,
+      "GPU-therm": 39.0,
+      "SOC0-therm": 40.406,
+      "SOC1-therm": 40.812,
+      "SOC2-therm": 40.375,
+      "Tboard_tegra": 32.0,
+      "Tdiode_tegra": 33.25,
+      "tj-therm": 45.093
+    },
+    "timestamp_unix": 1787219249.2084846
+  },
+  "strict_checkpoint_load": true,
+  "warmup_count": 1
+}

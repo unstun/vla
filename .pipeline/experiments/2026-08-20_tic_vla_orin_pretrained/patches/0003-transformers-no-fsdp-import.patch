@@ -1,0 +1,15 @@
+diff --git a/transformers/integrations/fsdp.py b/transformers/integrations/fsdp.py
+--- a/transformers/integrations/fsdp.py
++++ b/transformers/integrations/fsdp.py
+@@ -26,7 +26,10 @@ def is_fsdp_managed_module(module: nn.Module) -> bool:
+     if not is_torch_available():
+         return False
+ 
+-    import torch.distributed.fsdp
++    try:
++        import torch.distributed.fsdp
++    except (ImportError, ModuleNotFoundError):
++        return False
+ 
+     return isinstance(module, torch.distributed.fsdp.FullyShardedDataParallel) or getattr(
+         module, "_is_fsdp_managed_module", False
