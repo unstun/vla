@@ -1,0 +1,9 @@
+# Read-only via: ssh ysc@192.168.2.1 (motion host, Rockchip RK3588 WEB-S3588-YSC-V10, kernel 5.10.160, 8 cores, 3.9 GB RAM)
+# Interfaces: eth1 192.168.1.120/24 + 192.168.137.120/24, p2p0 (Wi-Fi AP) 192.168.2.1/24. Xavier at 192.168.1.103 reachable; Orin 192.168.1.5 down at 2026-09-11T04:50Z.
+/sys/class/video4linux/video0/name: "LRCP  F1080P: LRCP  F1080P"   (video1 = same device, metadata node)
+lsusb: Bus 002 Device 002: ID 1bcf:2cc8 Sunplus Innovation Technology Inc. LRCP  F1080P   (UVC, driver uvcvideo, bus usb-fc880000.usb-1)
+Formats (MJPG only): 1920x1080, 1280x720, 640x480, 1280x960, 800x600, 320x240 @ 30/25/20/15/10/5 fps
+Vendor pipeline (/home/ysc/rtsp_stream/start_stream.sh -> start_server.sh + push_video.sh):
+  gst-launch-1.0 v4l2src device=/dev/video0 ! image/jpeg, width=1280, height=720, framerate=30/1 ! jpegdec ! videoconvert ! mpph264enc ! rtspclientsink location=rtsp://127.0.0.1:8554/test latency=10
+  served by ./mediamtx ; ffprobe of rtsp://192.168.2.1:8554/test: h264 High 1280x720 yuv420p 30/1
+Calibration search on /home/ysc (maxdepth 5, *calib*/*intrinsic*/*camera*.yaml|json/*cam_param*): only IMU calibration sources; NO camera intrinsics or extrinsics on the motion host.

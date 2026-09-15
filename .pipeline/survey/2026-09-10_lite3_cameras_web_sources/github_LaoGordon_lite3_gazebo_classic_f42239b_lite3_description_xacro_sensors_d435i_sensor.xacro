@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:property name="M_PI" value="3.1415926535897931"/>
+
+  <!-- 
+    Realsense D435i 相机传感器配置（仅 RGB，用于 FAST-LIVO 雷达点着色）
+    仅发布 RGB 图像和 CameraInfo，不需要深度和红外数据
+  -->
+  <xacro:macro name="d435i_sensor" params="name:=d435i parent:=base_link
+                                          xyz:='0 0 0' rpy:='0 0 0'
+                                          topic_ns:=camera visualize:=false">
+    
+    <!-- 物理 Link（相机实体） -->
+    <link name="${name}_link">
+      <inertial>
+        <mass value="0.072"/>
+        <inertia ixx="0.000015" ixy="0" ixz="0" iyy="0.000004" iyz="0" izz="0.000015"/>
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.025 0.090 0.025"/>
+        </geometry>
+        <material name="${name}_material">
+          <color rgba="0.1 0.1 0.1 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="0.025 0.090 0.025"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <!-- 仅保留 color_optical_frame（用于 RGB 相机光学坐标系） -->
+    <link name="${name}_color_optical_frame"/>
+
+    <!-- 安装到机器人的 Joint -->
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+
+    <!-- color_optical_frame 相对于 link 的偏移（RV 坐标系到光学坐标系） -->
+    <!-- D435i 彩色相机光心相对于 IMU 的偏移：X=5mm, Y=17.5mm, Z=0mm -->
+    <joint name="${name}_color_optical_joint" type="fixed">
+      <parent link="${name}_link"/>
+      <child link="${name}_color_optical_frame"/>
+      <origin xyz="0.005 0.0175 0" rpy="${-M_PI/2} 0 ${-M_PI/2}"/>
+    </joint>
+
+    <!-- Gazebo 传感器：仅 RGB 相机（用于 FAST-LIVO 着色） -->
+    <gazebo reference="${name}_link">
+      <sensor type="camera" name="${name}_color">
+        <camera>
+          <!-- D435i RGB 相机参数 -->
+          <horizontal_fov>1.211</horizontal_fov>  <!-- 87° 水平视场角 -->
+          <image>
+            <width>1280</width>
+            <height>720</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>300.0</far>
+          </clip>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>30.0</update_rate>
+        <visualize>${visualize}</visualize>
+        
+        <!-- 使用标准 ROS2 相机插件（稳定可靠） -->
+        <plugin name="${name}_color_plugin" filename="libgazebo_ros_camera.so">
+          <ros>
+            <namespace>/${topic_ns}</namespace>
+            <remapping>image_raw:=color/image_raw</remapping>
+            <remapping>camera_info:=color/camera_info</remapping>
+          </ros>
+          <camera_name>color</camera_name>
+          <frame_name>${name}_color_optical_frame</frame_name>
+        </plugin>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>

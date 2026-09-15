@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:include filename="$(find lite3_description)/xacro/sensors/d435i_sensor.xacro"/>
+  <xacro:include filename="$(find lite3_description)/xacro/sensors/mid360_sensor.xacro"/>
+
+  <xacro:macro name="load_all_sensors" params="parent:=base_link">
+    <!-- D435i 安装在雷达前面的下方，底部与机器人顶部接触 -->
+    <xacro:d435i_sensor name="d435i" parent="${parent}"
+                        xyz="0.18 0.0 0.0525" rpy="0 0 0"
+                        topic_ns="camera/camera" visualize="false"/>
+
+    <!-- Livox MID360 雷达安装在机器人顶部中心 -->
+    <xacro:mid360_sensor name="mid360" parent="${parent}"
+                         xyz="0.0 0.0 0.08" rpy="0 0 0"
+                         visualize="true"/>
+  </xacro:macro>
+</robot>

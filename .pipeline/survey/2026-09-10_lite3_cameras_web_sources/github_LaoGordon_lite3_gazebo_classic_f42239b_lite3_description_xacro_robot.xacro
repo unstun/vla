@@ -1,0 +1,94 @@
+<?xml version="1.0"?>
+
+<robot name="lite3" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find lite3_description)/xacro/const.xacro"/>
+  <xacro:include filename="$(find lite3_description)/xacro/leg.xacro"/>
+
+  <xacro:arg name="GAZEBO" default="false"/>
+  <xacro:arg name="CLASSIC" default="false"/>
+
+
+  <xacro:if value="$(arg GAZEBO)">
+    <xacro:if value="$(arg CLASSIC)">
+      <xacro:include filename="$(find lite3_description)/xacro/gazebo_classic.xacro"/>
+    </xacro:if>
+    <xacro:unless value="$(arg CLASSIC)">
+      <xacro:include filename="$(find lite3_description)/xacro/gazebo.xacro"/>
+    </xacro:unless>
+  </xacro:if>
+  <xacro:unless value="$(arg GAZEBO)">
+    <xacro:include filename="$(find lite3_description)/xacro/ros2_control.xacro"/>
+  </xacro:unless>
+
+  <link name="base">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="floating_base" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="base"/>
+    <child link="TORSO"/>
+  </joint>
+
+  <link name="TORSO">
+    <visual>
+      <origin rpy="0 0 3.1416" xyz="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="file://$(find lite3_description)/meshes/Lite3.dae"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.35 0.184 0.08"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0.004098 -0.000663 -0.002069"/>
+      <mass value="5.629898899102925"/>
+      <inertia ixx="0.023148999999999998" ixy="2.9029999999999997e-05" ixz="8.283e-05" iyy="0.041535" iyz="2.449e-05"
+               izz="0.058079999999999996"/>
+    </inertial>
+  </link>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="TORSO"/>
+    <child link="imu_link"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+  </joint>
+
+  <link name="imu_link">
+    <inertial>
+      <mass value="0.001"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <inertia ixx="0.02938701137712478" ixy="2.9029999999999997e-05" ixz="8.283e-05" iyy="0.05272752678512583" iyz="2.449e-05" izz="0.07373094391910696"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size=".001 .001 .001"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <xacro:leg name="FR" mirror="-1" mirror_dae="False" front_hind="1" front_hind_dae="True"/>
+  <xacro:leg name="FL" mirror="1" mirror_dae="True" front_hind="1" front_hind_dae="True"/>
+  <xacro:leg name="HR" mirror="-1" mirror_dae="False" front_hind="-1" front_hind_dae="False"/>
+  <xacro:leg name="HL" mirror="1" mirror_dae="True" front_hind="-1" front_hind_dae="False"/>
+
+  <!-- 加载传感器 -->
+  <xacro:include filename="$(find lite3_description)/xacro/sensors/load_sensors.xacro"/>
+  <xacro:load_all_sensors parent="TORSO"/>
+
+</robot>
