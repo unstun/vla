@@ -20,8 +20,9 @@ The older survey overview below is historical and does not override this update.
 > these facts; manual checks passed, but an automated PASS is not claimed.
 
 This index records the 24 papers and 21 upstream repositories inspected in the
-2026-08-16 Lite3 VLA survey. Every entry remains `surveyed`: no upstream source
-code, checkpoint, dataset, or runtime result has been imported into the project.
+2026-08-16 Lite3 VLA survey. OmniVLA is the sole exception to the original
+survey-only state: Dr Sun selected it, and its pinned source/checkpoints now
+have imported and reproduced evidence. All other entries remain `surveyed`.
 
 The AI-authored survey recommends OmniVLA as the first low-cost reproduction
 candidate. That recommendation is not a human baseline selection. See the
@@ -38,7 +39,7 @@ and [local import audit](../survey/2026-08-16_lite3_vla_open_source_reproduction
 | Frey2023WVN | paper | [RSS 2023](https://roboticsproceedings.org/rss19/p054.html) | PDF SHA-256 `968c82dd6c58` | surveyed | Wild visual traversability support, not a VLA. [Local PDF](../../docs/research/papers/Frey2023WVN.pdf) |
 | Goetting2024VLMnav | paper | [arXiv 2411.05755](https://arxiv.org/abs/2411.05755) | PDF SHA-256 `76f5cbb6b7a6` | surveyed | Zero-shot discrete VLM navigation; repository license and cloud-model dependency fail the gate. [Local PDF](../../docs/research/papers/Goetting2024VLMnav.pdf) |
 | Hirose2025LeLaN | paper | [PMLR 270](https://proceedings.mlr.press/v270/hirose25b.html) | PDF SHA-256 `f05f0d5924a1` | surveyed | Clear waypoint/velocity interface; weight and aggregate-data licenses remain incomplete. [Local PDF](../../docs/research/papers/Hirose2025LeLaN.pdf) |
-| Hirose2026OmniVLA | paper | [arXiv 2509.19480](https://arxiv.org/abs/2509.19480) | PDF SHA-256 `f6744c6c6b5e` | surveyed | AI survey's first smoke recommendation; continuous 8-point trajectory, not yet selected or run. [Local PDF](../../docs/research/papers/Hirose2026OmniVLA.pdf) |
+| Hirose2026OmniVLA | paper | [arXiv 2509.19480](https://arxiv.org/abs/2509.19480) | PDF SHA-256 `f6744c6c6b5e` | surveyed | Dr Sun selected the corresponding repository; pinned edge and original runtime evidence now exists. The paper itself remains a surveyed source. [Local PDF](../../docs/research/papers/Hirose2026OmniVLA.pdf) |
 | Huang2023VLMaps | paper | [arXiv 2210.05714](https://arxiv.org/abs/2210.05714) | PDF SHA-256 `c7bb57c0defb` | surveyed | Open-vocabulary semantic-map predecessor; support module rather than VLA. [Local PDF](../../docs/research/papers/Huang2023VLMaps.pdf) |
 | Huang2025MobileVLAR1 | paper | [arXiv 2511.17889](https://arxiv.org/abs/2511.17889) | PDF SHA-256 `f6a719d00e66` | surveyed | Direct mobile/quadruped control relevance; core data link and official pretrained smoke path remain incomplete. [Local PDF](../../docs/research/papers/Huang2025MobileVLAR1.pdf) |
 | Liu2025CityWalker | paper | [CVPR 2025](https://openaccess.thecvf.com/content/CVPR2025/html/Liu_CityWalker_Learning_Embodied_Urban_Navigation_from_Web-Scale_Videos_CVPR_2025_paper.html) | PDF SHA-256 `2d15ff7b166a` | surveyed | Visual future-trajectory foundation model without language conditioning. [Local PDF](../../docs/research/papers/Liu2025CityWalker.pdf) |
@@ -64,7 +65,7 @@ Full PDF provenance and hashes are tracked in the survey
 
 | Citation key | Type | Canonical source | Pinned version | Status | Notes |
 |---|---|---|---|---|---|
-| OmniVLA | repository | [NHirose/OmniVLA](https://github.com/NHirose/OmniVLA) | `5182600cb4a9ee07684e17cdd2a6cbafc56b8a68` | surveyed | MIT code and official model cards; AI first-choice recommendation, not imported or run. |
+| OmniVLA | repository | [NHirose/OmniVLA](https://github.com/NHirose/OmniVLA) | `5182600cb4a9ee07684e17cdd2a6cbafc56b8a68` | imported; reproduced | MIT code; edge reproduced on macOS CPU and original reproduced in the official CUDA stack. A separate Lite3 single-frame receive-only contract is integrated and validated; no navigation or locomotion claim. |
 | InternVLA-N1 / InternNav | repository | [InternRobotics/InternNav](https://github.com/InternRobotics/InternNav) | `7a5c62400ac45b313d9b709c740b64191556a242` | surveyed | MIT code; model-card NC badge plus missing structured metadata/license file; gated NC data; known dependency issue. |
 | VLFM | repository | [rai-opensource/vlfm](https://github.com/rai-opensource/vlfm) | `584ed56008754fde7997d904983607def8328322` | surveyed | MIT main code, mixed upstream licenses, legacy stack, and no active maintenance; not an end-to-end VLA. |
 | NaVILA | repository | [AnjieCheng/NaVILA](https://github.com/AnjieCheng/NaVILA) | `76b98f233dd0fff05dfcd69435eec6740febff9d` | surveyed | Apache-2.0 code; main checkpoint/data licensing and complete Go2 deployment chain remain open. |

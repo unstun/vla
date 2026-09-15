@@ -61,6 +61,11 @@ git config -f vendor-skills.lock --get vendor.commit
   is approved.
 - Repository-wide extension ignores for research evidence are forbidden. Large
   local-only bytes require a reviewed path-specific rule and tracked manifest.
+  Convention (2026-09-15): each directory holding local-only bytes has one
+  scoped `.gitignore` block (what, provenance, regeneration or why not) and a
+  tracked `LOCAL_ONLY_BYTES.sha256` in `shasum -a 256` format with paths
+  relative to that directory. A new local-only file under an existing rule
+  must be added to that manifest in the same change, or it is silently lost.
 - `.pipeline/` stores reviewed research and experiment state.
 - `bigmemory/` stores current and durable project state.
 - Automatic staging or committing is forbidden.

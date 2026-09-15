@@ -1,10 +1,28 @@
 # Experiment Records
 
+- [`2026-09-10_x_navdp_lite3_rented4090/`](2026-09-10_x_navdp_lite3_rented4090/README.md)
+  — X-NavDP posttrain FP32 on RTX 4090 with physical MuJoCo Lite3/model_149999:
+  four numeric point-goal trials passed the external 0.25 m arrival criterion;
+  both blocked-route trials went around the box with zero detected contacts.
+  Videos and raw RGB-D/trajectory records returned locally. No language, exact
+  distance, official benchmark, or real-robot validation claim. LightNav runtime
+  copies retired on three hosts with historical evidence preserved.
+
+- [`2026-09-09_lightnav0_5070ti_inference/`](2026-09-09_lightnav0_5070ti_inference/RESULT.md)
+  — Original LightNav-0 BF16 on RTX 5070 Ti: nine open-loop replay predictions
+  passed; sampled total-card peak 12.3502 GiB, warmed 64-observation call median
+  192.5 ms. All returned artifact hashes match. No FP8, simulator or robot claim.
+
 - [`2026-09-09_lightnav0_official_demo_rented4090/`](2026-09-09_lightnav0_official_demo_rented4090/README.md)
-  — LightNav-0 official MuJoCo default-case package prepared for manual Opus
-  execution on rented4090. Pinned source and all 2,236 bundled scene assets
-  verified locally; checkpoint pinned but not downloaded. No inference or
-  navigation run yet; `prepared_not_dispatched`.
+  — LightNav-0 official MuJoCo demo on rented4090, round 1 executed by Opus:
+  pinned BF16 checkpoint served by vLLM, three closed-loop runs through the
+  official client and MPC, native model stop in 3/3 (`reproduced` for the demo
+  loop). Lead review: all three stopped next to a dog bed 2.3-2.6 m short of the
+  instructed trashcan (0/3 arrival); third-person videos, analysis and manifests
+  pending in the correction round. Not a paper-score or Lite3 claim.
+  Current manual continuation: [visual package v3](2026-09-09_lightnav0_official_demo_rented4090/continuation_v3/EXECUTION_PACKAGE.md),
+  prepared after source/host/checkpoint checks and a static orthographic-render probe;
+  no new policy episodes or Opus dispatch during this preparation.
 
 > [待核查] Automated archive gate lacked the host/import context and did not
 > complete successfully. Local source hashes and the saved SSH snapshot verify
@@ -15,6 +33,34 @@
   OmniVLA-edge: `reproduced` on macOS arm64 / CPU, not the official CUDA
   environment. OmniVLA-original (8B): `imported` at manifest level only, probe
   skipped at the pre-declared memory guard. No Lite3 claim.
+- [`2026-08-19_omnivla_original_cuda_gpu40901/`](2026-08-19_omnivla_original_cuda_gpu40901/README.md)
+  — pinned OmniVLA-original reproduced for one official-CUDA forward and the
+  deployment-specific language-only `move forward` configuration. The broader
+  sweep and edge CPU-vs-CUDA comparison remain pending.
+- [`2026-08-19_omnivla_lite3_receive_only/`](2026-08-19_omnivla_lite3_receive_only/README.md)
+  — Lite3 real front-camera to gpu40901 OmniVLA-original round trip integrated
+  and validated for one receive-only request. The server is installed but
+  stopped; no locomotion or navigation claim.
+- [`2026-09-08_navila_8b_quantized_5070ti/`](2026-09-08_navila_8b_quantized_5070ti/RESULT.md)
+  — NaVILA 8B NF4 on RTX 5070 Ti: 11 recorded-image calls plus a fresh-process
+  export/reload check passed; peak sampled GPU memory 9,448 MiB and later-call
+  median 0.731 s. Initial Chinese straight-ahead requests produced left turns.
+  No closed-loop navigation claim; full NF4 payload remains on the execution host.
+
+- [`2026-09-08_dualvln_rented4090/`](2026-09-08_dualvln_rented4090/review/PUBLIC_SCENES_LEAD_REVIEW.md)
+  — InternVLA-N1 DualVLN (InternNav `7a5c624`, checkpoint `a698a9e`) in the
+  official Habitat evaluator on two frozen custom castle episodes: success
+  3/5 and 2/5, all runs on learned STOP. Official R2R subset never ran
+  (Matterport3D access). Label: official evaluator on custom public-scene
+  tasks, not R2R reproduction.
+- [`2026-09-08_dualvln_rented4090/public_scenes/requests/2026-09-10_lite3_camera_ablation/`](2026-09-08_dualvln_rented4090/public_scenes/requests/2026-09-10_lite3_camera_ablation/RESULT.md) Rounds 5/5b/6 (2026-09-11): the real head camera was measured on the robot (+16.7 deg up, HFOV 105), so no crop of it can feed the model; a virtual evaluation camera fused in software from the head camera and the D435i scored 0/10 (c7, level, 6 % uncovered), 2/10 (c8, level, 1.2 %) and 1/10 (c9, 9 deg down, 3.3 %). Dr Sun chose the software-only fusion route on the c8 geometry. Round 6 also showed that episode-1 success measures System 2 route-lock rather than camera geometry at one condition per geometry, which weakens c6 5/10 as evidence too, and that uncovered pixels do not drive System 1 mid-segment stops. 45 runs total; manifest 3,190 files verified both sides; see `review/LEAD_REVIEW.md`.
+  — Lite3 camera-condition ablation, 30 supervised runs: baseline 5/10,
+  height-only 5/10, FOV-only 3/10, raised 0.65 m mount 2/10, current Lite3
+  rig (0.42 m, 20 deg down, D435i FOV) 1/10, head-camera proxy level 2/10,
+  head-camera proxy 15 deg down 5/10. Effect sizes on two custom episodes;
+  episode 2 fails by stopping late in every wide-FOV condition. Lead review
+  recommends the built-in head camera at its existing ~15 deg pitch with a
+  software crop to HFOV 79; geometry estimated until measured on the robot.
 
 Before a behavior-changing run, record the parent implementation, motivation,
 exact change, expected signals, failure signals, command, local source commit,
