@@ -30,6 +30,7 @@ This is a long-horizon PhD research project.
 2. Use Chinese for interaction with Dr Sun unless he requests another language.
    Use clear professional English for code, configuration, and repository-facing
    technical documentation unless the requested artifact is Chinese.
+   Project override: use English by default.
 3. At the start of a session, identify the current stage:
    **planning -> experiment + analysis -> writing**. Do not silently mix stages.
 4. Human review comes before speed. If requirements have several materially
