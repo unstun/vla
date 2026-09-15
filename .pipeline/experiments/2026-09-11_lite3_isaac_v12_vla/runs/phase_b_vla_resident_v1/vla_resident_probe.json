@@ -1,0 +1,36 @@
+{
+  "python": "3.9.23 | packaged by conda-forge | (main, Jun  4 2025, 17:57:12) \n[GCC 13.3.0]",
+  "torch": "2.6.0+cu124",
+  "pytorch_cuda_alloc_conf": null,
+  "identity": {
+    "internnav/agent/internvla_n1_agent_realworld.py": "cad228681da047d431782a77f988a883bf3b1b2acd5219a26144849ea3638114",
+    "internnav/model/basemodel/internvla_n1/internvla_n1.py": "d7fa4cc86d6761fde5c578eacb50129e1cb82629e46c0ffb159355578ba0d422"
+  },
+  "model_path": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/models/InternVLA-N1-DualVLN",
+  "frame": {
+    "rgb": "/home/ubuntu/vla-runs/2026-09-11_lite3_isaac_v12_vla/runs/phase_b_dual720_hz0_v1/frame_d435i_rgb.npy",
+    "depth": "/home/ubuntu/vla-runs/2026-09-11_lite3_isaac_v12_vla/runs/phase_b_dual720_hz0_v1/frame_d435i_distance_to_image_plane.npy",
+    "hfov": 69.0,
+    "shape": [
+      720,
+      1280,
+      3
+    ],
+    "fx": 931.2057783503649
+  },
+  "plan_step_gap": 4,
+  "calls": [],
+  "error": {
+    "type": "FileNotFoundError",
+    "message": "[Errno 2] No such file or directory: 'checkpoints/depth_anything_v2_metric_hypersim_vits.pth'",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/ubuntu/vla-runs/2026-09-11_lite3_isaac_v12_vla/tools/phase_b_vla_resident_probe.py\", line 96, in main\n    agent = InternVLAN1AsyncAgent(agent_args)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/internnav/agent/internvla_n1_agent_realworld.py\", line 31, in __init__\n    self.model = InternVLAN1ForCausalLM.from_pretrained(\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/transformers/modeling_utils.py\", line 279, in _wrapper\n    return func(*args, **kwargs)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/transformers/modeling_utils.py\", line 4343, in from_pretrained\n    model = cls(config, *model_args, **model_kwargs)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/internnav/model/basemodel/internvla_n1/internvla_n1.py\", line 46, in __init__\n    self.model = InternVLAN1Model(config)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/internnav/model/basemodel/internvla_n1/internvla_n1.py\", line 36, in __init__\n    super(InternVLAN1Model, self).__init__(config)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/internnav/model/basemodel/internvla_n1/internvla_n1_arch.py\", line 137, in __init__\n    self.rgb_model = build_depthanythingv2(config)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/internnav/model/basemodel/internvla_n1/internvla_n1_arch.py\", line 36, in build_depthanythingv2\n    torch.load(f'{MODEL_PATH_TO}/depth_anything_v2_metric_hypersim_vits.pth', map_location=\"cpu\")\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/torch/serialization.py\", line 1425, in load\n    with _open_file_like(f, \"rb\") as opened_file:\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/torch/serialization.py\", line 751, in _open_file_like\n    return _open_file(name_or_buffer, mode)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/torch/serialization.py\", line 732, in __init__\n    super().__init__(open(name, mode))\nFileNotFoundError: [Errno 2] No such file or directory: 'checkpoints/depth_anything_v2_metric_hypersim_vits.pth'\n"
+  },
+  "at_error": {
+    "allocated_mib": 0.0,
+    "reserved_mib": 0.0,
+    "max_allocated_mib": 0.0,
+    "max_reserved_mib": 0.0,
+    "device_used_mib": 392.1875,
+    "device_total_mib": 24080.875
+  }
+}

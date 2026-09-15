@@ -1,0 +1,45 @@
+/home/ubuntu/vla-runs/2026-09-11_lite3_isaac_v12_vla/phase_b_run_docker.sh: line 120: 125317 Killed                  sudo timeout --signal=TERM --kill-after=60 "${WALL_LIMIT}s" docker run --rm --name "$CONTAINER" --gpus all --network host -v "$ROOT:/workspace" -e HOME=/workspace/home -e PYTHONPATH="$PYPATH" -e OMNI_KIT_ACCEPT_EULA=YES -e PRIVACY_CONSENT=N -e KMP_DUPLICATE_LIB_OK=TRUE --entrypoint /isaac-sim/python.sh "$IMAGE" /workspace/tools/phase_b_camera_probe.py --config "$CONFIG" --camera-hz "$CAMERA_HZ" --steps "$STEPS" --output-dir "/workspace/runs/$RUN_ID" --checkpoint /workspace/inputs/checkpoint/model_149999.pt --vendored-rsl-rl /workspace/inputs/v12_runtime/source/rsl_rl --device cuda:0 > "$OUT/probe.log" 2>&1
+== probe exit 137 ==
+    raw_env = gym.make(v12_args.task, cfg=env_cfg)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/gymnasium/envs/registration.py", line 734, in make
+    env = env_creator(**env_spec_kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/envs/manager_based_rl_env.py", line 80, in __init__
+    super().__init__(cfg=cfg)
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/envs/manager_based_env.py", line 173, in __init__
+    self.sim.reset()
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/sim/simulation_context.py", line 530, in reset
+    self.render()
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/sim/simulation_context.py", line 601, in render
+    raise exception_to_raise
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/assets/asset_base.py", line 317, in _initialize_callback
+    self._initialize_impl()
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/assets/articulation/articulation.py", line 1578, in _initialize_impl
+    self._data = ArticulationData(self.root_physx_view, self.device)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/assets/articulation/articulation_data.py", line 68, in __init__
+    self._previous_joint_vel = self._root_physx_view.get_dof_velocities().clone()
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/isaac-sim/extscache/omni.physics.tensors-107.3.26+107.3.3.lx64.r.cp311.u353/omni/physics/tensors/impl/api.py", line 1764, in get_dof_velocities
+    raise Exception("Failed to get DOF velocities from backend")
+Exception: Failed to get DOF velocities from backend
+2026-09-14T05:18:51Z [133,636ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Annotators' for removal
+2026-09-14T05:18:51Z [133,638ms] [Warning] [omni.graph.core.plugin] Could not find category 'Replicator:Core' for removal
+2026-09-14T05:18:51Z [133,644ms] [Warning] [omni.physx.plugin] USD stage detach not called, holding a loose ptr to a stage!
+2026-09-14T05:18:52Z [134,030ms] [Warning] [carb] Client omni.syntheticdata.plugin Failed to acquire interface [omni::graph::core::INode v4.10] while unloading all plugins
+== unrelated containers unchanged? ==
+  identical
+PHASE_B_RUN_DONE rc=137 status=incomplete config=dual_720 camera_hz=0

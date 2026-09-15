@@ -1,0 +1,262 @@
+{
+  "episode": {
+    "episode_id": "d_green_behind_grey_box_v1",
+    "instruction": "Walk to the green box and stop in front of it.",
+    "max_sim_seconds": 60,
+    "target_landmark": "green_box",
+    "success_radius_m": 1.0,
+    "landmarks": [
+      {
+        "name": "green_box",
+        "center": [
+          5.0,
+          0.0,
+          0.4
+        ],
+        "size": [
+          0.6,
+          0.6,
+          0.8
+        ],
+        "color": [
+          0.1,
+          0.65,
+          0.15
+        ]
+      },
+      {
+        "name": "grey_box",
+        "center": [
+          2.5,
+          0.35,
+          0.4
+        ],
+        "size": [
+          0.6,
+          0.6,
+          0.8
+        ],
+        "color": [
+          0.45,
+          0.45,
+          0.45
+        ]
+      }
+    ],
+    "camera": {
+      "width": 640,
+      "height": 480,
+      "hfov": 79.0,
+      "pitch_up": 0.0,
+      "pos": [
+        0.27,
+        0.0,
+        0.09
+      ]
+    },
+    "chase_camera": {
+      "width": 640,
+      "height": 360,
+      "hfov": 90.0,
+      "pitch_up": -20.0,
+      "pos": [
+        -1.8,
+        0.0,
+        0.9
+      ]
+    },
+    "notes": "Phase D.0e (Dr Sun 2026-09-14: 'run VLA episodes with a goal behind a box'). The target is 5 m straight ahead; a grey box at 2.5 m sits 0.35 m left of the straight line, so walking straight at the target puts the left legs 0.13 m into it (leg half-width 0.182 m), while about two thirds of the target stays visible to the head camera past the grey box's inner edge. Cameras as in the Phase C episodes."
+  },
+  "cameras": {
+    "head_eval": {
+      "width": 640,
+      "height": 480,
+      "hfov": 79.0,
+      "pitch_up": 0.0,
+      "pos": [
+        0.27,
+        0.0,
+        0.09
+      ],
+      "data_types": [
+        "rgb",
+        "distance_to_image_plane"
+      ],
+      "focal_length_mm": 12.710223860383703,
+      "quat_wxyz": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "optical_forward_in_body": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    "chase": {
+      "width": 640,
+      "height": 360,
+      "hfov": 90.0,
+      "pitch_up": -20.0,
+      "pos": [
+        -1.8,
+        0.0,
+        0.9
+      ],
+      "data_types": [
+        "rgb"
+      ],
+      "focal_length_mm": 10.477500000000001,
+      "quat_wxyz": [
+        0.40557978767263886,
+        -0.5792279653395692,
+        0.5792279653395692,
+        -0.4055797876726389
+      ],
+      "optical_forward_in_body": [
+        0.9396926207859084,
+        0.0,
+        -0.3420201433256687
+      ]
+    }
+  },
+  "physx_gpu": {
+    "gpu_collision_stack_size": 67108864,
+    "gpu_max_rigid_contact_count": 65536,
+    "gpu_max_rigid_patch_count": 32768,
+    "gpu_found_lost_pairs_capacity": 65536,
+    "gpu_found_lost_aggregate_pairs_capacity": 65536,
+    "gpu_total_aggregate_pairs_capacity": 65536,
+    "gpu_max_soft_body_contacts": 1024,
+    "gpu_max_particle_contacts": 1024
+  },
+  "policy_dt_ns": 20000000,
+  "physics_dt_s": 0.005,
+  "decimation": 4,
+  "limits": {
+    "max_vx": 0.75,
+    "max_vy": 0.35,
+    "max_wz": 1.0
+  },
+  "watchdog_seconds": 0.25,
+  "collision_force_threshold_n": 75.0,
+  "lidar": {
+    "prim_path": "{ENV_REGEX_NS}/Robot/TORSO",
+    "offset_pos": [
+      0.182399336,
+      0.0,
+      0.108541081
+    ],
+    "offset_rot_wxyz": [
+      0.9914448613738104,
+      0.0,
+      0.13052619222005157,
+      0.0
+    ],
+    "mesh_prim_paths": [
+      "/World/ground",
+      "/World/ground/landmark_green_box",
+      "/World/ground/landmark_grey_box"
+    ],
+    "channels": 16,
+    "vertical_fov_deg": [
+      -7.0,
+      52.0
+    ],
+    "horizontal_res_deg": 2.0,
+    "range_m": [
+      0.1,
+      12.0
+    ],
+    "floor_filter_max_world_z_m": 0.05
+  },
+  "start_pose": {
+    "xyz": [
+      0.019327618181705475,
+      0.0046716053038835526,
+      0.30216050148010254
+    ],
+    "quat_wxyz": [
+      0.9993931651115417,
+      0.013952692039310932,
+      -0.028139423578977585,
+      0.015056691132485867
+    ]
+  },
+  "landmark_distance_at_start_m": {
+    "green_box": 4.980674572676239,
+    "grey_box": 2.504593213697475
+  },
+  "termination": "max_sim_time",
+  "termination_detail": null,
+  "server_error": null,
+  "sim_seconds": 60.0,
+  "policy_steps": 3000,
+  "requests": 601,
+  "images_sent": 95,
+  "clouds_sent": 600,
+  "final_xy": [
+    13.346892356872559,
+    -7.194602966308594
+  ],
+  "final_pose_source": "current",
+  "final_distance_to_target_m": 11.019660786976791,
+  "min_distance_to_target_m": 2.947791942747197,
+  "landmark_distance_at_end_m": {
+    "green_box": 11.019660786976791,
+    "grey_box": 13.212725219303275
+  },
+  "watchdog_events": 0,
+  "sequence_gaps": 0,
+  "case_failed": false,
+  "case_failure_reason": null,
+  "clamp_policy_steps": 0,
+  "contact_monitor": {
+    "threshold_n": 75.0,
+    "required_substeps": 4,
+    "physics_dt_s": 0.005,
+    "history_newest_first": true,
+    "nonfoot_body_indices": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      6,
+      7,
+      9,
+      10,
+      11,
+      13,
+      14,
+      15
+    ],
+    "nonfoot_body_names": [
+      "TORSO",
+      "FL_HIP",
+      "FL_THIGH",
+      "FL_SHANK",
+      "FR_HIP",
+      "FR_THIGH",
+      "FR_SHANK",
+      "HL_HIP",
+      "HL_THIGH",
+      "HL_SHANK",
+      "HR_HIP",
+      "HR_THIGH",
+      "HR_SHANK"
+    ],
+    "observed_control_steps": 3000,
+    "observed_substeps": 12000,
+    "maximum_nonfoot_force_n": 0.0,
+    "failed": false,
+    "failure": null,
+    "acquisition": "after_each_physics_substep_scene_update",
+    "contact_policy": "nonfoot_fatal",
+    "contact_detected": false,
+    "first_contact": null
+  },
+  "gpu_used_mib_at_end": 21531.0
+}

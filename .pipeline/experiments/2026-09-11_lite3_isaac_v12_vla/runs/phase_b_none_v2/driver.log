@@ -1,0 +1,46 @@
+/home/ubuntu/vla-runs/2026-09-11_lite3_isaac_v12_vla/phase_b_run_docker.sh: line 107: 95537 Killed                  sudo timeout --signal=TERM --kill-after=60 "${WALL_LIMIT}s" docker run --rm --name "$CONTAINER" --gpus all --network host -v "$ROOT:/workspace" -e HOME=/workspace/home -e PYTHONPATH="$PYPATH" -e OMNI_KIT_ACCEPT_EULA=YES -e PRIVACY_CONSENT=N -e KMP_DUPLICATE_LIB_OK=TRUE --entrypoint /isaac-sim/python.sh "$IMAGE" /workspace/tools/phase_b_camera_probe.py --config "$CONFIG" --camera-hz "$CAMERA_HZ" --steps "$STEPS" --output-dir "/workspace/runs/$RUN_ID" --checkpoint /workspace/inputs/checkpoint/model_149999.pt --vendored-rsl-rl /workspace/inputs/v12_runtime/source/rsl_rl --device cuda:0 > "$OUT/probe.log" 2>&1
+== probe exit 137 ==
+)
+Critic MLP: MLP(
+  (network): Sequential(
+    (0): Linear(in_features=307, out_features=512, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=512, out_features=256, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=256, out_features=128, bias=True)
+    (5): ELU(alpha=1.0)
+    (6): Linear(in_features=128, out_features=1, bias=True)
+  )
+)
+{
+  "config": "none",
+  "camera_hz": 50.0,
+  "enable_cameras": false,
+  "cameras": [],
+  "timed_steps": 200,
+  "warmup_steps": 50,
+  "step_dt_s": 0.02,
+  "physics_hz": 200.0,
+  "policy_hz": 50.0,
+  "wall_seconds": 8.464281286826008,
+  "sim_seconds": 4.0,
+  "real_time_factor": 0.4725740868543307,
+  "step_ms": {
+    "mean": 42.32140643413004,
+    "median": 41.87554399686633,
+    "p95": 47.6541240059305,
+    "max": 53.689664986450225
+  },
+  "sensor_read_ms": null,
+  "gpu_mib": {
+    "before_warmup": 4933.0,
+    "after_warmup": 4943.0,
+    "after_timing": 4943.0,
+    "torch_peak_allocated_mib": 42.96044921875
+  },
+  "frames": {}
+}
+== unrelated containers unchanged? ==
+0a1
+> vla-phase-b-phase_b_none_v2 e01-walking-isaaclab:20260905 Up 30 minutes
+PHASE_B_RUN_DONE rc=137 status=complete config=none camera_hz=0

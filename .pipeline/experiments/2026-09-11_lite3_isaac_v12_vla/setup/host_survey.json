@@ -1,0 +1,59 @@
+{
+  "label": "surveyed",
+  "date": "2026-09-11",
+  "method": "read-only SSH inspection; on rented4090 also `docker run --rm` of existing images with no GPU and no volumes. Nothing was started, stopped, built, installed or deleted on either host.",
+  "question": "Which host can execute the Phase A V12 locomotion loop (lite3_sim_bridge.run_isaac_v12_fallback, --mode qualification --course flat)?",
+  "requirement": {
+    "imports_needed_at_module_level": [
+      "isaaclab",
+      "isaaclab_tasks.utils.parse_cfg.load_cfg_from_registry",
+      "isaaclab_rl.rsl_rl.RslRlVecEnvWrapper",
+      "gymnasium",
+      "torch",
+      "robot_lab.tasks (supplied by the V12 tree over PYTHONPATH)",
+      "rsl_rl (supplied by the V12 tree via _activate_vendored_rsl_rl)"
+    ],
+    "source": "references/upstream/2026-09-11_lite3_sim_bridge/source/lite3_sim_bridge/run_isaac_v12_fallback.py and run_isaac_lite3.py"
+  },
+  "hosts": [
+    {
+      "alias": "rented4090",
+      "route": "ssh -J gpu40901 rented4090",
+      "gpu": "RTX 4090, 24564 MiB, 3005 MiB used, 10 percent busy",
+      "disk_free": "40 GB of 194 GB",
+      "isaac_environment": "container images only; no native Isaac Lab",
+      "images": {
+        "e01-walking-isaaclab:20260905": "isaaclab 2.3.2.post1 (PyPI wheel) in /isaac-sim/kit/python/lib/python3.11/site-packages; NO editable installs",
+        "e01-walking-runtime:20260905": "same isaaclab, plus editable finders for robot_lab 2.3.0 and rsl_rl_lib 3.3.0 pointing at /workspace/go2_rl_robotlab_lite3_v17a29/...",
+        "v17a68-dependencies:20260905": "same as e01-walking-runtime for these packages",
+        "nvcr.io/nvidia/isaac-sim:5.1.0": "vendor base; the running streaming container uses it"
+      },
+      "python": "3.11.13, Isaac Sim bundled interpreter; entrypoint /isaac-sim/python.sh; WORKDIR /workspace; the PyPI isaaclab 2.3.2.post1 wheel bundles the whole IsaacLab source tree rather than a flat library.",
+      "blocking_gap": "CORRECTED 2026-09-11, same day: there is NO blocking gap. isaaclab_tasks and isaaclab_rl ARE present, inside the PyPI isaaclab wheel at site-packages/isaaclab/source/{isaaclab,isaaclab_assets,isaaclab_contrib,isaaclab_mimic,isaaclab_rl,isaaclab_tasks}. find_spec returned None only because those directories are not on sys.path by default. Adding them to PYTHONPATH resolves isaaclab, isaaclab.app, isaaclab_tasks, isaaclab_rl and isaaclab_assets. isaaclab_tasks.utils.parse_cfg still needs `pxr`, which exists only after AppLauncher starts Isaac Sim - the adapter launches the app before importing it, so that is the normal order, not a gap.",
+      "why_the_gap_exists": "E01 was locomotion TRAINING through robot_lab's own scripts and rsl_rl; it never needed Isaac Lab's task registry or the RSL-RL vec-env wrapper.",
+      "cost_to_close": "one PYTHONPATH entry per package directory; no download, no image rebuild, no version mixing.",
+      "cameras": "RTX rendering is available on the host (the vendor container is livestreaming right now) but enable_cameras inside these images is unproven. This is the Phase B go/no-go.",
+      "superseded_claim": "The first version of this survey said the 4090 could not run the adapter. That was wrong: it read a find_spec None as 'absent' when the correct reading is 'not on sys.path'. The cost of staying on the 4090 is a PYTHONPATH entry, not an Isaac Lab source install."
+    },
+    {
+      "alias": "gpu5070ti",
+      "route": "ssh gpu5070ti",
+      "gpu": "RTX 5070 Ti, 16303 MiB, 195 MiB used, 0 percent busy (idle)",
+      "disk_free": "82 GB of 573 GB",
+      "isaac_environment": "native conda env `isaaclab` at /home/sun/miniconda3/envs/isaaclab, python 3.11.15, torch 2.7.0+cu128",
+      "packages": {
+        "isaaclab": "0.54.2 editable, /home/sun/ssh/sun/IsaacLab/source/isaaclab",
+        "isaaclab_tasks": "0.11.12 editable, present",
+        "isaaclab_rl": "0.4.7 editable, present",
+        "isaaclab_assets": "0.2.4 editable, present",
+        "robot_lab": "2.3.2 editable (overridden per run by PYTHONPATH to the V12 tree)",
+        "rsl-rl-lib": "3.1.2 (overridden per run by _activate_vendored_rsl_rl)"
+      },
+      "blocking_gap": "none identified for Phase A",
+      "evidence_that_it_works": "the accepted machine-dog-nav run native_full02 (98.08 s, 74.063 m, final XY error 3.77 cm, zero non-foot contact) executed on this host, under this conda env, from /home/ubuntu... run root /home/sun/machine-dog-nav-runs/2026-09-11_pct_scan_upstream_baseline. Its runtime_identity.json records bridge_module_sha256 6104fe686bcd3bc0480c0afc1b41dde84d1a35d45a6dbbe9e51d98e6719ba3e3, which is byte-for-byte the run_isaac_v12_fallback.py vendored here.",
+      "recipe_recorded_upstream": "tools/run_native_on_host.sh: conda activate isaaclab; OMNI_KIT_ACCEPT_EULA=YES; PRIVACY_CONSENT=N; KMP_DUPLICATE_LIB_OK=TRUE; PYTHONPATH=<bridge>:<v12>/source/rsl_rl:<v12>/source/robot_lab",
+      "caveat": "16 GB of VRAM. Ample for Phase A (no cameras, no VLA). Phase B and C add RTX cameras and a resident Qwen2.5-VL, and this headroom is unverified for that - it is already an open item in the hot zone."
+    }
+  ],
+  "not_yet_decided": "SETTLED 2026-09-11: Dr Sun chose to stay on the rented 4090 and install properly. The correction above makes that a PYTHONPATH change rather than an install."
+}

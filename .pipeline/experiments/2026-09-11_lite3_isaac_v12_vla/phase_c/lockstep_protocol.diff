@@ -1,0 +1,126 @@
+65a66,67
+>     IMAGE_FRAME_V1 = 9  # task-owned addition, phase_c
+>     STEP_REQUEST_V1 = 10  # task-owned addition, phase_c
+887a890,1011
+> 
+> 
+> # ---------------------------------------------------------------------------------------------------------------------
+> # Task-owned additions (09-11-internvla-n1-lite3-isaac-sim, Phase C, 2026-09-14). Everything above this line is the
+> # pinned lite3_sim_bridge protocol.py, byte-identical except the two MessageType members; see PROTOCOL_COPY.md.
+> #
+> # Lockstep (design Decision 5): the client sends one CMD_VEL_V1 followed by one STEP_REQUEST_V1; the simulator applies
+> # the command through LatestCommandState, advances duration_ns of simulated time, and replies STATUS_V1, BODY_STATE_V2
+> # and, if requested, IMAGE_FRAME_V1. The simulator never advances without a request.
+> # ---------------------------------------------------------------------------------------------------------------------
+> 
+> # frame id, simulation time ns, width, height, rgb format, depth format, fx, fy, cx, cy,
+> # camera position world xyz, camera orientation world xyzw, rgb byte length, depth byte length
+> IMAGE_FRAME_V1_PREFIX_STRUCT = struct.Struct("!QQIIHH4d3d4dII")
+> RGB_FORMAT_RGB8 = 1
+> DEPTH_FORMAT_F32LE_METRES = 1
+> MAX_IMAGE_WIDTH = 4096
+> MAX_IMAGE_HEIGHT = 4096
+> 
+> # duration ns, request id, want image, end episode, reserved
+> STEP_REQUEST_V1_STRUCT = struct.Struct("!QIBBH")
+> MAX_STEP_DURATION_NS = 10_000_000_000
+> 
+> 
+> @dataclass(frozen=True)
+> class ImageFrameV1:
+>     frame_id: int
+>     simulation_time_ns: int
+>     width: int
+>     height: int
+>     intrinsics_fx_fy_cx_cy: Tuple[float, float, float, float]
+>     camera_position_world: Tuple[float, float, float]
+>     camera_orientation_world_xyzw: Tuple[float, float, float, float]
+>     rgb: bytes
+>     depth: bytes
+> 
+> 
+> @dataclass(frozen=True)
+> class StepRequestV1:
+>     duration_ns: int
+>     request_id: int
+>     want_image: bool
+>     end_episode: bool
+> 
+> 
+> def _checked_image_frame(frame: ImageFrameV1) -> ImageFrameV1:
+>     _require_uint("frame_id", frame.frame_id, 64)
+>     _require_uint("simulation_time_ns", frame.simulation_time_ns, 64)
+>     for name, value, limit in (("width", frame.width, MAX_IMAGE_WIDTH), ("height", frame.height, MAX_IMAGE_HEIGHT)):
+>         _require_uint(name, value, 32)
+>         if not 0 < value <= limit:
+>             raise ProtocolError("{} out of range".format(name))
+>     _require_finite("intrinsics", frame.intrinsics_fx_fy_cx_cy)
+>     _require_pose(frame.camera_position_world, frame.camera_orientation_world_xyzw, "camera")
+>     if not isinstance(frame.rgb, bytes) or len(frame.rgb) != frame.width * frame.height * 3:
+>         raise ProtocolError("rgb must be width*height*3 bytes")
+>     if not isinstance(frame.depth, bytes) or len(frame.depth) != frame.width * frame.height * 4:
+>         raise ProtocolError("depth must be width*height*4 bytes")
+>     return frame
+> 
+> 
+> def encode_image_frame_payload(frame: ImageFrameV1) -> bytes:
+>     frame = _checked_image_frame(frame)
+>     prefix = IMAGE_FRAME_V1_PREFIX_STRUCT.pack(
+>         frame.frame_id,
+>         frame.simulation_time_ns,
+>         frame.width,
+>         frame.height,
+>         RGB_FORMAT_RGB8,
+>         DEPTH_FORMAT_F32LE_METRES,
+>         *frame.intrinsics_fx_fy_cx_cy,
+>         *frame.camera_position_world,
+>         *frame.camera_orientation_world_xyzw,
+>         len(frame.rgb),
+>         len(frame.depth),
+>     )
+>     payload = prefix + frame.rgb + frame.depth
+>     if len(payload) > MAX_PAYLOAD_BYTES:
+>         raise ProtocolError("image frame exceeds v1 payload limit")
+>     return payload
+> 
+> 
+> def decode_image_frame_payload(payload: bytes) -> ImageFrameV1:
+>     size = IMAGE_FRAME_V1_PREFIX_STRUCT.size
+>     if len(payload) < size:
+>         raise ProtocolError("image frame payload is truncated")
+>     values = IMAGE_FRAME_V1_PREFIX_STRUCT.unpack_from(payload, 0)
+>     frame_id, sim_ns, width, height, rgb_format, depth_format = values[:6]
+>     if rgb_format != RGB_FORMAT_RGB8 or depth_format != DEPTH_FORMAT_F32LE_METRES:
+>         raise ProtocolError("unsupported image format")
+>     intrinsics = tuple(values[6:10])
+>     position = tuple(values[10:13])
+>     orientation = tuple(values[13:17])
+>     rgb_length, depth_length = values[17:19]
+>     if len(payload) != size + rgb_length + depth_length:
+>         raise ProtocolError("image frame byte lengths do not match payload")
+>     rgb = payload[size:size + rgb_length]
+>     depth = payload[size + rgb_length:]
+>     return _checked_image_frame(
+>         ImageFrameV1(frame_id, sim_ns, width, height, intrinsics, position, orientation, rgb, depth)
+>     )
+> 
+> 
+> def encode_step_request_payload(request: StepRequestV1) -> bytes:
+>     _require_uint("duration_ns", request.duration_ns, 64)
+>     _require_uint("request_id", request.request_id, 32)
+>     if request.duration_ns > MAX_STEP_DURATION_NS:
+>         raise ProtocolError("step duration exceeds limit")
+>     return STEP_REQUEST_V1_STRUCT.pack(
+>         request.duration_ns, request.request_id, 1 if request.want_image else 0, 1 if request.end_episode else 0, 0
+>     )
+> 
+> 
+> def decode_step_request_payload(payload: bytes) -> StepRequestV1:
+>     if len(payload) != STEP_REQUEST_V1_STRUCT.size:
+>         raise ProtocolError("step request payload has the wrong size")
+>     duration_ns, request_id, want_image, end_episode, reserved = STEP_REQUEST_V1_STRUCT.unpack(payload)
+>     if want_image not in (0, 1) or end_episode not in (0, 1) or reserved != 0:
+>         raise ProtocolError("step request flags are invalid")
+>     if duration_ns > MAX_STEP_DURATION_NS:
+>         raise ProtocolError("step duration exceeds limit")
+>     return StepRequestV1(duration_ns, request_id, bool(want_image), bool(end_episode))

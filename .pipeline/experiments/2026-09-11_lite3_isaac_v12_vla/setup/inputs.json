@@ -1,0 +1,102 @@
+{
+  "experiment": "2026-09-11_lite3_isaac_v12_vla",
+  "task": ".trellis/tasks/09-11-internvla-n1-lite3-isaac-sim",
+  "phase": "A",
+  "generated_utc": "2026-09-11T15:32:36Z",
+  "claim_boundary": "Pinned local inputs only. Nothing here is evidence that the loop ran; Phase A run evidence lands under runs/<run_id>/ with its own manifest.",
+  "inputs": [
+    {
+      "name": "lite3_sim_bridge",
+      "path": "references/upstream/2026-09-11_lite3_sim_bridge",
+      "files": 15,
+      "checksums_file": "references/upstream/2026-09-11_lite3_sim_bridge/SHA256SUMS.txt",
+      "checksums_sha256": "5c2a13bd6410daec3cbcf8daa2485edc548c15176cba1140efb5505679326aea",
+      "authority": "machine-dog-nav run native_full02 executed_source_manifest.json; every file matches. Not a git commit: the accepted bytes are uncommitted upstream. See SOURCE.md.",
+      "tracked_in_git": true
+    },
+    {
+      "name": "v12_locomotion_runtime",
+      "path": "references/upstream/2026-09-11_lite3_v12_locomotion",
+      "files": 218,
+      "checksums_file": "references/upstream/2026-09-11_lite3_v12_locomotion/SHA256SUMS.txt",
+      "checksums_sha256": "b7dba272677f7f66e49a58f729d3d301fefad64170c9566c642c6bd5f4563f55",
+      "authority": "machine-dog commit 8c3fdffa84b85be0704a10ea5b2533817d543822 for identity; bytes from the 217-file recovered runtime tree because that commit's allow-list cannot export them. See SOURCE.md.",
+      "tracked_in_git": false,
+      "ignore_rule": "references/upstream/.gitignore:1 **/source/"
+    },
+    {
+      "name": "v12_checkpoint",
+      "path": "references/upstream/2026-09-11_lite3_v12_locomotion/source/checkpoint/model_149999.pt",
+      "bytes": 26367345,
+      "sha256": "a9d31dce90e6e8c564d955e473d6d3502f893d7ef5a5c1efaf5bb50d6b3d5450",
+      "gate": "run_isaac_v12_fallback.PINNED_CHECKPOINT_SHA256 fails closed on mismatch; verify on the execution host before every run.",
+      "tracked_in_git": false
+    }
+  ],
+  "run_configuration": {
+    "entrypoint": "lite3_sim_bridge.run_isaac_v12_fallback",
+    "mode": "qualification",
+    "course": "flat",
+    "schedule": "DEFAULT_QUALIFICATION_SCHEDULE (isaac_adapter_core.py:28), 8.75 s total",
+    "segments": [
+      {
+        "name": "settle_zero",
+        "seconds": 1.0,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "name": "forward",
+        "seconds": 2.0,
+        "command": [
+          0.3,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "name": "lateral",
+        "seconds": 2.0,
+        "command": [
+          0.0,
+          0.18,
+          0.0
+        ]
+      },
+      {
+        "name": "yaw",
+        "seconds": 2.0,
+        "command": [
+          0.0,
+          0.0,
+          0.4
+        ]
+      },
+      {
+        "name": "stop_zero",
+        "seconds": 1.0,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "name": "watchdog_disconnect",
+        "seconds": 0.75,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "connected": false
+      }
+    ],
+    "why_this_schedule": "It drives all three command axes independently and then exercises the 250 ms watchdog, which is exactly what AC1/AC2 need: proof that a commanded (vx, vy, wz) reaches the policy observation.",
+    "training": "none; inference only, no optimiser, no checkpoint write",
+    "cameras": "none in Phase A; enable_cameras stays False until Phase B"
+  }
+}

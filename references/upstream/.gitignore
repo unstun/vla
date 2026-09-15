@@ -1,2 +1,12 @@
 **/source/
 **/raw_logs/
+
+# Exception (2026-09-11, task 09-11-internvla-n1-lite3-isaac-sim): the Lite3 Isaac Sim
+# bridge source IS tracked. Every other entry under references/upstream/ was fetched from a
+# public commit or revision and can be re-fetched, so its bytes stay local-only. This one
+# cannot: it was vendored from an UNCOMMITTED, actively-moving working tree in the sibling
+# machine-dog-nav project, whose authority is a run manifest rather than a git commit (see
+# 2026-09-11_lite3_sim_bridge/SOURCE.md). SHA256SUMS.txt detects drift but cannot regenerate
+# the bytes. 15 text files, 477 KB. Directory negated first because `**/source/` above
+# excludes the directory itself, and git does not descend into an excluded directory.
+!2026-09-11_lite3_sim_bridge/source/

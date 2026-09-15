@@ -1,0 +1,64 @@
+--- phase_c/vla_lockstep_client.py sha256 c4c9694c (phase_c_smoke_scripted_v1, phase_c_red_box_v1)
++++ phase_c/vla_lockstep_client.py sha256 f6aa3b43 (phase_c_red_box_v2-v4, phase_c_blue_box_v1, phase_c_green_box_v1)
+@@ -59,6 +59,9 @@
+     def reset(self):
+         self.calls = 0
+ 
++    def step_s2(self, *args, **kwargs):
++        return None
++
+     def step(self, rgb, depth, pose, instruction, intrinsic, look_down=False):
+         assert rgb.dtype == np.uint8 and rgb.ndim == 3 and depth.ndim == 2
+         if not look_down:
+@@ -67,6 +70,7 @@
+         if not look_down:
+             self.calls += 1
+         self.last_s2_idx += 1
++        self.step_s2()
+         if entry == 'look_down' and not look_down:
+             self.llm_output = '↓'
+             return self.Output(action=[5])
+@@ -256,6 +260,16 @@
+         agent = ScriptedAgent(args.script.split(','), args.scripted_latency_s)
+         agent.trajectory_tovw = lambda trajectory: (_ for _ in ()).throw(IndexError('scripted agent has no tovw'))
+     agent.reset()
++    # phase_c_red_box_v1 inferred System 2 calls from last_s2_idx and missed decision 1 (the warm-up had already left
++    # last_s2_idx at 0). Count the calls themselves instead; step() looks these up on the instance.
++    calls = {'s2': 0, 's1': 0}
++    for name in ('step_s2', 'step_s1'):
++        original = getattr(agent, name, None)
++        if original is not None:
++            def counted(*a, _original=original, _key=name[-2:], **k):
++                calls[_key] += 1
++                return _original(*a, **k)
++            setattr(agent, name, counted)
+ 
+     pid = PID_controller(Kp_trans=2.0, Kd_trans=0.0, Kp_yaw=1.5, Kd_yaw=0.0, max_v=0.6, max_w=0.5)  # upstream globals
+     mpc = None
+@@ -327,7 +341,7 @@
+             from PIL import Image
+             Image.fromarray(rgb).save(out / 'decision_frames' / 'decision_{:04d}.jpg'.format(decision))
+ 
+-        s2_before = agent.last_s2_idx
++        s2_before, s1_before = calls['s2'], calls['s1']
+         started = time.perf_counter()
+         result = agent.step(rgb, depth, camera_pose, episode['instruction'], intrinsic)
+         first_action = result.output_action
+@@ -336,7 +350,8 @@
+             looked_down = True   # http_internvla_server.py follow-up
+             result = agent.step(rgb, depth, camera_pose, episode['instruction'], intrinsic, look_down=True)
+         latency = time.perf_counter() - started
+-        s2_called = agent.last_s2_idx != s2_before or looked_down
++        s2_calls, s1_calls = calls['s2'] - s2_before, calls['s1'] - s1_before
++        s2_called = s2_calls > 0
+         s2_cycles += int(s2_called)
+         latencies.append(latency)
+         # Upstream planning_thread, measured from the image capture: the response is applied after the inference
+@@ -360,6 +375,7 @@
+             'decision': decision, 'image_sim_ns': image_sim_ns,
+             'frame_odom': frame_odom, 'instruction': episode['instruction'],
+             'llm_output': agent.llm_output if s2_called else None, 's2_called': s2_called,
++            's2_calls': s2_calls, 's1_calls': s1_calls,
+             'first_action': first_action, 'looked_down': looked_down, 'discrete_action': result.output_action,
+             'pixel_goal': result.output_pixel, 'latency_s': latency, 'apply_ticks': apply_ticks,
+             'ticks': total_ticks, 'applied_at_sim_ns': applied_at_sim_ns,

@@ -1,0 +1,122 @@
+{
+  "episode": {
+    "episode_id": "d_green_behind_grey_box_v1",
+    "instruction": "Walk to the green box and stop in front of it.",
+    "max_sim_seconds": 60,
+    "target_landmark": "green_box",
+    "success_radius_m": 1.0,
+    "landmarks": [
+      {
+        "name": "green_box",
+        "center": [
+          5.0,
+          0.0,
+          0.4
+        ],
+        "size": [
+          0.6,
+          0.6,
+          0.8
+        ],
+        "color": [
+          0.1,
+          0.65,
+          0.15
+        ]
+      },
+      {
+        "name": "grey_box",
+        "center": [
+          2.5,
+          0.35,
+          0.4
+        ],
+        "size": [
+          0.6,
+          0.6,
+          0.8
+        ],
+        "color": [
+          0.45,
+          0.45,
+          0.45
+        ]
+      }
+    ],
+    "camera": {
+      "width": 640,
+      "height": 480,
+      "hfov": 79.0,
+      "pitch_up": 0.0,
+      "pos": [
+        0.27,
+        0.0,
+        0.09
+      ]
+    },
+    "chase_camera": {
+      "width": 640,
+      "height": 360,
+      "hfov": 90.0,
+      "pitch_up": -20.0,
+      "pos": [
+        -1.8,
+        0.0,
+        0.9
+      ]
+    },
+    "notes": "Phase D.0e (Dr Sun 2026-09-14: 'run VLA episodes with a goal behind a box'). The target is 5 m straight ahead; a grey box at 2.5 m sits 0.35 m left of the straight line, so walking straight at the target puts the left legs 0.13 m into it (leg half-width 0.182 m), while about two thirds of the target stays visible to the head camera past the grey box's inner edge. Cameras as in the Phase C episodes."
+  },
+  "agent": "internvla",
+  "argv": [
+    "/home/ubuntu/vla-runs/2026-09-11_lite3_isaac_v12_vla/phase_c/vla_lockstep_client.py",
+    "--episode",
+    "/home/ubuntu/vla-runs/2026-09-11_lite3_isaac_v12_vla/phase_c/episodes/d_green_behind_grey_box_v1.json",
+    "--output-dir",
+    "/home/ubuntu/vla-runs/2026-09-11_lite3_isaac_v12_vla/runs/phase_d_vla_monitor_green_behind_box_v3/client",
+    "--port",
+    "46743",
+    "--agent",
+    "internvla",
+    "--internnav-root",
+    "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav",
+    "--model-path",
+    "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/models/InternVLA-N1-DualVLN",
+    "--depth-anything",
+    "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/models/depth_anything_v2_metric_hypersim_vits.pth",
+    "--controllers-dir",
+    "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/scripts/realworld"
+  ],
+  "python": "3.9.23 | packaged by conda-forge | (main, Jun  4 2025, 17:57:12) \n[GCC 13.3.0]",
+  "load_seconds": 5.769822120666504,
+  "torch": "2.6.0+cu124",
+  "pytorch_cuda_alloc_conf": "expandable_segments:True",
+  "warmup_seconds": 1.3470087051391602,
+  "termination": "max_sim_time",
+  "decisions": 95,
+  "s2_cycles": 16,
+  "trajectories": 95,
+  "discrete_decisions": 0,
+  "stopped_by_model": false,
+  "stop_sim_s": null,
+  "sim_seconds": 60.0,
+  "final_xy": [
+    11.514643669128418,
+    -5.074623107910156
+  ],
+  "final_distance_to_target_m": 8.257867873915805,
+  "final_pose_is_reset_pose": false,
+  "success": false,
+  "latency_s": {
+    "mean": 0.506769147526479,
+    "median": 0.26696546700259205,
+    "max": 1.7668177690065932
+  },
+  "command_abs_max": {
+    "v": 0.40000000936944,
+    "w": 0.4000000082938362
+  },
+  "watchdog_events_at_end": 0,
+  "mpc_solve_failures": 0,
+  "mpc_solve_failure_samples": []
+}

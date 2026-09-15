@@ -1,0 +1,119 @@
+{
+  "python": "3.11.13 (tags/v3.11.13-dirty:498b971, Jun  9 2025, 16:37:36) [GCC 7.3.1 20180303 (Red Hat 7.3.1-5)]",
+  "pythonpath": "/workspace/inputs/lite3_sim_bridge:/workspace/inputs/v12_runtime/source/rsl_rl:/workspace/inputs/v12_runtime/source/robot_lab:/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab:/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab_tasks:/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab_rl:/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab_assets:/isaac-sim/kit/python/lib/python3.11:/isaac-sim/kit/python/lib/python3.11/site-packages:/isaac-sim/python_packages:/isaac-sim/exts/isaacsim.simulation_app:/isaac-sim/extsDeprecated/omni.isaac.kit:/isaac-sim/kit/kernel/py:/isaac-sim/kit/plugins/bindings-python:/isaac-sim/exts/isaacsim.robot_motion.lula/pip_prebundle:/isaac-sim/exts/isaacsim.asset.exporter.urdf/pip_prebundle:/isaac-sim/extscache/omni.kit.pip_archive-0.0.0+69cbf6ad.lx64.cp311/pip_prebundle:/isaac-sim/exts/omni.isaac.core_archive/pip_prebundle:/isaac-sim/exts/omni.isaac.ml_archive/pip_prebundle:/isaac-sim/exts/omni.pip.compute/pip_prebundle:/isaac-sim/exts/omni.pip.cloud/pip_prebundle",
+  "modules": {
+    "lite3_sim_bridge": {
+      "file": "/workspace/inputs/lite3_sim_bridge/lite3_sim_bridge/__init__.py",
+      "version": null,
+      "sha256": "59e9cd071993511919128d0a3be7d5356232e54466f2fd2d101f42c7814b48d9"
+    },
+    "robot_lab": {
+      "file": "/workspace/inputs/v12_runtime/source/robot_lab/robot_lab/__init__.py",
+      "version": null,
+      "sha256": "564439c88dc0cb58b678811b14d77699201dbebe920e89493d34611c13cd68a9"
+    },
+    "rsl_rl": {
+      "file": "/workspace/inputs/v12_runtime/source/rsl_rl/rsl_rl/__init__.py",
+      "version": null,
+      "sha256": "9b4c420fef3ae39683544833b6d2efbb26aecfc0583ec59be7f4eeb748fecf66"
+    },
+    "isaaclab": {
+      "file": "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/__init__.py",
+      "version": "0.54.2",
+      "sha256": "9031fe4e7dc80d02d78a26f408e276fb457b7d28bc06ef459227adab6cb431fe"
+    },
+    "isaaclab_tasks": {
+      "error": "ModuleNotFoundError: No module named 'pxr'"
+    },
+    "isaaclab_rl": {
+      "file": "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab_rl/isaaclab_rl/__init__.py",
+      "version": null,
+      "sha256": "771f959224f9cb8d07376d6fb5c70bb682cf0af30730bf14ae4c26bd1b299ed1"
+    }
+  },
+  "adapter_file": "/workspace/inputs/lite3_sim_bridge/lite3_sim_bridge/run_isaac_v12_fallback.py",
+  "adapter_sha256": "6104fe686bcd3bc0480c0afc1b41dde84d1a35d45a6dbbe9e51d98e6719ba3e3",
+  "adapter_matches_accepted_run": true
+}
+== adapter exit 0 ==
+      (4): Linear(in_features=256, out_features=32, bias=True)
+    )
+  )
+  (1): L2Norm()
+)
+Student MoE Encoder: StudentMoEEncoder(
+  (norm_layer): L2Norm()
+  (moe): MoE(
+    (experts): Experts(
+      (backbone): MLP(
+        (network): Sequential(
+          (0): Linear(in_features=450, out_features=512, bias=True)
+          (1): ELU(alpha=1.0)
+          (2): Linear(in_features=512, out_features=256, bias=True)
+          (3): ELU(alpha=1.0)
+          (4): Linear(in_features=256, out_features=2048, bias=True)
+          (5): ELU(alpha=1.0)
+        )
+      )
+      (experts): Conv1d(2048, 256, kernel_size=(1,), stride=(1,), groups=8)
+    )
+    (gating_network): Sequential(
+      (0): MLP(
+        (network): Sequential(
+          (0): Linear(in_features=450, out_features=512, bias=True)
+          (1): ELU(alpha=1.0)
+          (2): Linear(in_features=512, out_features=256, bias=True)
+          (3): ELU(alpha=1.0)
+          (4): Linear(in_features=256, out_features=256, bias=True)
+          (5): ELU(alpha=1.0)
+          (6): Linear(in_features=256, out_features=8, bias=True)
+        )
+      )
+      (1): Softmax(dim=-1)
+    )
+  )
+)
+Actor MLP: MLP(
+  (network): Sequential(
+    (0): Linear(in_features=77, out_features=512, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=512, out_features=256, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=256, out_features=128, bias=True)
+    (5): ELU(alpha=1.0)
+    (6): Linear(in_features=128, out_features=12, bias=True)
+  )
+)
+Critic MLP: MLP(
+  (network): Sequential(
+    (0): Linear(in_features=307, out_features=512, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=512, out_features=256, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=256, out_features=128, bias=True)
+    (5): ELU(alpha=1.0)
+    (6): Linear(in_features=128, out_features=1, bias=True)
+  )
+)
+{"status": "INSTRUMENTATION_ERROR", "output_dir": "/workspace/runs/phase_a_flat_v4"}
+== unrelated containers unchanged? ==
+  identical
+== artifacts ==
+total 1268
+drwxrwxrwx 2 ubuntu ubuntu    4096 Sep 12 00:04 .
+drwxrwxr-x 6 ubuntu ubuntu    4096 Sep 12 00:03 ..
+-rw-rw-r-- 1 ubuntu ubuntu   18034 Sep 12 00:04 adapter.log
+-rw-rw-r-- 1 ubuntu ubuntu      53 Sep 12 00:04 containers_after.txt
+-rw-rw-rw- 1 ubuntu ubuntu      53 Sep 12 00:03 containers_before.txt
+-rw-r--r-- 1 ubuntu ubuntu       0 Sep 12 00:04 depth_metrics.jsonl
+-rw-rw-r-- 1 ubuntu ubuntu       2 Sep 12 00:04 exit_code
+-rw-rw-r-- 1 ubuntu ubuntu     115 Sep 12 00:04 gpu_after.csv
+-rw-rw-rw- 1 ubuntu ubuntu     116 Sep 12 00:03 gpu_before.csv
+-rw-rw-r-- 1 ubuntu ubuntu    2726 Sep 12 00:03 identity.log
+-rw-r--r-- 1 ubuntu ubuntu 1045510 Sep 12 00:04 metrics.jsonl
+-rw-r--r-- 1 ubuntu ubuntu    2159 Sep 12 00:04 qualification_report.json
+-rw-r--r-- 1 ubuntu ubuntu    3423 Sep 12 00:04 run_identity.json
+-rw-r--r-- 1 ubuntu ubuntu    6721 Sep 12 00:04 runtime_composition.json
+-rw-r--r-- 1 ubuntu ubuntu    2725 Sep 12 00:03 runtime_import_identity.json
+-rw-r--r-- 1 ubuntu ubuntu  175255 Sep 12 00:04 sensor_metrics.jsonl
+PHASE_A_RUN_DONE rc=0 status=complete

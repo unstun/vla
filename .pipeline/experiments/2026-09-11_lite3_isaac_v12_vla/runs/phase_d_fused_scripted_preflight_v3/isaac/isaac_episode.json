@@ -1,0 +1,701 @@
+{
+  "episode": {
+    "episode_id": "c_green_box_right_v1",
+    "instruction": "Walk to the green box and stop in front of it.",
+    "max_sim_seconds": 60,
+    "target_landmark": "green_box",
+    "success_radius_m": 1.0,
+    "landmarks": [
+      {
+        "name": "red_box",
+        "center": [
+          4.0,
+          0.0,
+          0.4
+        ],
+        "size": [
+          0.6,
+          0.6,
+          0.8
+        ],
+        "color": [
+          0.85,
+          0.08,
+          0.08
+        ]
+      },
+      {
+        "name": "blue_box",
+        "center": [
+          3.0,
+          2.5,
+          0.4
+        ],
+        "size": [
+          0.6,
+          0.6,
+          0.8
+        ],
+        "color": [
+          0.08,
+          0.2,
+          0.85
+        ]
+      },
+      {
+        "name": "green_box",
+        "center": [
+          3.5,
+          -2.5,
+          0.4
+        ],
+        "size": [
+          0.6,
+          0.6,
+          0.8
+        ],
+        "color": [
+          0.1,
+          0.65,
+          0.15
+        ]
+      }
+    ],
+    "camera": {
+      "width": 640,
+      "height": 480,
+      "hfov": 79.0,
+      "pitch_up": 0.0,
+      "pos": [
+        0.27,
+        0.0,
+        0.09
+      ]
+    },
+    "chase_camera": {
+      "width": 640,
+      "height": 360,
+      "hfov": 90.0,
+      "pitch_up": -20.0,
+      "pos": [
+        -1.8,
+        0.0,
+        0.9
+      ]
+    },
+    "notes": "Phase C C.4 (Dr Sun, 2026-09-14). Same three-box layout as c_red_box_ahead_v1; only the instruction and target change. Target starts 4.30 m away at 35.5 deg to the right, near the edge of the 79 deg field of view. success_radius_m is base-to-box-centre horizontal distance."
+  },
+  "cameras": {
+    "head_eval": {
+      "width": 640,
+      "height": 480,
+      "hfov": 79.0,
+      "pitch_up": 0.0,
+      "pos": [
+        0.2721,
+        0.0,
+        0.054
+      ],
+      "data_types": [
+        "rgb",
+        "distance_to_image_plane"
+      ],
+      "focal_length_mm": 12.710223860383703,
+      "quat_wxyz": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "optical_forward_in_body": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    "chase": {
+      "width": 640,
+      "height": 360,
+      "hfov": 90.0,
+      "pitch_up": -20.0,
+      "pos": [
+        -1.8,
+        0.0,
+        0.9
+      ],
+      "data_types": [
+        "rgb"
+      ],
+      "focal_length_mm": 10.477500000000001,
+      "quat_wxyz": [
+        0.40557978767263886,
+        -0.5792279653395692,
+        0.5792279653395692,
+        -0.4055797876726389
+      ],
+      "optical_forward_in_body": [
+        0.9396926207859084,
+        0.0,
+        -0.3420201433256687
+      ]
+    },
+    "fusion_head": {
+      "name": "fusion_head",
+      "width": 1280,
+      "height": 720,
+      "hfov": 105.0,
+      "pitch_up": 16.7,
+      "pos": [
+        0.2721,
+        0.0,
+        0.054
+      ],
+      "basis": "built-in (stock head) camera. Intrinsics and pitch measured on the robot 2026-09-11 (fx 490.1 / fy 486.7 at 1280x720, HFOV 105.1, optical axis +16.7 deg up), as c8. Position chosen by Dr Sun 2026-09-14: the c8 relative offset from the URDF D435i (the URDF has no built-in camera frame), i.e. 0.02 m in front of and 0.02 m below the D435i optical centre (c8: head [0, 0.40, -0.27], D435i [0, 0.42, -0.25]). The D435i sits on top, tilted down. The first D.0f config used the camera ablation's estimate (0.27, 0, 0.09), which put the D435i 0.016 m below this camera; runs phase_d_fused_scripted_preflight_v1/v2 used that wrong pose. The point is outside the V12 torso.STL, about 1.6 mm in front of the head's front face on the centreline",
+      "data_types": [
+        "rgb"
+      ],
+      "focal_length_mm": 8.039668516549556,
+      "quat_wxyz": [
+        0.5673095539142876,
+        -0.4220898838370472,
+        0.4220898838370472,
+        -0.5673095539142876
+      ],
+      "optical_forward_in_body": [
+        0.9578224948453149,
+        0.0,
+        0.28736051984971195
+      ]
+    },
+    "fusion_d435": {
+      "name": "fusion_d435",
+      "width": 1280,
+      "height": 720,
+      "hfov": 69.0,
+      "pitch_up": -20.0,
+      "pos": [
+        0.2521,
+        0.0,
+        0.074
+      ],
+      "basis": "RealSense datasheet 337029-017 colour FOV H69 at 16:9, as c8. Pose: TORSO-frame d435i_depth_optical_frame from lite3_pro_sensor_rig_real_with_interface.urdf, sha256 d0a1be09f018c0ab31df26f69ad8e700bd88ec06ae5b0f4dfbcc4fddf21cec80 (read at machine-dog-nav .pipeline/experiments/2026-09-04_pct_scan_lite3_stairs/ubuntu_reproduction/2026-09-08_gpu5070ti_lite3_video/robot_asset/urdf/, untracked there; byte-identical copies in machine-dog artifacts/*/runtime_payload*/v17a4*/resources/lite3_sensor_rig/urdf/): sensor_carrier_joint xyz (0.219, 0, 0.061387) + d435i_body_joint xyz (0.013681366, 0, 0.019733659) rpy (0, 0.349065850399, 0) + d435i_depth_optical_joint xyz (0.0207, 0, 0) in the pitched body frame = (0.25213, 0, 0.07404), 20 deg down. Colour-aligned depth is modelled as one camera at the depth optical frame (the real colour imager sits about 15 mm to the side). With the built-in camera placed as above, this reproduces c8's relative transform (0.02 m behind and 0.02 m above the built-in camera). The transform is not measured on the robot.",
+      "data_types": [
+        "rgb",
+        "distance_to_image_plane"
+      ],
+      "focal_length_mm": 15.244857097915542,
+      "quat_wxyz": [
+        0.40557978767263886,
+        -0.5792279653395692,
+        0.5792279653395692,
+        -0.4055797876726389
+      ],
+      "optical_forward_in_body": [
+        0.9396926207859084,
+        0.0,
+        -0.3420201433256687
+      ]
+    }
+  },
+  "physx_gpu": {
+    "gpu_collision_stack_size": 67108864,
+    "gpu_max_rigid_contact_count": 65536,
+    "gpu_max_rigid_patch_count": 32768,
+    "gpu_found_lost_pairs_capacity": 65536,
+    "gpu_found_lost_aggregate_pairs_capacity": 65536,
+    "gpu_total_aggregate_pairs_capacity": 65536,
+    "gpu_max_soft_body_contacts": 1024,
+    "gpu_max_particle_contacts": 1024
+  },
+  "policy_dt_ns": 20000000,
+  "physics_dt_s": 0.005,
+  "decimation": 4,
+  "limits": {
+    "max_vx": 0.75,
+    "max_vy": 0.35,
+    "max_wz": 1.0
+  },
+  "watchdog_seconds": 0.25,
+  "collision_force_threshold_n": 75.0,
+  "lidar": {
+    "prim_path": "{ENV_REGEX_NS}/Robot/TORSO",
+    "offset_pos": [
+      0.182399336,
+      0.0,
+      0.108541081
+    ],
+    "offset_rot_wxyz": [
+      0.9914448613738104,
+      0.0,
+      0.13052619222005157,
+      0.0
+    ],
+    "mesh_prim_paths": [
+      "/World/ground",
+      "/World/ground/landmark_red_box",
+      "/World/ground/landmark_blue_box",
+      "/World/ground/landmark_green_box"
+    ],
+    "channels": 16,
+    "vertical_fov_deg": [
+      -7.0,
+      52.0
+    ],
+    "horizontal_res_deg": 2.0,
+    "range_m": [
+      0.1,
+      12.0
+    ],
+    "floor_filter_max_world_z_m": 0.05
+  },
+  "fusion": {
+    "config_path": "/workspace/phase_d/fusion_isaac_c8.json",
+    "config": {
+      "name": "c8_fused_level_720_isaac",
+      "purpose": "Phase D.0f: the Habitat c8 two-mount fusion inside the Isaac lockstep server. The virtual camera is the episode's head_eval camera (level, 640x480, HFOV 79); the fused image replaces its ideal render in IMAGE_FRAME_V1, and the depth sent stays the ideal head_eval depth at the virtual pose, as in c8.",
+      "fused_camera_module": "fused_camera.py",
+      "fused_camera_sha256": "382eee6dfe7cd6928681f5358f59fd8718c8d7cf339d3d60975f83fd19c92676",
+      "fused_camera_source": ".pipeline/experiments/2026-09-08_dualvln_rented4090/public_scenes/requests/2026-09-10_lite3_camera_ablation/fused_camera.py (unmodified; manifest.sha256 line 30)",
+      "virtual": {
+        "width": 640,
+        "height": 480,
+        "hfov": 79.0,
+        "pitch_up": 0.0,
+        "pos": [
+          0.2721,
+          0.0,
+          0.054
+        ],
+        "basis": "the c8 evaluation view: level, 640x480, HFOV 79, at the built-in camera's optical centre. Width, height, HFOV and pitch must equal the episode's camera; the position replaces the episode camera's (0.27, 0, 0.09), so head_eval sits 0.036 m lower than in Phase C/D.0d/D.0e"
+      },
+      "head": {
+        "name": "fusion_head",
+        "width": 1280,
+        "height": 720,
+        "hfov": 105.0,
+        "pitch_up": 16.7,
+        "pos": [
+          0.2721,
+          0.0,
+          0.054
+        ],
+        "basis": "built-in (stock head) camera. Intrinsics and pitch measured on the robot 2026-09-11 (fx 490.1 / fy 486.7 at 1280x720, HFOV 105.1, optical axis +16.7 deg up), as c8. Position chosen by Dr Sun 2026-09-14: the c8 relative offset from the URDF D435i (the URDF has no built-in camera frame), i.e. 0.02 m in front of and 0.02 m below the D435i optical centre (c8: head [0, 0.40, -0.27], D435i [0, 0.42, -0.25]). The D435i sits on top, tilted down. The first D.0f config used the camera ablation's estimate (0.27, 0, 0.09), which put the D435i 0.016 m below this camera; runs phase_d_fused_scripted_preflight_v1/v2 used that wrong pose. The point is outside the V12 torso.STL, about 1.6 mm in front of the head's front face on the centreline"
+      },
+      "d435": {
+        "name": "fusion_d435",
+        "width": 1280,
+        "height": 720,
+        "hfov": 69.0,
+        "pitch_up": -20.0,
+        "pos": [
+          0.2521,
+          0.0,
+          0.074
+        ],
+        "basis": "RealSense datasheet 337029-017 colour FOV H69 at 16:9, as c8. Pose: TORSO-frame d435i_depth_optical_frame from lite3_pro_sensor_rig_real_with_interface.urdf, sha256 d0a1be09f018c0ab31df26f69ad8e700bd88ec06ae5b0f4dfbcc4fddf21cec80 (read at machine-dog-nav .pipeline/experiments/2026-09-04_pct_scan_lite3_stairs/ubuntu_reproduction/2026-09-08_gpu5070ti_lite3_video/robot_asset/urdf/, untracked there; byte-identical copies in machine-dog artifacts/*/runtime_payload*/v17a4*/resources/lite3_sensor_rig/urdf/): sensor_carrier_joint xyz (0.219, 0, 0.061387) + d435i_body_joint xyz (0.013681366, 0, 0.019733659) rpy (0, 0.349065850399, 0) + d435i_depth_optical_joint xyz (0.0207, 0, 0) in the pitched body frame = (0.25213, 0, 0.07404), 20 deg down. Colour-aligned depth is modelled as one camera at the depth optical frame (the real colour imager sits about 15 mm to the side). With the built-in camera placed as above, this reproduces c8's relative transform (0.02 m behind and 0.02 m above the built-in camera). The transform is not measured on the robot."
+      },
+      "feather_rows": 8,
+      "depth_valid_max_m": 9.9,
+      "intrinsics_tolerance_px": 0.5,
+      "authored_mount_tolerance_m": 0.0001,
+      "authored_mount_tolerance_deg": 0.01,
+      "self_occlusion_max_depth_m": 0.2,
+      "save_first_images": 3,
+      "save_every_images": 10,
+      "preflight_bounds_from_habitat_c8": {
+        "source": "conditions.json preflight.fused, c8_fused_level_720",
+        "max_uncovered_fraction": 0.04,
+        "min_fraction_from_head": 0.7,
+        "max_mean_abs_err_head_region": 10.0,
+        "max_mean_abs_err_d435_region": 20.0,
+        "max_fusion_ms_per_frame": 300.0
+      }
+    },
+    "geometry": {
+      "fused_camera_sha256": "382eee6dfe7cd6928681f5358f59fd8718c8d7cf339d3d60975f83fd19c92676",
+      "cv2_available": true,
+      "virtual": {
+        "width": 640,
+        "height": 480,
+        "f_px": 388.1910413097385,
+        "vfov_deg": 63.453048374758716,
+        "position_fusion_frame": [
+          -0.0,
+          0.054,
+          -0.2721
+        ],
+        "pitch_up_deg": 0.0
+      },
+      "head": {
+        "width": 1280,
+        "height": 720,
+        "f_px": 491.0892723065346,
+        "vfov_deg": 72.48762310530823,
+        "position_fusion_frame": [
+          -0.0,
+          0.054,
+          -0.2721
+        ],
+        "pitch_up_deg": 16.7
+      },
+      "d435": {
+        "width": 1280,
+        "height": 720,
+        "f_px": 931.2057783503649,
+        "vfov_deg": 42.27255895009058,
+        "position_fusion_frame": [
+          -0.0,
+          0.074,
+          -0.2521
+        ],
+        "pitch_up_deg": -20.0
+      },
+      "head_lut_valid_fraction": 0.7875
+    },
+    "virtual_camera": {
+      "width": 640,
+      "height": 480,
+      "hfov": 79.0,
+      "pitch_up": 0.0,
+      "pos": [
+        0.2721,
+        0.0,
+        0.054
+      ]
+    },
+    "intrinsics_measured": {
+      "head_eval": {
+        "fx": 388.1910400390625,
+        "fy": 388.1910400390625,
+        "cx": 320.0,
+        "cy": 240.0,
+        "expected_f": 388.1910413097385,
+        "expected_cx": 320.0,
+        "expected_cy": 240.0
+      },
+      "fusion_head": {
+        "fx": 491.0892333984375,
+        "fy": 491.0892333984375,
+        "cx": 640.0,
+        "cy": 360.0,
+        "expected_f": 491.0892723065346,
+        "expected_cx": 640.0,
+        "expected_cy": 360.0
+      },
+      "fusion_d435": {
+        "fx": 931.2057495117188,
+        "fy": 931.2057495117188,
+        "cx": 640.0,
+        "cy": 360.0,
+        "expected_f": 931.2057783503649,
+        "expected_cx": 640.0,
+        "expected_cy": 360.0
+      }
+    },
+    "mounts_authored": {
+      "head_eval": {
+        "authored_position_m": [
+          0.2721000015735626,
+          0.0,
+          0.05400000140070915
+        ],
+        "authored_quat_wxyz_opengl": [
+          -0.5,
+          -0.5,
+          0.5,
+          0.5
+        ],
+        "configured_position_m": [
+          0.2721,
+          0.0,
+          0.054
+        ],
+        "configured_pitch_up_deg": 0.0,
+        "position_error_m": 2.106676394126772e-09,
+        "rotation_error_deg": 0.0
+      },
+      "fusion_head": {
+        "authored_position_m": [
+          0.2721000015735626,
+          0.0,
+          0.05400000140070915
+        ],
+        "authored_quat_wxyz_opengl": [
+          -0.4220898747444153,
+          -0.567309558391571,
+          0.567309558391571,
+          0.4220898747444153
+        ],
+        "configured_position_m": [
+          0.2721,
+          0.0,
+          0.054
+        ],
+        "configured_pitch_up_deg": 16.7,
+        "position_error_m": 2.106676394126772e-09,
+        "rotation_error_deg": 0.0
+      },
+      "fusion_d435": {
+        "authored_position_m": [
+          0.25209999084472656,
+          0.0,
+          0.07400000095367432
+        ],
+        "authored_quat_wxyz_opengl": [
+          0.5792279839515686,
+          0.4055797755718231,
+          -0.4055797755718231,
+          -0.5792279839515686
+        ],
+        "configured_position_m": [
+          0.2521,
+          0.0,
+          0.074
+        ],
+        "configured_pitch_up_deg": -20.0,
+        "position_error_m": 9.204809952140156e-09,
+        "rotation_error_deg": 0.0
+      }
+    },
+    "live_camera_pose_readback_record_only": {
+      "start": {
+        "head_eval": {
+          "position_in_torso_m": [
+            0.2715896779608008,
+            6.953550672176212e-05,
+            0.046223880659375334
+          ],
+          "configured_position_m": [
+            0.2721,
+            0.0,
+            0.054
+          ],
+          "position_error_m": 0.007793156983535265,
+          "rotation_error_deg": 0.10760171289770108,
+          "measured_pitch_up_deg": -0.035741987833865084,
+          "refreshed_from_simulator": true
+        },
+        "fusion_head": {
+          "position_in_torso_m": [
+            0.27014877904202955,
+            -0.00018394282615029063,
+            0.030620089049588167
+          ],
+          "configured_position_m": [
+            0.2721,
+            0.0,
+            0.054
+          ],
+          "position_error_m": 0.02346191241649543,
+          "rotation_error_deg": 0.3294092177638246,
+          "measured_pitch_up_deg": 16.5852303713808,
+          "refreshed_from_simulator": true
+        },
+        "fusion_d435": {
+          "position_in_torso_m": [
+            0.25021960949065275,
+            -0.0009216076763849587,
+            0.04664305623304389
+          ],
+          "configured_position_m": [
+            0.2521,
+            0.0,
+            0.074
+          ],
+          "position_error_m": 0.027436975078262787,
+          "rotation_error_deg": 0.504014126009753,
+          "measured_pitch_up_deg": -20.16010227103576,
+          "refreshed_from_simulator": true
+        }
+      },
+      "end": {
+        "head_eval": {
+          "position_in_torso_m": [
+            0.27158971194023784,
+            6.95202015948864e-05,
+            0.04622386293102369
+          ],
+          "configured_position_m": [
+            0.2721,
+            0.0,
+            0.054
+          ],
+          "position_error_m": 0.00779317231157332,
+          "rotation_error_deg": 0.10760046975293788,
+          "measured_pitch_up_deg": -0.03574513807029299,
+          "refreshed_from_simulator": true
+        },
+        "fusion_head": {
+          "position_in_torso_m": [
+            0.27014876357782647,
+            -0.0001839536572109166,
+            0.03062010306248311
+          ],
+          "configured_position_m": [
+            0.2721,
+            0.0,
+            0.054
+          ],
+          "position_error_m": 0.02346189982358908,
+          "rotation_error_deg": 0.32940630571452256,
+          "measured_pitch_up_deg": 16.585220425916663,
+          "refreshed_from_simulator": true
+        },
+        "fusion_d435": {
+          "position_in_torso_m": [
+            0.25021959200487376,
+            -0.000921612728293758,
+            0.04664305513533933
+          ],
+          "configured_position_m": [
+            0.2521,
+            0.0,
+            0.074
+          ],
+          "position_error_m": 0.027436977540851164,
+          "rotation_error_deg": 0.5040237691783228,
+          "measured_pitch_up_deg": -20.16011247299246,
+          "refreshed_from_simulator": true
+        }
+      }
+    },
+    "summary": {
+      "frames": 55,
+      "decision_frames": 12,
+      "decision_frames_outside_c8_bounds": 0,
+      "all_frames_outside_c8_bounds": 0,
+      "fusion_ms": {
+        "min": 196.11,
+        "median": 237.35,
+        "p95": 254.12,
+        "max": 265.62,
+        "n": 55
+      },
+      "fusion_ms_over_c8_bound": 0,
+      "uncovered_fraction": {
+        "min": 0.009873,
+        "median": 0.010329,
+        "p95": 0.010892,
+        "max": 0.011123,
+        "n": 55
+      },
+      "head_fraction": {
+        "min": 0.772412,
+        "median": 0.772438,
+        "p95": 0.772484,
+        "max": 0.77249,
+        "n": 55
+      },
+      "head_region_mean_abs_err": {
+        "min": 1.162,
+        "median": 1.374,
+        "p95": 1.542,
+        "max": 1.557,
+        "n": 55
+      },
+      "d435_region_mean_abs_err": {
+        "min": 1.783,
+        "median": 2.072,
+        "p95": 2.207,
+        "max": 2.377,
+        "n": 55
+      },
+      "d435_self_occlusion_fraction": {
+        "min": 0.0,
+        "median": 0.0,
+        "p95": 0.0,
+        "max": 0.0,
+        "n": 55
+      }
+    }
+  },
+  "start_pose": {
+    "xyz": [
+      0.019327618181705475,
+      0.0046716053038835526,
+      0.30216050148010254
+    ],
+    "quat_wxyz": [
+      0.9993931651115417,
+      0.013952692039310932,
+      -0.028139423578977585,
+      0.015056691132485867
+    ]
+  },
+  "landmark_distance_at_start_m": {
+    "red_box": 3.980675123049738,
+    "blue_box": 3.887296186954506,
+    "green_box": 4.2881767780687605
+  },
+  "termination": "client_end",
+  "termination_detail": null,
+  "server_error": null,
+  "sim_seconds": 4.3,
+  "policy_steps": 215,
+  "requests": 45,
+  "images_sent": 12,
+  "clouds_sent": 44,
+  "final_xy": [
+    0.8330478668212891,
+    0.13823601603507996
+  ],
+  "final_pose_source": "current",
+  "final_distance_to_target_m": 3.7513894701791664,
+  "min_distance_to_target_m": 3.7434075326369567,
+  "landmark_distance_at_end_m": {
+    "red_box": 3.169967667023504,
+    "blue_box": 3.205247363845982,
+    "green_box": 3.7513894701791664
+  },
+  "watchdog_events": 0,
+  "sequence_gaps": 0,
+  "case_failed": false,
+  "case_failure_reason": null,
+  "clamp_policy_steps": 0,
+  "contact_monitor": {
+    "threshold_n": 75.0,
+    "required_substeps": 4,
+    "physics_dt_s": 0.005,
+    "history_newest_first": true,
+    "nonfoot_body_indices": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      6,
+      7,
+      9,
+      10,
+      11,
+      13,
+      14,
+      15
+    ],
+    "nonfoot_body_names": [
+      "TORSO",
+      "FL_HIP",
+      "FL_THIGH",
+      "FL_SHANK",
+      "FR_HIP",
+      "FR_THIGH",
+      "FR_SHANK",
+      "HL_HIP",
+      "HL_THIGH",
+      "HL_SHANK",
+      "HR_HIP",
+      "HR_THIGH",
+      "HR_SHANK"
+    ],
+    "observed_control_steps": 215,
+    "observed_substeps": 860,
+    "maximum_nonfoot_force_n": 0.0,
+    "failed": false,
+    "failure": null,
+    "acquisition": "after_each_physics_substep_scene_update",
+    "contact_policy": "nonfoot_fatal",
+    "contact_detected": false,
+    "first_contact": null
+  },
+  "gpu_used_mib_at_end": 4198.0
+}

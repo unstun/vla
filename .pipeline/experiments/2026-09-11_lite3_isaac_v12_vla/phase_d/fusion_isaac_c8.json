@@ -1,0 +1,35 @@
+{
+  "name": "c8_fused_level_720_isaac",
+  "purpose": "Phase D.0f: the Habitat c8 two-mount fusion inside the Isaac lockstep server. The virtual camera is the episode's head_eval camera (level, 640x480, HFOV 79); the fused image replaces its ideal render in IMAGE_FRAME_V1, and the depth sent stays the ideal head_eval depth at the virtual pose, as in c8.",
+  "fused_camera_module": "fused_camera.py",
+  "fused_camera_sha256": "382eee6dfe7cd6928681f5358f59fd8718c8d7cf339d3d60975f83fd19c92676",
+  "fused_camera_source": ".pipeline/experiments/2026-09-08_dualvln_rented4090/public_scenes/requests/2026-09-10_lite3_camera_ablation/fused_camera.py (unmodified; manifest.sha256 line 30)",
+  "virtual": {"width": 640, "height": 480, "hfov": 79.0, "pitch_up": 0.0, "pos": [0.2721, 0.0, 0.054],
+              "basis": "the c8 evaluation view: level, 640x480, HFOV 79, at the built-in camera's optical centre. Width, height, HFOV and pitch must equal the episode's camera; the position replaces the episode camera's (0.27, 0, 0.09), so head_eval sits 0.036 m lower than in Phase C/D.0d/D.0e"},
+  "head": {
+    "name": "fusion_head",
+    "width": 1280, "height": 720, "hfov": 105.0, "pitch_up": 16.7, "pos": [0.2721, 0.0, 0.054],
+    "basis": "built-in (stock head) camera. Intrinsics and pitch measured on the robot 2026-09-11 (fx 490.1 / fy 486.7 at 1280x720, HFOV 105.1, optical axis +16.7 deg up), as c8. Position chosen by Dr Sun 2026-09-14: the c8 relative offset from the URDF D435i (the URDF has no built-in camera frame), i.e. 0.02 m in front of and 0.02 m below the D435i optical centre (c8: head [0, 0.40, -0.27], D435i [0, 0.42, -0.25]). The D435i sits on top, tilted down. The first D.0f config used the camera ablation's estimate (0.27, 0, 0.09), which put the D435i 0.016 m below this camera; runs phase_d_fused_scripted_preflight_v1/v2 used that wrong pose. The point is outside the V12 torso.STL, about 1.6 mm in front of the head's front face on the centreline"
+  },
+  "d435": {
+    "name": "fusion_d435",
+    "width": 1280, "height": 720, "hfov": 69.0, "pitch_up": -20.0, "pos": [0.2521, 0.0, 0.074],
+    "basis": "RealSense datasheet 337029-017 colour FOV H69 at 16:9, as c8. Pose: TORSO-frame d435i_depth_optical_frame from lite3_pro_sensor_rig_real_with_interface.urdf, sha256 d0a1be09f018c0ab31df26f69ad8e700bd88ec06ae5b0f4dfbcc4fddf21cec80 (read at machine-dog-nav .pipeline/experiments/2026-09-04_pct_scan_lite3_stairs/ubuntu_reproduction/2026-09-08_gpu5070ti_lite3_video/robot_asset/urdf/, untracked there; byte-identical copies in machine-dog artifacts/*/runtime_payload*/v17a4*/resources/lite3_sensor_rig/urdf/): sensor_carrier_joint xyz (0.219, 0, 0.061387) + d435i_body_joint xyz (0.013681366, 0, 0.019733659) rpy (0, 0.349065850399, 0) + d435i_depth_optical_joint xyz (0.0207, 0, 0) in the pitched body frame = (0.25213, 0, 0.07404), 20 deg down. Colour-aligned depth is modelled as one camera at the depth optical frame (the real colour imager sits about 15 mm to the side). With the built-in camera placed as above, this reproduces c8's relative transform (0.02 m behind and 0.02 m above the built-in camera). The transform is not measured on the robot."
+  },
+  "feather_rows": 8,
+  "depth_valid_max_m": 9.9,
+  "intrinsics_tolerance_px": 0.5,
+  "authored_mount_tolerance_m": 0.0001,
+  "authored_mount_tolerance_deg": 0.01,
+  "self_occlusion_max_depth_m": 0.2,
+  "save_first_images": 3,
+  "save_every_images": 10,
+  "preflight_bounds_from_habitat_c8": {
+    "source": "conditions.json preflight.fused, c8_fused_level_720",
+    "max_uncovered_fraction": 0.04,
+    "min_fraction_from_head": 0.7,
+    "max_mean_abs_err_head_region": 10.0,
+    "max_mean_abs_err_d435_region": 20.0,
+    "max_fusion_ms_per_frame": 300.0
+  }
+}

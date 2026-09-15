@@ -1,0 +1,48 @@
+# Nav2 collision_monitor (Jazzy 1.3.12, unmodified) configuration for the Lite3 lockstep loop, Phase D.0c.
+#
+# Parameter names and behaviour were checked against navigation2 jazzy f4108e5b1c2bce804a1aa0c7be6673a8eb4a1501:
+# collision_monitor_node.cpp (process, publishVelocity, stale source -> STOP), polygon.cpp (static `points`,
+# getCollisionTime), pointcloud.cpp (min/max_height in base frame), nav2_util twist_subscriber.hpp
+# (enable_stamped_cmd_vel).
+#
+# Footprint: the URDF leg-width rectangle from D.0a (x -0.269..0.279 m, y +-0.182 m, base_link), padded by 0.05 m for
+# the approach model and 0.03 m for the last-resort stop zone. D.0a measured leg-width clearance falling below 0.10 m
+# 1.06 s before the Phase C contact, so the approach horizon is 1.2 s.
+collision_monitor:
+  ros__parameters:
+    use_sim_time: True                 # time comes from the relay's /clock (simulation time)
+    enable_stamped_cmd_vel: True       # the relay matches each reply to its command by header stamp
+    base_frame_id: "base_link"
+    odom_frame_id: "odom"
+    cmd_vel_in_topic: "cmd_vel_in"
+    cmd_vel_out_topic: "cmd_vel_out"
+    state_topic: "collision_monitor_state"
+    transform_tolerance: 0.5
+    source_timeout: 0.35               # simulated seconds; a cloud older than 3.5 control ticks forces STOP
+    base_shift_correction: False       # cloud and command share the tick's simulation time; the cloud is in base_link
+    stop_pub_timeout: 100000.0         # keep publishing zero commands, so every tick gets a reply
+    polygons: ["FootprintApproach", "FootprintStop"]
+    FootprintApproach:
+      type: "polygon"
+      action_type: "approach"
+      points: "[[0.329, 0.232], [0.329, -0.232], [-0.319, -0.232], [-0.319, 0.232]]"
+      time_before_collision: 1.2
+      simulation_time_step: 0.05
+      min_points: 3
+      visualize: False
+      enabled: True
+    FootprintStop:
+      type: "polygon"
+      action_type: "stop"
+      points: "[[0.309, 0.212], [0.309, -0.212], [-0.299, -0.212], [-0.299, 0.212]]"
+      min_points: 3
+      visualize: False
+      enabled: True
+    observation_sources: ["lidar"]
+    lidar:
+      type: "pointcloud"
+      topic: "lidar/points"
+      min_height: -0.22                # base frame; base is about 0.30 m above the floor, which is already filtered
+      max_height: 0.45
+      use_global_height: False
+      enabled: True

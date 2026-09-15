@@ -1,0 +1,51 @@
+{
+  "purpose": "Which source bytes produced each Phase C run. Written at C.5 (2026-09-14) from upload-time hashes and a host re-hash; the runs themselves do not embed source hashes.",
+  "host": "rented4090, run root /home/ubuntu/vla-runs/2026-09-11_lite3_isaac_v12_vla (execution copy only)",
+  "sync_gate": {
+    "checked_utc": "2026-09-14",
+    "method": "sha256 of every file under the host's phase_c/ and tools/ and of the four host driver scripts, compared with the local files",
+    "result": "13 of 13 code files identical to local; the 2 host-only files are the DualVLN ablation hash lists (tools/*_ablation_runs_sha256.txt), not code"
+  },
+  "task_owned_source_sha256": {
+    "phase_c/lockstep_protocol.py": "624e90e24d4dbecfd8af0a5eda803ad33c14183d34a9f59c4dce6ba1a2aae4c6",
+    "phase_c/lockstep_common.py": "b39ca6a63801765e157c34eb0bc8589664f4b55394474d6359082e2f103e1e79",
+    "phase_c/isaac_lockstep_server.py": "87050d46481dd9e10cb1406195763da129052709d807658151d0bb562f6594ad",
+    "scripts/phase_c_run_episode.sh (host: phase_c_run_episode.sh)": "671340bd1bc83347ee386f1fea79b430374c4874f41d00e6dff6b9baa68d285e",
+    "phase_c/episodes/c_red_box_ahead_v1.json": "1491cc9f926dfe2788447c38ccc4d8c4bfda1982667422407807db41d233b8d8",
+    "phase_c/episodes/c_blue_box_left_v1.json": "97a60ce39ffb19cf32fb38d144233e7119fc7472399e8f0c8722808a758a7caf",
+    "phase_c/episodes/c_green_box_right_v1.json": "73f9f708f9f525b0c1544ec7305cb5ee3cfff1cac155fa9ed0522e61ecab0c21"
+  },
+  "client_revisions": {
+    "c4c9694cb5babbfb15c43ba1ec32cc81f08fb1b88469ad9cd98567b262775fd6": {
+      "runs": ["phase_c_smoke_scripted_v1", "phase_c_red_box_v1"],
+      "evidence": "hash printed by the 2026-09-14T07:16Z upload check (local = host); host file mtime 15:31+08:00 shows the replacement came after red_box_v1 ended (15:27+08:00)",
+      "recover": "patch -R a copy of phase_c/vla_lockstep_client.py with setup/phase_c_client_c4c9694c_to_f6aa3b43.diff; verified at C.5 to reproduce this sha256"
+    },
+    "f6aa3b43e24a4e4da99b476eefab205c67381e1f0a49a221ee4448585865cf65": {
+      "runs": ["phase_c_red_box_v2", "phase_c_red_box_v3", "phase_c_red_box_v4", "phase_c_blue_box_v1", "phase_c_green_box_v1"],
+      "evidence": "current local file; host copy identical at C.5; chain started 07:48:53Z, after the 07:31Z upload and the 07:48:41Z episode uploads"
+    },
+    "difference": "instrumentation only: System 2 / System 1 call counters (s2_calls, s1_calls) and a ScriptedAgent step_s2 stub. s2_called feeds only llm_output logging and the s2_cycles count; no command, timing or controller path changed."
+  },
+  "upstream_internnav": {
+    "pinned_commit": "7a5c62400ac45b313d9b709c740b64191556a242",
+    "local_snapshot": "references/upstream/2026-09-08_dualvln/source/InternNav",
+    "host_work_copy": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav",
+    "host_vs_snapshot": "336 .py files under internnav/ and scripts/realworld/: 333 identical; 3 differ and each equals the local DualVLN work copy (.pipeline/experiments/2026-09-08_dualvln_rented4090/work/InternNav): internnav/agent/__init__.py and internnav/model/encoder/__init__.py (setup/compatibility.patch of that experiment), internnav/habitat_extensions/vln/habitat_vln_evaluator.py (camera-ablation evaluator changes, recorded under public_scenes/requests/2026-09-10_lite3_camera_ablation). The evaluator is not imported on the Phase C path.",
+    "phase_c_path_sha256": {
+      "internnav/agent/internvla_n1_agent_realworld.py": "cad228681da047d431782a77f988a883bf3b1b2acd5219a26144849ea3638114",
+      "internnav/model/basemodel/internvla_n1/internvla_n1.py": "d7fa4cc86d6761fde5c578eacb50129e1cb82629e46c0ffb159355578ba0d422",
+      "internnav/model/utils/vln_utils.py": "cf51aafbd49b833d0264f09ad4cd4e4bb1b1fc8b9159f2b8fd771237fb6a04ac",
+      "scripts/realworld/controllers.py": "251522af6da05daee5279e07371b5f9ca319326e7097c0c7e5ae68e76217e408 (also enforced by the driver before every run)"
+    }
+  },
+  "model": {
+    "host_path": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/models/InternVLA-N1-DualVLN",
+    "checked": "config.json 1fb077026fda... and model.safetensors.index.json da61b859ff81... match .pipeline/experiments/2026-09-08_dualvln_rented4090/setup/original_weight_manifest.json",
+    "not_checked": "the four safetensors shards (16 GB) were not re-hashed at C.5",
+    "depth_anything": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/models/depth_anything_v2_metric_hypersim_vits.pth"
+  },
+  "locomotion_checkpoint": "model_149999.pt sha256 a9d31dce90e6e8c564d955e473d6d3502f893d7ef5a5c1efaf5bb50d6b3d5450, enforced by the driver before every run",
+  "vla_interpreter": "official_env_024 (Python 3.9, torch 2.6.0+cu124, transformers 4.51.0) + CasADi 3.7.2 from pydeps (setup/phase_c_pydeps.json)",
+  "isaac_image": "e01-walking-isaaclab:20260905"
+}

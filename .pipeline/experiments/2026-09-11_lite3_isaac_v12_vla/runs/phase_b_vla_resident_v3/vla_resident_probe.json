@@ -1,0 +1,55 @@
+{
+  "python": "3.9.23 | packaged by conda-forge | (main, Jun  4 2025, 17:57:12) \n[GCC 13.3.0]",
+  "torch": "2.6.0+cu124",
+  "pytorch_cuda_alloc_conf": "expandable_segments:True",
+  "identity": {
+    "internnav/agent/internvla_n1_agent_realworld.py": "cad228681da047d431782a77f988a883bf3b1b2acd5219a26144849ea3638114",
+    "internnav/model/basemodel/internvla_n1/internvla_n1.py": "d7fa4cc86d6761fde5c578eacb50129e1cb82629e46c0ffb159355578ba0d422"
+  },
+  "depth_anything_sha256": "b782898d8a3e8be1f639de33837ed85e9b4b73e40f8f5e5cd99067588d722545",
+  "model_path": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/models/InternVLA-N1-DualVLN",
+  "frame": {
+    "rgb": "/home/ubuntu/vla-runs/2026-09-11_lite3_isaac_v12_vla/runs/phase_b_dual720_hz0_v1/frame_d435i_rgb.npy",
+    "depth": "/home/ubuntu/vla-runs/2026-09-11_lite3_isaac_v12_vla/runs/phase_b_dual720_hz0_v1/frame_d435i_distance_to_image_plane.npy",
+    "hfov": 69.0,
+    "shape": [
+      720,
+      1280,
+      3
+    ],
+    "fx": 931.2057783503649
+  },
+  "plan_step_gap": 4,
+  "calls": [],
+  "error": {
+    "type": "OutOfMemoryError",
+    "message": "CUDA out of memory. Tried to allocate 20.00 MiB. GPU 0 has a total capacity of 23.52 GiB of which 16.69 MiB is free. Including non-PyTorch memory, this process has 23.49 GiB memory in use. Of the allocated memory 22.91 GiB is allocated by PyTorch, and 129.05 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+    "traceback": "_vla_resident_probe.py\", line 131, in main\n    result = agent.step(rgb, depth, np.eye(4), instruction, intrinsic, look_down=True)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/internnav/agent/internvla_n1_agent_realworld.py\", line 160, in step\n    trajectories = self.step_s1(self.output_latent, rgbs, depths)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/internnav/agent/internvla_n1_agent_realworld.py\", line 256, in step_s1\n    all_trajs = self.model.generate_traj(latent, rgb, depth)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/internnav/model/basemodel/internvla_n1/internvla_n1.py\", line 416, in generate_traj\n    noise_pred = self.get_model().traj_dit(\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/torch/nn/modules/module.py\", line 1739, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/torch/nn/modules/module.py\", line 1750, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/internnav/model/basemodel/internvla_n1/nextdit_crossattn_traj.py\", line 87, in forward\n    model_pred = self.model(\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/torch/nn/modules/module.py\", line 1739, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/torch/nn/modules/module.py\", line 1750, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/internnav/model/basemodel/internvla_n1/nextdit_traj.py\", line 352, in forward\n    hidden_states = layer(\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/torch/nn/modules/module.py\", line 1739, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/torch/nn/modules/module.py\", line 1750, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/internnav/model/basemodel/internvla_n1/nextdit_traj.py\", line 174, in forward\n    mlp_output = self.feed_forward(self.ffn_norm1(hidden_states) * (1 + scale_mlp.unsqueeze(1)))\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/torch/nn/modules/module.py\", line 1739, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/torch/nn/modules/module.py\", line 1750, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/lib/python3.9/site-packages/diffusers/models/normalization.py\", line 509, in forward\n    variance = hidden_states.to(torch.float32).pow(2).mean(-1, keepdim=True)\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 20.00 MiB. GPU 0 has a total capacity of 23.52 GiB of which 16.69 MiB is free. Including non-PyTorch memory, this process has 23.49 GiB memory in use. Of the allocated memory 22.91 GiB is allocated by PyTorch, and 129.05 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)\n"
+  },
+  "load_seconds": 36.27398896217346,
+  "after_load": {
+    "allocated_mib": 15990.447265625,
+    "reserved_mib": 16074.0,
+    "max_allocated_mib": 15990.447265625,
+    "max_reserved_mib": 16074.0,
+    "device_used_mib": 16466.1875,
+    "device_total_mib": 24080.875
+  },
+  "warmup_seconds": 1.3245735168457031,
+  "after_warmup": {
+    "allocated_mib": 16013.9423828125,
+    "reserved_mib": 16146.0,
+    "max_allocated_mib": 16104.51171875,
+    "max_reserved_mib": 16146.0,
+    "device_used_mib": 16620.1875,
+    "device_total_mib": 24080.875
+  },
+  "at_error": {
+    "allocated_mib": 23457.95068359375,
+    "reserved_mib": 23590.0,
+    "max_allocated_mib": 23460.95068359375,
+    "max_reserved_mib": 23590.0,
+    "device_used_mib": 24064.1875,
+    "device_total_mib": 24080.875
+  }
+}

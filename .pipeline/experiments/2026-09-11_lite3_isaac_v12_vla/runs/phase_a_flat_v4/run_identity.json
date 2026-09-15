@@ -1,0 +1,130 @@
+{
+  "acceptance_config_sha256": null,
+  "candidate": "V12 model_149999 fallback",
+  "checkpoint_sha256": "a9d31dce90e6e8c564d955e473d6d3502f893d7ef5a5c1efaf5bb50d6b3d5450",
+  "cloud_profile": "legacy_planner_v1",
+  "command_limits": [
+    0.75,
+    0.35,
+    1.0
+  ],
+  "command_schedule": [],
+  "config_sha256": "abd1a714d7b74f19be24e25b7054b10728a7f2b1d9bd3f3583fc762bd382b189",
+  "course": {
+    "name": "flat",
+    "obstacle_center_m": null,
+    "obstacle_size_m": null,
+    "office_goal_xy_m": null,
+    "office_route_path": null,
+    "office_route_sha256": null,
+    "office_start_xy_m": null,
+    "office_usd_path": null,
+    "office_usd_sha256": null
+  },
+  "device": "cuda:0",
+  "inference_policy": {
+    "class": "ActorCriticMoECTS",
+    "loader": "direct policy-only strict state_dict load",
+    "source": "modules/actor_critic_moe_cts.py",
+    "source_sha256": "dfad453ef494a82dde1bb3b65d4ad6f9628f4069308371b2b6e393311afb81b0",
+    "vendored_package": "source/rsl_rl/rsl_rl"
+  },
+  "mode": "qualification",
+  "policy_observation_contract": {
+    "command_history_length": 10,
+    "command_history_offset": 60,
+    "dimension": 450
+  },
+  "robot_asset": {
+    "asset_path": null,
+    "asset_sha256": null,
+    "canonical_asset_path": null,
+    "canonical_asset_sha256": null,
+    "mode": "legacy_v12_task_asset"
+  },
+  "schema_version": 1,
+  "seed": 42,
+  "sensor": {
+    "backend": "IsaacLab MultiMeshRayCaster LidarPatternCfg",
+    "channels": 16,
+    "declared_device": null,
+    "forest_geometry_filter": {
+      "cell_size_m": null,
+      "enabled": false,
+      "forbidden_inputs": [
+        "terrain_height_function",
+        "scene_prim_id",
+        "proxy_bounds",
+        "obstacle_label"
+      ],
+      "height_threshold_m": null,
+      "inputs": [
+        "rendered_hit_xyz_world",
+        "sensor_position_world"
+      ],
+      "minimum_neighbor_cells": null,
+      "neighbor_cells": null
+    },
+    "horizontal_resolution_degrees": 2.0,
+    "maximum_range_m": 12.0,
+    "minimum_range_m": 0.1,
+    "obstacle_return_classification": "finite hit above floor filter inside the only non-ground mesh bounds",
+    "parent_frame": "TORSO",
+    "pattern": null,
+    "pattern_mode": "uniform",
+    "period_seconds": 0.1,
+    "planner_floor_filter": {
+      "enabled": true,
+      "frame": "world",
+      "reason": "SCAN occupancy input excludes the traversable flat floor",
+      "remove_hits_at_or_below_z_m": 0.05
+    },
+    "pose_and_frame_stamp_alignment": "legacy sensor-period scheduling",
+    "raycast_targets": [
+      "/World/ground"
+    ],
+    "rays_per_scan": 2880,
+    "rotation_wxyz": [
+      0.9914448613738104,
+      0.0,
+      0.13052619222005157,
+      0.0
+    ],
+    "self_occlusion_links": [],
+    "self_occlusion_treatment": "not modelled by the legacy V12 sensor",
+    "translation_m": [
+      0.182399336,
+      0.0,
+      0.108541081
+    ],
+    "truth_pose": true,
+    "vertical_fov_degrees": [
+      -7.0,
+      52.0
+    ]
+  },
+  "source_commit": "8c3fdffa84b85be0704a10ea5b2533817d543822",
+  "task": "Wave-C-Stairs-V12-Lite3-v0",
+  "terrain": "flat at difficulty 0.0",
+  "video": {
+    "camera_eye_world": [
+      2.0,
+      -5.5,
+      3.2
+    ],
+    "camera_lookat_world": [
+      2.0,
+      0.0,
+      0.25
+    ],
+    "enabled": false,
+    "filename": null,
+    "fps": 25,
+    "frame_stride": 2,
+    "resolution": [
+      1280,
+      720
+    ]
+  },
+  "watchdog_seconds": 0.25
+}

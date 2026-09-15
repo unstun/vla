@@ -1,0 +1,80 @@
+
+Traceback (most recent call last):
+  File "<string>", line 20, in <module>
+PermissionError: [Errno 13] Permission denied: '/workspace/runs/phase_a_flat_v1/runtime_import_identity.json'
+There was an error running python
+== adapter exit 0 ==
+    import isaaclab.sim as sim_utils
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/sim/__init__.py", line 35, in <module>
+    from .views import *  # noqa: F401, F403
+    ^^^^^^^^^^^^^^^^^^^^
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/sim/views/__init__.py", line 8, in <module>
+    from .xform_prim_view import XformPrimView
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/sim/views/xform_prim_view.py", line 20, in <module>
+    from isaaclab.utils.warp import fabric as fabric_utils
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/utils/warp/__init__.py", line 9, in <module>
+    from .ops import convert_to_warp_mesh, raycast_dynamic_meshes, raycast_mesh, raycast_single_mesh
+  File "/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/utils/warp/ops.py", line 18, in <module>
+    wp.init()
+  File "/isaac-sim/extscache/omni.warp.core-1.8.2+lx64/warp/context.py", line 7407, in init
+    runtime = Runtime()
+              ^^^^^^^^^
+  File "/isaac-sim/extscache/omni.warp.core-1.8.2+lx64/warp/context.py", line 4111, in __init__
+    warp.build.init_kernel_cache(warp.config.kernel_cache_dir)
+  File "/isaac-sim/extscache/omni.warp.core-1.8.2+lx64/warp/build.py", line 134, in init_kernel_cache
+    os.makedirs(warp.config.kernel_cache_dir, exist_ok=True)
+  File "<frozen os>", line 215, in makedirs
+  File "<frozen os>", line 215, in makedirs
+  File "<frozen os>", line 225, in makedirs
+PermissionError: [Errno 13] Permission denied: '/workspace/home/.cache'
+
+2026-09-11T15:51:02Z [8,150ms] [Error] [carb.scripting-python.plugin] Exception: Extension python module: 'isaaclab_tasks' in '/isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab_tasks' failed to load.
+
+At:
+  /isaac-sim/kit/kernel/py/omni/ext/_impl/_internal.py(222): startup
+  /isaac-sim/kit/kernel/py/omni/ext/_impl/_internal.py(337): startup_extension
+  PythonExtension.cpp::startup()(2): <module>
+  /isaac-sim/exts/isaacsim.simulation_app/isaacsim/simulation_app/simulation_app.py(534): _start_app
+  /isaac-sim/exts/isaacsim.simulation_app/isaacsim/simulation_app/simulation_app.py(270): __init__
+  /isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/app/app_launcher.py(823): _create_app
+  /isaac-sim/kit/python/lib/python3.11/site-packages/isaaclab/source/isaaclab/isaaclab/app/app_launcher.py(131): __init__
+  /workspace/inputs/lite3_sim_bridge/lite3_sim_bridge/run_isaac_v12_fallback.py(6690): main
+  /workspace/inputs/lite3_sim_bridge/lite3_sim_bridge/run_isaac_v12_fallback.py(6700): <module>
+  <frozen runpy>(88): _run_code
+  <frozen runpy>(198): _run_module_as_main
+
+2026-09-11T15:51:02Z [8,150ms] [Error] [omni.ext.plugin] [ext: isaaclab_tasks-0.11.12] Failed to startup python extension.
+
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 575.57.08     | Graphics API: Vulkan
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|     |                                  |        |     |            | Bus-ID    |            |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GeForce RTX 4090          | Yes: 0 |     | 24564   MB | 10de      | 0          |
+|     |                                  |        |     |            | 2684      | 5c35a426.. |
+|     |                                  |        |     |            | 0         |            |
+|=============================================================================================|
+| OS: 24.04.2 LTS (Noble Numbat) ubuntu, Version: 24.04.2, Kernel: 5.15.0-113-generic
+| Processor: AMD EPYC 7543 32-Core Processor
+| Cores: 8 | Logical Cores: 16
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 64297 | Free Memory: 58595
+| Total Page/Swap (MB): 0 | Free Page/Swap: 0
+|---------------------------------------------------------------------------------------------|
+cat: '/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor': No such file or directory
+== unrelated containers unchanged? ==
+  identical
+== artifacts ==
+total 52
+drwxrwxr-x 2 ubuntu ubuntu  4096 Sep 11 23:51 .
+drwxrwxr-x 3 ubuntu ubuntu  4096 Sep 11 23:50 ..
+-rw-rw-r-- 1 ubuntu ubuntu 16461 Sep 11 23:51 adapter.log
+-rw-rw-r-- 1 ubuntu ubuntu    52 Sep 11 23:51 containers_after.txt
+-rw-rw-r-- 1 ubuntu ubuntu    52 Sep 11 23:50 containers_before.txt
+-rw-rw-r-- 1 ubuntu ubuntu     2 Sep 11 23:51 exit_code
+-rw-rw-r-- 1 ubuntu ubuntu   116 Sep 11 23:51 gpu_after.csv
+-rw-rw-r-- 1 ubuntu ubuntu   116 Sep 11 23:50 gpu_before.csv
+-rw-rw-r-- 1 ubuntu ubuntu   354 Sep 11 23:50 identity.log
+PHASE_A_RUN_DONE rc=0

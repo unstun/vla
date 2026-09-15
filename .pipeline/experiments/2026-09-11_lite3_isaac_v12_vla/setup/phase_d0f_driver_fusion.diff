@@ -1,0 +1,143 @@
+--- a/scripts/phase_d_run_vla_episode.sh
++++ b/scripts/phase_d_run_vla_episode.sh
+@@ -6,6 +6,11 @@
+ #   env: VLA_WALL_LIMIT  seconds, default 3600
+ #        VLA_SIM=fake VLA_AGENT=scripted   CPU rehearsal of this driver: the fake simulator (phase_c/fake_lockstep_server.py)
+ #                                          and the Phase C client's scripted agent, through the same node and relay
++#        VLA_SCRIPT=a,b,...,stop           scripted agent only: the client's --script (entries look_down, straight, left,
++#                                          stop; must end with stop). Default: the client's own script
++#        VLA_FUSION=c8                     Phase D.0f (Dr Sun 2026-09-14): the server sends the two-mount fused image
++#                                          (--fusion-config phase_d/fusion_isaac_c8.json); Isaac only. After the episode
++#                                          phase_d/fusion_recompute_check.py runs in the same image (CPU, no network)
+ #
+ # Phase C's episode driver (scripts/phase_c_run_episode.sh) with three changes and nothing else:
+ #   1. the Isaac lockstep server runs with --lidar-cloud (SENSOR_FRAME_V1 every reply, server b976284d);
+@@ -26,6 +31,15 @@
+ AGENT=${VLA_AGENT:-internvla}
+ case $SIM in isaac|fake) ;; *) echo "unknown sim: $SIM" >&2; exit 64 ;; esac
+ case $AGENT in internvla|scripted) ;; *) echo "unknown agent: $AGENT" >&2; exit 64 ;; esac
++SCRIPT_ARGS=()
++if [[ -n ${VLA_SCRIPT:-} ]]; then
++  [[ $AGENT == scripted ]] || { echo "VLA_SCRIPT needs the scripted agent" >&2; exit 64; }
++  [[ $VLA_SCRIPT =~ ^((look_down|straight|left),)*stop$ ]] || { echo "bad script" >&2; exit 64; }
++  SCRIPT_ARGS=(--script "$VLA_SCRIPT")
++fi
++FUSION=${VLA_FUSION:-}
++case $FUSION in '') ;; c8) [[ $SIM == isaac ]] || { echo "fusion needs the Isaac simulator" >&2; exit 64; } ;;
++  *) echo "unknown fusion: $FUSION" >&2; exit 64 ;; esac
+ 
+ ROOT=${VLA_RUN_ROOT:-$HOME/vla-runs/2026-09-11_lite3_isaac_v12_vla}
+ INPUTS=$ROOT/inputs
+@@ -55,6 +69,18 @@
+   "$ENV/lib/nav2_collision_monitor/collision_monitor" "$MM"; do
+   [[ -e $required ]] || { echo "required input missing: $required" >&2; exit 66; }
+ done
++FUSION_FILES=()
++ISAAC_FUSION_ARGS=()
++if [[ $FUSION == c8 ]]; then
++  FUSION_FILES=("$ROOT/tools/fused_camera.py" "$ROOT/phase_d/isaac_fusion.py" "$ROOT/phase_d/fusion_isaac_c8.json"
++                "$ROOT/phase_d/fusion_recompute_check.py")
++  for required in "${FUSION_FILES[@]}"; do
++    [[ -e $required ]] || { echo "required input missing: $required" >&2; exit 66; }
++  done
++  FC=$(sha256sum "$ROOT/tools/fused_camera.py" | awk '{print $1}')
++  [[ $FC == 382eee6dfe7cd6928681f5358f59fd8718c8d7cf339d3d60975f83fd19c92676 ]] || { echo "fused_camera.py is not the pinned file" >&2; exit 65; }
++  ISAAC_FUSION_ARGS=(--fusion-config /workspace/phase_d/fusion_isaac_c8.json)
++fi
+ [[ -e $OUT ]] && { echo "run output already exists; refusing to overwrite evidence: $OUT" >&2; exit 73; }
+ 
+ CK=$(sha256sum "$INPUTS/checkpoint/model_149999.pt" | awk '{print $1}')
+@@ -87,9 +113,10 @@
+ export ROS_LOG_DIR=$OUT/ros_logs
+ sha256sum "$ROOT"/phase_c/{isaac_lockstep_server,fake_lockstep_server,vla_lockstep_client,lockstep_protocol,lockstep_common}.py \
+   "$ROOT"/phase_d/{collision_monitor_relay.py,collision_monitor_lite3.yaml} "$ROOT/phase_c/episodes/$EPISODE" \
+-  "$CONTROLLERS/controllers.py" "$0" > "$OUT/executed_source_sha256.txt"
++  "$CONTROLLERS/controllers.py" "$ROOT/tools/phase_b_camera_probe.py" "$0" ${FUSION_FILES[@]+"${FUSION_FILES[@]}"} \
++  > "$OUT/executed_source_sha256.txt"
+ printf '%q ' "$0" "$RUN_ID" "$EPISODE" > "$OUT/command.txt"
+-echo "VLA_SIM=$SIM VLA_AGENT=$AGENT" >> "$OUT/command.txt"
++echo "VLA_SIM=$SIM VLA_AGENT=$AGENT VLA_FUSION=$FUSION VLA_SCRIPT=${VLA_SCRIPT:-}" >> "$OUT/command.txt"
+ nvidia-smi --query-gpu=name,memory.total,memory.used,utilization.gpu --format=csv > "$OUT/gpu_before.csv"
+ sudo docker ps --format '{{.Names}} {{.Image}} {{.Status}}' > "$OUT/containers_before.txt"
+ df -Pk "$ROOT" > "$OUT/disk_before.txt"
+@@ -124,6 +151,10 @@
+     sudo docker kill "$CONTAINER" > /dev/null 2>&1 || true
+     echo "container still running at driver exit; killed" > "$OUT/CONTAINER_KILLED_BY_DRIVER"
+   fi
++  if sudo docker ps --format '{{.Names}}' | grep -qx "$CONTAINER-recompute"; then
++    sudo docker kill "$CONTAINER-recompute" > /dev/null 2>&1 || true
++    echo "recompute container still running at driver exit; killed" > "$OUT/RECOMPUTE_CONTAINER_KILLED_BY_DRIVER"
++  fi
+   sleep 1
+   for pid in $CLIENT_PID $RELAY_PID $NODE_PID; do
+     [[ -n $pid ]] && kill -KILL -- "-$pid" 2>/dev/null || true
+@@ -160,7 +191,7 @@
+       -e HOME=/workspace/home -e PYTHONPATH="$PYPATH" \
+       -e OMNI_KIT_ACCEPT_EULA=YES -e PRIVACY_CONSENT=N -e KMP_DUPLICATE_LIB_OK=TRUE \
+       --entrypoint /isaac-sim/python.sh "$IMAGE" \
+-      /workspace/phase_c/isaac_lockstep_server.py --lidar-cloud \
++      /workspace/phase_c/isaac_lockstep_server.py --lidar-cloud ${ISAAC_FUSION_ARGS[@]+"${ISAAC_FUSION_ARGS[@]}"} \
+         --episode "/workspace/phase_c/episodes/$EPISODE" \
+         --output-dir "/workspace/runs/$RUN_ID/isaac" \
+         --checkpoint /workspace/inputs/checkpoint/model_149999.pt \
+@@ -182,7 +213,7 @@
+     --episode "$ROOT/phase_c/episodes/$EPISODE" \
+     --output-dir "$OUT/client" \
+     --port "$RELAY_PORT" \
+-    --agent "$AGENT" \
++    --agent "$AGENT" ${SCRIPT_ARGS[@]+"${SCRIPT_ARGS[@]}"} \
+     --internnav-root "$INTERNNAV" \
+     --model-path "$DUALVLN/models/InternVLA-N1-DualVLN" \
+     --depth-anything "$DUALVLN/models/depth_anything_v2_metric_hypersim_vits.pth" \
+@@ -216,6 +247,16 @@
+ fi
+ wait "$ISAAC_PID"; ISAAC_RC=$?
+ kill -TERM -- "-$NODE_PID" 2>/dev/null; wait "$NODE_PID"; NODE_PID=
++RECOMPUTE_RC=none
++if [[ $FUSION == c8 ]]; then
++  # Same image as the server (same numpy and cv2), CPU only, no network: re-fuse the saved inputs bit for bit and check
++  # that the client's first decision frame is the fused image.
++  sudo timeout --kill-after=30 600 docker run --rm --name "$CONTAINER-recompute" --network none \
++    -v "$ROOT:/workspace" --entrypoint /isaac-sim/python.sh "$IMAGE" \
++    /workspace/phase_d/fusion_recompute_check.py --run-dir "/workspace/runs/$RUN_ID" --tools-dir /workspace/tools \
++    > "$OUT/fusion_recompute_check.log" 2>&1
++  RECOMPUTE_RC=$?
++fi
+ set -e
+ kill "$SAMPLER" 2>/dev/null || true
+ 
+@@ -223,12 +264,12 @@
+ nvidia-smi --query-gpu=name,memory.total,memory.used,utilization.gpu --format=csv > "$OUT/gpu_after.csv"
+ sudo docker ps --format '{{.Names}} {{.Image}} {{.Status}}' > "$OUT/containers_after.txt"
+ df -Pk "$ROOT" > "$OUT/disk_after.txt"
+-echo "$ISAAC_RC $RELAY_RC $CLIENT_RC" > "$OUT/exit_codes"
++echo "$ISAAC_RC $RELAY_RC $CLIENT_RC $RECOMPUTE_RC" > "$OUT/exit_codes"
+ 
+ "$PY" - "$OUT/isaac/frames" <<'EOF' > "$OUT/video.log" 2>&1 || true
+ import sys, glob, cv2
+ frames = sys.argv[1]
+-for name in ('chase', 'head'):
++for name in ('chase', 'head', 'fused'):
+     paths = sorted(glob.glob('{}/{}_*.jpg'.format(frames, name)))
+     if not paths:
+         continue
+@@ -257,14 +298,16 @@
+         return {}
+ i, c, r = (load(out / 'isaac' / 'isaac_episode.json') or load(out / 'sim' / 'fake_episode.json'),
+            load(out / 'client' / 'client_episode.json'), load(out / 'relay' / 'relay_episode.json'))
++f = (i.get('fusion') or {}).get('summary') or {}
+ print('isaac_termination={} client_termination={} success={} stopped={} final_distance_m={} min_distance_m={} sim_s={} '
+-      'decisions={} relay_changed={} relay_no_reply={} relay_end={!r} leftover={}'.format(
++      'decisions={} relay_changed={} relay_no_reply={} relay_end={!r} fusion_frames={} fusion_decision_frames_outside_c8={} '
++      'leftover={}'.format(
+     i.get('termination'), c.get('termination'), c.get('success'), c.get('stopped_by_model'),
+     None if i.get('final_distance_to_target_m') is None else round(i['final_distance_to_target_m'], 3),
+     None if i.get('min_distance_to_target_m') is None else round(i['min_distance_to_target_m'], 3),
+     None if i.get('sim_seconds') is None else round(i['sim_seconds'], 2), c.get('decisions'),
+     r.get('commands_changed_by_monitor'), r.get('monitor_no_reply_ticks'), r.get('end_reason'),
+-    (out / 'LEFTOVER_PROCESSES').exists()))
++    f.get('frames'), f.get('decision_frames_outside_c8_bounds'), (out / 'LEFTOVER_PROCESSES').exists()))
+ EOF
+ )
+-echo "PHASE_D_VLA_DONE sim=$SIM agent=$AGENT isaac_rc=$ISAAC_RC relay_rc=$RELAY_RC client_rc=$CLIENT_RC $SUMMARY"
++echo "PHASE_D_VLA_DONE sim=$SIM agent=$AGENT fusion=${FUSION:-none} isaac_rc=$ISAAC_RC relay_rc=$RELAY_RC client_rc=$CLIENT_RC recompute_rc=$RECOMPUTE_RC $SUMMARY"

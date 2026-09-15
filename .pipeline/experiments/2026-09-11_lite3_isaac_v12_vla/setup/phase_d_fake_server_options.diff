@@ -1,0 +1,103 @@
+--- phase_c/fake_lockstep_server.py sha256 4130f18b (Phase C tests)
++++ phase_c/fake_lockstep_server.py with Phase D.0c options
+@@ -4,6 +4,11 @@
+ and freshness checks and the 250 ms watchdog are the production code. The robot is a first-order unicycle
+ (tau 0.15 s on v and w), and the image is synthetic. It exists to test the client, the protocol and the
+ controllers without a GPU; it says nothing about locomotion.
++
++Phase D.0c options, both off by default: `--lidar-cloud` appends a SENSOR_FRAME_V1 to every reply, with points sampled on
++the landmark boxes' vertical faces and filtered by the pinned adapter's `world_hits_to_sensor_points` (no occlusion);
++`--footprint-contact` ends the episode when the URDF leg-width footprint (scripts/phase_d0_footprint_clearance.py)
++overlaps a box, instead of the crude centre-distance test.
+ """
+ 
+ import argparse
+@@ -25,6 +30,10 @@
+ TAU_S = 0.15
+ 
+ 
++def episode_landmarks(path):
++    return load_episode(path)['landmarks']
++
++
+ def main(argv=None):
+     parser = argparse.ArgumentParser()
+     parser.add_argument('--episode', type=Path, required=True)
+@@ -32,9 +41,31 @@
+     parser.add_argument('--bridge-source', type=Path, required=True, help='lite3_sim_bridge source root')
+     parser.add_argument('--port', type=int, required=True)
+     parser.add_argument('--client-timeout-s', type=float, default=60.0)
++    parser.add_argument('--lidar-cloud', action='store_true')
++    parser.add_argument('--footprint-contact', action='store_true')
+     args = parser.parse_args(argv)
+     sys.path.insert(0, str(args.bridge_source))
+     from lite3_sim_bridge.command_state import CommandLimits, LatestCommandState
++    from lite3_sim_bridge.isaac_adapter_core import world_hits_to_sensor_points
++    import importlib.util
++    spec = importlib.util.spec_from_file_location('footprint', HERE.parent / 'scripts' / 'phase_d0_footprint_clearance.py')
++    footprint = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(footprint)
++    legs = footprint.rectangle(*footprint.FOOTPRINTS['legs'])
++    boxes = [footprint.rectangle(i['center'][0] - i['size'][0] / 2, i['center'][0] + i['size'][0] / 2,
++                                 i['center'][1] - i['size'][1] / 2, i['center'][1] + i['size'][1] / 2)
++             for i in episode_landmarks(args.episode)]
++    face_points = []
++    for item in episode_landmarks(args.episode):
++        (cx, cy), (sx, sy) = item['center'][:2], item['size'][:2]
++        corners = [(cx - sx / 2, cy - sy / 2), (cx + sx / 2, cy - sy / 2), (cx + sx / 2, cy + sy / 2), (cx - sx / 2, cy + sy / 2)]
++        for (ax, ay), (bx, by) in zip(corners, corners[1:] + corners[:1]):
++            n = max(1, int(round(math.hypot(bx - ax, by - ay) / 0.05)))
++            for k in range(n):
++                for z in (0.1, 0.3, 0.5, 0.7):
++                    face_points.append((ax + (bx - ax) * k / n, ay + (by - ay) * k / n, z))
++    sensor_offset = (0.182399336, 0.0, 0.108541081)   # the adapter's default --sensor-translation on TORSO
++    min_clearance = math.inf
+ 
+     episode = load_episode(args.episode)
+     target = landmark(episode, episode['target_landmark'])
+@@ -93,10 +124,17 @@
+                                   'applied': [applied.vx, applied.wz], 'stale': snapshot.stale,
+                                   'reason': snapshot.reason, 'watchdog_events': snapshot.watchdog_events,
+                                   'xy': [x, y], 'yaw': yaw}) + '\n')
+-            for item in episode['landmarks']:
+-                if (abs(x - item['center'][0]) < item['size'][0] / 2 + 0.3
+-                        and abs(y - item['center'][1]) < item['size'][1] / 2 + 0.2):
++            if args.footprint_contact:
++                placed = footprint.place(legs, x, y, yaw)
++                clearance = min(footprint.signed_distance(placed, box)[0] for box in boxes)
++                min_clearance = min(min_clearance, clearance)
++                if clearance <= 0.0:
+                     termination = 'nonfoot_contact'
++            else:
++                for item in episode['landmarks']:
++                    if (abs(x - item['center'][0]) < item['size'][0] / 2 + 0.3
++                            and abs(y - item['center'][1]) < item['size'][1] / 2 + 0.2):
++                        termination = 'nonfoot_contact'
+             if termination is None and sim_ns >= max_sim_ns:
+                 termination = 'max_sim_time'
+             if termination:
+@@ -122,13 +160,23 @@
+                 images, sim_ns, width, height, (fx, fx, width / 2, height / 2),
+                 (x + 0.27 * math.cos(yaw), y + 0.27 * math.sin(yaw), 0.40), (0.0, 0.0, math.sin(half), math.cos(half)),
+                 rgb.tobytes(), depth.tobytes())))
++        if args.lidar_cloud and termination is None:
++            sensor_xyz = (x + sensor_offset[0] * math.cos(yaw), y + sensor_offset[0] * math.sin(yaw),
++                          0.31 + sensor_offset[2])
++            sensor_wxyz = (math.cos(yaw / 2), 0.0, 0.0, math.sin(yaw / 2))
++            points = world_hits_to_sensor_points(face_points, sensor_xyz, sensor_wxyz, 0.10, 12.0, minimum_world_z=0.05)
++            count, data = lp.pack_xyz_points(points)
++            send(lp.MessageType.SENSOR_FRAME_V1, lp.encode_sensor_payload(lp.SensorFrameV1(
++                (x, y, 0.31), (0.0, 0.0, math.sin(half), math.cos(half)), sensor_xyz,
++                (0.0, 0.0, sensor_wxyz[3], sensor_wxyz[0]), bytes(32), count, data)))
+         if termination:
+             break
+     log.close()
+     (out / 'fake_episode.json').write_text(json.dumps({
+         'termination': termination, 'sim_seconds': sim_ns / 1e9, 'requests': requests, 'images': images,
+         'final_xy': [x, y], 'final_distance_to_target_m': horizontal_distance((x, y), target['center']),
+-        'watchdog_events': state.snapshot(sim_ns).watchdog_events}, indent=2) + '\n')
++        'watchdog_events': state.snapshot(sim_ns).watchdog_events,
++        'min_leg_footprint_clearance_m': min_clearance if args.footprint_contact else None}, indent=2) + '\n')
+     connection.close()
+     server.close()
+     return 0

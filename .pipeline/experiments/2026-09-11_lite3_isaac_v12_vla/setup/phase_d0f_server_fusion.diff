@@ -1,0 +1,248 @@
+--- a/phase_c/isaac_lockstep_server.py
++++ b/phase_c/isaac_lockstep_server.py
+@@ -16,6 +16,11 @@
+ Phase D.0c (`--lidar-cloud`, off by default so Phase C behaviour is unchanged): the pinned adapter's own 360-degree
+ `navigation_lidar` (MultiMeshRayCaster, MID-360-like pattern) also ray-casts the landmark boxes, and every reply ends with
+ a SENSOR_FRAME_V1 built exactly as the adapter builds it (`world_hits_to_sensor_points`, floor filter, `pack_xyz_points`).
++
++Phase D.0f (`--fusion-config`, off by default): the stock head camera and the D435i are also rendered, and IMAGE_FRAME_V1
++carries their fusion by the camera ablation's unmodified `fused_camera.py` (via `phase_d/isaac_fusion.py`) in place of
++the ideal head_eval render. Depth stays the ideal head_eval depth, as in the Habitat c8 condition. Every fused frame is
++logged against the ideal render in `fusion_frames.jsonl`.
+ """
+ 
+ import argparse
+@@ -46,6 +51,8 @@
+     parser.add_argument('--client-timeout-s', type=float, default=300.0, help='wall time a paused simulator waits')
+     parser.add_argument('--lidar-cloud', action='store_true',
+                         help='Phase D.0c: add landmarks to the navigation LiDAR and send SENSOR_FRAME_V1 every reply')
++    parser.add_argument('--fusion-config', type=pathlib.Path,
++                        help='Phase D.0f: send the two-mount fused image instead of the ideal head_eval render')
+     args = parser.parse_args(argv)
+ 
+     sys.path.insert(0, str(args.tools_dir))
+@@ -58,6 +65,16 @@
+     out = args.output_dir
+     frames_dir = out / 'frames'
+     frames_dir.mkdir(parents=True, exist_ok=True)
++    fusion = fusion_config = None
++    eval_camera = episode['camera']
++    if args.fusion_config is not None:
++        # Config and module hash are checked before Kit starts, so a bad input cannot leave a half-started app behind.
++        sys.path.insert(0, str(HERE.parent / 'phase_d'))
++        import isaac_fusion
++        fusion_config = isaac_fusion.load_config(args.fusion_config, episode['camera'])
++        isaac_fusion.verify_module(args.tools_dir, fusion_config)
++        # The evaluation view moves to the built-in camera's optical centre (fusion config `virtual`).
++        eval_camera = isaac_fusion.virtual_spec(fusion_config, episode['camera'])
+ 
+     from lite3_sim_bridge import run_isaac_v12_fallback as v12
+     from lite3_sim_bridge.command_state import CommandLimits, LatestCommandState
+@@ -68,6 +85,7 @@
+     simulation_app = AppLauncher(headless=True, enable_cameras=True, device=args.device).app
+ 
+     import gymnasium as gym                                          # noqa: E402
++    import numpy as np                                               # noqa: E402
+     import torch                                                     # noqa: E402
+     from PIL import Image                                            # noqa: E402
+     import isaaclab.sim as sim_utils                                 # noqa: E402
+@@ -110,9 +128,23 @@
+                 'optical_forward_in_body': forward}
+ 
+     camera_record = {
+-        'head_eval': add_camera('head_eval', episode['camera'], ['rgb', 'distance_to_image_plane']),
++        'head_eval': add_camera('head_eval', eval_camera, ['rgb', 'distance_to_image_plane']),
+         'chase': add_camera('chase', episode['chase_camera'], ['rgb']),
+     }
++    if fusion_config is not None:
++        # The fusion needs the stock head camera (same optical centre as head_eval, pitched up) and the D435i colour
++        # plus colour-aligned z-depth; head_eval stays for the depth sent and as the ideal reference.
++        try:
++            fusion = isaac_fusion.IsaacFusion(fusion_config, eval_camera, args.tools_dir)
++        except Exception:  # noqa: BLE001 - close Kit instead of leaving it running without a server
++            (out / 'FUSION_SETUP_ERROR').write_text(traceback.format_exc())
++            print('FUSION_SETUP_ERROR\n' + traceback.format_exc(), flush=True)
++            simulation_app.close()
++            return 4
++        camera_record[fusion_config['head']['name']] = add_camera(
++            fusion_config['head']['name'], fusion_config['head'], ['rgb'])
++        camera_record[fusion_config['d435']['name']] = add_camera(
++            fusion_config['d435']['name'], fusion_config['d435'], ['rgb', 'distance_to_image_plane'])
+     for item in episode['landmarks']:
+         setattr(env_cfg.scene, 'landmark_' + item['name'], AssetBaseCfg(
+             prim_path='/World/ground/landmark_' + item['name'],
+@@ -150,6 +182,8 @@
+     contact = base_env.scene.sensors['contact_forces']
+     head = base_env.scene['head_eval']
+     chase = base_env.scene['chase']
++    fusion_head = base_env.scene[fusion_config['head']['name']] if fusion is not None else None
++    fusion_d435 = base_env.scene[fusion_config['d435']['name']] if fusion is not None else None
+     lidar = base_env.scene.sensors['navigation_lidar'] if args.lidar_cloud else None
+     if lidar is not None:
+         import hashlib
+@@ -201,6 +235,72 @@
+         set_command(0.0, 0.0, 0.0)
+         policy_step()
+ 
++    fusion_rows = []
++    fusion_log = None
++    fusion_dir = out / 'fusion'
++    fusion_cameras = []
++    if fusion is not None:
++        from isaaclab.utils.math import convert_camera_frame_orientation_convention  # noqa: E402
++        fusion_cameras = [('head_eval', head, fusion.virt, eval_camera),
++                          (fusion_config['head']['name'], fusion_head, fusion.head, fusion_config['head']),
++                          (fusion_config['d435']['name'], fusion_d435, fusion.d435, fusion_config['d435'])]
++
++    def record_live_readback(phase):
++        """Record only. CameraCfg.update_latest_camera_pose is False, so data.pos_w still holds the initialisation pose;
++        refresh through Isaac Lab's Fabric world-pose path, record against the TORSO link, then restore the buffers so
++        IMAGE_FRAME_V1 metadata stays as in Phase C/D. Preflights v1/v2 showed this readback cannot validate mounts."""
++        torso_id = robot.find_bodies(['TORSO'])[0][0]
++        torso_pos = robot.data.body_pos_w[0, torso_id].cpu().numpy()
++        torso_quat = robot.data.body_quat_w[0, torso_id].cpu().numpy()
++        for name, camera, _, spec in fusion_cameras:
++            stale_pos, stale_quat = camera.data.pos_w.clone(), camera.data.quat_w_world.clone()
++            camera._update_poses(camera._ALL_INDICES)
++            refreshed = not (torch.equal(stale_pos, camera.data.pos_w)
++                             and torch.equal(stale_quat, camera.data.quat_w_world))
++            fusion.record_live_readback(phase, name, spec, probe.camera_rotation(float(spec['pitch_up']))[0],
++                                        torso_pos, torso_quat, camera.data.pos_w[0].cpu().numpy(),
++                                        camera.data.quat_w_ros[0].cpu().numpy(), refreshed)
++            camera.data.pos_w[:] = stale_pos
++            camera.data.quat_w_world[:] = stale_quat
++
++    if fusion is not None:
++        # The fusion assumes ideal pinholes at the configured poses. Check both against what Isaac actually built: each
++        # camera's K, and the local pose authored on each camera prim relative to TORSO (USD xformOp translate/orient,
++        # OpenGL camera convention). Refuse to serve images if either disagrees.
++        problems = []
++        try:
++            for name, camera, cam, spec in fusion_cameras:
++                problems += fusion.check_intrinsics(name, cam, camera.data.intrinsic_matrices[0].cpu().numpy())
++                local_pos, local_quat = camera._view.get_local_poses()
++                # Same conversion, dtype and device as Camera.__init__ uses when it authors the offset.
++                expected_gl = convert_camera_frame_orientation_convention(
++                    torch.tensor(probe.camera_rotation(float(spec['pitch_up']))[0], dtype=torch.float32,
++                                 device='cpu').unsqueeze(0), origin='ros', target='opengl')[0]
++                problems += fusion.check_authored_mount(name, spec, expected_gl.numpy(), local_pos[0].cpu().numpy(),
++                                                        local_quat[0].cpu().numpy())
++        except Exception:  # noqa: BLE001 - a check that cannot run must not leave Kit up without a server
++            (out / 'FUSION_SETUP_ERROR').write_text(traceback.format_exc())
++            print('FUSION_SETUP_ERROR\n' + traceback.format_exc(), flush=True)
++            monitor.restore()
++            wrapped_env.close()
++            simulation_app.close()
++            return 4
++        try:
++            record_live_readback('start')
++        except Exception:  # noqa: BLE001 - record only
++            fusion.live_readback['start_error'] = traceback.format_exc()
++        if problems:
++            (out / 'FUSION_GEOMETRY_MISMATCH').write_text(json.dumps(
++                {'problems': problems, 'intrinsics': fusion.intrinsics, 'mounts_authored': fusion.mounts,
++                 'live_camera_pose_readback_record_only': fusion.live_readback}, indent=2) + '\n')
++            print('FUSION_GEOMETRY_MISMATCH ' + '; '.join(problems), flush=True)
++            monitor.restore()
++            wrapped_env.close()
++            simulation_app.close()
++            return 3
++        fusion_dir.mkdir(parents=True, exist_ok=True)
++        fusion_log = open(out / 'fusion_frames.jsonl', 'w')
++
+     def tensor3(value):
+         return tuple(float(v) for v in value[:3])
+ 
+@@ -215,9 +315,52 @@
+             angular_velocity_body=tensor3(robot.data.root_ang_vel_b[0]),
+             simulation_time_ns=clock['sim_ns'], state_sequence=sequence, run_epoch_ns=epoch,
+         )
++
++    def read_rgb(camera):
++        return camera.data.output['rgb'][0][..., :3].to(torch.uint8).contiguous().cpu().numpy()
++
++    fusion_cache = {}
++
++    def fused_view(kind, index):
++        """Fuse the current head and D435i renders into the head_eval view; log it against the ideal render.
++
++        The renders only change when the simulator steps, so a video frame and a decision image at the same simulated
++        time share one fusion (the decision row is marked `reused_fusion`).
++        """
++        key = (step_index, clock['sim_ns'])
++        if fusion_cache.get('key') == key:
++            ideal, head_rgb, d435_rgb, d435_depth, fused, coverage, base_row = fusion_cache['value']
++            row = dict(base_row, reused_fusion=True)
++        else:
++            ideal = read_rgb(head)
++            head_rgb = read_rgb(fusion_head)
++            d435_rgb = read_rgb(fusion_d435)
++            d435_depth = fusion_d435.data.output['distance_to_image_plane'][0][..., 0].to(
++                torch.float32).contiguous().cpu().numpy()
++            fused, coverage, base_row = fusion.fuse(head_rgb, d435_rgb, d435_depth, ideal)
++            fusion_cache.update(key=key, value=(ideal, head_rgb, d435_rgb, d435_depth, fused, coverage, base_row))
++            row = dict(base_row, reused_fusion=False)
++        row.update({'kind': kind, 'index': index, 'sim_ns': clock['sim_ns'], 'policy_step': step_index})
++        fusion_rows.append(row)
++        fusion_log.write(json.dumps(row) + '\n')
++        fusion_log.flush()
++        if kind == 'decision' and (index <= int(fusion_config['save_first_images'])
++                                   or index % int(fusion_config['save_every_images']) == 0):
++            # Lossless inputs and outputs, so fusion_recompute_check.py can reproduce the fused image bit for bit.
++            stem = fusion_dir / 'image_{:04d}'.format(index)
++            try:
++                Image.fromarray(ideal).save(str(stem) + '_ideal.png')
++                Image.fromarray(fused).save(str(stem) + '_fused.png')
++                Image.fromarray(coverage).save(str(stem) + '_coverage.png')
++                Image.fromarray(head_rgb).save(str(stem) + '_head.png')
++                Image.fromarray(d435_rgb).save(str(stem) + '_d435.png')
++                np.save(str(stem) + '_d435_depth_m.npy', d435_depth)
++            except OSError as error:  # not a client failure: surface it as a server error
++                raise RuntimeError('fusion evidence save failed: {!r}'.format(error)) from error
++        return fused
+ 
+     def image_frame(frame_id):
+-        rgb = head.data.output['rgb'][0][..., :3].to(torch.uint8).contiguous().cpu().numpy()
++        rgb = fused_view('decision', frame_id) if fusion is not None else read_rgb(head)
+         depth = head.data.output['distance_to_image_plane'][0][..., 0].to(torch.float32).contiguous().cpu().numpy()
+         k = head.data.intrinsic_matrices[0].cpu().numpy()
+         qw, qx, qy, qz = (float(v) for v in head.data.quat_w_ros[0])
+@@ -255,6 +398,8 @@
+             frames_dir / 'chase_{}.jpg'.format(stem), quality=90)
+         Image.fromarray(head.data.output['rgb'][0][..., :3].to(torch.uint8).cpu().numpy()).save(
+             frames_dir / 'head_{}.jpg'.format(stem), quality=90)
++        if fusion is not None:
++            Image.fromarray(fused_view('video', step_index)).save(frames_dir / 'fused_{}.jpg'.format(stem), quality=90)
+ 
+     start_xy = tensor3(robot.data.root_pos_w[0])[:2]
+     target = landmark(episode, episode['target_landmark'])
+@@ -265,6 +410,11 @@
+         'watchdog_seconds': v12_args.watchdog_seconds,
+         'collision_force_threshold_n': v12_args.collision_force_threshold,
+         'lidar': lidar_record,
++        'fusion': None if fusion is None else {
++            'config_path': str(args.fusion_config), 'config': fusion_config, 'geometry': fusion.geometry_record(),
++            'virtual_camera': eval_camera, 'intrinsics_measured': fusion.intrinsics,
++            'mounts_authored': fusion.mounts, 'live_camera_pose_readback_record_only': fusion.live_readback,
++        },
+         'start_pose': {'xyz': tensor3(robot.data.root_pos_w[0]),
+                        'quat_wxyz': [float(v) for v in robot.data.root_quat_w[0]]},
+         'landmark_distance_at_start_m': {item['name']: horizontal_distance(start_xy, item['center'])
+@@ -443,6 +593,17 @@
+         except OSError:
+             pass
+     steps_log.close()
++    if fusion_log is not None:
++        fusion_log.close()
++        try:
++            record_live_readback('end')
++        except Exception:  # noqa: BLE001 - record only
++            record['fusion']['live_readback_end_error'] = traceback.format_exc()
++        try:
++            record['fusion']['summary'] = isaac_fusion.summarise(
++                fusion_rows, fusion_config['preflight_bounds_from_habitat_c8'])
++        except Exception:  # noqa: BLE001 - the episode record must still be written
++            record['fusion']['summary_error'] = traceback.format_exc()
+     final_xyz = pose_before_reset if pose_before_reset is not None else tensor3(robot.data.root_pos_w[0])
+     final_xy = final_xyz[:2]
+     snapshot = state.snapshot(clock['sim_ns'])
