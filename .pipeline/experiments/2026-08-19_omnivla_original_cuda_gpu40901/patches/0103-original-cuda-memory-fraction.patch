@@ -1,0 +1,21 @@
+--- a/inference/run_omnivla.py
++++ b/inference/run_omnivla.py
+@@ -586,6 +586,18 @@
+     device_id = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+     torch.cuda.set_device(device_id)
+     torch.cuda.empty_cache()
++
++    # [local addition] Guard G2 for the shared execution host: upstream sets no
++    # allocator cap, so a run could grow into the GPU memory another user's job
++    # needs. This caps *our* process at a fraction of total device memory and
++    # makes the run fail (OOM) instead of the other job. CUDA only; the default
++    # 0.45 of 48 GiB is well above the ~16 GiB of weights this script loads.
++    if torch.cuda.is_available():
++        _frac = float(os.environ.get("OMNIVLA_CUDA_MEM_FRACTION", "0.45"))
++        torch.cuda.set_per_process_memory_fraction(_frac, device_id)
++        _total = torch.cuda.get_device_properties(device_id).total_memory
++        print(f"[local] cuda memory fraction cap: {_frac} "
++              f"({_frac * _total / 2**30:.2f} GiB of {_total / 2**30:.2f} GiB)")
+ 
+     print(
+         "Detected constants:\n"

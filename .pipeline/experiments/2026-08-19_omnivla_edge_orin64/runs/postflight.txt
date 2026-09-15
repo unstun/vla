@@ -1,0 +1,21 @@
+utc=2026-08-19T14:43:28Z
+runner_count=20 python3_total_not_task_specific
+22089 bash -c  set -eu ROOT=/home/nvidia/sun/vla_exec/2026-08-19_omnivla_edge_orin64 {   echo "utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"   echo "runner_count=$(pgrep -x python3 | wc -l) python3_total_not_task_specific"   if pgrep -af "[r]un_omnivla_edge.py"; then echo task_runner=present; else echo task_runner=absent; fi   if pgrep -x tegrastats >/dev/null; then echo task_monitor=present; else echo task_monitor=absent; fi   du -sh "$ROOT"   df -hT /   ip -brief address show eth0   ip -brief address show wlP7p1s0   ip route   ping -c 1 -W 1 192.168.2.1 >/dev/null && echo lite3_ping=ok   if timeout 2 bash -c "</dev/tcp/192.168.2.1/22" 2>/dev/null; then echo lite3_ssh_port=ok; else echo lite3_ssh_port=failed; fi   if grep -RInE "MotionSDK|rospy|rclpy|cmd_vel|sendto\(|socket\.socket\(" "$ROOT/scripts" "$ROOT/work/OmniVLA/inference/run_omnivla_edge.py"; then echo static_receive_only_scan=failed; else echo static_receive_only_scan=ok; fi   cd "$ROOT"   sha256sum --check manifests/input_manifest.sha256 >/dev/null && echo input_manifest_125=ok } > "$ROOT/runs/postflight.txt" 
+task_runner=present
+task_monitor=absent
+763M	/home/nvidia/sun/vla_exec/2026-08-19_omnivla_edge_orin64
+Filesystem     Type  Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1 ext4  234G  207G   16G  93% /
+eth0             UP             192.168.1.5/24 fe80::3e6d:66ff:fe87:1506/64 
+wlP7p1s0         UP             192.168.2.70/24 fe80::e6f6:809:c287:55b1/64 
+default via 192.168.2.1 dev wlP7p1s0 proto dhcp metric 20600 
+default via 192.168.55.100 dev l4tbr0 metric 32766 linkdown 
+169.254.0.0/16 dev l4tbr0 scope link metric 1000 linkdown 
+172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1 linkdown 
+192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.5 metric 100 
+192.168.2.0/24 dev wlP7p1s0 proto kernel scope link src 192.168.2.70 metric 600 
+192.168.55.0/24 dev l4tbr0 proto kernel scope link src 192.168.55.1 linkdown 
+lite3_ping=ok
+lite3_ssh_port=ok
+static_receive_only_scan=ok
+input_manifest_125=ok

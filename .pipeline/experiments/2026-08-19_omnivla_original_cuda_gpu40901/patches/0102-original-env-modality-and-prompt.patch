@@ -1,0 +1,38 @@
+--- a/inference/run_omnivla.py
++++ b/inference/run_omnivla.py
+@@ -642,15 +642,30 @@
+ # ===============================================================
+ # Main Entry
+ # ===============================================================
++def envflag(name, default):
++    """[local addition] Read a boolean modality switch from the environment.
++
++    Upstream expects the user to hand-edit the flags below (README step 3:
++    "modify the settings around line 560"). The sweep needs the same switches
++    without editing the file between runs. Every default is the upstream
++    value, so an unset environment reproduces upstream behaviour exactly.
++    """
++    v = os.environ.get(name)
++    return default if v is None else v.strip().lower() in ("1", "true", "yes", "on")
++
++
+ if __name__ == "__main__":
+     # select modality
+-    pose_goal = False
+-    satellite = False
+-    image_goal = True
+-    lan_prompt = False
++    pose_goal = envflag("OMNIVLA_POSE_GOAL", False)
++    satellite = envflag("OMNIVLA_SATELLITE", False)
++    image_goal = envflag("OMNIVLA_IMAGE_GOAL", True)
++    lan_prompt = envflag("OMNIVLA_LAN_PROMPT", False)
++    print(f"[local] modality flags: pose_goal={pose_goal} satellite={satellite} "
++          f"image_goal={image_goal} lan_prompt={lan_prompt}")
+ 
+     # Goal definitions
+-    lan_inst_prompt = "move toward blue trash bin"
++    lan_inst_prompt = os.environ.get("OMNIVLA_PROMPT", "move toward blue trash bin")
++    print(f"[local] language prompt: {lan_inst_prompt!r}")
+     goal_lat, goal_lon, goal_compass = 37.8738930785863, -122.26746181032362, 0.0
+     goal_utm = utm.from_latlon(goal_lat, goal_lon)
+     goal_compass = -float(goal_compass) / 180.0 * math.pi

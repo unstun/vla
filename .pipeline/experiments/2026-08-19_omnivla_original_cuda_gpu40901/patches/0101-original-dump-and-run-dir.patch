@@ -1,0 +1,135 @@
+--- a/inference/run_omnivla.py
++++ b/inference/run_omnivla.py
+@@ -58,6 +58,68 @@
+     num_params = sum(p.numel() for p in module.parameters() if p.requires_grad)
+     print(f"# trainable params in {name}: {num_params}")
+ 
++# ---------------------------------------------------------------
++# [local addition] Remote-run evidence dump.
++# Upstream only renders a figure and prints two numbers; neither can be checked
++# numerically, and this task must also record the GPU memory the run actually
++# used. This writes already-computed values to JSON: it computes no model
++# quantity and is a no-op unless OMNIVLA_RUN_DIR is set.
++# ---------------------------------------------------------------
++MODALITY_NAMES = [
++    "satellite only", "pose and satellite", "satellite and image", "all",
++    "pose only", "pose and image", "image only", "language only",
++    "language and pose",
++]
++
++def dump_run_artifacts(run_dir, waypoints, goal_pose, metric_waypoint_spacing,
++                       waypoint_select, chosen_waypoint, linear_vel, angular_vel,
++                       linear_vel_limit, angular_vel_limit, modality_id, lan_inst,
++                       actions_dtype, forward_seconds):
++    if not run_dir:
++        return
++    os.makedirs(run_dir, exist_ok=True)
++    wp = np.asarray(waypoints, dtype=np.float64)
++    metric = wp.copy()
++    metric[:, :2] *= metric_waypoint_spacing
++    cuda = torch.cuda.is_available()
++    try:
++        attn = getattr(vla.config, "_attn_implementation", None)
++    except Exception:
++        attn = None
++    payload = {
++        "script": "inference/run_omnivla.py",
++        "modality_id": int(modality_id),
++        "modality_name": MODALITY_NAMES[int(modality_id)] if int(modality_id) < len(MODALITY_NAMES) else "unknown",
++        "language_instruction": lan_inst,
++        "metric_waypoint_spacing": float(metric_waypoint_spacing),
++        "waypoints_raw_shape": list(wp.shape),
++        "waypoints_raw": wp.tolist(),
++        "waypoints_metric": metric.tolist(),
++        "waypoint_select_index": int(waypoint_select),
++        "chosen_waypoint_metric": np.asarray(chosen_waypoint, dtype=np.float64).tolist(),
++        "goal_pose_normalized": np.asarray(goal_pose, dtype=np.float64).tolist(),
++        "linear_vel_pd_clipped": float(linear_vel),
++        "angular_vel_pd_clipped": float(angular_vel),
++        "linear_vel_limited": float(linear_vel_limit),
++        "angular_vel_limited": float(angular_vel_limit),
++        "all_finite": bool(np.isfinite(wp).all() and
++                           np.isfinite([linear_vel_limit, angular_vel_limit]).all()),
++        "actions_torch_dtype": str(actions_dtype),
++        "device": str(device_id),
++        "model_dtype": "torch.bfloat16",
++        "attn_implementation": attn,
++        "flash_attn_imported": "flash_attn" in sys.modules,
++        "peak_vram_allocated_bytes": int(torch.cuda.max_memory_allocated()) if cuda else None,
++        "peak_vram_reserved_bytes": int(torch.cuda.max_memory_reserved()) if cuda else None,
++        "cuda_memory_fraction_env": os.environ.get("OMNIVLA_CUDA_MEM_FRACTION"),
++        "vla_path": os.environ.get("OMNIVLA_ORIGINAL_PATH", "./omnivla-original"),
++        "forward_seconds": float(forward_seconds),
++    }
++    out = os.path.join(run_dir, "outputs.json")
++    with open(out, "w") as f:
++        json.dump(payload, f, indent=2)
++    print(f"[local] wrote {out}")
++
+ def init_module(
+     module_class: Type[nn.Module],
+     module_name: str,
+@@ -168,6 +230,7 @@
+         )
+ 
+         # Run forward pass
++        forward_start = time.time()   # [local] timing only
+         actions, modality_id = self.run_forward_pass(
+             vla=vla.eval(),
+             action_head=action_head.eval(),
+@@ -185,6 +248,7 @@
+             mode="train",
+             idrun=self.count_id,
+         )
++        forward_seconds = time.time() - forward_start   # [local] timing only
+         self.count_id += 1
+ 
+         waypoints = actions.float().cpu().numpy()
+@@ -241,6 +305,25 @@
+         )
+ 
+         print("linear angular", linear_vel_value_limit, angular_vel_value_limit)
++
++        # [local addition] raw numeric evidence for the remote CUDA run
++        dump_run_artifacts(
++            run_dir=os.environ.get("OMNIVLA_RUN_DIR"),
++            waypoints=waypoints[0],
++            goal_pose=goal_pose_loc_norm,
++            metric_waypoint_spacing=metric_waypoint_spacing,
++            waypoint_select=waypoint_select,
++            chosen_waypoint=chosen_waypoint,
++            linear_vel=linear_vel_value,
++            angular_vel=angular_vel_value,
++            linear_vel_limit=linear_vel_value_limit,
++            angular_vel_limit=angular_vel_value_limit,
++            modality_id=modality_id.cpu().numpy()[0],
++            lan_inst=lan_inst,
++            actions_dtype=actions.dtype,
++            forward_seconds=forward_seconds,
++        )
++
+         return linear_vel_value_limit, angular_vel_value_limit
+ 
+     # ----------------------------
+@@ -481,7 +564,9 @@
+ # ===============================================================
+ class InferenceConfig:
+     resume: bool = True
+-    vla_path: str = "./omnivla-original"
++    # [local addition] the checkpoint lives outside the working copy on the
++    # execution host; unset, this is the upstream literal "./omnivla-original".
++    vla_path: str = os.environ.get("OMNIVLA_ORIGINAL_PATH", "./omnivla-original")
+     resume_step: Optional[int] = 120000    
+     #vla_path: str = "./omnivla-finetuned-cast"    
+     #resume_step: Optional[int] = 210000
+@@ -577,7 +662,9 @@
+ 
+     # Run inference
+     inference = Inference(
+-        save_dir="./inference",
++        # [local addition] keep each run's figure in its own artifact directory
++        # instead of overwriting inference/1_ex.jpg in the tree.
++        save_dir=os.environ.get("OMNIVLA_RUN_DIR") or "./inference",
+         lan_inst_prompt=lan_inst_prompt,
+         goal_utm=goal_utm,
+         goal_compass=goal_compass,

@@ -1,0 +1,35 @@
+=== gpu40901 route ===
+default via 192.168.31.1 dev wlx500ff5f99a03 proto dhcp metric 500 
+169.254.0.0/16 dev wlp128s20f3 scope link metric 1000 
+192.168.2.0/24 dev wlp128s20f3 proto kernel scope link src 192.168.2.109 metric 2000 
+192.168.31.0/24 dev wlx500ff5f99a03 proto kernel scope link src 192.168.31.39 metric 500 
+=== gpu40901 wifi ===
+wlx500ff5f99a03:wifi:connected:Xiaomi_USB_2G
+wlp128s20f3:wifi:connected:Lite3_5G
+p2p-dev-wlp128s20f3:wifi-p2p:disconnected:
+p2p-dev-wlx500ff5f99a03:wifi-p2p:disconnected:
+enp130s0:ethernet:unavailable:
+lo:loopback:unmanaged:
+=== task listener/process ===
+State Recv-Q Send-Q Local Address:Port Peer Address:PortProcess
+=== unrelated GPU jobs ===
+567931, 5257 MiB, /home/ubuntu/ljh/carla/CARLA_0.9.16/CarlaUE4/Binaries/Linux/CarlaUE4-Linux-Shipping
+703242, 8936 MiB, /home/ubuntu/miniconda3/envs/isaaclab/bin/python
+=== gpu40901 FRP services/processes ===
+  frpc.service                  loaded active running frp client
+  frpc2.service                 loaded active running frp client (backup tunnel)
+720675 /usr/local/bin/frpc -c /etc/frp/frpc2.toml
+720913 /usr/local/bin/frpc -c /etc/frp/frpc.toml
+750030 bash -c set -e; ROOT=/home/ubuntu/sun/vla_exec/2026-08-19_omnivla_lite3_receive_only; SOCKET=$ROOT/runtime/ssh/lite3.sock; { echo "=== gpu40901 route ==="; ip route; echo "=== gpu40901 wifi ==="; nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device status; echo "=== task listener/process ==="; ss -ltnp "sport = :8765" || true; pgrep -af "[d]eploy.omnivla_lite3_receive_only.server" || true; echo "=== unrelated GPU jobs ==="; nvidia-smi --query-compute-apps=pid,used_memory,name --format=csv,noheader; echo "=== gpu40901 FRP services/processes ==="; systemctl --no-pager --type=service --state=running 2>/dev/null | grep -i frp || true; pgrep -afi "[f]rp" || true; echo "=== Lite3 SSH and route ==="; ssh -S "$SOCKET" user@192.168.2.1 "echo lite3_ssh_ok; ip route"; echo "=== Lite3 camera and FRP ==="; ssh -S "$SOCKET" user@192.168.2.1 "ps -eo pid,ppid,user,args | grep -E \"[s]tart_stream.sh|[g]st-launch|[r]tsp-simple|[f]rp\" || true"; } | tee "$ROOT/verify/post_real_noninterference.txt"; cd "$ROOT"; find runs/real_original logs verify env -type f -print0 | sort -z | xargs -0 sha256sum > verify/evidence_manifest.sha256; echo manifest_entries=$(wc -l < verify/evidence_manifest.sha256)
+750031 bash -c set -e; ROOT=/home/ubuntu/sun/vla_exec/2026-08-19_omnivla_lite3_receive_only; SOCKET=$ROOT/runtime/ssh/lite3.sock; { echo "=== gpu40901 route ==="; ip route; echo "=== gpu40901 wifi ==="; nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device status; echo "=== task listener/process ==="; ss -ltnp "sport = :8765" || true; pgrep -af "[d]eploy.omnivla_lite3_receive_only.server" || true; echo "=== unrelated GPU jobs ==="; nvidia-smi --query-compute-apps=pid,used_memory,name --format=csv,noheader; echo "=== gpu40901 FRP services/processes ==="; systemctl --no-pager --type=service --state=running 2>/dev/null | grep -i frp || true; pgrep -afi "[f]rp" || true; echo "=== Lite3 SSH and route ==="; ssh -S "$SOCKET" user@192.168.2.1 "echo lite3_ssh_ok; ip route"; echo "=== Lite3 camera and FRP ==="; ssh -S "$SOCKET" user@192.168.2.1 "ps -eo pid,ppid,user,args | grep -E \"[s]tart_stream.sh|[g]st-launch|[r]tsp-simple|[f]rp\" || true"; } | tee "$ROOT/verify/post_real_noninterference.txt"; cd "$ROOT"; find runs/real_original logs verify env -type f -print0 | sort -z | xargs -0 sha256sum > verify/evidence_manifest.sha256; echo manifest_entries=$(wc -l < verify/evidence_manifest.sha256)
+=== Lite3 SSH and route ===
+lite3_ssh_ok
+default via 192.168.137.120 dev eth1 proto static metric 100 
+192.168.1.0/24 dev eth1 proto kernel scope link src 192.168.1.120 metric 100 
+192.168.2.0/24 dev p2p0 proto kernel scope link src 192.168.2.1 metric 600 
+192.168.137.0/24 dev eth1 proto kernel scope link src 192.168.137.120 metric 100 
+=== Lite3 camera and FRP ===
+    537       1 root     /bin/bash /home/ysc/rtsp_stream/start_stream.sh
+    538       1 root     /bin/bash /home/ysc/rtsp_stream/start_stream.sh
+    539     538 root     sudo gst-launch-1.0 v4l2src device=/dev/video0 ! image/jpeg, width=1280, height=720, framerate=30/1 ! jpegdec ! videoconvert ! mpph264enc ! rtspclientsink location=rtsp://127.0.0.1:8554/test latency=10
+    563     539 root     gst-launch-1.0 v4l2src device=/dev/video0 ! image/jpeg, width=1280, height=720, framerate=30/1 ! jpegdec ! videoconvert ! mpph264enc ! rtspclientsink location=rtsp://127.0.0.1:8554/test latency=10
