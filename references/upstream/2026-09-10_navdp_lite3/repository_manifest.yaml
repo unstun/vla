@@ -1,0 +1,27 @@
+topic: NavDP family for bounded Lite3 simulation
+date: 2026-09-10
+status: imported
+repositories:
+  - name: NavDP
+    canonical_url: https://github.com/InternRobotics/NavDP
+    default_branch: master
+    pinned_commit: bff5eb8857f50e082243fb455d312409daabc3aa
+    license: X-NavDP original subdirectory MIT; parent NavDP README CC BY-NC-SA 4.0; dependencies retain separate terms
+    project_page: https://yty-sky.github.io/x-navdp-project-page/
+    paper: https://arxiv.org/abs/2607.28560
+    robot_platforms: [Dingo, Unitree Go2, Unitree G1]
+    simulator: Isaac Sim 5.0.0 and Isaac Lab; local adaptation targets physical MuJoCo Lite3
+    sensors: [RGB, metric depth, local point goal, pose guidance]
+    locomotion_interface: predicted local trajectories to velocity controller
+    dependencies: [Python 3.11, PyTorch, diffusers, OpenCV, Flask]
+    model_or_dataset_links:
+      - https://huggingface.co/InternRobotics/X-NavDP/tree/7cee38a8d8308874d2b8488783c612f42060ac41
+    original_demo_command: bash eval/scripts/start_policy_server.sh --checkpoint checkpoints/x-navdp_posttrain.ckpt --embodiment quadruped
+    local_source_path: references/upstream/2026-09-10_navdp_lite3/source/NavDP
+    reproduction_status: original_cuda_inference_executed_and_integrated_in_task_owned_mujoco_lite3_screen
+    official_benchmark_reproduction: not_run
+    local_evidence: .pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/README.md
+selection:
+  authorization: Dr Sun requested try navdp and delete LightO
+  variant: X-NavDP explicitly selected by Dr Sun
+  source_of_truth: /Users/sun/tongbu/study/phdproject/vla

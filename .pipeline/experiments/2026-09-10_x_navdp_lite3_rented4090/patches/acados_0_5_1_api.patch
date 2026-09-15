@@ -1,0 +1,28 @@
+--- a/src/utils/mpc_tracking.py
++++ b/src/utils/mpc_tracking.py
+@@ -126,6 +126,7 @@
+ 
+         # Set acados path
+         acados_source_path = os.environ.get('ACADOS_SOURCE_DIR', '')
++        codegen_options = getattr(ocp, 'code_gen_opts', ocp)
+         if acados_source_path:
+             # acados_include_path is read-only and set automatically, don't set it
+             # Only set acados_lib_path through code_gen_opts if the path exists
+@@ -134,7 +135,7 @@
+             # Only set acados_lib_path if the path exists and contains link_libs.json
+             # Otherwise, let acados use its default auto-detected path
+             if os.path.exists(link_libs_json):
+-                ocp.code_gen_opts.acados_lib_path = acados_lib_path
++                codegen_options.acados_lib_path = acados_lib_path
+         # Create solver (unique for each N value)
+         # Use rank-specific dir to avoid JSON corruption when multiple DDP ranks generate simultaneously
+         rank = os.environ.get('RANK', os.environ.get('LOCAL_RANK', '0'))
+@@ -149,7 +150,7 @@
+         os.makedirs(code_gen_dir, exist_ok=True)
+         json_file = os.path.join(code_gen_dir, f'{model.name}_acados_ocp.json')
+         # Set code export directory to ensure files are generated in the correct location
+-        ocp.code_gen_opts.code_export_directory = code_gen_dir
++        codegen_options.code_export_directory = code_gen_dir
+         # Thread-safe check and creation of solver
+         with _solver_init_lock:
+             # Check if code already exists to avoid recompilation in parallel scenarios
