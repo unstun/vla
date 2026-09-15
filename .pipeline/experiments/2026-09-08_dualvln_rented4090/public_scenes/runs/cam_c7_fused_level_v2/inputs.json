@@ -1,0 +1,186 @@
+{
+  "run_id": "cam_c7_fused_level_v2",
+  "request_id": "2026-09-10_lite3_camera_ablation",
+  "condition": "c7_fused_level",
+  "launch_directory": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav",
+  "command": "CAM_YAML=public_scenes/configs/vln_cam_c7_fused_level.yaml CAM_RUN_DIR=public_scenes/runs/cam_c7_fused_level_v2 python scripts/eval/eval.py --config public_scenes/configs/habitat_dual_system_fused_cfg.py",
+  "python": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/official_env_024/bin/python",
+  "started_utc": "2026-09-11T06:45:28Z",
+  "input_sha256": {
+    "public_scenes/configs/habitat_dual_system_fused_cfg.py": "e5ac9656be02a597a5f97b5bb5e1555d5dee0896086ffe5807f3db2d4754f30c",
+    "public_scenes/configs/vln_cam_c7_fused_level.yaml": "0cd67b9c8829e7d5fffe14b0c6cca592caa69d55c52ca89d80f4686ef543b914",
+    "public_scenes/data/vln_ce/raw_data/public/val_unseen/val_unseen.json.gz": "49f1bff7e1623e312b303b4b938a2c821c015e8ebad001a66c01a0f72e597889",
+    "public_scenes/requests/2026-09-10_lite3_camera_ablation/conditions.json": "21bab3bff2e363258c7b74b6442d483e4b484468136cb49301a7c38e993b36c7",
+    "scripts/eval/eval.py": "95d46250bd99bfb0e78be562185ec1f255a6264b3d2af6c564c15a9fe6a63efc",
+    "internnav/habitat_extensions/vln/habitat_vln_evaluator.py": "a05268d5e4fac8ab6147d2c828e16ae76d413fe074d2e7f0f99e26ae6fcbf3e7",
+    "internnav/model/utils/vln_utils.py": "cf51aafbd49b833d0264f09ad4cd4e4bb1b1fc8b9159f2b8fd771237fb6a04ac",
+    "public_scenes/requests/2026-09-10_lite3_camera_ablation/fused_camera.py": "382eee6dfe7cd6928681f5358f59fd8718c8d7cf339d3d60975f83fd19c92676",
+    "public_scenes/requests/2026-09-10_lite3_camera_ablation/fused_camera_plugin.py": "584a18956a0ee3c2a077e043e30a5923defe756ec6bb2b89c530c568672b12d9",
+    "public_scenes/data/scene_data/public/skokloster-castle/skokloster-castle.glb": "b14e29e17f5e31d86a1002eefd77b7d345b265006481739ae480a847e6623f56",
+    "public_scenes/data/scene_data/public/skokloster-castle/skokloster-castle.navmesh": "1a9a5bd123af8001f0ea2c5c8d326cb3fd39808ca771fc766856af8f0772391d"
+  },
+  "preflight_report": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav/public_scenes/requests/2026-09-10_lite3_camera_ablation/preflight/c7_fused_level.json",
+  "resolved_camera_geometry": {
+    "rgb_sensor": {
+      "type": "HabitatSimRGBSensor",
+      "width": 640,
+      "height": 480,
+      "hfov": 79.0,
+      "position": [
+        0.0,
+        0.4,
+        -0.27
+      ],
+      "orientation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "uuid": "rgb"
+    },
+    "depth_sensor": {
+      "type": "HabitatSimDepthSensor",
+      "width": 640,
+      "height": 480,
+      "hfov": 79.0,
+      "position": [
+        0.0,
+        0.4,
+        -0.27
+      ],
+      "orientation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "uuid": "depth",
+      "min_depth": 0.0,
+      "max_depth": 10.0,
+      "normalize_depth": true
+    },
+    "fused_head_rgb_sensor": {
+      "type": "FusedHeadRGBSensor",
+      "width": 1280,
+      "height": 720,
+      "hfov": 105.0,
+      "position": [
+        0.0,
+        0.4,
+        -0.27
+      ],
+      "orientation": [
+        0.29147,
+        0.0,
+        0.0
+      ],
+      "uuid": "head_rgb"
+    },
+    "fused_d435_rgb_sensor": {
+      "type": "FusedD435RGBSensor",
+      "width": 640,
+      "height": 480,
+      "hfov": 55.0,
+      "position": [
+        0.0,
+        0.42,
+        -0.25
+      ],
+      "orientation": [
+        -0.3490658503988659,
+        0.0,
+        0.0
+      ],
+      "uuid": "d435_rgb"
+    },
+    "fused_d435_depth_sensor": {
+      "type": "FusedD435DepthSensor",
+      "width": 640,
+      "height": 480,
+      "hfov": 55.0,
+      "position": [
+        0.0,
+        0.42,
+        -0.25
+      ],
+      "orientation": [
+        -0.3490658503988659,
+        0.0,
+        0.0
+      ],
+      "uuid": "d435_depth",
+      "min_depth": 0.0,
+      "max_depth": 10.0,
+      "normalize_depth": false
+    },
+    "fused_rgb_sensor": {
+      "type": "FusedRGBSensor",
+      "uuid": "rgb",
+      "virtual_sensor_key": "rgb_sensor",
+      "head_sensor_key": "fused_head_rgb_sensor",
+      "d435_rgb_sensor_key": "fused_d435_rgb_sensor",
+      "d435_depth_sensor_key": "fused_d435_depth_sensor",
+      "feather_rows": 8,
+      "depth_valid_max_m": 9.9
+    },
+    "tilt_angle": 0.0,
+    "forward_step_size": 0.25,
+    "turn_angle": 15.0,
+    "agent_height": 1.5,
+    "agent_radius": 0.1,
+    "dataset": {
+      "type": "R2RVLN-v1",
+      "split": "val_unseen",
+      "scenes_dir": "public_scenes/data/scene_data/public",
+      "data_path": "public_scenes/data/vln_ce/raw_data/public/{split}/{split}.json.gz"
+    },
+    "actions": [
+      "look_down",
+      "look_up",
+      "move_forward",
+      "stop",
+      "turn_left",
+      "turn_right"
+    ],
+    "measurements": [
+      "distance_to_goal",
+      "oracle_navigation_error",
+      "oracle_success",
+      "spl",
+      "success"
+    ],
+    "max_episode_steps": 5000,
+    "lab_sensors": [
+      "compass_sensor",
+      "fused_rgb_sensor",
+      "gps_sensor",
+      "instruction_sensor"
+    ]
+  },
+  "preflight_measured_sensor_state": {
+    "rgb": {
+      "height_above_agent_m": 0.4,
+      "pitch_down_deg": -0.0,
+      "forward_offset_m": 0.27
+    },
+    "depth": {
+      "height_above_agent_m": 0.4,
+      "pitch_down_deg": -0.0,
+      "forward_offset_m": 0.27
+    },
+    "head_rgb": {
+      "height_above_agent_m": 0.4,
+      "pitch_down_deg": -16.7,
+      "forward_offset_m": 0.27
+    },
+    "d435_rgb": {
+      "height_above_agent_m": 0.42,
+      "pitch_down_deg": 20.0,
+      "forward_offset_m": 0.25
+    },
+    "d435_depth": {
+      "height_above_agent_m": 0.42,
+      "pitch_down_deg": 20.0,
+      "forward_offset_m": 0.25
+    }
+  }
+}

@@ -1,0 +1,88 @@
+--- a/DynaNav/behavior/nova_carter_test_ticvla.py
++++ b/DynaNav/behavior/nova_carter_test_ticvla.py
+@@ -257,6 +257,7 @@
+         self._backup_completion_frame = None  # Frame when backup completed (used to ensure we wait for inference that starts after this)
+         self._waiting_for_inference_after_backup = False  # Flag to wait for next inference after backup completes
+ 
++        self._demo = None
+         # Load TIC-VLA model
+         self._load_ticvla_model()
+         
+@@ -387,6 +388,9 @@
+     def on_stop(self):
+         """Called when simulation stops."""
+         print("[on_stop] Called")
++        if self._demo is not None:
++            self._demo.close()
++            self._demo = None
+         self._finalize_and_flush()
+         print("[on_stop] Completed successfully")
+ 
+@@ -489,12 +493,13 @@
+             return
+ 
+         self._camera_front_prim_path = "/World/Robots/Nova_Carter/chassis_link/front_hawk/left/camera_left"
+-        self._camera_tp_prim_path = "/World/Robots/Nova_Carter/chassis_link/third_person_view_cam"
++        from recording_camera import select_camera, recording_resolution
++        self._camera_tp_prim_path = select_camera(stage, "/World/Robots/Nova_Carter/chassis_link/third_person_view_cam")
+ 
+         # Create render products and attach annotators for any that exist
+         if self._camera_front_prim_path is not None:
+             try:
+-                self._rp_front = rep.create.render_product(self._camera_front_prim_path, resolution=(1920, 1080))
++                self._rp_front = rep.create.render_product(self._camera_front_prim_path, resolution=(960, 540))
+                 self._rgb_annotator_front = rep.AnnotatorRegistry.get_annotator("rgb")
+                 self._rgb_annotator_front.attach([self._rp_front])
+                 carb.log_info(f"Attached RGB annotator to front camera: {self._camera_front_prim_path}")
+@@ -503,7 +508,7 @@
+ 
+         if self._camera_tp_prim_path is not None:
+             try:
+-                self._rp_tp = rep.create.render_product(self._camera_tp_prim_path, resolution=(1920, 1080))
++                self._rp_tp = rep.create.render_product(self._camera_tp_prim_path, resolution=recording_resolution())
+                 self._rgb_annotator_tp = rep.AnnotatorRegistry.get_annotator("rgb")
+                 self._rgb_annotator_tp.attach([self._rp_tp])
+                 carb.log_info(f"Attached RGB annotator to third-person camera: {self._camera_tp_prim_path}")
+@@ -664,6 +669,12 @@
+ 
+         # Capture images from existing cameras
+         self._capture_camera_image()
++        if self._demo is None:
++            from demo_bridge import DemoBridge
++            self._demo = DemoBridge(self)
++        if self._demo.before_update(self):
++            self._demo.publish(self)
++            return
+ 
+         # Stuck detection and recovery logic (run BEFORE inference to prevent inference during backup)
+         # Only start stuck detection AFTER first inference completes (don't count the initial stationary period)
+@@ -1047,6 +1058,7 @@
+                     final_v = self._cmd_v
+                     final_w = self._cmd_w
+                 
++                final_v, final_w = self._demo.guard_command(final_v, final_w)
+                 action = self._diff.forward(command=np.array([final_v, final_w], dtype=np.float32))
+                 self._wheeled_robot.apply_wheel_actions(action)
+                 if self._frame_count % 3 == 0:
+@@ -1065,6 +1077,7 @@
+                 carb.log_error(traceback.format_exc())
+                 return
+ 
++        self._demo.publish(self, final_v, final_w)
+         # Stream data and log
+         self._stream_robot_data()
+ 
+@@ -1380,11 +1393,13 @@
+             return None, False, None
+ 
+         wps = waypoints[0].float().cpu().numpy()  # (T,2) body/FLU
++        self._demo.capture_plan(wps, robot_pose, current_step)
+         with open(os.path.join(self._log_directory, 'inference_audit.jsonl'), 'a') as audit:
+             audit.write(json.dumps({
+                 'wall_monotonic': time.monotonic(), 'simulation_frame': self._frame_count,
+                 'seconds': time.perf_counter() - audit_inference_started,
+                 'shape': list(waypoints.shape), 'finite': bool(np.isfinite(wps).all()),
++                'instruction': instruction,
+                 'cache_available': bool(kv_cache_available), 'waypoints': wps.tolist(),
+                 'cuda_allocated_bytes': torch.cuda.memory_allocated(),
+                 'cuda_reserved_bytes': torch.cuda.memory_reserved(),

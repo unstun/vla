@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TIC-VLA · 语音导航实验</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+<main>
+  <header><div><div class="eyebrow">VLA RESEARCH / INTERACTIVE DEMO</div><h1>说出目标，看见规划。</h1>
+    <p>医院场景 · Nova Carter · TIC-VLA</p></div>
+    <div class="session"><span id="connection" class="pill">尚未连接仿真</span><button id="start" class="outline">启动仿真</button></div></header>
+  <div class="workspace">
+    <section class="scene panel">
+      <div class="panel-title"><span>第三人称视角</span><span class="legend"><i class="cyan"></i>规划轨迹 <i class="orange"></i>实际路径</span></div>
+      <div class="scene-image"><img id="scene" alt="仿真第三人称实时画面" hidden><div id="placeholder"><div class="cross">＋</div><strong>场景准备就绪后，在这里看见机器人</strong><p>点击「启动仿真」，通常需要约一分钟。</p></div><div id="stale" hidden>画面已暂停更新 · 等待连接</div></div>
+      <div class="metrics"><div><span>运动状态</span><strong id="motion">等待启动</strong></div><div><span>线速度</span><strong id="velocity">—</strong></div><div><span>画面更新</span><strong id="frequency">—</strong></div><div><span>仿真帧</span><strong id="frame">—</strong></div></div>
+    </section>
+    <aside class="panel secondary"><div class="panel-title">机器人前视相机</div><div class="front-image"><img id="front" alt="机器人前视原始画面" hidden><span id="front-placeholder">等待相机</span></div>
+      <div class="panel-title map-title">路径俯视图 <span>米</span></div><svg id="map" viewBox="0 0 320 205" role="img" aria-label="规划与实际路径俯视图"><text x="160" y="108" text-anchor="middle" fill="#647681" font-size="13">等待轨迹</text></svg>
+    </aside>
+  </div>
+  <section class="panel command-panel">
+    <div class="command-heading"><div><h2>给机器人一个指令</h2><p id="asr-state">正在加载本机语音识别…</p></div><span class="scope">当前目标：自动售货机</span></div>
+    <div class="command-row"><button id="mic" class="mic" disabled><span class="mic-dot"></span><span id="mic-label">按住说话</span></button><input id="instruction" aria-label="导航指令" value="走到自动售货机前" maxlength="240"><button id="send" disabled>发送指令 <span>↗</span></button><button id="stop" class="stop" disabled>停下</button><button id="resume" class="outline" disabled>继续</button></div>
+    <div id="message" role="status" aria-live="polite">仿真启动后保持静止，收到指令才会出发。</div>
+    <div class="command-detail"><span>识别文字：<strong id="transcript">—</strong></span><span>模型指令：<strong id="model-instruction">—</strong></span></div>
+  </section>
+  <footer><span>青色为当前预测，橙色为已行驶路径。轨迹叠加不遮挡模型的原始视觉输入。</span><span>仅仿真 · 单次最长 10 分钟 · 语音在本机处理</span></footer>
+</main><script src="/app.js"></script></body></html>

@@ -1,0 +1,25 @@
+topic: navila_quantized_deployment
+date: 2026-09-08
+status: imported
+repositories:
+  - name: NaVILA
+    canonical_url: https://github.com/AnjieCheng/NaVILA
+    project_page: https://navila-bot.github.io/
+    license: Apache-2.0 code; checkpoint metadata does not declare separate terms
+    default_branch: main
+    pinned_commit: 76b98f233dd0fff05dfcd69435eec6740febff9d
+    paper: https://arxiv.org/html/2412.04453v2
+    robot_platforms: [Unitree Go2, Unitree H1, Booster T1]
+    simulator: Habitat / Isaac Lab
+    sensors: [RGB history]
+    locomotion_interface: spatial language action
+    dependencies: [Torch 2.3.0 upstream, Transformers 4.37.2, VILA]
+    model_or_dataset_links: [https://huggingface.co/a8cheng/navila-llama3-8b-8f]
+    model_revision: b2294e96581454468d6b94f38201f4f965ef48b7
+    original_install_command: ./environment_setup.sh navila
+    original_demo_command: bash scripts/eval/r2r.sh CKPT_PATH 1 0 "0"
+    local_source_path: source/NaVILA
+    reproduction_status: NF4 CUDA API inference and export/reload executed
+    evidence_paths:
+      - ../../../.pipeline/experiments/2026-09-08_navila_8b_quantized_5070ti/RESULT.md
+    notes: NF4 source entry point differs from paper AWQ; no closed-loop navigation result.

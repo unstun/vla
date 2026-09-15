@@ -1,0 +1,81 @@
+{
+  "finding": "The pinned InternNav Habitat eval configs are incompatible with habitat-lab 0.3.3.",
+  "evidence_method": "For each habitat-lab git tag: (1) HTTP status of habitat-lab/habitat/config/habitat/simulator/agents/rgbd_agent.yaml, (2) presence of `tilt_angle` and `action_space_config` as SimulatorConfig fields in habitat-lab/habitat/config/default_structured_configs.py.",
+  "internnav_config_requires": {
+    "hydra_group": "/habitat/simulator/agents@habitat.simulator.agents.main_agent: rgbd_agent",
+    "simulator_fields": [
+      "forward_step_size",
+      "turn_angle",
+      "tilt_angle",
+      "action_space_config"
+    ],
+    "source": "scripts/eval/configs/vln_r2r.yaml (also vln_rxr.yaml, instance_dialog.yaml, objectnav_hm3d.yaml)"
+  },
+  "tag_matrix": {
+    "v0.2.3": {
+      "agents/rgbd_agent.yaml": "HTTP 200",
+      "tilt_angle+action_space_config_in_SimulatorConfig": 2,
+      "verdict": "compatible"
+    },
+    "v0.2.4": {
+      "agents/rgbd_agent.yaml": "HTTP 200",
+      "tilt_angle+action_space_config_in_SimulatorConfig": 2,
+      "verdict": "compatible (action_space_config default 'v0', tilt_angle default 15)"
+    },
+    "v0.2.5": {
+      "agents/rgbd_agent.yaml": "HTTP 200",
+      "tilt_angle+action_space_config_in_SimulatorConfig": 1,
+      "verdict": "partial - tilt_angle moved to action configs, action_space_config dropped"
+    },
+    "v0.3.0": {
+      "agents/rgbd_agent.yaml": "HTTP 404",
+      "tilt_angle+action_space_config_in_SimulatorConfig": 1,
+      "verdict": "incompatible"
+    },
+    "v0.3.1": {
+      "agents/rgbd_agent.yaml": "HTTP 404",
+      "tilt_angle+action_space_config_in_SimulatorConfig": 1,
+      "verdict": "incompatible"
+    },
+    "v0.3.3": {
+      "agents/rgbd_agent.yaml": "HTTP 404",
+      "tilt_angle+action_space_config_in_SimulatorConfig": 1,
+      "verdict": "incompatible - the version built and tested this session"
+    }
+  },
+  "observed_failures_on_0_3_3_in_order": [
+    "MissingConfigException: Could not find 'habitat/simulator/agents/rgbd_agent' (node exists but under group 'habitat/simulator/sensor_setups')",
+    "ConfigKeyError: Key 'tilt_angle' not in 'SimulatorConfig' (relocated to look_up/look_down action configs, same default 15)",
+    "ConfigKeyError: Key 'action_space_config' not in 'SimulatorConfig' (removed after v0.2.4)"
+  ],
+  "conclusion": "habitat-lab v0.2.4 (or v0.2.3) is the version these configs were authored against. habitat-lab 0.3.3 was chosen this session only because it is the tag matching habitat-sim 0.3.3, which the repo also does not pin.",
+  "status": "DIAGNOSED, NOT VERIFIED END-TO-END. No habitat-lab v0.2.4 environment was built or run.",
+  "recommended_next_step": "Build an isolated env with habitat-sim 0.2.4 + habitat-lab v0.2.4 and re-run official_r2r/scripts/preflight_official.py against the faithful derived config. This is independent of the MP3D blocker and can be done before the data arrives.",
+  "repo_gap": "The pinned InternNav repo pins NO habitat-lab or habitat-sim version anywhere in requirements/ or setup.py extras; requirements/habitat_requirements.txt lists only model-side packages. This is a reproducibility gap in the upstream repository.",
+  "code_level_evidence": {
+    "symbol": "habitat.core.utils.try_cv2_import",
+    "imported_by": [
+      "internnav/habitat_extensions/vln/measures.py:9",
+      "internnav/habitat_extensions/vlln/measures.py:7"
+    ],
+    "why_required": "habitat_vln_evaluator.py imports internnav.habitat_extensions.vln.measures for Habitat registry side effects (its own comment says 'do not remove'), so this import cannot be skipped.",
+    "defined_in_habitat_lab": {
+      "v0.2.3": true,
+      "v0.2.4": true,
+      "v0.2.5": true,
+      "v0.3.0": true,
+      "v0.3.3": false
+    },
+    "observed_error": "ImportError: cannot import name 'try_cv2_import' from 'habitat.core.utils' (habitat-lab 0.3.3)"
+  },
+  "combined_conclusion": "Config evidence narrows to v0.2.3/v0.2.4 (agents/rgbd_agent group + tilt_angle + action_space_config on SimulatorConfig). Code evidence independently excludes v0.3.3 (try_cv2_import removed). The intersection is habitat-lab v0.2.3 or v0.2.4; v0.2.4 is the strongest candidate.",
+  "python_deps_also_missing_from_package_setup": {
+    "note": "The execution package's setup script installed model-side pins only. The official evaluator import chain additionally needs InternNav core_requirements packages.",
+    "installed_this_session_from_locally_fetched_wheels": [
+      "uvicorn",
+      "fastapi",
+      "msgpack-numpy"
+    ],
+    "reason_fetched_locally": "files.pythonhosted.org repeatedly timed out on the rented host."
+  }
+}

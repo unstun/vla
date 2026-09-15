@@ -1,0 +1,253 @@
+{
+  "all_stages_passed": true,
+  "first_blocker": null,
+  "launch_directory": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/work/InternNav",
+  "stages": [
+    {
+      "detail": {
+        "cuda_available": true,
+        "cuda_device": "NVIDIA GeForce RTX 4090",
+        "diffusers": "0.32.2",
+        "habitat_baselines": "0.2.4",
+        "habitat_lab": "0.2.4",
+        "habitat_lab_path": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/official_r2r/src/habitat-lab-024/habitat-lab/habitat/__init__.py",
+        "habitat_sim": "0.3.3",
+        "python": "3.9.23",
+        "torch": "2.6.0+cu124",
+        "transformers": "4.51.0"
+      },
+      "ok": true,
+      "stage": "official env versions"
+    },
+    {
+      "detail": {
+        "annotations": {
+          "exists": true,
+          "relative_to_launch_dir": "public_scenes/data/vln_ce/raw_data/public/val_unseen/val_unseen.json.gz",
+          "resolves_to": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/public_scenes/data/vln_ce/raw_data/public/val_unseen/val_unseen.json.gz"
+        },
+        "aux_depth_encoder": {
+          "exists": true,
+          "relative_to_launch_dir": "checkpoints/depth_anything_v2_metric_hypersim_vits.pth",
+          "resolves_to": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/models/depth_anything_v2_metric_hypersim_vits.pth"
+        },
+        "eval_config": {
+          "exists": true,
+          "relative_to_launch_dir": "public_scenes/configs/habitat_dual_system_public_cfg.py",
+          "resolves_to": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/public_scenes/configs/habitat_dual_system_public_cfg.py"
+        },
+        "habitat_yaml": {
+          "exists": true,
+          "relative_to_launch_dir": "public_scenes/configs/vln_public_scenes.yaml",
+          "resolves_to": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/public_scenes/configs/vln_public_scenes.yaml"
+        },
+        "model_checkpoint_config": {
+          "exists": true,
+          "relative_to_launch_dir": "checkpoints/InternVLA-N1-DualVLN/config.json",
+          "resolves_to": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/models/InternVLA-N1-DualVLN/config.json"
+        },
+        "scene_glb": {
+          "exists": true,
+          "relative_to_launch_dir": "public_scenes/data/scene_data/public/skokloster-castle/skokloster-castle.glb",
+          "resolves_to": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/public_scenes/data/scene_data/public/skokloster-castle/skokloster-castle.glb"
+        },
+        "scene_navmesh": {
+          "exists": true,
+          "relative_to_launch_dir": "public_scenes/data/scene_data/public/skokloster-castle/skokloster-castle.navmesh",
+          "resolves_to": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/public_scenes/data/scene_data/public/skokloster-castle/skokloster-castle.navmesh"
+        }
+      },
+      "ok": true,
+      "stage": "all paths resolve from the launch directory"
+    },
+    {
+      "detail": {
+        "MODEL_PATH_TO": "checkpoints",
+        "bytes": 99222290,
+        "resolved": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/models/depth_anything_v2_metric_hypersim_vits.pth"
+      },
+      "ok": true,
+      "stage": "auxiliary depth encoder at upstream relative MODEL_PATH_TO"
+    },
+    {
+      "detail": {
+        "habitat_vln_class": "HabitatVLNEvaluator",
+        "habitat_vln_module": "internnav.habitat_extensions.vln.habitat_vln_evaluator",
+        "registered_evaluators": [
+          "habitat_dialog",
+          "habitat_vln",
+          "vln_distributed"
+        ]
+      },
+      "ok": true,
+      "stage": "InternNav official evaluator imports (not swallowed)"
+    },
+    {
+      "detail": {
+        "env_settings": {
+          "config_path": "public_scenes/configs/vln_public_scenes.yaml"
+        },
+        "eval_settings": {
+          "dist_url": "env://",
+          "epoch": 0,
+          "max_steps_per_episode": 500,
+          "output_path": "public_scenes/runs/pending",
+          "port": "2333",
+          "save_video": true
+        },
+        "eval_type": "habitat_vln",
+        "model_settings": {
+          "max_new_tokens": 1024,
+          "mode": "dual_system",
+          "model_path": "checkpoints/InternVLA-N1-DualVLN",
+          "num_history": 8,
+          "resize_h": 384,
+          "resize_w": 384,
+          "vis_debug": true,
+          "vis_debug_path": "public_scenes/runs/pending/vis_debug"
+        }
+      },
+      "ok": true,
+      "stage": "derived eval config loads"
+    },
+    {
+      "detail": {
+        "action_space_config": "v1",
+        "actions": [
+          "look_down",
+          "look_up",
+          "move_forward",
+          "stop",
+          "turn_left",
+          "turn_right"
+        ],
+        "data_path": "public_scenes/data/vln_ce/raw_data/public/{split}/{split}.json.gz",
+        "dataset_type": "R2RVLN-v1",
+        "depth": {
+          "max": 10.0,
+          "min": 0.0
+        },
+        "forward_step_size": 0.25,
+        "max_episode_steps": 5000,
+        "measurements": [
+          "distance_to_goal",
+          "oracle_navigation_error",
+          "oracle_success",
+          "spl",
+          "success"
+        ],
+        "rgb": {
+          "h": 480,
+          "hfov": 79,
+          "position": [
+            0.0,
+            1.25,
+            0.0
+          ],
+          "w": 640
+        },
+        "scenes_dir": "public_scenes/data/scene_data/public",
+        "split": "val_unseen",
+        "success_distance": 3.0,
+        "tilt_angle": 15,
+        "turn_angle": 15
+      },
+      "ok": true,
+      "stage": "official habitat config composes"
+    },
+    {
+      "detail": {
+        "bytes": 1162,
+        "episodes": [
+          {
+            "episode_id": 1,
+            "geodesic_distance": 12.073848724365234,
+            "goal_radius": 3.0,
+            "instruction": "Turn right and walk past the long dark wooden table. Go straight on into the next room with the tall bright windows. Stop near the high-backed chairs standing between the windows.",
+            "scene_id": "skokloster-castle/skokloster-castle.glb"
+          },
+          {
+            "episode_id": 2,
+            "geodesic_distance": 11.472402572631836,
+            "goal_radius": 3.0,
+            "instruction": "Turn left and walk into the large hall with the painted ceiling. Cross the checkered stone floor towards the big paintings of men on horseback. Stop in front of the row of striped chairs under those paintings.",
+            "scene_id": "skokloster-castle/skokloster-castle.glb"
+          }
+        ],
+        "n_episodes": 2,
+        "path": "public_scenes/data/vln_ce/raw_data/public/val_unseen/val_unseen.json.gz",
+        "sha256": "49f1bff7e1623e312b303b4b938a2c821c015e8ebad001a66c01a0f72e597889"
+      },
+      "ok": true,
+      "stage": "frozen public annotations load"
+    },
+    {
+      "detail": [
+        {
+          "matches_manifest": true,
+          "path": "public_scenes/data/scene_data/public/skokloster-castle/skokloster-castle.glb",
+          "sha256": "b14e29e17f5e31d86a1002eefd77b7d345b265006481739ae480a847e6623f56",
+          "verified_against_upstream_lfs": true
+        },
+        {
+          "matches_manifest": true,
+          "path": "public_scenes/data/scene_data/public/skokloster-castle/skokloster-castle.navmesh",
+          "sha256": "1a9a5bd123af8001f0ea2c5c8d326cb3fd39808ca771fc766856af8f0772391d",
+          "verified_against_upstream_lfs": false
+        },
+        {
+          "matches_manifest": true,
+          "path": "public_scenes/data/scene_data/public/van-gogh-room/van-gogh-room.glb",
+          "sha256": "24570d71c3ca9802e8642aa7ecd2479eb7fdda5b925259e27d9aa59760f39e84",
+          "verified_against_upstream_lfs": true
+        },
+        {
+          "matches_manifest": true,
+          "path": "public_scenes/data/scene_data/public/van-gogh-room/van-gogh-room.navmesh",
+          "sha256": "0d0b50ceb92882aca27e02a4f3db2a0d0d10ed5271de075f04bf6bcb56ab15ab",
+          "verified_against_upstream_lfs": false
+        }
+      ],
+      "ok": true,
+      "stage": "scene assets match the download manifest"
+    },
+    {
+      "detail": {
+        "depth_min_max_normalised": [
+          0.0,
+          0.9799302220344543
+        ],
+        "depth_shape": [
+          480,
+          640,
+          1
+        ],
+        "first_episode_id": 1,
+        "first_scene_id": "public_scenes/data/scene_data/public/skokloster-castle/skokloster-castle.glb",
+        "initial_distance_to_goal": 12.073848724365234,
+        "metrics_keys": [
+          "distance_to_goal",
+          "oracle_navigation_error",
+          "oracle_success",
+          "spl",
+          "success"
+        ],
+        "n_episodes_loaded": 2,
+        "observation_keys": [
+          "compass",
+          "depth",
+          "gps",
+          "instruction",
+          "rgb"
+        ],
+        "rgb_shape": [
+          480,
+          640,
+          3
+        ]
+      },
+      "ok": true,
+      "stage": "habitat.Env constructs and resets"
+    }
+  ]
+}

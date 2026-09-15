@@ -1,0 +1,184 @@
+{
+  "request_id": "2026-09-10_lite3_camera_ablation",
+  "status": "round6_dispatched",
+  "trellis_task": ".trellis/tasks/09-10-internvla-n1-camera-ablation-sim",
+  "parent_task": ".trellis/tasks/09-10-lite3-camera-height-internvla-n1",
+  "purpose": "Measure how InternVLA-N1 DualVLN behaves under Lite3-motivated camera geometries in the official InternNav evaluator on the two frozen skokloster-castle episodes, against the recorded baseline, to recommend keeping, raising, or re-pitching the Lite3 camera mount.",
+  "authorization": {
+    "granted_by": "Dr Sun",
+    "date": "2026-09-10",
+    "scope": "Bounded pretrained simulation only: at most 20 supervised evaluator runs of 1,800 s each on rented4090. No training, no fine-tuning, no robot actuation, no changes to model or evaluator logic, no new episodes, no stopping of unrelated processes.",
+    "dispatch": "Dr Sun (2026-09-10) authorized dispatch to an Opus subagent from the lead session; the subagent executes the package on rented4090.",
+    "round4": "Dr Sun, 2026-09-10: 'Go ahead and implement it in simulation first. Keep the cam' (read by the lead as: keep the built-in head camera as the deployment camera and run the confirmatory simulation pair; same per-run limits as rounds 1-3); ten additional supervised runs of at most 1,800 s (cam_c5_head_level_v1..v5, cam_c6_head_down15_v1..v5)",
+    "round5": "Dr Sun, 2026-09-11: 'Simulate the fused camera first' (after the lead's fusion assessment proposing about ten runs); ten additional supervised runs of at most 1,800 s (cam_c7_fused_level_v1..v5, cam_c8_fused_level_720_v1..v5); same limits as rounds 1-4; the fusion is a config-level habitat-lab plugin (three rendered sensors + a task sensor overriding rgb), no model or evaluator source edits",
+    "round6": "Dr Sun, 2026-09-11: 'Run C9 with the virtual camera 9 degrees down' (after the lead reported that c8 enters the success radius 10/10 and fails only on stop timing, and that the fused virtual camera's pitch is free inside the covered band); five additional supervised runs of at most 1,800 s (cam_c9_fused_down9_v1..v5); same limits as rounds 1-5; the only code change is relaxing the level-only guard on the virtual camera plus a preflight floor-depth formula correction, no fusion maths, model or evaluator source edits"
+  },
+  "conditions_file": "conditions.json",
+  "baseline": {
+    "run_ids": [
+      "public_eval_v1",
+      "public_eval_v2",
+      "public_eval_v3",
+      "public_eval_v4",
+      "public_eval_v5"
+    ],
+    "episode_1_success": "3/5",
+    "episode_2_success": "2/5",
+    "all_runs_ended_on_learned_stop": true,
+    "reused_not_rerun": true
+  },
+  "pinned": {
+    "internnav_commit": "7a5c62400ac45b313d9b709c740b64191556a242",
+    "checkpoint": "InternRobotics/InternVLA-N1-DualVLN@a698a9e898b4001621a319e1bc89f02ec715cc86",
+    "habitat_test_scenes_revision": "910c783fb954da8497ea5f811b843a76590ddddc",
+    "annotation_sha256": "49f1bff7e1623e312b303b4b938a2c821c015e8ebad001a66c01a0f72e597889",
+    "evaluator_sha256_baseline_v2_to_v5": "a05268d5e4fac8ab6147d2c828e16ae76d413fe074d2e7f0f99e26ae6fcbf3e7",
+    "environment": "official_r2r/official_env_024 (Habitat-Lab 0.2.4, Habitat-Sim 0.3.3)"
+  },
+  "execution": {
+    "runs_per_condition": 5,
+    "max_runs": 30,
+    "deadline_seconds_per_run": 1800,
+    "evaluator_step_cap": 500,
+    "order": "condition-major",
+    "seeding": "unchanged from baseline (numpy only; torch unseeded)",
+    "round4": {
+      "conditions": [
+        "c5_head_level",
+        "c6_head_down15"
+      ],
+      "runs": 10,
+      "status": "executed_lead_accepted",
+      "dispatched_utc": "2026-09-10T15:33:00Z"
+    },
+    "round5": {
+      "conditions": [
+        "c7_fused_level",
+        "c8_fused_level_720"
+      ],
+      "runs": 10,
+      "status": "c7 and c8 executed_lead_accepted",
+      "dispatched_utc": "2026-09-11T06:33:49Z",
+      "eval_config": "public_scenes/configs/habitat_dual_system_fused_cfg.py",
+      "preflight": "preflight_fused.py",
+      "plugin": "public_scenes/requests/2026-09-10_lite3_camera_ablation/fused_camera_plugin.py",
+      "local_self_test": "test_fused_camera.py PASSED 2026-09-11 after the static-check fixes (synthetic exact render; PSNR 32-36 dB; uncovered 6.1 % / 1.3 %)",
+      "static_check": "trellis-check agent vs habitat-lab v0.2.4 sources, 2026-09-11: 2 critical + 2 medium + 4 low findings, all fixed (see local_validation.txt)",
+      "c7_result": "0/10 (ep1 0/5 oracle 0; ep2 0/5 oracle 5); accepted 2026-09-11, see review/LEAD_REVIEW.md round-5 addendum",
+      "round5b": {
+        "condition": "c8_fused_level_720",
+        "runs": 5,
+        "dispatched_utc": "2026-09-11T07:22:47Z",
+        "bound": "max_fusion_ms_per_frame 300 (measured 226.5)",
+        "status": "executed_lead_accepted (executor stopped mid-round; lead ran steps 5-7)"
+      },
+      "c8_result": "2/10 (ep1 2/5 oracle 5; ep2 0/5 oracle 5); accepted 2026-09-11, see review/LEAD_REVIEW.md round-5b addendum"
+    }
+  },
+  "deliverables": [
+    "preflight/<cond>.json and start-frame PNGs for all four conditions",
+    "public_scenes/runs/cam_<cond>_v<k>/ with inputs.json, progress.json, result.json, trace_0/, vis_0/, vis_debug/, environment.json, gpu_samples_every_5s.csv, exit.json",
+    "runs/cam_<cond>_v<k>/ supervisor records (meta.json, stdout.log, stderr.log, process.json)",
+    "matrix_log.jsonl",
+    "condition_summary.json and condition_summary.md",
+    "ffprobe_frame_counts.json for every returned MP4",
+    "manifest.sha256 verified locally",
+    "OPUS_RETURN.md"
+  ],
+  "claim_boundary": "Official evaluator on custom public-scene tasks under named camera conditions. Effect sizes between conditions only; not R2R, not a reproduction of any published score, not seeded, cannot conclusively attribute failures to System 1 or System 2.",
+  "dispatch": {
+    "dispatched_utc": "2026-09-10T09:40:26Z",
+    "executor": "Opus subagent via Claude Code Agent tool",
+    "lead_session": "claude_9314ff45-9f30-41b0-9c82-72fd22566411",
+    "package": "OPUS_EXECUTION_PACKAGE.md",
+    "round4": {
+      "dispatched_utc": "2026-09-10T15:33:00Z",
+      "executor": "Opus subagent via Claude Code Agent tool",
+      "package_section": "Round 4"
+    },
+    "round5": {
+      "dispatched_utc": "2026-09-11T06:33:49Z",
+      "executor": "Opus subagent via Claude Code Agent tool",
+      "package_section": "Round 5",
+      "connectivity": "ssh -J gpu40901 rented4090 (direct alias timed out at banner exchange earlier; came back at dispatch time)"
+    },
+    "round5b": {
+      "dispatched_utc": "2026-09-11T07:22:47Z",
+      "executor": "Opus subagent via Claude Code Agent tool",
+      "package_section": "Round 5b",
+      "connectivity": "ssh -J gpu40901 rented4090"
+    }
+  },
+  "execution_record": {
+    "rounds": [
+      {
+        "round": 1,
+        "conditions_run": [
+          "c3_fov_only",
+          "c4_raised_mount"
+        ],
+        "runs": 10,
+        "held": [
+          "c1_lite3_rig",
+          "c2_height_only"
+        ],
+        "reason_held": "floor z-depth ratio sub-check; navmesh-to-floor gap 0.16 m"
+      },
+      {
+        "round": 2,
+        "conditions_run": [
+          "c2_height_only"
+        ],
+        "runs": 5,
+        "held": [
+          "c1_lite3_rig"
+        ],
+        "reason_held": "bit-identical tilt no-op sub-check; quaternion re-normalisation"
+      },
+      {
+        "round": 3,
+        "conditions_run": [
+          "c1_lite3_rig"
+        ],
+        "runs": 5,
+        "held": []
+      },
+      {
+        "round": 4,
+        "conditions_run": [
+          "c5_head_level",
+          "c6_head_down15"
+        ],
+        "runs": 10,
+        "held": [],
+        "dispatched_utc": "2026-09-10T15:33:00Z",
+        "accepted_utc": "2026-09-10T16:17:08Z"
+      },
+      {
+        "round": 5,
+        "date": "2026-09-11",
+        "conditions": [
+          "c7_fused_level"
+        ],
+        "runs": 5,
+        "result": "c7 0/10",
+        "status": "executed_lead_accepted"
+      },
+      {
+        "round": "5b",
+        "date": "2026-09-11",
+        "conditions": [
+          "c8_fused_level_720"
+        ],
+        "runs": 5,
+        "result": "c8 2/10",
+        "status": "executed_lead_accepted"
+      }
+    ],
+    "total_runs": 40,
+    "all_exit_zero_no_timeout": true,
+    "manifest_lines_verified_locally": 2211,
+    "lead_review": "review/LEAD_REVIEW.md",
+    "result": "RESULT.md"
+  }
+}

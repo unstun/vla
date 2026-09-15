@@ -1,0 +1,50 @@
+--- a/DynaNav/benchmark.py
++++ b/DynaNav/benchmark.py
+@@ -27,7 +27,7 @@
+ from generate_commands import *
+ 
+ # APP_CONFIG = {"renderer": "RayTracedLighting", "headless": True, "width": 640, "height": 480}
+-APP_CONFIG = {"renderer": "RayTracedLighting", "headless": False, "width": 640, "height": 480}
++APP_CONFIG = {"renderer": "RayTracedLighting", "headless": False, "width": 640, "height": 480, "sync_loads": False}
+ 
+ # Prefer writing outputs relative to this script (not cwd), since Isaac Sim subprocesses
+ # may be launched from different working directories.
+@@ -967,6 +967,29 @@
+     def _set_simulation_settings(self):
+         import carb
+         import omni.replicator.core as rep
++        from omni.replicator.core.scripts.orchestrator import _Orchestrator
++        # Isaac Sim 5.1 capture re-enables asset sync loads; keep the tested
++        # task-only override while preserving synchronous image rendering.
++        original_capture_settings = _Orchestrator._set_capture_settings
++        if not getattr(original_capture_settings, '_ticvla_asset_override', False):
++            def task_capture_settings(orchestrator):
++                original_capture_settings(orchestrator)
++                settings = carb.settings.get_settings()
++                settings.set('/rtx/materialDb/syncLoads', False)
++                settings.set('/rtx/hydra/materialSyncLoads', False)
++                print('TICVLA_CAPTURE_ASSET_SYNC_DISABLED', flush=True)
++            task_capture_settings._ticvla_asset_override = True
++            _Orchestrator._set_capture_settings = task_capture_settings
++        settings = carb.settings.get_settings()
++        asset_flags = ('/rtx/materialDb/syncLoads', '/rtx/hydra/materialSyncLoads', '/omni.kit.plugin/syncUsdLoads')
++        def keep_asset_loads_async(*unused):
++            for flag in asset_flags:
++                if settings.get(flag):
++                    settings.set(flag, False)
++                    print('TICVLA_ASSET_SYNC_REVERTED', flag, flush=True)
++        self._asset_sync_subscriptions = [settings.subscribe_to_node_change_events(flag, keep_asset_loads_async) for flag in asset_flags]
++        keep_asset_loads_async()
++        print('TICVLA_RENDER_SETTINGS', {flag: settings.get(flag) for flag in (*asset_flags, '/app/asyncRendering', '/rtx/rendermode')}, flush=True)
+ 
+         rep.settings.carb_settings("/omni/replicator/backend/writeThreads", 16)
+         self._settings = carb.settings.get_settings()
+@@ -1428,6 +1451,8 @@
+     from isaacsim import SimulationApp
+     
+     sim_app = SimulationApp(launch_config=APP_CONFIG)
++    import faulthandler
++    faulthandler.dump_traceback_later(90, repeat=True)
+     
+     # Helper function to create error payload with episode config
+     def _create_error_payload(error_type: str, error_msg: str = "") -> dict:

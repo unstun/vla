@@ -1,0 +1,84 @@
+# Resource snapshot before the round-4 camera-ablation matrix (C5, C6)
+# 2026-09-10T15:34:52Z
+
+== nvidia-smi ==
+Thu Sep 10 23:34:53 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 575.57.08              Driver Version: 575.57.08      CUDA Version: 12.9     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 4090        On  |   00000000:00:03.0 Off |                  Off |
+| 30%   36C    P3             30W /  450W |    2903MiB /  24564MiB |     22%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A            1251    C+G   /isaac-sim/kit/kit                     2859MiB |
++-----------------------------------------------------------------------------------------+
+
+== nvidia-smi query ==
+memory.total [MiB], memory.used [MiB], memory.free [MiB], utilization.gpu [%]
+24564 MiB, 2903 MiB, 21179 MiB, 22 %
+
+== compute apps ==
+pid, process_name, used_gpu_memory [MiB]
+1251, /isaac-sim/kit/kit, 2859 MiB
+
+== ps (python/isaac/sim) ==
+    PID    PPID USER         ELAPSED %CPU %MEM   RSS COMMAND
+   1251    1213 1234        12:54:09  151  7.5 4992132 /isaac-sim/kit/kit /isaac-sim/apps/isaacsim.exp.full.streaming.kit --no-window --/persistent/isaac/asset_root/default=https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1 --merge-config=/isaac-sim/config/open_endpoint.toml --allow-root ./runheadless.sh -v --/app/livestream/publicEndpointAddress=117.50.179.202
+    515       1 root        12:54:29  0.0  0.1 103988 /lib/systemd/systemd-journald
+    864       1 root        12:54:12  0.0  0.1 82568 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+    791       1 root        12:54:12  0.0  0.0 48496 /usr/bin/containerd
+    790       1 root        12:54:12  0.2  0.0 41924 /usr/local/uboltagent/uboltagent -c /usr/local/uboltagent/config.toml
+    548       1 root        12:54:29  0.0  0.0 27100 /sbin/multipathd -d -s
+    782       1 root        12:54:12  0.0  0.0 18932 /usr/bin/python3 /usr/bin/networkd-dispatcher --run-startup-triggers
+    727       1 systemd+    12:54:26  0.0  0.0 12636 /lib/systemd/systemd-resolved
+      1       0 root        12:54:32  0.0  0.0 11544 /sbin/init splash
+  59897     824 root           00:03  0.3  0.0 10948 sshd: ubuntu [priv]
+   1190       1 root        12:54:09  0.0  0.0 10312 /usr/bin/containerd-shim-runc-v2 -namespace moby -id 16998b63e8dd8608f6947016bda58d0b0227b2dbbbab4c92cad2ef6011b1868f -address /run/containerd/containerd.sock
+  59900       1 ubuntu         00:01  4.0  0.0  9456 /lib/systemd/systemd --user
+    824       1 root        12:54:12  0.0  0.0  9228 sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups
+  59939   59897 ubuntu         00:01  0.0  0.0  7888 sshd: ubuntu@notty
+    725       1 systemd+    12:54:26  0.0  0.0  7856 /lib/systemd/systemd-networkd
+    788       1 root        12:54:12  0.0  0.0  7772 /lib/systemd/systemd-logind
+    695       1 systemd+    12:54:28  0.0  0.0  6448 /lib/systemd/systemd-timesyncd
+    553       1 root        12:54:29  0.0  0.0  6220 /lib/systemd/systemd-udevd
+    786       1 syslog      12:54:12  0.0  0.0  5616 /usr/sbin/rsyslogd -n -iNONE
+    775       1 message+    12:54:12  0.0  0.0  4492 @dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only
+  59949   59940 ubuntu         00:00  0.0  0.0  4044 ps -eo pid,ppid,user,etime,pcpu,pmem,rss,args --sort=-rss
+  59901   59900 ubuntu         00:01  0.0  0.0  3664 (sd-pam)
+  59940   59939 ubuntu         00:00  0.0  0.0  3460 bash -c cd /home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090 && REQ=public_scenes/requests/2026-09-10_lite3_camera_ablation && mkdir -p $REQ/preflight && { echo "# Resource snapshot before the round-4 camera-ablation matrix (C5, C6)"; date -u +"# %Y-%m-%dT%H:%M:%SZ"; echo; echo "== nvidia-smi =="; nvidia-smi; echo; echo "== nvidia-smi query =="; nvidia-smi --query-gpu=memory.total,memory.used,memory.free,utilization.gpu --format=csv; echo; echo "== compute apps =="; nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv; echo; echo "== ps (python/isaac/sim) =="; ps -eo pid,ppid,user,etime,pcpu,pmem,rss,args --sort=-rss | head -40; echo; echo "== docker =="; docker ps 2>&1 | head -10; echo; echo "== free / df =="; free -g; df -h /home/ubuntu | tail -2; } > $REQ/preflight/resources_before_round4.txt 2>&1; grep -A3 "nvidia-smi query" $REQ/preflight/resources_before_round4.txt; echo "..."; grep -A3 "compute apps" $REQ/preflight/resources_before_round4.txt; echo "..."; grep -A4 "free / df" $REQ/preflight/resources_before_round4.txt
+    774       1 root        12:54:12  0.0  0.0  2760 /usr/sbin/cron -f -P
+   1254       1 root        12:54:09  0.0  0.0  1120 /sbin/agetty -o -p -- \u --noclear tty1 linux
+   1250       1 root        12:54:09  0.0  0.0  1080 /sbin/agetty -o -p -- \u --keep-baud 115200,57600,38400,9600 ttyS0 vt220
+   1213    1190 1234        12:54:09  0.0  0.0  1060 /bin/sh /isaac-sim/runheadless.sh ./runheadless.sh -v --/app/livestream/publicEndpointAddress=117.50.179.202
+  59950   59940 ubuntu         00:00  0.0  0.0   988 head -40
+      2       0 root        12:54:32  0.0  0.0     0 [kthreadd]
+      3       2 root        12:54:32  0.0  0.0     0 [rcu_gp]
+      4       2 root        12:54:32  0.0  0.0     0 [rcu_par_gp]
+      5       2 root        12:54:32  0.0  0.0     0 [slub_flushwq]
+      6       2 root        12:54:32  0.0  0.0     0 [netns]
+      8       2 root        12:54:32  0.0  0.0     0 [kworker/0:0H-events_highpri]
+     10       2 root        12:54:32  0.0  0.0     0 [mm_percpu_wq]
+     11       2 root        12:54:32  0.0  0.0     0 [rcu_tasks_rude_]
+     12       2 root        12:54:32  0.0  0.0     0 [rcu_tasks_trace]
+     13       2 root        12:54:32  0.0  0.0     0 [ksoftirqd/0]
+     14       2 root        12:54:32  0.1  0.0     0 [rcu_sched]
+
+== docker ==
+permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
+
+== free / df ==
+               total        used        free      shared  buff/cache   available
+Mem:              62           4           3           0          54          57
+Swap:              0           0           0
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda1       194G  153G   41G  79% /

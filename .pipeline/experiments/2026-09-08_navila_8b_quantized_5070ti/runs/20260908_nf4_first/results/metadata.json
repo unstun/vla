@@ -1,0 +1,517 @@
+{
+  "quantization": "bitsandbytes NF4 double quantization; FP16 compute",
+  "paper_awq_reproduction": false,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "torch": "2.7.0+cu128",
+  "cuda": "12.8",
+  "transformers": "4.37.2",
+  "bitsandbytes": "0.49.2",
+  "load_seconds": 4.30752830900019,
+  "linear4bit_count": 224,
+  "parameter_devices": [
+    "cuda:0"
+  ],
+  "model": "/home/sun/vla_exec/2026-09-08_navila_8b_quantized_5070ti/models/navila-llama3-8b-8f",
+  "context_len_returned_by_upstream": 2048,
+  "configured_num_video_frames": 8,
+  "loaded_allocated_GiB": 6.3123602867126465,
+  "loaded_reserved_GiB": 6.33984375,
+  "load_peak_allocated_GiB": 6.3123602867126465,
+  "cases": [
+    {
+      "name": "zh_vending_zh",
+      "images": [
+        "zh_front_120.jpg"
+      ],
+      "instruction": "直走，并在自动售货机前停下",
+      "history": "upstream cold-start black padding",
+      "index": 0,
+      "input_sha256": [
+        "f36027541542dc4ca50253e2b470218cce9839ad6894e0c02550e8f4bf5e2b00"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"直走，并在自动售货机前停下\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 149,
+      "output_ids": [
+        [
+          128000,
+          791,
+          1828,
+          1957,
+          374,
+          2543,
+          2163,
+          220,
+          1774,
+          8547,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "The next action is turn left 45 degree.",
+      "inference_seconds": 2.043502961998456,
+      "case_wall_seconds": 2.088013606000459,
+      "peak_allocated_GiB": 7.791858673095703,
+      "peak_reserved_GiB": 8.703125
+    },
+    {
+      "name": "zh_vending_en",
+      "images": [
+        "zh_front_120.jpg"
+      ],
+      "instruction": "Go straight ahead and stop at the front of the vending machine.",
+      "history": "upstream cold-start black padding",
+      "index": 1,
+      "input_sha256": [
+        "f36027541542dc4ca50253e2b470218cce9839ad6894e0c02550e8f4bf5e2b00"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"Go straight ahead and stop at the front of the vending machine.\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 150,
+      "output_ids": [
+        [
+          128000,
+          791,
+          1828,
+          1957,
+          374,
+          3351,
+          4741,
+          220,
+          2075,
+          10166,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "The next action is move forward 75 cm.",
+      "inference_seconds": 0.7310424829993281,
+      "case_wall_seconds": 0.766334503001417,
+      "peak_allocated_GiB": 7.792201995849609,
+      "peak_reserved_GiB": 8.703125
+    },
+    {
+      "name": "zh_metric_zh",
+      "images": [
+        "zh_front_120.jpg"
+      ],
+      "instruction": "向前直走 3 米，然后停下",
+      "history": "upstream cold-start black padding",
+      "index": 2,
+      "input_sha256": [
+        "f36027541542dc4ca50253e2b470218cce9839ad6894e0c02550e8f4bf5e2b00"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"向前直走 3 米，然后停下\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 148,
+      "output_ids": [
+        [
+          128000,
+          791,
+          1828,
+          1957,
+          374,
+          2543,
+          2163,
+          220,
+          1774,
+          8547,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "The next action is turn left 45 degree.",
+      "inference_seconds": 0.7313556209992385,
+      "case_wall_seconds": 0.7634843640007603,
+      "peak_allocated_GiB": 7.791062355041504,
+      "peak_reserved_GiB": 8.703125
+    },
+    {
+      "name": "zh_metric_en",
+      "images": [
+        "zh_front_120.jpg"
+      ],
+      "instruction": "Go straight forward for 3 meters, then stop.",
+      "history": "upstream cold-start black padding",
+      "index": 3,
+      "input_sha256": [
+        "f36027541542dc4ca50253e2b470218cce9839ad6894e0c02550e8f4bf5e2b00"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"Go straight forward for 3 meters, then stop.\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 148,
+      "output_ids": [
+        [
+          128000,
+          791,
+          1828,
+          1957,
+          374,
+          3351,
+          4741,
+          220,
+          2075,
+          10166,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "The next action is move forward 75 cm.",
+      "inference_seconds": 0.7309702310012653,
+      "case_wall_seconds": 0.7622822150005959,
+      "peak_allocated_GiB": 7.79061222076416,
+      "peak_reserved_GiB": 8.703125
+    },
+    {
+      "name": "en_vending_zh",
+      "images": [
+        "en_front_120.jpg"
+      ],
+      "instruction": "直走，并在自动售货机前停下",
+      "history": "upstream cold-start black padding",
+      "index": 4,
+      "input_sha256": [
+        "8a79b01e7788501753dcffe7487d7dd72a916892ce4aa5ab13a6cea16ca00504"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"直走，并在自动售货机前停下\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 149,
+      "output_ids": [
+        [
+          128000,
+          791,
+          1828,
+          1957,
+          374,
+          2543,
+          2163,
+          220,
+          1774,
+          8547,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "The next action is turn left 45 degree.",
+      "inference_seconds": 0.7291849189969071,
+      "case_wall_seconds": 0.7606682480000018,
+      "peak_allocated_GiB": 7.791859149932861,
+      "peak_reserved_GiB": 8.703125
+    },
+    {
+      "name": "en_vending_en",
+      "images": [
+        "en_front_120.jpg"
+      ],
+      "instruction": "Go straight ahead and stop at the front of the vending machine.",
+      "history": "upstream cold-start black padding",
+      "index": 5,
+      "input_sha256": [
+        "8a79b01e7788501753dcffe7487d7dd72a916892ce4aa5ab13a6cea16ca00504"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"Go straight ahead and stop at the front of the vending machine.\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 150,
+      "output_ids": [
+        [
+          128000,
+          791,
+          1828,
+          1957,
+          374,
+          3351,
+          4741,
+          220,
+          2075,
+          10166,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "The next action is move forward 75 cm.",
+      "inference_seconds": 0.7304242870013695,
+      "case_wall_seconds": 0.7624400239983515,
+      "peak_allocated_GiB": 7.792201995849609,
+      "peak_reserved_GiB": 8.703125
+    },
+    {
+      "name": "en_metric_zh",
+      "images": [
+        "en_front_120.jpg"
+      ],
+      "instruction": "向前直走 3 米，然后停下",
+      "history": "upstream cold-start black padding",
+      "index": 6,
+      "input_sha256": [
+        "8a79b01e7788501753dcffe7487d7dd72a916892ce4aa5ab13a6cea16ca00504"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"向前直走 3 米，然后停下\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 148,
+      "output_ids": [
+        [
+          128000,
+          791,
+          1828,
+          1957,
+          374,
+          2543,
+          2163,
+          220,
+          1774,
+          8547,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "The next action is turn left 45 degree.",
+      "inference_seconds": 0.7306587620005303,
+      "case_wall_seconds": 0.7618221339980664,
+      "peak_allocated_GiB": 7.791062355041504,
+      "peak_reserved_GiB": 8.703125
+    },
+    {
+      "name": "en_metric_en",
+      "images": [
+        "en_front_120.jpg"
+      ],
+      "instruction": "Go straight forward for 3 meters, then stop.",
+      "history": "upstream cold-start black padding",
+      "index": 7,
+      "input_sha256": [
+        "8a79b01e7788501753dcffe7487d7dd72a916892ce4aa5ab13a6cea16ca00504"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"Go straight forward for 3 meters, then stop.\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 148,
+      "output_ids": [
+        [
+          128000,
+          791,
+          1828,
+          1957,
+          374,
+          3351,
+          4741,
+          220,
+          2075,
+          10166,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "The next action is move forward 75 cm.",
+      "inference_seconds": 0.7311286110016226,
+      "case_wall_seconds": 0.7634473260004597,
+      "peak_allocated_GiB": 7.79061222076416,
+      "peak_reserved_GiB": 8.703125
+    },
+    {
+      "name": "repeat_first_identical_input",
+      "images": [
+        "zh_front_120.jpg"
+      ],
+      "instruction": "直走，并在自动售货机前停下",
+      "history": "upstream cold-start black padding",
+      "index": 8,
+      "input_sha256": [
+        "f36027541542dc4ca50253e2b470218cce9839ad6894e0c02550e8f4bf5e2b00"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"直走，并在自动售货机前停下\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 149,
+      "output_ids": [
+        [
+          128000,
+          791,
+          1828,
+          1957,
+          374,
+          2543,
+          2163,
+          220,
+          1774,
+          8547,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "The next action is turn left 45 degree.",
+      "inference_seconds": 0.7300538649978989,
+      "case_wall_seconds": 0.7610611910022271,
+      "peak_allocated_GiB": 7.791859149932861,
+      "peak_reserved_GiB": 8.703125
+    },
+    {
+      "name": "recorded_history_zh",
+      "images": [
+        "history_front_frame_000120.jpg",
+        "history_front_frame_000183.jpg",
+        "history_front_frame_000243.jpg",
+        "history_front_frame_000306.jpg",
+        "history_front_frame_000366.jpg",
+        "history_front_frame_000429.jpg",
+        "history_front_frame_000489.jpg",
+        "history_front_frame_000552.jpg"
+      ],
+      "instruction": "直走，并在自动售货机前停下",
+      "history": "Eight recorded raw camera frames from a prior TIC-VLA episode; open-loop, not a NaVILA rollout",
+      "index": 9,
+      "input_sha256": [
+        "a6b8bef1625385d4d6957bef2c4b0fd567adcefe534fef1ea01815d950e4615c",
+        "48e9c2264f65719668a01fd290055bb15ce13743f25d8dc3470a4f0ebba7221f",
+        "a6c686fb00ffea4625e2808dbb1f45f7a8ccefe8975754fd4e59c536ea28e388",
+        "0405cfc7918387d910fdb58270b46993a0aad20dacc5e27d58a254028eb9fda4",
+        "ba4dedabeb5f1dbc521f600d2e6ae2e94b52306f7ed5eb5449d5cb9404824dd2",
+        "64a7a16a0a4e7f802259f33ca46aba41bc3cea2c4b1790e057448cf3ae0fa58c",
+        "d99c80432ae45ac623e5872459886ff50929cc185e4775c65a1a3b4d8b2d0edb",
+        "aff45076b12b781c6a22df3bcc1503ac8c2af813074bd2e4d91e51327118b5d9"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"直走，并在自动售货机前停下\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 149,
+      "output_ids": [
+        [
+          128000,
+          40,
+          1781,
+          358,
+          1288,
+          3009,
+          1606,
+          358,
+          617,
+          8220,
+          279,
+          7754,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "I think I should stop because I have finished the instruction.",
+      "inference_seconds": 0.7642273120000027,
+      "case_wall_seconds": 0.8940135550001287,
+      "peak_allocated_GiB": 7.791407108306885,
+      "peak_reserved_GiB": 8.703125
+    },
+    {
+      "name": "recorded_history_en",
+      "images": [
+        "history_front_frame_000120.jpg",
+        "history_front_frame_000183.jpg",
+        "history_front_frame_000243.jpg",
+        "history_front_frame_000306.jpg",
+        "history_front_frame_000366.jpg",
+        "history_front_frame_000429.jpg",
+        "history_front_frame_000489.jpg",
+        "history_front_frame_000552.jpg"
+      ],
+      "instruction": "Go straight ahead and stop at the front of the vending machine.",
+      "history": "Eight recorded raw camera frames from a prior TIC-VLA episode; open-loop, not a NaVILA rollout",
+      "index": 10,
+      "input_sha256": [
+        "a6b8bef1625385d4d6957bef2c4b0fd567adcefe534fef1ea01815d950e4615c",
+        "48e9c2264f65719668a01fd290055bb15ce13743f25d8dc3470a4f0ebba7221f",
+        "a6c686fb00ffea4625e2808dbb1f45f7a8ccefe8975754fd4e59c536ea28e388",
+        "0405cfc7918387d910fdb58270b46993a0aad20dacc5e27d58a254028eb9fda4",
+        "ba4dedabeb5f1dbc521f600d2e6ae2e94b52306f7ed5eb5449d5cb9404824dd2",
+        "64a7a16a0a4e7f802259f33ca46aba41bc3cea2c4b1790e057448cf3ae0fa58c",
+        "d99c80432ae45ac623e5872459886ff50929cc185e4775c65a1a3b4d8b2d0edb",
+        "aff45076b12b781c6a22df3bcc1503ac8c2af813074bd2e4d91e51327118b5d9"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"Go straight ahead and stop at the front of the vending machine.\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 150,
+      "output_ids": [
+        [
+          128000,
+          40,
+          1781,
+          358,
+          1288,
+          3009,
+          1606,
+          358,
+          617,
+          8220,
+          279,
+          7754,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "I think I should stop because I have finished the instruction.",
+      "inference_seconds": 0.7657525299982808,
+      "case_wall_seconds": 0.8875554669975827,
+      "peak_allocated_GiB": 7.792655944824219,
+      "peak_reserved_GiB": 8.703125
+    }
+  ],
+  "complete": true
+}

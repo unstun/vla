@@ -1,0 +1,125 @@
+{
+  "stage": "experiment and analysis",
+  "instructions": {
+    "zh": "直走，并在自动售货机前停下",
+    "en": "Go straight ahead and stop at the front of the vending machine."
+  },
+  "previous_waypoints_text": "From 0.0s to current timestamp time is 4.0s. No waypoints available.",
+  "demo_source_manifest_sha256": "4a940f97a40d7cb513efd044f7df707daf71a13073f303b7395a4f050832c8c0",
+  "fixtures": [
+    {
+      "id": "zh_rgb",
+      "original_run": "20260908T153532Z_615007",
+      "image": "fixtures/zh_front_120.jpg",
+      "state": "fixtures/zh_state_120.json",
+      "original_first_inference": "fixtures/zh_first_inference.json",
+      "original_stdout_prompt": "The navigation instruction is: 直走，并在自动售货机前停下\nFrom 0.0s to current timestamp time is 4.0s. No waypoints available.\nUse reasoning to predict future target waypoints for the next 3s, 6s, and 9s in format: (x, y, theta). Each waypoint represents the cumulative offset from the current position (total displacement over 3s, 6s, or 9s), where x is positive for forward, y is positive for left, and theta is the heading angle in radians.\n",
+      "original_stdout_desired_command": {
+        "v": 0.084,
+        "w": -0.837
+      },
+      "original_actual_control_audit": {
+        "wall_monotonic": 14298.155105216,
+        "simulation_frame": 120,
+        "v": 0.03333333507180214,
+        "w": -0.058333336375653744,
+        "position": [
+          -3.0007829666137695,
+          -1.1999996900558472,
+          6.556510925292969e-07
+        ],
+        "backing_up": false,
+        "waiting_after_backup": false,
+        "first_inference_complete": true
+      },
+      "original_image_source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/demo/paired_language_2026-09-08/front/20260908T153532Z_615007/carter_ticvla_data/retained_front_frames/front_frame_000120.jpg"
+    },
+    {
+      "id": "en_rgb",
+      "original_run": "20260908T153918Z_f89862",
+      "image": "fixtures/en_front_120.jpg",
+      "state": "fixtures/en_state_120.json",
+      "original_first_inference": "fixtures/en_first_inference.json",
+      "original_stdout_prompt": "The navigation instruction is: Go straight ahead and stop at the front of the vending machine.\nFrom 0.0s to current timestamp time is 4.0s. No waypoints available.\nUse reasoning to predict future target waypoints for the next 3s, 6s, and 9s in format: (x, y, theta). Each waypoint represents the cumulative offset from the current position (total displacement over 3s, 6s, or 9s), where x is positive for forward, y is positive for left, and theta is the heading angle in radians.\n",
+      "original_stdout_desired_command": {
+        "v": 1.5,
+        "w": -0.098
+      },
+      "original_actual_control_audit": {
+        "wall_monotonic": 14528.476191977,
+        "simulation_frame": 120,
+        "v": 0.03333333507180214,
+        "w": -0.058333336375653744,
+        "position": [
+          -3.0007829666137695,
+          -1.1999996900558472,
+          6.556510925292969e-07
+        ],
+        "backing_up": false,
+        "waiting_after_backup": false,
+        "first_inference_complete": true
+      },
+      "original_image_source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/demo/paired_language_2026-09-08/front/20260908T153918Z_f89862/carter_ticvla_data/retained_front_frames/front_frame_000120.jpg"
+    }
+  ],
+  "jobs_per_fixture": [
+    {
+      "id": "seed36_base_zh",
+      "seed": 36,
+      "language": "zh"
+    },
+    {
+      "id": "seed36_base_en",
+      "seed": 36,
+      "language": "en"
+    },
+    {
+      "id": "seed36_repeat_en",
+      "seed": 36,
+      "language": "en"
+    },
+    {
+      "id": "seed36_repeat_zh",
+      "seed": 36,
+      "language": "zh"
+    },
+    {
+      "id": "seed37_base_zh",
+      "seed": 37,
+      "language": "zh"
+    },
+    {
+      "id": "seed37_base_en",
+      "seed": 37,
+      "language": "en"
+    },
+    {
+      "id": "seed38_base_en",
+      "seed": 38,
+      "language": "en"
+    },
+    {
+      "id": "seed38_base_zh",
+      "seed": 38,
+      "language": "zh"
+    }
+  ],
+  "hypotheses": [
+    {
+      "rank": 1,
+      "hypothesis": "Instruction-dependent semantic cache alters action output",
+      "prediction": "With the same image/state/delay/seed, output differs by language; exchanging caches exchanges action output."
+    },
+    {
+      "rank": 2,
+      "hypothesis": "Initial RGB variation or RNG variability explains the apparent language effect",
+      "prediction": "The difference disappears under fixed pixels or is comparable to identical-input repeats and seed variation."
+    },
+    {
+      "rank": 3,
+      "hypothesis": "Controller amplifies small geometric differences in short trajectories",
+      "prediction": "Raw near-origin waypoint differences produce a much larger angular command change under the source controller; reflect/scale controls alter it predictably."
+    }
+  ],
+  "boundary": "Exploratory two-frame diagnostic; no closed-loop navigation result or unique neural root cause. Cache values are regenerated, not archived as checkpoint files."
+}

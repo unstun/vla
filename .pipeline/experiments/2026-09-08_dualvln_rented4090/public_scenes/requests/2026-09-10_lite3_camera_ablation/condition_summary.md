@@ -1,0 +1,22 @@
+# Camera-condition summary
+
+| Condition | Height | Pitch | HFOV | Tilt | Ep1 success | Ep1 NE m (min/med/max) | Ep2 success | Ep2 NE m (min/med/max) | Ep2 collisions (min/med/max) | Learned STOP | Total |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| B0 baseline (recorded) | 1.25 m | 0 deg | 79 | 15 | 3/5 | 1.05/1.252/4.057 | 2/5 | 2.154/4.892/5.911 | 8/10/10 | 10/10 | 5/10 |
+| c1_lite3_rig (Lite3 rig faithful) | 0.42 m | 20 deg | 54 | 0 | 1/5 | 1.063/12.184/16.941 | 0/5 | 4.267/11.996/14.788 | 9/15/83 | 9/10 | 1/10 |
+| c2_height_only (Height only) | 0.42 m | 0 deg | 79 | 15 | 3/5 | 1.26/1.415/4.677 | 2/5 | 2.88/3.059/8.467 | 7/13/19 | 10/10 | 5/10 |
+| c3_fov_only (FOV only) | 1.25 m | 0 deg | 54 | 15 | 2/5 | 1.208/13.877/16.3 | 1/5 | 2.488/5.424/9.045 | 2/4/4 | 10/10 | 3/10 |
+| c4_raised_mount (Raised mount candidate) | 0.65 m | 15 deg | 54 | 0 | 2/5 | 0.785/14.45/16.901 | 0/5 | 4.505/8.931/10.202 | 17/40/58 | 10/10 | 2/10 |
+| c5_head_level (Head camera proxy, level) | 0.4 m | 0 deg | 79 | 0 | 1/5 | 1.944/4.694/7.855 | 1/5 | 2.71/5.128/8.611 | 7/11/16 | 10/10 | 2/10 |
+| c6_head_down15 (Head camera proxy, 15 deg down) | 0.4 m | 15 deg | 79 | 0 | 5/5 | 0.497/0.66/0.727 | 0/5 | 3.461/5.838/8.359 | 18/30/45 | 10/10 | 5/10 |
+| c7_fused_level (Fused virtual camera, level, D435i colour 640x480 (HFOV 55)) | 0.4 m | 0 deg | 79 | 0 | 0/5 | 7.068/7.453/7.94 | 0/5 | 3.097/7.577/7.743 | 4/13/19 | 10/10 | 0/10 |
+| c8_fused_level_720 (Fused virtual camera, level, D435i colour 1280x720) | 0.4 m | 0 deg | 79 | 0 | 2/5 | 1.972/17.275/17.537 | 0/5 | 7.461/8.714/9.68 | 4/7/11 | 10/10 | 2/10 |
+| c9_fused_down9 (Fused virtual camera, 9 deg down, D435i colour 1280x720) | 0.4 m | 9 deg | 79 | 0 | 0/5 | 3.546/4.098/7.376 | 1/5 | 1.955/4.044/5.24 | 4/10/16 | 10/10 | 1/10 |
+
+## Notes
+
+- Five unseeded runs per condition on two custom public-scene episodes: report ranges and counts, not means alone.
+- Success and learned STOP are independent; an episode that stops in the wrong place still ends on a learned STOP.
+- B0 is the recorded public_eval_v1..v5; it is not rerun. Its evaluator hash must match every cam_* run.
+- This is a public-scene functional test, not an R2R benchmark; effect sizes between conditions only.
+- n_runs counts runs with a recorded result for that episode; runs_without_progress_json lists launched runs that produced none.

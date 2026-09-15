@@ -20,6 +20,8 @@ establishes conventions.
 | [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | Deferred: no database selected |
 | [Error Handling](./error-handling.md) | Error types and propagation | Deferred: no runtime selected |
 | [Quality Guidelines](./quality-guidelines.md) | Baseline, interface, and evidence gates | Active |
+| [Simulator Inference Evidence](./simulator-inference-evidence.md) | Bounded upstream trials, clocks, resources, and artifact integrity | Active for upstream experiments |
+| [Quantized Inference Evidence](./quantized-inference-evidence.md) | Low-bit state, resource measurements, export/reload, and action claim boundaries | Active for quantized VLA probes |
 | [Logging Guidelines](./logging-guidelines.md) | Structured logging and run identity | Deferred: no runtime selected |
 
 ---

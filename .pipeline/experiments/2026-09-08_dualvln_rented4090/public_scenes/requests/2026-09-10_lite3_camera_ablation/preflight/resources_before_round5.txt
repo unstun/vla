@@ -1,0 +1,69 @@
+== resources before round 5 ==
+2026-09-11T06:36:47Z
+
+== nvidia-smi ==
+Fri Sep 11 14:36:47 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 575.57.08              Driver Version: 575.57.08      CUDA Version: 12.9     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 4090        On  |   00000000:00:03.0 Off |                  Off |
+| 45%   34C    P3             37W /  450W |    3005MiB /  24564MiB |     23%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A            1267    C+G   /isaac-sim/kit/kit                     2961MiB |
++-----------------------------------------------------------------------------------------+
+
+== nvidia-smi compute apps ==
+pid, process_name, used_gpu_memory [MiB]
+1267, /isaac-sim/kit/kit, 2961 MiB
+
+== nvidia-smi memory ==
+name, memory.total [MiB], memory.used [MiB], memory.free [MiB], utilization.gpu [%], driver_version
+NVIDIA GeForce RTX 4090, 24564 MiB, 3005 MiB, 21077 MiB, 23 %, 575.57.08
+
+== docker ps ==
+permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
+
+== ps (isaac/kit/python) ==
+    PID    PPID     ELAPSED   RSS COMMAND         COMMAND
+   1267    1230       05:23 4952876 kit           /isaac-sim/kit/kit /isaac-sim/apps/isaacsim.exp.full.streaming.kit --no-window --/persistent/isaac/asset_root/default=https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1 --merge-config=/isaac-sim/config/open_endpoint.toml --allow-root ./runheadless.sh -v --/app/livestream/publicEndpointAddress=117.50.179.202
+    854       1       05:30 81904 dockerd         /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+    508       1       05:49 60640 systemd-journal /lib/systemd/systemd-journald
+    782       1       05:31 47040 containerd      /usr/bin/containerd
+    781       1       05:31 41384 uboltagent      /usr/local/uboltagent/uboltagent -c /usr/local/uboltagent/config.toml
+    543       1       05:49 27100 multipathd      /sbin/multipathd -d -s
+    773       1       05:31 19088 networkd-dispat /usr/bin/python3 /usr/bin/networkd-dispatcher --run-startup-triggers
+    718       1       05:45 12388 systemd-resolve /lib/systemd/systemd-resolved
+      1       0       05:56 11120 systemd         /sbin/init splash
+   2315     804       00:04 10680 sshd            sshd: ubuntu [priv]
+   1204       1       05:23  9776 containerd-shim /usr/bin/containerd-shim-runc-v2 -namespace moby -id 16998b63e8dd8608f6947016bda58d0b0227b2dbbbab4c92cad2ef6011b1868f -address /run/containerd/containerd.sock
+   2320       1       00:01  9456 systemd         /lib/systemd/systemd --user
+    804       1       05:31  9228 sshd            sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups
+    716       1       05:45  8096 systemd-network /lib/systemd/systemd-networkd
+
+== uptime ==
+ 14:36:48 up 5 min,  0 users,  load average: 1.88, 0.94, 0.41
+
+== free -g ==
+               total        used        free      shared  buff/cache   available
+Mem:              62           4          55           0           3          57
+Swap:              0           0           0
+
+== df -h ==
+Filesystem      Size  Used Avail Use% Mounted on
+tmpfs           6.3G  900K  6.3G   1% /run
+/dev/vda1       194G  154G   41G  80% /
+tmpfs            32G     0   32G   0% /dev/shm
+tmpfs           5.0M     0  5.0M   0% /run/lock
+/dev/vda15      105M  6.1M   99M   6% /boot/efi
+tmpfs           6.3G     0  6.3G   0% /run/user/1000

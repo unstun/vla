@@ -1,0 +1,54 @@
+--- a/DynaNav/behavior/nova_carter_test_ticvla.py
++++ b/DynaNav/behavior/nova_carter_test_ticvla.py
+@@ -764,6 +764,9 @@
+                     os.makedirs(self._image_buffer_dir, exist_ok=True)
+                     # Only append to history after image is successfully saved
+                     if cv2.imwrite(filename_front, img_bgr):
++                        audit_frames = os.path.join(self._log_directory, 'retained_front_frames')
++                        os.makedirs(audit_frames, exist_ok=True)
++                        shutil.copyfile(filename_front, os.path.join(audit_frames, os.path.basename(filename_front)))
+                         self._image_history.append(filename_front)
+                     else:
+                         carb.log_warn(f"Failed to save image: {filename_front} (directory: {self._image_buffer_dir}, exists: {os.path.exists(self._image_buffer_dir)})")
+@@ -1046,6 +1049,16 @@
+                 
+                 action = self._diff.forward(command=np.array([final_v, final_w], dtype=np.float32))
+                 self._wheeled_robot.apply_wheel_actions(action)
++                if self._frame_count % 3 == 0:
++                    with open(os.path.join(self._log_directory, 'control_audit.jsonl'), 'a') as audit:
++                        audit.write(json.dumps({
++                            'wall_monotonic': time.monotonic(), 'simulation_frame': self._frame_count,
++                            'v': float(final_v), 'w': float(final_w),
++                            'position': self._robot_position.tolist() if self._robot_position is not None else None,
++                            'backing_up': bool(self._is_backing_up),
++                            'waiting_after_backup': bool(self._waiting_for_inference_after_backup),
++                            'first_inference_complete': bool(self._first_inference_complete),
++                        }) + '\n')
+             except Exception as e:
+                 carb.log_error(f"Failed to apply wheel actions: {e}")
+                 import traceback
+@@ -1341,6 +1354,8 @@
+             carb.log_info(f"[NovaCarterTIC-VLA] Inference task aborted before model call - backup started (frame={current_step})")
+             return None, False, None
+         
++        # Task-owned timing instrumentation; model inputs and outputs are unchanged.
++        audit_inference_started = time.perf_counter()
+         # Run model predict (this is the heavy call)
+         # Returns: (response, waypoints, vlm_generation_start_step, kv_cache_available, vlm_generation_start_pose)
+         with torch.no_grad():
+@@ -1365,6 +1380,15 @@
+             return None, False, None
+ 
+         wps = waypoints[0].float().cpu().numpy()  # (T,2) body/FLU
++        with open(os.path.join(self._log_directory, 'inference_audit.jsonl'), 'a') as audit:
++            audit.write(json.dumps({
++                'wall_monotonic': time.monotonic(), 'simulation_frame': self._frame_count,
++                'seconds': time.perf_counter() - audit_inference_started,
++                'shape': list(waypoints.shape), 'finite': bool(np.isfinite(wps).all()),
++                'cache_available': bool(kv_cache_available), 'waypoints': wps.tolist(),
++                'cuda_allocated_bytes': torch.cuda.memory_allocated(),
++                'cuda_reserved_bytes': torch.cuda.memory_reserved(),
++            }) + '\n')
+         T = len(wps)
+ 
+         # Tunable parameters

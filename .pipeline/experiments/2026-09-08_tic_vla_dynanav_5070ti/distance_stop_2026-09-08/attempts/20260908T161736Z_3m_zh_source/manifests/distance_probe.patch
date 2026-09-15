@@ -1,0 +1,173 @@
+--- a/scripts/demo_bridge.py
++++ b/scripts/demo_bridge.py
+@@ -21,6 +21,8 @@
+         self.path = []
+         self.plan = []
+         self.plan_frame = None
++        from distance_probe import DistanceMeter
++        self.distance_meter = DistanceMeter()
+         self.sequence = 0
+         self.last_publish = -1
+         self.started = time.monotonic()
+@@ -128,6 +130,11 @@
+                 behavior._prev_position_for_offset = None
+                 if hasattr(behavior, "_yaw_err_filt"):
+                     del behavior._yaw_err_filt
++            if command["action"] == "goal":
++                from omni.timeline import get_timeline_interface
++                self.distance_meter.start(behavior._robot_position.tolist(), behavior._robot_quaternion.tolist(),
++                                          get_timeline_interface().get_current_time(), behavior._frame_count)
++                print("TICVLA_METRIC_STOP_PROBE goal_stop=False automatic_backup=False distance_control=False", flush=True)
+             self.latch.acknowledge(command)
+             with self.lock:
+                 self.events.write(json.dumps(dict(command, event="applied", time_unix=time.time(),
+@@ -184,6 +191,15 @@
+                  "plan_frame": self.plan_frame, "world_to_clip": matrix,
+                  "v": float(v), "w": float(w), "instruction": behavior._instruction,
+                  **self.latch.snapshot()}
++        from omni.timeline import get_timeline_interface
++        state["distance_probe"] = self.distance_meter.sample(
++            position, behavior._robot_velocity.tolist(), behavior._robot_yaw_speed,
++            behavior._current_action.tolist(), [v, w],
++            get_timeline_interface().get_current_time(), frame,
++            behavior._first_inference_complete and not self.latch.is_held()
++            and not behavior._is_backing_up and not behavior._waiting_for_inference_after_backup)
++        state["backing_up"] = bool(behavior._is_backing_up)
++        state["waiting_after_backup"] = bool(behavior._waiting_for_inference_after_backup)
+         images = {}
+         for name, rgb in [("third_person", behavior._camera_image_tp), ("front", behavior._camera_image_front)]:
+             if rgb is None or not rgb.size:
+@@ -193,15 +209,26 @@
+                 self.draw_line(bgr, self.path, matrix, (40, 164, 250), 5)
+                 self.draw_line(bgr, plan, matrix, (225, 216, 40), 6)
+                 if state["camera_view"] == "top_down":
+-                    goal = getattr(behavior, "_goal_position", None)
++                    goal = None
++                    if self.distance_meter.origin is not None:
++                        goal = [self.distance_meter.origin[i] + 3.0 * self.distance_meter.heading[i] for i in range(2)]
+                     markers = [(self.path[0], "START", (255,255,255))]
+                     if goal is not None:
+-                        markers.append(([float(goal[0]), float(goal[1]), 0.06], "GOAL", (90,230,120)))
++                        markers.append(([float(goal[0]), float(goal[1]), 0.06], "3m REFERENCE", (90,230,120)))
+                     for point, text, color in markers:
+                         pixel = project_points([point], matrix, bgr.shape[1], bgr.shape[0])[0]
+                         if pixel is not None:
+                             cv2.circle(bgr, pixel, 9, color, 2, cv2.LINE_AA)
+                             cv2.putText(bgr, text, (pixel[0]+13,pixel[1]-7), cv2.FONT_HERSHEY_SIMPLEX, .55, color, 2, cv2.LINE_AA)
++                probe = state["distance_probe"]
++                if probe is not None:
++                    rows = ["COMMAND: GO STRAIGHT 3m THEN STOP (Chinese input)",
++                            f"Forward {probe['forward_m']:.2f}m / 3.00m   Cross-track {probe['lateral_m']:+.2f}m   Path {probe['sampled_path_length_m']:.2f}m",
++                            f"Actual speed {probe['actual_planar_speed_m_s']:.2f}m/s   Yaw {probe['actual_yaw_rate_rad_s']:+.2f}rad/s",
++                            "MEASUREMENT ONLY: no automatic stop at 3m"]
++                    cv2.rectangle(bgr, (0, bgr.shape[0]-119), (bgr.shape[1], bgr.shape[0]), (25,25,25), -1)
++                    for n, row in enumerate(rows):
++                        cv2.putText(bgr, row, (18, bgr.shape[0]-92+n*26), cv2.FONT_HERSHEY_SIMPLEX, .56, (255,255,255), 1, cv2.LINE_AA)
+                 label = "HOLD" if self.latch.is_held() else "NAVIGATING"
+                 if state["camera_view"] == "top_down":
+                     label = "TOP VIEW / " + label
+--- a/scripts/protocol.py
++++ b/scripts/protocol.py
+@@ -7,6 +7,8 @@
+ GOALS = {"走到自动售货机前", "走到自动售货机前面", "去自动售货机", "到自动售货机前",
+          "走到售货机前", "去售货机", "直走并在自动售货机前停下", "直走在自动售货机前停下",
+          "go to the vending machine", INSTRUCTION.lower().rstrip(".")}
++from distance_probe import INSTRUCTION as DISTANCE_INSTRUCTION
++GOALS.add(re.sub(r"[。！？!?,，.;；]", "", DISTANCE_INSTRUCTION))
+ STOPS = {"停", "停下", "停止", "停车", "暂停", "停下来", "stop", "pause"}
+ RESUMES = {"继续", "继续走", "继续前进", "resume", "continue"}
+ 
+--- a/scripts/run_demo.py
++++ b/scripts/run_demo.py
+@@ -53,6 +53,9 @@
+             instruction = scenario["episode_hospital_demo"]["instruction"]
+         scenario_path = run / "hospital_demo.yaml"
+         scenario_path.write_text(yaml.safe_dump(scenario, allow_unicode=True, sort_keys=False))
++        from distance_probe import INSTRUCTION as DISTANCE_INSTRUCTION
++        if instruction != DISTANCE_INSTRUCTION:
++            raise ValueError("This isolated probe requires its predeclared metric instruction")
+         env = os.environ.copy()
+         env["TICVLA_DEMO_VIEW"] = args.view
+         env["TICVLA_DEMO_INSTRUCTION"] = instruction
+@@ -70,6 +73,8 @@
+                 "offline": args.offline,
+                 "camera_view": args.view,
+                 "instruction": instruction, "instruction_mode": "verbatim",
++                "test_type": "native_metric_stop", "goal_termination_enabled": False,
++                "automatic_backup_enabled": False, "distance_is_evaluation_only": True,
+                 "inference_seed": inference_seed,
+                 "request_sha256": request_sha256,
+                 "scenario_sha256": hashlib.sha256(scenario_path.read_bytes()).hexdigest(),
+--- a/work/DynaNav/behavior/nova_carter_test_ticvla.py
++++ b/work/DynaNav/behavior/nova_carter_test_ticvla.py
+@@ -714,7 +714,8 @@
+         
+         # Only do stuck detection if first inference has completed (don't count initial stationary period)
+         # Also skip stuck detection while waiting for inference after backup (robot is intentionally stationary)
+-        if self._first_inference_complete and not self._is_backing_up and not self._waiting_for_inference_after_backup:
++        # Metric-stop probe: intentional stillness must not trigger automatic reverse.
++        if False and self._first_inference_complete and not self._is_backing_up and not self._waiting_for_inference_after_backup:
+             # Check if robot has moved significantly
+             if self._robot_position is not None:
+                 if self._last_movement_position is None or self._last_movement_frame is None:
+@@ -1067,6 +1068,10 @@
+                             'wall_monotonic': time.monotonic(), 'simulation_frame': self._frame_count,
+                             'v': float(final_v), 'w': float(final_w),
+                             'position': self._robot_position.tolist() if self._robot_position is not None else None,
++                            'actual_velocity': self._robot_velocity.tolist(),
++                            'actual_yaw_speed': float(self._robot_yaw_speed),
++                            'desired_action': self._current_action.tolist(),
++                            'timeline_seconds': float(get_timeline_interface().get_current_time()),
+                             'backing_up': bool(self._is_backing_up),
+                             'waiting_after_backup': bool(self._waiting_for_inference_after_backup),
+                             'first_inference_complete': bool(self._first_inference_complete),
+--- a/work/DynaNav/benchmark.py
++++ b/work/DynaNav/benchmark.py
+@@ -543,7 +543,7 @@
+                 # Update environment variable so behavior scripts can access the frame count
+                 os.environ['BENCHMARK_SIMULATION_FRAME_COUNT'] = str(self._simulation_frame_count)
+ 
+-                # reached goal?
++                # Metric-stop probe: reaching the measuring point must not stop the robot.
+                 if self._is_goal_reached():
+                     rep.orchestrator.set_capture_on_play(False)
+                     timeline.stop()
+@@ -629,7 +629,8 @@
+ 
+ 
+     def _is_goal_reached(self):
+-        """Check if robot has reached the goal."""
++        """Goal is measurement-only for the native metric-stop probe."""
++        return False  # End only at the fixed observation timeout.
+         if self._robot_position is None or self._goal_position is None:
+             return False
+ 
+--- a/hospital_demo.yaml
++++ b/hospital_demo.yaml
+@@ -1,13 +1,18 @@
+ seed: 36
+ navigation_method: ticvla
+-success_threshold: 1.5
+-
++success_threshold: 0.25
+ episode_hospital_demo:
+-  scene: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.0/Isaac/Environments/Hospital/hospital.usd"
+-  start: [-3.0, -1.2, 0.01]
++  scene: https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.0/Isaac/Environments/Hospital/hospital.usd
++  start:
++  - -3.0
++  - -1.2
++  - 0.01
+   start_yaw: 0.0
+-  goal: [9.72, 2.33, 0.01]
+-  instruction: "Go straight ahead and stop at the front of the vending machine."
+-  timeout: 70
++  goal:
++  - 0.0
++  - -1.2
++  - 0.01
++  instruction: 向前直走 3 米，然后停下
++  timeout: 34
+   num_people: 20
+-  robot_type: "nova_carter"
++  robot_type: nova_carter

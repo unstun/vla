@@ -1,0 +1,867 @@
+{
+  "notes": [
+    "Repeated runs of the identical frozen episodes give different outcomes. System 2 is deterministic (do_sample=False); System 1 is a flow-matching diffusion sampler and the pinned evaluator seeds numpy only (np.random.seed(local_rank)), never torch, so its initial noise differs per run.",
+    "Success and STOP provenance are independent: every episode here ended on a learned STOP emitted as text by System 2, and half of them still failed.",
+    "pixel_goal_source_view is mislabelled in public_eval_v1 only; use s2_branches and pixel_goal_model_input_sizes, which are correct in every run. A 640x480 model input means the look-down view, 384x384 means the level view."
+  ],
+  "per_episode_across_runs": {
+    "episode_1": {
+      "all_ended_on_learned_stop": true,
+      "n_runs": 5,
+      "n_success": 3,
+      "navigation_error_m_min_max": [
+        1.05,
+        4.057
+      ],
+      "runs": [
+        {
+          "ended_on_learned_stop": true,
+          "navigation_error_m": 1.05,
+          "oracle_success": 1.0,
+          "run_id": "public_eval_v1",
+          "spl": 1.0,
+          "steps": 81,
+          "success": 1.0,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "ended_on_learned_stop": true,
+          "navigation_error_m": 3.632,
+          "oracle_success": 0.0,
+          "run_id": "public_eval_v2",
+          "spl": 0.0,
+          "steps": 63,
+          "success": 0.0,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "ended_on_learned_stop": true,
+          "navigation_error_m": 4.057,
+          "oracle_success": 0.0,
+          "run_id": "public_eval_v3",
+          "spl": 0.0,
+          "steps": 67,
+          "success": 0.0,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "ended_on_learned_stop": true,
+          "navigation_error_m": 1.108,
+          "oracle_success": 1.0,
+          "run_id": "public_eval_v4",
+          "spl": 1.0,
+          "steps": 80,
+          "success": 1.0,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "ended_on_learned_stop": true,
+          "navigation_error_m": 1.252,
+          "oracle_success": 1.0,
+          "run_id": "public_eval_v5",
+          "spl": 1.0,
+          "steps": 81,
+          "success": 1.0,
+          "termination_reason": "habitat_episode_over"
+        }
+      ]
+    },
+    "episode_2": {
+      "all_ended_on_learned_stop": true,
+      "n_runs": 5,
+      "n_success": 2,
+      "navigation_error_m_min_max": [
+        2.154,
+        5.911
+      ],
+      "runs": [
+        {
+          "ended_on_learned_stop": true,
+          "navigation_error_m": 5.674,
+          "oracle_success": 1.0,
+          "run_id": "public_eval_v1",
+          "spl": 0.0,
+          "steps": 107,
+          "success": 0.0,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "ended_on_learned_stop": true,
+          "navigation_error_m": 5.911,
+          "oracle_success": 1.0,
+          "run_id": "public_eval_v2",
+          "spl": 0.0,
+          "steps": 113,
+          "success": 0.0,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "ended_on_learned_stop": true,
+          "navigation_error_m": 2.154,
+          "oracle_success": 1.0,
+          "run_id": "public_eval_v3",
+          "spl": 0.90181853828727,
+          "steps": 86,
+          "success": 1.0,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "ended_on_learned_stop": true,
+          "navigation_error_m": 2.973,
+          "oracle_success": 1.0,
+          "run_id": "public_eval_v4",
+          "spl": 0.845978877715708,
+          "steps": 92,
+          "success": 1.0,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "ended_on_learned_stop": true,
+          "navigation_error_m": 4.892,
+          "oracle_success": 1.0,
+          "run_id": "public_eval_v5",
+          "spl": 0.0,
+          "steps": 116,
+          "success": 0.0,
+          "termination_reason": "habitat_episode_over"
+        }
+      ]
+    }
+  },
+  "runs": [
+    {
+      "aggregate_reported_by_evaluator": {
+        "length": 2,
+        "nes_all": 3.361799716949463,
+        "oss_all": 1.0,
+        "spls_all": 0.5,
+        "sucs_all": 0.5
+      },
+      "device_memory_sampled_every_5s_MiB": {
+        "max_used_whole_device": 22381,
+        "min_used_whole_device": 2903,
+        "samples": 31,
+        "scope": "whole GPU, shared with a pre-existing isaac-sim container"
+      },
+      "episodes": [
+        {
+          "action_sources": {
+            "s1_local_actions": 64,
+            "s2_action_sequence": 17
+          },
+          "actions": {
+            "FORWARD": 46,
+            "LEFT": 12,
+            "LOOKDOWN": 8,
+            "RIGHT": 14,
+            "STOP": 1
+          },
+          "agent_path_length_m": 11.517,
+          "collisions_final": 0,
+          "cuda_max_memory_allocated_bytes_cumulative_never_reset": 17777254400,
+          "distance_to_goal_first_min_last_m": [
+            12.074,
+            0.922,
+            1.05
+          ],
+          "ended_on_learned_stop_from_system2_text": true,
+          "entered_success_radius_at_any_point": true,
+          "episode_id": 1,
+          "episode_wall_seconds": 57.45,
+          "geodesic_distance_m": 12.073848724365234,
+          "hit_evaluator_step_cap": false,
+          "instruction": "Turn right and walk past the long dark wooden table. Go straight on into the next room with the tall bright windows. Stop near the high-backed chairs standing between the windows.",
+          "learned_stop_step_ids": [
+            80
+          ],
+          "non_terminal_stop_events": {
+            "forward_budget_exhausted": 8
+          },
+          "official_metrics": {
+            "episode_id": 1,
+            "episode_instruction": "Turn right and walk past the long dark wooden table. Go straight on into the next room with the tall bright windows. Stop near the high-backed chairs standing between the windows.",
+            "ne": 1.0499640703201294,
+            "os": 1.0,
+            "scene_id": "skokloster-castle",
+            "spl": 1.0,
+            "steps": 81,
+            "success": 1.0
+          },
+          "pixel_goal_model_input_sizes": {
+            "640x480": 8
+          },
+          "pixel_goal_source_view_UNRELIABLE_IN_v1": {
+            "level": 8
+          },
+          "pixel_goals": 8,
+          "s1_calls": 24,
+          "s1_mean_whole_call_seconds": 0.3027,
+          "s1_seconds_total_whole_call": 7.265,
+          "s2_branches": {
+            "level_view": 11,
+            "look_down_followup": 8
+          },
+          "s2_calls": 19,
+          "s2_mean_whole_call_seconds": 0.5962,
+          "s2_seconds_total_whole_call": 11.327,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "action_sources": {
+            "s1_local_actions": 90,
+            "s2_action_sequence": 17
+          },
+          "actions": {
+            "FORWARD": 72,
+            "LEFT": 14,
+            "LOOKDOWN": 12,
+            "RIGHT": 8,
+            "STOP": 1
+          },
+          "agent_path_length_m": 15.813,
+          "collisions_final": 10,
+          "cuda_max_memory_allocated_bytes_cumulative_never_reset": 17780855808,
+          "distance_to_goal_first_min_last_m": [
+            11.472,
+            2.066,
+            5.674
+          ],
+          "ended_on_learned_stop_from_system2_text": true,
+          "entered_success_radius_at_any_point": true,
+          "episode_id": 2,
+          "episode_wall_seconds": 75.53,
+          "geodesic_distance_m": 11.472402572631836,
+          "hit_evaluator_step_cap": false,
+          "instruction": "Turn left and walk into the large hall with the painted ceiling. Cross the checkered stone floor towards the big paintings of men on horseback. Stop in front of the row of striped chairs under those paintings.",
+          "learned_stop_step_ids": [
+            106
+          ],
+          "non_terminal_stop_events": {
+            "forward_budget_exhausted": 11,
+            "s1_stop_mid_segment": 1
+          },
+          "official_metrics": {
+            "episode_id": 2,
+            "episode_instruction": "Turn left and walk into the large hall with the painted ceiling. Cross the checkered stone floor towards the big paintings of men on horseback. Stop in front of the row of striped chairs under those paintings.",
+            "ne": 5.673635482788086,
+            "os": 1.0,
+            "scene_id": "skokloster-castle",
+            "spl": 0.0,
+            "steps": 107,
+            "success": 0.0
+          },
+          "pixel_goal_model_input_sizes": {
+            "640x480": 12
+          },
+          "pixel_goal_source_view_UNRELIABLE_IN_v1": {
+            "level": 12
+          },
+          "pixel_goals": 12,
+          "s1_calls": 34,
+          "s1_mean_whole_call_seconds": 0.3021,
+          "s1_seconds_total_whole_call": 10.273,
+          "s2_branches": {
+            "level_view": 14,
+            "look_down_followup": 12
+          },
+          "s2_calls": 26,
+          "s2_mean_whole_call_seconds": 0.5147,
+          "s2_seconds_total_whole_call": 13.381,
+          "termination_reason": "habitat_episode_over"
+        }
+      ],
+      "exit": {
+        "exit_code": 0,
+        "finished_utc": "2026-09-09T09:45:29Z"
+      },
+      "run_id": "public_eval_v1"
+    },
+    {
+      "aggregate_reported_by_evaluator": {
+        "length": 2,
+        "nes_all": 4.7714385986328125,
+        "oss_all": 0.5,
+        "spls_all": 0.0,
+        "sucs_all": 0.0
+      },
+      "device_memory_sampled_every_5s_MiB": {
+        "max_used_whole_device": 22381,
+        "min_used_whole_device": 2903,
+        "samples": 28,
+        "scope": "whole GPU, shared with a pre-existing isaac-sim container"
+      },
+      "episodes": [
+        {
+          "action_sources": {
+            "s1_local_actions": 48,
+            "s2_action_sequence": 15
+          },
+          "actions": {
+            "FORWARD": 36,
+            "LEFT": 8,
+            "LOOKDOWN": 6,
+            "RIGHT": 12,
+            "STOP": 1
+          },
+          "agent_path_length_m": 9.007,
+          "collisions_final": 0,
+          "cuda_max_memory_allocated_bytes_cumulative_never_reset": 17777254400,
+          "distance_to_goal_first_min_last_m": [
+            12.074,
+            3.632,
+            3.632
+          ],
+          "ended_on_learned_stop_from_system2_text": true,
+          "entered_success_radius_at_any_point": false,
+          "episode_id": 1,
+          "episode_wall_seconds": 43.62,
+          "geodesic_distance_m": 12.073848724365234,
+          "hit_evaluator_step_cap": false,
+          "instruction": "Turn right and walk past the long dark wooden table. Go straight on into the next room with the tall bright windows. Stop near the high-backed chairs standing between the windows.",
+          "learned_stop_step_ids": [
+            62
+          ],
+          "non_terminal_stop_events": {
+            "forward_budget_exhausted": 6
+          },
+          "official_metrics": {
+            "episode_id": 1,
+            "episode_instruction": "Turn right and walk past the long dark wooden table. Go straight on into the next room with the tall bright windows. Stop near the high-backed chairs standing between the windows.",
+            "ne": 3.6315975189208984,
+            "os": 0.0,
+            "scene_id": "skokloster-castle",
+            "spl": 0.0,
+            "steps": 63,
+            "success": 0.0
+          },
+          "pixel_goal_model_input_sizes": {
+            "640x480": 6
+          },
+          "pixel_goal_source_view_UNRELIABLE_IN_v1": {
+            "look_down_followup": 6
+          },
+          "pixel_goals": 6,
+          "s1_calls": 18,
+          "s1_mean_whole_call_seconds": 0.3065,
+          "s1_seconds_total_whole_call": 5.517,
+          "s2_branches": {
+            "level_view": 9,
+            "look_down_followup": 6
+          },
+          "s2_calls": 15,
+          "s2_mean_whole_call_seconds": 0.5854,
+          "s2_seconds_total_whole_call": 8.782,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "action_sources": {
+            "s1_local_actions": 96,
+            "s2_action_sequence": 17
+          },
+          "actions": {
+            "FORWARD": 72,
+            "LEFT": 17,
+            "LOOKDOWN": 12,
+            "RIGHT": 11,
+            "STOP": 1
+          },
+          "agent_path_length_m": 16.324,
+          "collisions_final": 8,
+          "cuda_max_memory_allocated_bytes_cumulative_never_reset": 17780874752,
+          "distance_to_goal_first_min_last_m": [
+            11.472,
+            1.868,
+            5.911
+          ],
+          "ended_on_learned_stop_from_system2_text": true,
+          "entered_success_radius_at_any_point": true,
+          "episode_id": 2,
+          "episode_wall_seconds": 76.1,
+          "geodesic_distance_m": 11.472402572631836,
+          "hit_evaluator_step_cap": false,
+          "instruction": "Turn left and walk into the large hall with the painted ceiling. Cross the checkered stone floor towards the big paintings of men on horseback. Stop in front of the row of striped chairs under those paintings.",
+          "learned_stop_step_ids": [
+            112
+          ],
+          "non_terminal_stop_events": {
+            "forward_budget_exhausted": 12
+          },
+          "official_metrics": {
+            "episode_id": 2,
+            "episode_instruction": "Turn left and walk into the large hall with the painted ceiling. Cross the checkered stone floor towards the big paintings of men on horseback. Stop in front of the row of striped chairs under those paintings.",
+            "ne": 5.911279678344727,
+            "os": 1.0,
+            "scene_id": "skokloster-castle",
+            "spl": 0.0,
+            "steps": 113,
+            "success": 0.0
+          },
+          "pixel_goal_model_input_sizes": {
+            "640x480": 12
+          },
+          "pixel_goal_source_view_UNRELIABLE_IN_v1": {
+            "look_down_followup": 12
+          },
+          "pixel_goals": 12,
+          "s1_calls": 36,
+          "s1_mean_whole_call_seconds": 0.2942,
+          "s1_seconds_total_whole_call": 10.59,
+          "s2_branches": {
+            "level_view": 14,
+            "look_down_followup": 12
+          },
+          "s2_calls": 26,
+          "s2_mean_whole_call_seconds": 0.5139,
+          "s2_seconds_total_whole_call": 13.363,
+          "termination_reason": "habitat_episode_over"
+        }
+      ],
+      "exit": {
+        "exit_code": 0,
+        "finished_utc": "2026-09-09T09:50:57Z"
+      },
+      "run_id": "public_eval_v2"
+    },
+    {
+      "aggregate_reported_by_evaluator": {
+        "length": 2,
+        "nes_all": 3.1051743030548096,
+        "oss_all": 0.5,
+        "spls_all": 0.450909269143635,
+        "sucs_all": 0.5
+      },
+      "device_memory_sampled_every_5s_MiB": {
+        "max_used_whole_device": 22381,
+        "min_used_whole_device": 2903,
+        "samples": 25,
+        "scope": "whole GPU, shared with a pre-existing isaac-sim container"
+      },
+      "episodes": [
+        {
+          "action_sources": {
+            "s1_local_actions": 50,
+            "s2_action_sequence": 17
+          },
+          "actions": {
+            "FORWARD": 37,
+            "LEFT": 8,
+            "LOOKDOWN": 7,
+            "RIGHT": 14,
+            "STOP": 1
+          },
+          "agent_path_length_m": 9.257,
+          "collisions_final": 0,
+          "cuda_max_memory_allocated_bytes_cumulative_never_reset": 17777254400,
+          "distance_to_goal_first_min_last_m": [
+            12.074,
+            4.057,
+            4.057
+          ],
+          "ended_on_learned_stop_from_system2_text": true,
+          "entered_success_radius_at_any_point": false,
+          "episode_id": 1,
+          "episode_wall_seconds": 46.73,
+          "geodesic_distance_m": 12.073848724365234,
+          "hit_evaluator_step_cap": false,
+          "instruction": "Turn right and walk past the long dark wooden table. Go straight on into the next room with the tall bright windows. Stop near the high-backed chairs standing between the windows.",
+          "learned_stop_step_ids": [
+            66
+          ],
+          "non_terminal_stop_events": {
+            "forward_budget_exhausted": 6,
+            "s1_stop_mid_segment": 1
+          },
+          "official_metrics": {
+            "episode_id": 1,
+            "episode_instruction": "Turn right and walk past the long dark wooden table. Go straight on into the next room with the tall bright windows. Stop near the high-backed chairs standing between the windows.",
+            "ne": 4.056801795959473,
+            "os": 0.0,
+            "scene_id": "skokloster-castle",
+            "spl": 0.0,
+            "steps": 67,
+            "success": 0.0
+          },
+          "pixel_goal_model_input_sizes": {
+            "640x480": 7
+          },
+          "pixel_goal_source_view_UNRELIABLE_IN_v1": {
+            "look_down_followup": 7
+          },
+          "pixel_goals": 7,
+          "s1_calls": 19,
+          "s1_mean_whole_call_seconds": 0.2875,
+          "s1_seconds_total_whole_call": 5.463,
+          "s2_branches": {
+            "level_view": 11,
+            "look_down_followup": 7
+          },
+          "s2_calls": 18,
+          "s2_mean_whole_call_seconds": 0.5567,
+          "s2_seconds_total_whole_call": 10.021,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "action_sources": {
+            "s1_local_actions": 72,
+            "s2_action_sequence": 14
+          },
+          "actions": {
+            "FORWARD": 58,
+            "LEFT": 11,
+            "LOOKDOWN": 9,
+            "RIGHT": 7,
+            "STOP": 1
+          },
+          "agent_path_length_m": 12.721,
+          "collisions_final": 9,
+          "cuda_max_memory_allocated_bytes_cumulative_never_reset": 17780874752,
+          "distance_to_goal_first_min_last_m": [
+            11.472,
+            1.766,
+            2.154
+          ],
+          "ended_on_learned_stop_from_system2_text": true,
+          "entered_success_radius_at_any_point": true,
+          "episode_id": 2,
+          "episode_wall_seconds": 56.19,
+          "geodesic_distance_m": 11.472402572631836,
+          "hit_evaluator_step_cap": false,
+          "instruction": "Turn left and walk into the large hall with the painted ceiling. Cross the checkered stone floor towards the big paintings of men on horseback. Stop in front of the row of striped chairs under those paintings.",
+          "learned_stop_step_ids": [
+            85
+          ],
+          "non_terminal_stop_events": {
+            "forward_budget_exhausted": 9
+          },
+          "official_metrics": {
+            "episode_id": 2,
+            "episode_instruction": "Turn left and walk into the large hall with the painted ceiling. Cross the checkered stone floor towards the big paintings of men on horseback. Stop in front of the row of striped chairs under those paintings.",
+            "ne": 2.1535468101501465,
+            "os": 1.0,
+            "scene_id": "skokloster-castle",
+            "spl": 0.90181853828727,
+            "steps": 86,
+            "success": 1.0
+          },
+          "pixel_goal_model_input_sizes": {
+            "640x480": 9
+          },
+          "pixel_goal_source_view_UNRELIABLE_IN_v1": {
+            "look_down_followup": 9
+          },
+          "pixel_goals": 9,
+          "s1_calls": 27,
+          "s1_mean_whole_call_seconds": 0.2807,
+          "s1_seconds_total_whole_call": 7.579,
+          "s2_branches": {
+            "level_view": 11,
+            "look_down_followup": 9
+          },
+          "s2_calls": 20,
+          "s2_mean_whole_call_seconds": 0.4934,
+          "s2_seconds_total_whole_call": 9.869,
+          "termination_reason": "habitat_episode_over"
+        }
+      ],
+      "exit": {
+        "exit_code": 0,
+        "finished_utc": "2026-09-09T09:53:32Z"
+      },
+      "run_id": "public_eval_v3"
+    },
+    {
+      "aggregate_reported_by_evaluator": {
+        "length": 2,
+        "nes_all": 2.0404367446899414,
+        "oss_all": 1.0,
+        "spls_all": 0.922989438857854,
+        "sucs_all": 1.0
+      },
+      "device_memory_sampled_every_5s_MiB": {
+        "max_used_whole_device": 22381,
+        "min_used_whole_device": 2903,
+        "samples": 28,
+        "scope": "whole GPU, shared with a pre-existing isaac-sim container"
+      },
+      "episodes": [
+        {
+          "action_sources": {
+            "s1_local_actions": 63,
+            "s2_action_sequence": 17
+          },
+          "actions": {
+            "FORWARD": 48,
+            "LEFT": 11,
+            "LOOKDOWN": 8,
+            "RIGHT": 12,
+            "STOP": 1
+          },
+          "agent_path_length_m": 12.018,
+          "collisions_final": 0,
+          "cuda_max_memory_allocated_bytes_cumulative_never_reset": 17777254400,
+          "distance_to_goal_first_min_last_m": [
+            12.074,
+            0.612,
+            1.108
+          ],
+          "ended_on_learned_stop_from_system2_text": true,
+          "entered_success_radius_at_any_point": true,
+          "episode_id": 1,
+          "episode_wall_seconds": 55.98,
+          "geodesic_distance_m": 12.073848724365234,
+          "hit_evaluator_step_cap": false,
+          "instruction": "Turn right and walk past the long dark wooden table. Go straight on into the next room with the tall bright windows. Stop near the high-backed chairs standing between the windows.",
+          "learned_stop_step_ids": [
+            79
+          ],
+          "non_terminal_stop_events": {
+            "forward_budget_exhausted": 7,
+            "s1_stop_mid_segment": 1
+          },
+          "official_metrics": {
+            "episode_id": 1,
+            "episode_instruction": "Turn right and walk past the long dark wooden table. Go straight on into the next room with the tall bright windows. Stop near the high-backed chairs standing between the windows.",
+            "ne": 1.1080222129821777,
+            "os": 1.0,
+            "scene_id": "skokloster-castle",
+            "spl": 1.0,
+            "steps": 80,
+            "success": 1.0
+          },
+          "pixel_goal_model_input_sizes": {
+            "640x480": 8
+          },
+          "pixel_goal_source_view_UNRELIABLE_IN_v1": {
+            "look_down_followup": 8
+          },
+          "pixel_goals": 8,
+          "s1_calls": 23,
+          "s1_mean_whole_call_seconds": 0.3017,
+          "s1_seconds_total_whole_call": 6.939,
+          "s2_branches": {
+            "level_view": 11,
+            "look_down_followup": 8
+          },
+          "s2_calls": 19,
+          "s2_mean_whole_call_seconds": 0.5721,
+          "s2_seconds_total_whole_call": 10.87,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "action_sources": {
+            "s1_local_actions": 77,
+            "s2_action_sequence": 15
+          },
+          "actions": {
+            "FORWARD": 63,
+            "LEFT": 11,
+            "LOOKDOWN": 10,
+            "RIGHT": 7,
+            "STOP": 1
+          },
+          "agent_path_length_m": 13.561,
+          "collisions_final": 10,
+          "cuda_max_memory_allocated_bytes_cumulative_never_reset": 17780855808,
+          "distance_to_goal_first_min_last_m": [
+            11.472,
+            1.757,
+            2.973
+          ],
+          "ended_on_learned_stop_from_system2_text": true,
+          "entered_success_radius_at_any_point": true,
+          "episode_id": 2,
+          "episode_wall_seconds": 62.76,
+          "geodesic_distance_m": 11.472402572631836,
+          "hit_evaluator_step_cap": false,
+          "instruction": "Turn left and walk into the large hall with the painted ceiling. Cross the checkered stone floor towards the big paintings of men on horseback. Stop in front of the row of striped chairs under those paintings.",
+          "learned_stop_step_ids": [
+            91
+          ],
+          "non_terminal_stop_events": {
+            "forward_budget_exhausted": 9,
+            "s1_stop_mid_segment": 1
+          },
+          "official_metrics": {
+            "episode_id": 2,
+            "episode_instruction": "Turn left and walk into the large hall with the painted ceiling. Cross the checkered stone floor towards the big paintings of men on horseback. Stop in front of the row of striped chairs under those paintings.",
+            "ne": 2.972851037979126,
+            "os": 1.0,
+            "scene_id": "skokloster-castle",
+            "spl": 0.845978877715708,
+            "steps": 92,
+            "success": 1.0
+          },
+          "pixel_goal_model_input_sizes": {
+            "640x480": 10
+          },
+          "pixel_goal_source_view_UNRELIABLE_IN_v1": {
+            "look_down_followup": 10
+          },
+          "pixel_goals": 10,
+          "s1_calls": 29,
+          "s1_mean_whole_call_seconds": 0.2951,
+          "s1_seconds_total_whole_call": 8.558,
+          "s2_branches": {
+            "level_view": 12,
+            "look_down_followup": 10
+          },
+          "s2_calls": 22,
+          "s2_mean_whole_call_seconds": 0.5042,
+          "s2_seconds_total_whole_call": 11.093,
+          "termination_reason": "habitat_episode_over"
+        }
+      ],
+      "exit": {
+        "exit_code": 0,
+        "finished_utc": "2026-09-09T09:55:54Z"
+      },
+      "run_id": "public_eval_v4"
+    },
+    {
+      "aggregate_reported_by_evaluator": {
+        "length": 2,
+        "nes_all": 3.0723795890808105,
+        "oss_all": 1.0,
+        "spls_all": 0.5,
+        "sucs_all": 0.5
+      },
+      "device_memory_sampled_every_5s_MiB": {
+        "max_used_whole_device": 22381,
+        "min_used_whole_device": 2903,
+        "samples": 31,
+        "scope": "whole GPU, shared with a pre-existing isaac-sim container"
+      },
+      "episodes": [
+        {
+          "action_sources": {
+            "s1_local_actions": 64,
+            "s2_action_sequence": 17
+          },
+          "actions": {
+            "FORWARD": 47,
+            "LEFT": 11,
+            "LOOKDOWN": 8,
+            "RIGHT": 14,
+            "STOP": 1
+          },
+          "agent_path_length_m": 11.763,
+          "collisions_final": 0,
+          "cuda_max_memory_allocated_bytes_cumulative_never_reset": 17777254400,
+          "distance_to_goal_first_min_last_m": [
+            12.074,
+            1.092,
+            1.252
+          ],
+          "ended_on_learned_stop_from_system2_text": true,
+          "entered_success_radius_at_any_point": true,
+          "episode_id": 1,
+          "episode_wall_seconds": 56.26,
+          "geodesic_distance_m": 12.073848724365234,
+          "hit_evaluator_step_cap": false,
+          "instruction": "Turn right and walk past the long dark wooden table. Go straight on into the next room with the tall bright windows. Stop near the high-backed chairs standing between the windows.",
+          "learned_stop_step_ids": [
+            80
+          ],
+          "non_terminal_stop_events": {
+            "forward_budget_exhausted": 8
+          },
+          "official_metrics": {
+            "episode_id": 1,
+            "episode_instruction": "Turn right and walk past the long dark wooden table. Go straight on into the next room with the tall bright windows. Stop near the high-backed chairs standing between the windows.",
+            "ne": 1.2523351907730103,
+            "os": 1.0,
+            "scene_id": "skokloster-castle",
+            "spl": 1.0,
+            "steps": 81,
+            "success": 1.0
+          },
+          "pixel_goal_model_input_sizes": {
+            "640x480": 8
+          },
+          "pixel_goal_source_view_UNRELIABLE_IN_v1": {
+            "look_down_followup": 8
+          },
+          "pixel_goals": 8,
+          "s1_calls": 24,
+          "s1_mean_whole_call_seconds": 0.305,
+          "s1_seconds_total_whole_call": 7.32,
+          "s2_branches": {
+            "level_view": 11,
+            "look_down_followup": 8
+          },
+          "s2_calls": 19,
+          "s2_mean_whole_call_seconds": 0.568,
+          "s2_seconds_total_whole_call": 10.791,
+          "termination_reason": "habitat_episode_over"
+        },
+        {
+          "action_sources": {
+            "s1_local_actions": 96,
+            "s2_action_sequence": 20
+          },
+          "actions": {
+            "FORWARD": 71,
+            "LEFT": 19,
+            "LOOKDOWN": 12,
+            "RIGHT": 13,
+            "STOP": 1
+          },
+          "agent_path_length_m": 15.553,
+          "collisions_final": 10,
+          "cuda_max_memory_allocated_bytes_cumulative_never_reset": 17780855808,
+          "distance_to_goal_first_min_last_m": [
+            11.472,
+            1.828,
+            4.892
+          ],
+          "ended_on_learned_stop_from_system2_text": true,
+          "entered_success_radius_at_any_point": true,
+          "episode_id": 2,
+          "episode_wall_seconds": 76.48,
+          "geodesic_distance_m": 11.472402572631836,
+          "hit_evaluator_step_cap": false,
+          "instruction": "Turn left and walk into the large hall with the painted ceiling. Cross the checkered stone floor towards the big paintings of men on horseback. Stop in front of the row of striped chairs under those paintings.",
+          "learned_stop_step_ids": [
+            115
+          ],
+          "non_terminal_stop_events": {
+            "forward_budget_exhausted": 12
+          },
+          "official_metrics": {
+            "episode_id": 2,
+            "episode_instruction": "Turn left and walk into the large hall with the painted ceiling. Cross the checkered stone floor towards the big paintings of men on horseback. Stop in front of the row of striped chairs under those paintings.",
+            "ne": 4.8924241065979,
+            "os": 1.0,
+            "scene_id": "skokloster-castle",
+            "spl": 0.0,
+            "steps": 116,
+            "success": 0.0
+          },
+          "pixel_goal_model_input_sizes": {
+            "640x480": 12
+          },
+          "pixel_goal_source_view_UNRELIABLE_IN_v1": {
+            "look_down_followup": 12
+          },
+          "pixel_goals": 12,
+          "s1_calls": 36,
+          "s1_mean_whole_call_seconds": 0.292,
+          "s1_seconds_total_whole_call": 10.512,
+          "s2_branches": {
+            "level_view": 15,
+            "look_down_followup": 12
+          },
+          "s2_calls": 27,
+          "s2_mean_whole_call_seconds": 0.5086,
+          "s2_seconds_total_whole_call": 13.732,
+          "termination_reason": "habitat_episode_over"
+        }
+      ],
+      "exit": {
+        "exit_code": 0,
+        "finished_utc": "2026-09-09T09:58:29Z"
+      },
+      "run_id": "public_eval_v5"
+    }
+  ]
+}

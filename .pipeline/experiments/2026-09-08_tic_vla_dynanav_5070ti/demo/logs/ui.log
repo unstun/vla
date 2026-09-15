@@ -1,0 +1,29 @@
+DEMO_UI http://127.0.0.1:18765
+DEMO_UI http://127.0.0.1:18765
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 56818)
+Traceback (most recent call last):
+  File "/Users/sun/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Users/sun/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Users/sun/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/socketserver.py", line 766, in __init__
+    self.handle()
+  File "/Users/sun/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/http/server.py", line 436, in handle
+    self.handle_one_request()
+  File "/Users/sun/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/http/server.py", line 424, in handle_one_request
+    method()
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/demo/scripts/server.py", line 79, in do_GET
+    state.update(json.loads(remote_request("/status")))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/demo/scripts/server.py", line 25, in remote_request
+    return response.read()
+           ^^^^^^^^^^^^^^^
+  File "/Users/sun/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/http/client.py", line 495, in read
+    s = self._safe_read(self.length)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sun/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/http/client.py", line 644, in _safe_read
+    raise IncompleteRead(data, amt-len(data))
+http.client.IncompleteRead: IncompleteRead(0 bytes read, 4311 more expected)
+----------------------------------------
+DEMO_UI http://127.0.0.1:18765

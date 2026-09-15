@@ -1,0 +1,42 @@
+{
+  "purpose": "Diagnose why episode v1 failed: compare rendered scene exposure against the released real-world fixtures the checkpoint was demonstrated on.",
+  "measurements": [
+    {
+      "label": "released real-world fixture (target distribution)",
+      "n": 152,
+      "mean_luma": 120.09249280628406,
+      "min": 96.27799224853516,
+      "max": 139.9307098388672,
+      "p05": 106.29880409240722,
+      "p95": 134.00226287841798
+    },
+    {
+      "label": "habitat apartment_1 raw render, lighting=scene (episode v1 model input)",
+      "n": 200,
+      "mean_luma": 40.1242961025238,
+      "min": 22.535276412963867,
+      "max": 59.986446380615234,
+      "p05": 26.262990474700928,
+      "p95": 57.62129592895508
+    },
+    {
+      "label": "habitat apartment_1 with DEFAULT_LIGHTING_KEY (rejected: worse)",
+      "n": 1,
+      "mean_luma": 18.46808624267578,
+      "min": 18.46808624267578,
+      "max": 18.46808624267578,
+      "p05": 18.46808624267578,
+      "p95": 18.46808624267578
+    }
+  ],
+  "v2_applied_gain": {
+    "n": 200,
+    "min": 1.1836739666037048,
+    "mean": 2.972960325507479,
+    "max": 4.0,
+    "clip_ceiling": 4.0,
+    "frames_at_ceiling": 50,
+    "target_luma": 118.6
+  },
+  "conclusion": "Raw render is ~3x darker than the distribution the checkpoint was demonstrated on. Habitat default lighting made it worse, so v2 applied a per-frame auto-exposure gain to the model input only, emulating a real RGB-D camera. Saved observation PNGs are unmodified."
+}

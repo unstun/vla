@@ -1,0 +1,41 @@
+{
+  "blocking_input": "Matterport3D (MP3D) scene mesh in Habitat format",
+  "why": "scripts/eval/configs/vln_r2r.yaml sets habitat.dataset.scenes_dir=data/scene_data/mp3d_ce and habitat.Env() loads the episode's scene_id from it. Without the mesh the official evaluator cannot construct the environment, so no episode can run.",
+  "scene_needed": {
+    "scene_id": "2azQ1b91cZZ",
+    "episode_scene_id_field": "mp3d/2azQ1b91cZZ/2azQ1b91cZZ.glb",
+    "expected_path_under_derived_config": "official_r2r/data/scene_data/mp3d_ce/mp3d/2azQ1b91cZZ/2azQ1b91cZZ.glb",
+    "also_expected": "official_r2r/data/scene_data/mp3d_ce/mp3d/2azQ1b91cZZ/2azQ1b91cZZ.navmesh",
+    "note": "Exactly ONE scene is required for the three frozen episodes, not the full 90-scene collection."
+  },
+  "official_access_step": {
+    "source": "https://niessner.github.io/Matterport/ (repo: https://github.com/niessner/Matterport)",
+    "verbatim_requirement": "To download the dataset, you must indicate that you agree to the terms of use by signing the Terms of Use agreement form, using your institutional email addresses, and sending it to: matterport3d@googlegroups.com",
+    "terms_of_use_pdf": "http://kaldir.vc.cit.tum.de/matterport/MP_TOS.pdf",
+    "contact": "matterport3d@googlegroups.com",
+    "after_approval": "The Matterport team grants download access to download_mp.py. habitat-sim DATASETS.md documents the Habitat-format download as: python download_mp.py --task habitat -o path/to/download/  (Python 2.7).",
+    "per_scene_selection_unverified": "Whether download_mp.py exposes a per-scene flag was NOT verified from an authoritative page in this session; the script is only distributed after approval. If it does, restrict to 2azQ1b91cZZ.",
+    "requires_user_action": true,
+    "reason_agent_cannot_complete": "Requires a signed agreement from an institutional email address and an approval email exchange. No credential for this exists on either machine."
+  },
+  "second_blocking_input": {
+    "item": "R2R-CE val_unseen annotations from the InternRobotics distribution",
+    "status": "WORKED AROUND, not resolved",
+    "official_source": "https://huggingface.co/datasets/InternRobotics/InternData-N1 (vln_ce/raw_data/r2r/val_unseen/val_unseen.json.gz)",
+    "observed_http_status": 401,
+    "observed_error_code": "GatedRepo",
+    "observed_error_message": "Access to dataset InternRobotics/InternData-N1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+    "requires_user_action": "Accept the dataset gate on huggingface.co and provide an access token.",
+    "substitute_used": {
+      "source": "Original VLN-CE R2R_VLNCE_v1-3 release by the VLN-CE authors (public, ungated)",
+      "url": "https://drive.google.com/file/d/1T9SjqZWyR2PCLSXYkFckfDeIs6Un0Rjm/view",
+      "documented_at": "https://github.com/jacobkrantz/VLN-CE",
+      "license": "MP3D Terms of Use + CC BY-NC-SA 3.0 US (as stated by VLN-CE)",
+      "caveat": "This is the upstream ORIGIN of R2R-CE, but it was NOT byte-compared against InternRobotics' copy because that copy is gated. Any difference between them is an unverified risk to strict parity."
+    }
+  },
+  "not_blocking": {
+    "checkpoint": "InternRobotics/InternVLA-N1-DualVLN rev a698a9e898b4001621a319e1bc89f02ec715cc86 already downloaded and hash-verified (setup/original_weight_manifest.json)",
+    "encoder": "depth_anything_v2_metric_hypersim_vits.pth already downloaded and hash-verified"
+  }
+}

@@ -1,0 +1,68 @@
+--- references/upstream/2026-09-08_dualvln/source/InternNav/internnav/agent/__init__.py	2026-09-08 23:01:39
++++ .pipeline/experiments/2026-09-08_dualvln_rented4090/work/InternNav/internnav/agent/__init__.py	2026-09-08 23:05:58
+@@ -1,8 +1,18 @@
+-from internnav.agent.base import Agent
+-from internnav.agent.cma_agent import CmaAgent
+-from internnav.agent.dialog_agent import DialogAgent
+-from internnav.agent.internvla_n1_agent import InternVLAN1Agent
+-from internnav.agent.rdp_agent import RdpAgent
+-from internnav.agent.seq2seq_agent import Seq2SeqAgent
+-
+-__all__ = ['Agent', 'DialogAgent', 'CmaAgent', 'RdpAgent', 'Seq2SeqAgent', 'InternVLAN1Agent']
++"""Load optional agent implementations only when requested."""
++from importlib import import_module
++_AGENTS = {
++    'Agent': ('base', 'Agent'),
++    'CmaAgent': ('cma_agent', 'CmaAgent'),
++    'DialogAgent': ('dialog_agent', 'DialogAgent'),
++    'InternVLAN1Agent': ('internvla_n1_agent', 'InternVLAN1Agent'),
++    'RdpAgent': ('rdp_agent', 'RdpAgent'),
++    'Seq2SeqAgent': ('seq2seq_agent', 'Seq2SeqAgent'),
++}
++__all__ = list(_AGENTS)
++def __getattr__(name):
++    if name not in _AGENTS:
++        raise AttributeError(name)
++    module, attr = _AGENTS[name]
++    value = getattr(import_module('.' + module, __name__), attr)
++    globals()[name] = value
++    return value
+--- references/upstream/2026-09-08_dualvln/source/InternNav/internnav/model/encoder/__init__.py	2026-09-08 23:01:39
++++ .pipeline/experiments/2026-09-08_dualvln_rented4090/work/InternNav/internnav/model/encoder/__init__.py	2026-09-08 23:57:12
+@@ -1,7 +1,29 @@
+-from .bert_backbone import PositionalEncoding
+-from .distance_encoder import DistanceNetwork
+-from .image_clip_encoder import ImageEncoder
+-from .instruction_encoder import InstructionEncoder
+-from .instruction_longCLIP_encoder import InstructionLongCLIPEncoder
+-from .instruction_roberta_encoder import LanguageEncoder
+-from .vision_language_encoder import VisionLanguageEncoder
++"""Load optional encoder implementations only when requested.
++
++Upstream imports every encoder eagerly, which pulls
++``internnav.model.basemodel.LongCLIP`` -- a git submodule that is not part of
++the pinned source snapshot. The InternVLA-N1 DualVLN inference path only needs
++DepthAnythingV2, so defer each import to first attribute access, mirroring the
++patch already applied to ``internnav/agent/__init__.py``.
++"""
++from importlib import import_module
++
++_ENCODERS = {
++    'PositionalEncoding': ('bert_backbone', 'PositionalEncoding'),
++    'DistanceNetwork': ('distance_encoder', 'DistanceNetwork'),
++    'ImageEncoder': ('image_clip_encoder', 'ImageEncoder'),
++    'InstructionEncoder': ('instruction_encoder', 'InstructionEncoder'),
++    'InstructionLongCLIPEncoder': ('instruction_longCLIP_encoder', 'InstructionLongCLIPEncoder'),
++    'LanguageEncoder': ('instruction_roberta_encoder', 'LanguageEncoder'),
++    'VisionLanguageEncoder': ('vision_language_encoder', 'VisionLanguageEncoder'),
++}
++__all__ = list(_ENCODERS)
++
++
++def __getattr__(name):
++    if name not in _ENCODERS:
++        raise AttributeError(name)
++    module, attr = _ENCODERS[name]
++    value = getattr(import_module('.' + module, __name__), attr)
++    globals()[name] = value
++    return value

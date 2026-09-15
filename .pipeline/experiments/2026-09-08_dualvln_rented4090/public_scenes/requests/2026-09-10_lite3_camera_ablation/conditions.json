@@ -1,0 +1,641 @@
+{
+  "request_id": "2026-09-10_lite3_camera_ablation",
+  "single_source_of_truth": "Every script in this request reads camera geometry from this file; the YAMLs are generated from it by make_condition_yamls.py.",
+  "resolution": {
+    "width": 640,
+    "height": 480
+  },
+  "baseline": {
+    "run_id_prefix": "public_eval_v",
+    "run_ids": [
+      "public_eval_v1",
+      "public_eval_v2",
+      "public_eval_v3",
+      "public_eval_v4",
+      "public_eval_v5"
+    ],
+    "habitat_yaml": "public_scenes/configs/vln_public_scenes.yaml",
+    "height_m": 1.25,
+    "forward_offset_m": 0.0,
+    "pitch_down_deg": 0,
+    "hfov_deg": 79,
+    "tilt_angle_deg": 15,
+    "habitat": {
+      "position": [
+        0.0,
+        1.25,
+        0.0
+      ],
+      "orientation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "hfov": 79,
+      "tilt_angle": 15
+    },
+    "note": "Recorded runs are reused; the baseline is not rerun."
+  },
+  "conditions": {
+    "c1_lite3_rig": {
+      "label": "Lite3 rig faithful",
+      "purpose": "Current Lite3 sensor-rig camera: 0.42 m, 0.25 m ahead of the torso origin, fixed 20 deg down, D435i colour FOV; no look-down tilt, like the real-world agent path.",
+      "height_m": 0.42,
+      "forward_offset_m": 0.25,
+      "pitch_down_deg": 20,
+      "hfov_deg": 54,
+      "tilt_angle_deg": 0,
+      "habitat": {
+        "position": [
+          0.0,
+          0.42,
+          -0.25
+        ],
+        "orientation": [
+          -0.3490658503988659,
+          0.0,
+          0.0
+        ],
+        "hfov": 54,
+        "tilt_angle": 0
+      },
+      "habitat_yaml": "public_scenes/configs/vln_cam_c1_lite3_rig.yaml"
+    },
+    "c2_height_only": {
+      "label": "Height only",
+      "purpose": "Lite3 camera height under the unchanged Habitat protocol (level camera, 30 deg look-down for System 1, HFOV 79).",
+      "height_m": 0.42,
+      "forward_offset_m": 0.25,
+      "pitch_down_deg": 0,
+      "hfov_deg": 79,
+      "tilt_angle_deg": 15,
+      "habitat": {
+        "position": [
+          0.0,
+          0.42,
+          -0.25
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "hfov": 79,
+        "tilt_angle": 15
+      },
+      "habitat_yaml": "public_scenes/configs/vln_cam_c2_height_only.yaml"
+    },
+    "c3_fov_only": {
+      "label": "FOV only",
+      "purpose": "D435i field of view at the default 1.25 m level camera under the unchanged Habitat protocol.",
+      "height_m": 1.25,
+      "forward_offset_m": 0.0,
+      "pitch_down_deg": 0,
+      "hfov_deg": 54,
+      "tilt_angle_deg": 15,
+      "habitat": {
+        "position": [
+          0.0,
+          1.25,
+          0.0
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "hfov": 54,
+        "tilt_angle": 15
+      },
+      "habitat_yaml": "public_scenes/configs/vln_cam_c3_fov_only.yaml"
+    },
+    "c4_raised_mount": {
+      "label": "Raised mount candidate",
+      "purpose": "Candidate raised Lite3 mount: 0.65 m, fixed 15 deg down like the authors' real-robot setup, D435i FOV, no look-down tilt.",
+      "height_m": 0.65,
+      "forward_offset_m": 0.25,
+      "pitch_down_deg": 15,
+      "hfov_deg": 54,
+      "tilt_angle_deg": 0,
+      "habitat": {
+        "position": [
+          0.0,
+          0.65,
+          -0.25
+        ],
+        "orientation": [
+          -0.2617993877991494,
+          0.0,
+          0.0
+        ],
+        "hfov": 54,
+        "tilt_angle": 0
+      },
+      "habitat_yaml": "public_scenes/configs/vln_cam_c4_raised_mount.yaml"
+    },
+    "c5_head_level": {
+      "label": "Head camera proxy, level",
+      "purpose": "Lite3 built-in head camera proxy: estimated optical centre 0.40 m above ground and 0.27 m ahead of the torso origin (vendor torso mesh brackets the nose at <=0.28 m ahead and 0.33-0.40 m high; a third-party calibration of one Lite3 Venture fitted 0.37-0.40 m); render with the evaluation camera's HFOV 79 at 4:3, which the deployment adapter obtains by centre-cropping the 1280x720 head-camera stream (839x629 px at fx 508.7); fixed camera with no look-down tilt, like the real-world agent path. Level pitch: the control that isolates the pitch effect of C6, and the geometry if the head were re-mounted level.",
+      "height_m": 0.4,
+      "forward_offset_m": 0.27,
+      "pitch_down_deg": 0,
+      "hfov_deg": 79,
+      "tilt_angle_deg": 0,
+      "habitat": {
+        "position": [
+          0.0,
+          0.4,
+          -0.27
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "hfov": 79,
+        "tilt_angle": 0
+      },
+      "habitat_yaml": "public_scenes/configs/vln_cam_c5_head_level.yaml",
+      "geometry_status": "estimated; to be replaced by the on-robot measurement (checkerboard, IMU, tape)"
+    },
+    "c6_head_down15": {
+      "label": "Head camera proxy, 15 deg down",
+      "purpose": "Lite3 built-in head camera proxy: estimated optical centre 0.40 m above ground and 0.27 m ahead of the torso origin (vendor torso mesh brackets the nose at <=0.28 m ahead and 0.33-0.40 m high; a third-party calibration of one Lite3 Venture fitted 0.37-0.40 m); render with the evaluation camera's HFOV 79 at 4:3, which the deployment adapter obtains by centre-cropping the 1280x720 head-camera stream (839x629 px at fx 508.7); fixed camera with no look-down tilt, like the real-world agent path. Pitch 15 deg down: the third party fitted -15.04 deg (and wrote about 11 deg elsewhere); this is also the authors' real-robot D455 pitch.",
+      "height_m": 0.4,
+      "forward_offset_m": 0.27,
+      "pitch_down_deg": 15,
+      "hfov_deg": 79,
+      "tilt_angle_deg": 0,
+      "habitat": {
+        "position": [
+          0.0,
+          0.4,
+          -0.27
+        ],
+        "orientation": [
+          -0.2617993877991494,
+          0.0,
+          0.0
+        ],
+        "hfov": 79,
+        "tilt_angle": 0
+      },
+      "habitat_yaml": "public_scenes/configs/vln_cam_c6_head_down15.yaml",
+      "geometry_status": "estimated; to be replaced by the on-robot measurement (checkerboard, IMU, tape)"
+    },
+    "c7_fused_level": {
+      "label": "Fused virtual camera, level, D435i colour 640x480 (HFOV 55)",
+      "purpose": "Fused virtual camera: the image a LEVEL virtual pinhole camera (HFOV 79 at 640x480, the evaluation camera) would see from the head camera's optical centre, composed at every step from two rendered real mounts: the stock head camera (1280x720, HFOV 105, measured on the robot 2026-09-11: fx 490 / fy 487, optical axis +16.7 deg UP) by pure rotation, and the D435i colour+depth on the sensor carrier (0.42 m, 0.25 m forward, 20 deg down; datasheet colour FOV 69x42) by depth-based reprojection. Head pixels where the head sees, feathered over the last 8 rows into the D435i image, D435i elsewhere, black where neither sees. The evaluator's 'depth' input stays an ideal depth sensor at the virtual pose (the shipped System 1 never reads it). tilt_angle 0 (fixed cameras, real-world path). D435i colour at 640x480 (4:3 crop of the 16:9 sensor: HFOV 54.6 derived from H69 at 16:9, rounded to the integer 55 that habitat-lab accepts), the resolution Fast-LIVO2 already consumes; synthetic self-test predicts about 6 percent of the image uncovered (bottom corners).",
+      "height_m": 0.4,
+      "forward_offset_m": 0.27,
+      "pitch_down_deg": 0,
+      "hfov_deg": 79,
+      "tilt_angle_deg": 0,
+      "habitat": {
+        "position": [
+          0.0,
+          0.4,
+          -0.27
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "hfov": 79,
+        "tilt_angle": 0
+      },
+      "fused": {
+        "agent_default": "rgbd_agent (the sim rgb_sensor stays at the virtual pose: the evaluator reads its position and the preflight uses it as the ideal reference; the task sensor with uuid rgb overrides it in observations)",
+        "virtual": {
+          "width": 640,
+          "height": 480,
+          "hfov": 79,
+          "position": [
+            0.0,
+            0.4,
+            -0.27
+          ],
+          "orientation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uuid": "rgb"
+        },
+        "depth_for_evaluator": {
+          "width": 640,
+          "height": 480,
+          "hfov": 79,
+          "position": [
+            0.0,
+            0.4,
+            -0.27
+          ],
+          "orientation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "min_depth": 0.0,
+          "max_depth": 10.0
+        },
+        "head_rgb": {
+          "width": 1280,
+          "height": 720,
+          "hfov": 105,
+          "position": [
+            0.0,
+            0.4,
+            -0.27
+          ],
+          "orientation": [
+            0.29147,
+            0.0,
+            0.0
+          ],
+          "uuid": "head_rgb",
+          "basis": "measured 2026-09-11: fx 490.1 / fy 486.7 at 1280x720 -> HFOV 105.1, VFOV 73.0; elevation +16.7 deg (0.73 m placement); height/offset estimated as in c5 (standing height unmeasured)"
+        },
+        "d435_rgb": {
+          "width": 640,
+          "height": 480,
+          "hfov": 55,
+          "position": [
+            0.0,
+            0.42,
+            -0.25
+          ],
+          "orientation": [
+            -0.3490658503988659,
+            0.0,
+            0.0
+          ],
+          "uuid": "d435_rgb",
+          "basis": "machine-dog-nav sensor-carrier URDF (0.42 m, 0.25 m forward, 20 deg down); RealSense datasheet 337029-017 colour FOV H69 V42 at 16:9; HFOV rounded to 55 because habitat-lab 0.2.4 types hfov as an integer (VFOV 42.6 vs the datasheet 42.0, within its +/-3 deg tolerance)"
+        },
+        "d435_depth": {
+          "width": 640,
+          "height": 480,
+          "hfov": 55,
+          "position": [
+            0.0,
+            0.42,
+            -0.25
+          ],
+          "orientation": [
+            -0.3490658503988659,
+            0.0,
+            0.0
+          ],
+          "uuid": "d435_depth",
+          "min_depth": 0.0,
+          "max_depth": 10.0,
+          "normalize_depth": false,
+          "basis": "rendered with the colour intrinsics, i.e. colour-aligned depth as librealsense align_to_color provides"
+        },
+        "fusion": {
+          "feather_rows": 8,
+          "depth_valid_max_m": 9.9,
+          "module": "public_scenes/requests/2026-09-10_lite3_camera_ablation/fused_camera.py",
+          "plugin": "public_scenes/requests/2026-09-10_lite3_camera_ablation/fused_camera_plugin.py"
+        }
+      },
+      "eval_config": "public_scenes/configs/habitat_dual_system_fused_cfg.py",
+      "preflight_script": "public_scenes/requests/2026-09-10_lite3_camera_ablation/preflight_fused.py",
+      "habitat_yaml": "public_scenes/configs/vln_cam_c7_fused_level.yaml",
+      "geometry_status": "head pitch and intrinsics measured on the robot 2026-09-11 (lying, torso IMU level); head height/offset and D435i pose from mesh/URDF estimates; D435i FOV from the datasheet"
+    },
+    "c8_fused_level_720": {
+      "label": "Fused virtual camera, level, D435i colour 1280x720",
+      "purpose": "Fused virtual camera: the image a LEVEL virtual pinhole camera (HFOV 79 at 640x480, the evaluation camera) would see from the head camera's optical centre, composed at every step from two rendered real mounts: the stock head camera (1280x720, HFOV 105, measured on the robot 2026-09-11: fx 490 / fy 487, optical axis +16.7 deg UP) by pure rotation, and the D435i colour+depth on the sensor carrier (0.42 m, 0.25 m forward, 20 deg down; datasheet colour FOV 69x42) by depth-based reprojection. Head pixels where the head sees, feathered over the last 8 rows into the D435i image, D435i elsewhere, black where neither sees. The evaluator's 'depth' input stays an ideal depth sensor at the virtual pose (the shipped System 1 never reads it). tilt_angle 0 (fixed cameras, real-world path). D435i colour at 1280x720 (full HFOV 69); synthetic self-test predicts about 1.3 percent uncovered.",
+      "height_m": 0.4,
+      "forward_offset_m": 0.27,
+      "pitch_down_deg": 0,
+      "hfov_deg": 79,
+      "tilt_angle_deg": 0,
+      "habitat": {
+        "position": [
+          0.0,
+          0.4,
+          -0.27
+        ],
+        "orientation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "hfov": 79,
+        "tilt_angle": 0
+      },
+      "fused": {
+        "agent_default": "rgbd_agent (the sim rgb_sensor stays at the virtual pose: the evaluator reads its position and the preflight uses it as the ideal reference; the task sensor with uuid rgb overrides it in observations)",
+        "virtual": {
+          "width": 640,
+          "height": 480,
+          "hfov": 79,
+          "position": [
+            0.0,
+            0.4,
+            -0.27
+          ],
+          "orientation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uuid": "rgb"
+        },
+        "depth_for_evaluator": {
+          "width": 640,
+          "height": 480,
+          "hfov": 79,
+          "position": [
+            0.0,
+            0.4,
+            -0.27
+          ],
+          "orientation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "min_depth": 0.0,
+          "max_depth": 10.0
+        },
+        "head_rgb": {
+          "width": 1280,
+          "height": 720,
+          "hfov": 105,
+          "position": [
+            0.0,
+            0.4,
+            -0.27
+          ],
+          "orientation": [
+            0.29147,
+            0.0,
+            0.0
+          ],
+          "uuid": "head_rgb",
+          "basis": "measured 2026-09-11: fx 490.1 / fy 486.7 at 1280x720 -> HFOV 105.1, VFOV 73.0; elevation +16.7 deg (0.73 m placement); height/offset estimated as in c5 (standing height unmeasured)"
+        },
+        "d435_rgb": {
+          "width": 1280,
+          "height": 720,
+          "hfov": 69.0,
+          "position": [
+            0.0,
+            0.42,
+            -0.25
+          ],
+          "orientation": [
+            -0.3490658503988659,
+            0.0,
+            0.0
+          ],
+          "uuid": "d435_rgb",
+          "basis": "machine-dog-nav sensor-carrier URDF (0.42 m, 0.25 m forward, 20 deg down); RealSense datasheet 337029-017 colour FOV H69 V42 at 16:9"
+        },
+        "d435_depth": {
+          "width": 1280,
+          "height": 720,
+          "hfov": 69.0,
+          "position": [
+            0.0,
+            0.42,
+            -0.25
+          ],
+          "orientation": [
+            -0.3490658503988659,
+            0.0,
+            0.0
+          ],
+          "uuid": "d435_depth",
+          "min_depth": 0.0,
+          "max_depth": 10.0,
+          "normalize_depth": false,
+          "basis": "rendered with the colour intrinsics, i.e. colour-aligned depth as librealsense align_to_color provides"
+        },
+        "fusion": {
+          "feather_rows": 8,
+          "depth_valid_max_m": 9.9,
+          "module": "public_scenes/requests/2026-09-10_lite3_camera_ablation/fused_camera.py",
+          "plugin": "public_scenes/requests/2026-09-10_lite3_camera_ablation/fused_camera_plugin.py"
+        }
+      },
+      "eval_config": "public_scenes/configs/habitat_dual_system_fused_cfg.py",
+      "preflight_script": "public_scenes/requests/2026-09-10_lite3_camera_ablation/preflight_fused.py",
+      "habitat_yaml": "public_scenes/configs/vln_cam_c8_fused_level_720.yaml",
+      "geometry_status": "head pitch and intrinsics measured on the robot 2026-09-11 (lying, torso IMU level); head height/offset and D435i pose from mesh/URDF estimates; D435i FOV from the datasheet"
+    },
+    "c9_fused_down9": {
+      "label": "Fused virtual camera, 9 deg down, D435i colour 1280x720",
+      "purpose": "Fused virtual camera pitched 9 deg DOWN: identical to c8 in every sensor and in the fusion, differing only in the pose of the virtual evaluation camera (HFOV 79 at 640x480) it synthesises from the head camera's optical centre. Round 5b showed c8 reaches the goal radius in 10 of 10 runs and fails only by stopping late, while the one condition that stops correctly (c6, ideal camera 15 deg down) owes its advantage to seeing the near floor. The virtual camera's pitch is free inside the band the two real mounts cover (-41.1 to +52.9 deg, from the measured head +16.7 deg / VFOV 72.5 and the D435i 20 deg down / VFOV 42.3), so a 63.5 deg VFOV virtual camera can be pitched to 9.4 deg down before its bottom edge leaves the D435i band. At 9 deg the floor first appears 0.46 m ahead against 0.65 m level and 0.38 m for c6. This asks whether that recovers c6's stopping behaviour without any hardware change. tilt_angle 0 (fixed cameras, real-world path).",
+      "height_m": 0.4,
+      "forward_offset_m": 0.27,
+      "pitch_down_deg": 9,
+      "hfov_deg": 79,
+      "tilt_angle_deg": 0,
+      "habitat": {
+        "position": [
+          0.0,
+          0.4,
+          -0.27
+        ],
+        "orientation": [
+          -0.15707963267948966,
+          0.0,
+          0.0
+        ],
+        "hfov": 79,
+        "tilt_angle": 0
+      },
+      "fused": {
+        "agent_default": "rgbd_agent (the sim rgb_sensor stays at the virtual pose: the evaluator reads its position and the preflight uses it as the ideal reference; the task sensor with uuid rgb overrides it in observations)",
+        "virtual": {
+          "width": 640,
+          "height": 480,
+          "hfov": 79,
+          "position": [
+            0.0,
+            0.4,
+            -0.27
+          ],
+          "orientation": [
+            -0.15707963267948966,
+            0.0,
+            0.0
+          ],
+          "uuid": "rgb"
+        },
+        "depth_for_evaluator": {
+          "width": 640,
+          "height": 480,
+          "hfov": 79,
+          "position": [
+            0.0,
+            0.4,
+            -0.27
+          ],
+          "orientation": [
+            -0.15707963267948966,
+            0.0,
+            0.0
+          ],
+          "min_depth": 0.0,
+          "max_depth": 10.0
+        },
+        "head_rgb": {
+          "width": 1280,
+          "height": 720,
+          "hfov": 105,
+          "position": [
+            0.0,
+            0.4,
+            -0.27
+          ],
+          "orientation": [
+            0.29147,
+            0.0,
+            0.0
+          ],
+          "uuid": "head_rgb",
+          "basis": "measured 2026-09-11: fx 490.1 / fy 486.7 at 1280x720 -> HFOV 105.1, VFOV 73.0; elevation +16.7 deg (0.73 m placement); height/offset estimated as in c5 (standing height unmeasured)"
+        },
+        "d435_rgb": {
+          "width": 1280,
+          "height": 720,
+          "hfov": 69.0,
+          "position": [
+            0.0,
+            0.42,
+            -0.25
+          ],
+          "orientation": [
+            -0.3490658503988659,
+            0.0,
+            0.0
+          ],
+          "uuid": "d435_rgb",
+          "basis": "machine-dog-nav sensor-carrier URDF (0.42 m, 0.25 m forward, 20 deg down); RealSense datasheet 337029-017 colour FOV H69 V42 at 16:9"
+        },
+        "d435_depth": {
+          "width": 1280,
+          "height": 720,
+          "hfov": 69.0,
+          "position": [
+            0.0,
+            0.42,
+            -0.25
+          ],
+          "orientation": [
+            -0.3490658503988659,
+            0.0,
+            0.0
+          ],
+          "uuid": "d435_depth",
+          "min_depth": 0.0,
+          "max_depth": 10.0,
+          "normalize_depth": false,
+          "basis": "rendered with the colour intrinsics, i.e. colour-aligned depth as librealsense align_to_color provides"
+        },
+        "fusion": {
+          "feather_rows": 8,
+          "depth_valid_max_m": 9.9,
+          "module": "public_scenes/requests/2026-09-10_lite3_camera_ablation/fused_camera.py",
+          "plugin": "public_scenes/requests/2026-09-10_lite3_camera_ablation/fused_camera_plugin.py"
+        }
+      },
+      "eval_config": "public_scenes/configs/habitat_dual_system_fused_cfg.py",
+      "preflight_script": "public_scenes/requests/2026-09-10_lite3_camera_ablation/preflight_fused.py",
+      "habitat_yaml": "public_scenes/configs/vln_cam_c9_fused_down9.yaml",
+      "geometry_status": "as c8 (head pitch and intrinsics measured on the robot 2026-09-11; head height/offset and D435i pose from mesh/URDF estimates; D435i FOV from the datasheet). The 9 deg virtual pitch is a free design parameter of the fusion, not a measurement.",
+      "coverage_prediction": "self-test render (test_fused_camera.py, analytic room): 3.05 pct uncovered, head 63.6 pct, d435 32.0 pct. At 0 deg the same harness gives 1.28 pct against the 1.2272 pct the c8 preflight measured in Habitat, so expect roughly 3 pct here. The extra gap over c8 is forward-splat sampling, not a geometric shortfall: depth spans 0.6-3.67 m, raising depth_valid_max changes nothing, no row is over half empty, and extra 3x3 fill passes at cnt>=5 close none of it."
+    }
+  },
+  "execution": {
+    "run_id_pattern": "cam_<condition>_v<k>",
+    "runs_per_condition": 5,
+    "order": "condition-major: c1 v1..v5, then c2, c3, c4 (rounds 1-3, done); round 4: c5 v1..v5, then c6; round 5: c7 v1..v5, then c8",
+    "deadline_seconds_per_run": 1800,
+    "max_runs": 45,
+    "evaluator_step_cap": 500,
+    "eval_config": "public_scenes/configs/habitat_dual_system_cam_cfg.py",
+    "env_vars": {
+      "CAM_YAML": "<condition habitat_yaml>",
+      "CAM_RUN_DIR": "public_scenes/runs/<run_id>"
+    },
+    "round4": {
+      "conditions": [
+        "c5_head_level",
+        "c6_head_down15"
+      ],
+      "runs": 10,
+      "date": "2026-09-10",
+      "authorization": "Dr Sun, 2026-09-10: 'Go ahead and implement it in simulation first. Keep the cam' (read by the lead as: keep the built-in head camera as the deployment camera and run the confirmatory simulation pair; same per-run limits as rounds 1-3)"
+    },
+    "round5": {
+      "conditions": [
+        "c7_fused_level",
+        "c8_fused_level_720"
+      ],
+      "runs": 10,
+      "date": "2026-09-11",
+      "authorization": "Dr Sun, 2026-09-11: 'Simulate the fused camera first' (after the lead's assessment proposing around ten further runs for a fused virtual camera built from the two real mounts); same per-run limits as rounds 1-4; the fusion is a config-level plugin (new Habitat sensors + a task sensor), no model or evaluator source edits",
+      "per_condition_eval_config": true,
+      "round5b": {
+        "condition": "c8_fused_level_720",
+        "runs": 5,
+        "reason": "c8 preflight failed only stage 8 (fusion 226.5 ms > 200 ms); bound raised to 300 ms, re-preflight and run after the c7 runs"
+      }
+    },
+    "round6": {
+      "conditions": [
+        "c9_fused_down9"
+      ],
+      "runs": 5,
+      "date": "2026-09-11",
+      "authorization": "Dr Sun, 2026-09-11: 'Run C9 with the virtual camera 9 degrees down' (after the lead reported that c8 reaches the goal radius 10/10 and fails only on stop timing, and that the fused virtual camera's pitch is free inside the covered band). Same per-run limits as rounds 1-5: five supervised runs, 1,800 s deadline each, no model or evaluator source edits, no reruns.",
+      "per_condition_eval_config": true,
+      "code_changes": "(1) fused_camera_plugin.py: the level-only guard on the virtual camera is relaxed to forbid yaw and roll only, since Cam/head_lut/warp_d435/fuse are pose-general; (2) preflight_fused.py: the flat-floor z-depth expectation now uses the general h/(sin p + tan(theta) cos p) form that preflight_cam.py has carried since round 1, which is bit-identical at pitch 0 and so leaves the c7/c8 reports comparable; (3) min_fraction_from_head becomes per-condition. The fusion maths itself is unchanged.",
+      "max_runs_note": "rounds 1-5 used 40 of 40; this round is a separate authorization of 5 further runs, bringing the task total to 45."
+    }
+  },
+  "preflight": {
+    "bottom_rows": 16,
+    "central_columns": 200,
+    "floor_percentile": 90,
+    "height_tolerance_m": 0.01,
+    "pitch_tolerance_deg": 0.5,
+    "expected_bottom_rows_floor_zdepth_formula": "Habitat depth is z-depth along the optical axis: a flat floor at image row r reads height_m / (sin(pitch) + tan(theta_r) cos(pitch)), theta_r from vfov at 640x480; the floor_percentile of that expectation over the sampled block is compared with the measurement. Equals height_m / tan(pitch + vfov/2) only for a level camera.",
+    "gpu_required_free_MiB_rule": "free memory >= max over baseline runs of (max_used - min_used) from gpu_samples_every_5s.csv, measured after the preflight simulator is closed",
+    "floor_gap_bounds_m": [
+      -0.05,
+      0.3
+    ],
+    "floor_gap_rule": "implied gap = height_m * (measured_p90 / expected_p90 - 1) must lie within floor_gap_bounds_m; round 1 measured 0.158-0.163 m for all four conditions (navmesh above the rendered floor at the episode-1 start), so the earlier 25 percent ratio test was replaced on 2026-09-10 by the lead.",
+    "tilt_noop_max_pitch_delta_deg": 0.01,
+    "tilt_noop_max_changed_pixel_fraction": 0.01,
+    "tilt_move_min_changed_pixel_fraction": 0.05,
+    "tilt_noop_rule": "with tilt_angle 0, look_down must leave the sensor pitch within tilt_noop_max_pitch_delta_deg and change at most tilt_noop_max_changed_pixel_fraction of pixels; round 2 measured 0.31 percent changed pixels from a 1-2 ULP quaternion re-normalisation with pitch delta 5.5e-7 deg (REQ/preflight/diag_round2_tilt_noop_c1_lite3_rig.json), so the bit-identical test was replaced on 2026-09-10 by the lead.",
+    "fused": {
+      "max_uncovered_fraction": {
+        "c7_fused_level": 0.09,
+        "c8_fused_level_720": 0.04,
+        "c9_fused_down9": 0.05
+      },
+      "max_mean_abs_err_head_region": 10.0,
+      "max_mean_abs_err_d435_region": 20.0,
+      "min_fraction_from_head": {
+        "c7_fused_level": 0.7,
+        "c8_fused_level_720": 0.7,
+        "c9_fused_down9": 0.55
+      },
+      "max_fusion_ms_per_frame": 300.0,
+      "note": "compared against the ideal sim rgb_sensor at the virtual pose, which stays in the run config (the evaluator reads its position); the fused task sensor has uuid rgb and overrides it in every observation dict",
+      "max_fusion_ms_per_frame_history": "200 ms was the lead's guess before any measurement; the rented4090 preflight measured 135.7 ms mean (c7, D435i 640x480) and 226.5 ms mean (c8, D435i 1280x720, 4x the depth points) on 2026-09-11 06:38 UTC. Raised to 300 ms on 2026-09-11 after c7 passed: four fusions per model step add under 1 s, well inside the 1,800 s run deadline; c8 is re-preflighted with this bound after the c7 runs (round 5b) so that all c7 runs record one conditions.json hash. (Re-applied after the round-5 return rsync overwrote the lead's local edit made while the executor was running.)",
+      "min_fraction_from_head_note": "per condition from round 6: a downward-pitched virtual camera takes more of its image from the D435i (self-test: head 77.3 pct at 0 deg, 63.6 pct at 9 deg), so the single 0.7 bound used in rounds 5/5b would reject c9 on geometry alone. c7/c8 keep 0.7."
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "quantization": "bitsandbytes NF4 double quantization; FP16 compute",
+  "paper_awq_reproduction": false,
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "torch": "2.7.0+cu128",
+  "cuda": "12.8",
+  "transformers": "4.37.2",
+  "bitsandbytes": "0.49.2",
+  "load_seconds": 1.1747547199993278,
+  "linear4bit_count": 224,
+  "parameter_devices": [
+    "cuda:0"
+  ],
+  "model": "/home/sun/vla_exec/2026-09-08_navila_8b_quantized_5070ti/models/navila-nf4",
+  "context_len_returned_by_upstream": 2048,
+  "configured_num_video_frames": 8,
+  "loaded_allocated_GiB": 6.31235933303833,
+  "loaded_reserved_GiB": 6.33984375,
+  "load_peak_allocated_GiB": 6.31235933303833,
+  "cases": [
+    {
+      "name": "zh_vending_zh",
+      "images": [
+        "zh_front_120.jpg"
+      ],
+      "instruction": "直走，并在自动售货机前停下",
+      "history": "upstream cold-start black padding",
+      "index": 0,
+      "input_sha256": [
+        "f36027541542dc4ca50253e2b470218cce9839ad6894e0c02550e8f4bf5e2b00"
+      ],
+      "frame_count": 8,
+      "prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nImagine you are a robot programmed for navigation tasks. You have been given a video of historical observations <image>\n<image>\n<image>\n<image>\n<image>\n<image>\n<image>\n, and current observation <image>\n. Your assigned task is: \"直走，并在自动售货机前停下\" Analyze this series of images to decide your next action, which could be turning left or right by a specific degree, moving forward a certain distance, or stop if the task is completed.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+      "image_tensor_shape": [
+        8,
+        3,
+        384,
+        384
+      ],
+      "text_token_count": 149,
+      "output_ids": [
+        [
+          128000,
+          791,
+          1828,
+          1957,
+          374,
+          2543,
+          2163,
+          220,
+          1774,
+          8547,
+          13,
+          128001
+        ]
+      ],
+      "raw_output": "The next action is turn left 45 degree.",
+      "inference_seconds": 0.9269907320012862,
+      "case_wall_seconds": 0.9655696440022439,
+      "peak_allocated_GiB": 7.791857719421387,
+      "peak_reserved_GiB": 8.703125
+    }
+  ],
+  "complete": true
+}

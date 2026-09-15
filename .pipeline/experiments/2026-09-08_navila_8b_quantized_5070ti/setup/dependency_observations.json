@@ -1,0 +1,27 @@
+{
+  "scope": "Dependency compatibility, not full NaVILA inference",
+  "nf4_cuda_smoke": {
+    "evidence": "environment_retry.log",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "torch": "2.7.0+cu128",
+    "transformers": "4.37.2",
+    "bitsandbytes": "0.49.2",
+    "shape": [
+      2,
+      64
+    ],
+    "passed": true
+  },
+  "tiny_quant_roundtrip": {
+    "evidence_type": "captured successful SSH tool output",
+    "command": "venv/bin/python scripts/check_quant_roundtrip.py setup",
+    "model": "tiny random Llama",
+    "max_logit_error": 0.0,
+    "passed": true
+  },
+  "upstream_import": {
+    "result": "IMPORT_OK",
+    "source": "work/NaVILA",
+    "changes": "setup/compatibility.patch"
+  }
+}

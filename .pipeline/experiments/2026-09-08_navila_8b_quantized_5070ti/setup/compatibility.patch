@@ -1,0 +1,90 @@
+--- a/llava/train/sequence_parallel/globals.py
++++ b/llava/train/sequence_parallel/globals.py
+@@ -16,7 +16,6 @@
+ 
+ import os
+ 
+-import deepspeed.comm as dist
+ import torch
+ 
+ 
+--- a/llava/train/sequence_parallel/globals.py
++++ b/llava/train/sequence_parallel/globals.py
+@@ -39,6 +39,7 @@
+     """
+ 
+     def __init__(self, ulysses_degree, ring_degree, dp_degree, use_ulysses_low, ring_type):
++        import deepspeed.comm as dist
+         if not hasattr(self, "__initialized"):
+             super().__init__()
+             self.ulysses_degree = ulysses_degree
+--- a/llava/train/sequence_parallel/globals.py
++++ b/llava/train/sequence_parallel/globals.py
+@@ -150,6 +150,7 @@
+ 
+ 
+ def set_pg_manager(sp_degree, sp_ring_degree=1, use_ulysses_low=True, ring_type=None):
++    import deepspeed.comm as dist
+     """
+     Set the process group manager for sequence parallelism.
+     sp_degree = sp_ring_degree x sp_ulysses_degree
+--- a/llava/model/multimodal_encoder/builder.py
++++ b/llava/model/multimodal_encoder/builder.py
+@@ -21,7 +21,6 @@
+ from transformers import AutoConfig, PretrainedConfig, PreTrainedModel
+ 
+ from .clip_encoder import CLIPVisionTower, CLIPVisionTowerS2
+-from .intern_encoder import InternVisionTower, InternVisionTowerS2
+ from .radio_encoder import RADIOVisionTower
+ from .siglip_encoder import SiglipVisionTower, SiglipVisionTowerS2
+ 
+--- a/llava/model/multimodal_encoder/builder.py
++++ b/llava/model/multimodal_encoder/builder.py
+@@ -40,6 +40,7 @@
+     use_s2 = getattr(config, "s2", False)
+ 
+     if "intern" in vision_tower_name.lower():
++        from .intern_encoder import InternVisionTower, InternVisionTowerS2
+         drop_path_rate = getattr(config, "drop_path_rate", 0.0)
+         if use_s2:
+             vision_tower = InternVisionTowerS2(model_name_or_path, config=config, drop_path_rate=drop_path_rate)
+--- a/llava/model/multimodal_encoder/builder.py
++++ b/llava/model/multimodal_encoder/builder.py
+@@ -21,7 +21,6 @@
+ from transformers import AutoConfig, PretrainedConfig, PreTrainedModel
+ 
+ from .clip_encoder import CLIPVisionTower, CLIPVisionTowerS2
+-from .radio_encoder import RADIOVisionTower
+ from .siglip_encoder import SiglipVisionTower, SiglipVisionTowerS2
+ 
+ 
+--- a/llava/model/multimodal_encoder/builder.py
++++ b/llava/model/multimodal_encoder/builder.py
+@@ -46,6 +46,7 @@
+         else:
+             vision_tower = InternVisionTower(model_name_or_path, config=config, drop_path_rate=drop_path_rate)
+     elif "radio" in vision_tower_name:
++        from .radio_encoder import RADIOVisionTower
+         vision_tower = RADIOVisionTower(model_name_or_path, config)
+     elif "clip" in vision_tower_name:
+         if use_s2:
+--- a/llava/model/multimodal_encoder/vision_encoder.py
++++ b/llava/model/multimodal_encoder/vision_encoder.py
+@@ -21,7 +21,6 @@
+ import torch
+ import torch.nn as nn
+ from accelerate.hooks import add_hook_to_module
+-from s2wrapper import forward as multiscale_forward
+ from transformers import AutoConfig, PreTrainedModel
+ from transformers.image_processing_utils import BaseImageProcessor
+ from transformers.integrations.deepspeed import is_deepspeed_zero3_enabled
+--- a/llava/model/multimodal_encoder/vision_encoder.py
++++ b/llava/model/multimodal_encoder/vision_encoder.py
+@@ -192,6 +192,7 @@
+ 
+     @torch.no_grad()
+     def forward(self, images):
++        from s2wrapper import forward as multiscale_forward
+         if type(images) is list:
+             image_features = []
+             for image in images:
