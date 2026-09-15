@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="lite3_capability_arena">
+  <compiler angle="radian" autolimits="true" boundmass="0" balanceinertia="true" />
+  <option impratio="10" gravity="0 0 -9.8" integrator="implicitfast" cone="elliptic" jacobian="sparse" noslip_iterations="4">
+    <flag energy="enable" multiccd="enable" contact="enable" warmstart="enable" />
+  </option>
+  <size njmax="5000" nconmax="5000" />
+  <default>
+    <default class="/">
+      <default class="__VISUAL_MJT__">
+        <geom contype="0" conaffinity="0" group="0" mass="1e-08" />
+      </default>
+      <default class="__STRUCTURAL_MJT__">
+        <geom contype="8" conaffinity="15" group="4" friction="0.9 0.9 0.001" solref="0.025 1.0" solimp="0.998 0.998 0.001 0.5 2.0" density="500.0" />
+        <default class="__STRUCTURAL_WALL_MJT__">
+          <geom group="3" />
+        </default>
+      </default>
+      <default class="__DYNAMIC_MJT__">
+        <geom conaffinity="15" group="4" friction="0.9 0.9 0.001" solref="0.025 1.0" solimp="0.998 0.998 0.001 0.5 2.0" density="500.0" contype="1" />
+      </default>
+      <default class="__ARTICULABLE_DYNAMIC_MJT__">
+        <geom contype="0" conaffinity="7" group="4" friction="0.9 0.9 0.001" solref="0.025 1.0" solimp="0.998 0.998 0.001 0.5 2.0" density="500.0" />
+      </default>
+    </default>
+  </default>
+  <visual>
+    <global offwidth="480" offheight="270" />
+    <quality shadowsize="2048" />
+    <headlight ambient="0.4 0.4 0.4" />
+  </visual>
+  <asset>
+    <texture type="2d" name="Bin_Decal_Mat" file="../../work/LightNav-0-lite3-capabilities-v1/mujoco_demo/vln_mujoco/assets/objects/thor/Kitchen Objects/GarbageCan/Prefabs/bin_3/Bin_Decal_AlbedoTransparency.png" />
+    <material name="material_Bin_Decal_Mat" texture="Bin_Decal_Mat" />
+    <material name="material_Bin_Secondary3_Mat" rgba="0.409856 0.441177 0.350346 1" />
+    <material name="material_Bin_Primary3_Mat" rgba="0.347809 0.470588 0.294118 1" />
+    <mesh name="bin_3_bin_3_0" file="../../work/LightNav-0-lite3-capabilities-v1/mujoco_demo/vln_mujoco/assets/objects/thor/Kitchen Objects/GarbageCan/Prefabs/bin_3/bin_3_bin_3/bin_3_bin_3_0.obj" />
+    <mesh name="bin_3_bin_3_1" file="../../work/LightNav-0-lite3-capabilities-v1/mujoco_demo/vln_mujoco/assets/objects/thor/Kitchen Objects/GarbageCan/Prefabs/bin_3/bin_3_bin_3/bin_3_bin_3_1.obj" inertia="shell" />
+    <mesh name="bin_3_bin_3_2" file="../../work/LightNav-0-lite3-capabilities-v1/mujoco_demo/vln_mujoco/assets/objects/thor/Kitchen Objects/GarbageCan/Prefabs/bin_3/bin_3_bin_3/bin_3_bin_3_2.obj" />
+    <texture name="cap_checker" type="2d" builtin="checker" rgb1="0.36 0.38 0.40" rgb2="0.52 0.54 0.56" width="512" height="512" />
+    <material name="cap_floor" texture="cap_checker" texrepeat="10 8" />
+  </asset>
+  <worldbody>
+    <light name="cap_light" pos="8 12 5" dir="0 0 -1" directional="true" diffuse="0.8 0.8 0.8" />
+    <geom name="test_floor" type="box" pos="9.5 13.8 -0.1" size="5 4 0.1" material="cap_floor" contype="8" conaffinity="15" friction="0.9 0.01 0.001" />
+    <geom name="test_wall_front" type="box" pos="14.5 13.8 1" size="0.1 4 1" rgba="0.70 0.72 0.76 1" contype="8" conaffinity="15" friction="0.9 0.01 0.001" />
+    <geom name="test_wall_back" type="box" pos="4.5 13.8 1" size="0.1 4 1" rgba="0.70 0.72 0.76 1" contype="8" conaffinity="15" friction="0.9 0.01 0.001" />
+    <geom name="test_wall_left" type="box" pos="9.5 17.8 1" size="5 0.1 1" rgba="0.70 0.72 0.76 1" contype="8" conaffinity="15" friction="0.9 0.01 0.001" />
+    <geom name="test_wall_right" type="box" pos="9.5 9.8 1" size="5 0.1 1" rgba="0.70 0.72 0.76 1" contype="8" conaffinity="15" friction="0.9 0.01 0.001" />
+    <body name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_0_4" pos="10.5 13.8 0.21539959921036816" quat="-6.561780773582605e-06 6.60240698623956e-06 0.707110380867166 0.7071031814263337">
+      <joint name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_0_4_jntfree_0" class="/" type="free" limited="false" actuatorfrclimited="false" damping="0.001" frictionloss="0.001" />
+      <body name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_1_4" pos="0.00012 -0.22528 0.00111">
+        <geom name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_1_4_visual_0" class="__VISUAL_MJT__" type="mesh" mass="1e-08" material="material_Bin_Decal_Mat" mesh="bin_3_bin_3_0" />
+        <geom name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_1_4_visual_1" class="__VISUAL_MJT__" type="mesh" mass="1e-08" material="material_Bin_Secondary3_Mat" mesh="bin_3_bin_3_1" />
+        <geom name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_1_4_visual_2" class="__VISUAL_MJT__" type="mesh" mass="1e-08" material="material_Bin_Primary3_Mat" mesh="bin_3_bin_3_2" />
+        <geom name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_1_4_collision_3" class="__DYNAMIC_MJT__" size="0.172343 0.215429 0.0215775" pos="0 0.225282 0.116332" quat="0 1 0 0" type="box" density="66.1209" rgba="0 1 0 1" />
+        <geom name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_1_4_collision_4" class="__DYNAMIC_MJT__" size="0.172343 0.215429 0.0212166" pos="0 0.225282 -0.118917" quat="0 1 0 0" type="box" density="66.1209" rgba="0 1 0 1" />
+        <geom name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_1_4_collision_5" class="__DYNAMIC_MJT__" size="0.127103 0.215429 0.0175577" pos="0.191559 0.225282 0.00430858" quat="0 0.707107 0 0.707107" type="box" density="66.1209" rgba="0 1 0 1" />
+        <geom name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_1_4_collision_6" class="__DYNAMIC_MJT__" size="0.127103 0.215429 0.0189524" pos="-0.189922 0.225282 0.00508412" quat="0 0.707107 0 0.707107" type="box" density="66.1209" rgba="0 1 0 1" />
+        <geom name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_1_4_collision_7" class="__DYNAMIC_MJT__" size="0.109327 0.0134643 0.167907" pos="0.00258515 0.0253644 0.00430858" quat="0 0.707107 0 0.707107" type="box" density="66.1209" rgba="0 1 0 1" />
+        <site name="ashcan_c6c85e44c01b199881223a6a35b693a4_1_1_4_ReceptacleCollider0_0" class="/" pos="0 0.239697 0" quat="0 1 0 0" size="0.164904 0.191193 0.0940148" group="5" type="box" rgba="1 0 0 1" />
+      </body>
+    </body>
+  </worldbody>
+</mujoco>

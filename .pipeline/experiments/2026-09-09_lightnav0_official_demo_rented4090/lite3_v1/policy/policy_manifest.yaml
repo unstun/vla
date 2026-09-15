@@ -1,0 +1,126 @@
+schema_version: 1
+format: torchscript-stateful-h10-single-observation
+source_profile: lite3_v12
+checkpoint:
+  path: /Users/sun/tongbu/study/phdproject/machine-dog/artifacts/2026-07-16_v12_lite3_model149999_handoff/tracked_checkpoints/model_149999.pt
+  sha256: a9d31dce90e6e8c564d955e473d6d3502f893d7ef5a5c1efaf5bb50d6b3d5450
+  bytes: 26367345
+  iteration: 149999
+  model_tensor_count: 39
+  model_scalar_count: 2193089
+agent_config:
+  path: /Users/sun/tongbu/study/phdproject/machine-dog/artifacts/2026-07-16_v12_lite3_model149999_handoff/tracked_configs/agent.yaml
+  sha256: af08441f7a71166f3e3ff1646e1e02f83fbd8670b473a5d63c31f638ff4f0745
+policy:
+  path: policy_stateful_h10.pt
+  sha256: 8a6a72750dc244b4e55815019399985c94ea954f28f153424f6d8acf8a647477
+  bytes: 6403275
+  input_shape:
+  - 1
+  - 45
+  output_shape:
+  - 1
+  - 12
+  history_layout: term-major-oldest-to-newest
+  history_initialization: repeat-first-valid-frame
+  history_length: 10
+  feature_dimensions:
+  - 3
+  - 3
+  - 3
+  - 12
+  - 12
+  - 12
+  actor_observation_dim: 450
+  critic_observation_dim: 275
+  reset_method: reset
+  policy_config:
+    init_noise_std: 1.0
+    noise_std_type: scalar
+    state_dependent_std: false
+    actor_obs_normalization: false
+    critic_obs_normalization: false
+    actor_hidden_dims:
+    - 512
+    - 256
+    - 128
+    critic_hidden_dims:
+    - 512
+    - 256
+    - 128
+    activation: elu
+    expert_num: 8
+    latent_dim: 32
+    norm_type: l2norm
+    teacher_encoder_hidden_dims:
+    - 512
+    - 256
+    student_encoder_hidden_dims:
+    - 512
+    - 256
+    - 256
+onnx_policy:
+  path: policy_stateless_h10.onnx
+  sha256: 7030ba4704ab1761e777ba2e268bb6070a1b245b9891bb6dc3c255414996581b
+  bytes: 6374215
+  format: onnx-stateless-h10-history
+  opset: 18
+  input_name: obs
+  output_name: actions
+  input_shape:
+  - 1
+  - 450
+  output_shape:
+  - 1
+  - 12
+  history_layout: term-major-oldest-to-newest
+  history_initialization: repeat-first-valid-frame
+  history_length: 10
+  feature_dimensions:
+  - 3
+  - 3
+  - 3
+  - 12
+  - 12
+  - 12
+parity:
+  seed: 20260710
+  frames: 1000
+  native_vs_jit_max_abs_error: 0.0
+  native_vs_onnx_max_abs_error: 0.0059814453125
+  jit_reset_replay_max_abs_error: 0.0
+  reload_native_vs_jit_max_abs_error: 0.0
+  reload_reset_replay_max_abs_error: 0.0
+  native_vs_jit_limit: 1.0e-06
+  native_vs_onnx_limit: 0.01
+  reset_replay_limit: 1.0e-07
+  golden_trace:
+    path: parity_golden_trace.npz
+    sha256: 3d62f5556017f3f3622bea527306b0859bca95c2b0081e76f3460a992705a109
+    bytes: 213554
+runtime:
+  python: 3.11.15
+  torch: 2.7.0
+  numpy: 1.26.4
+  onnxruntime: 1.22.1
+  platform: macOS-26.4.1-arm64-arm-64bit
+  device: cpu
+sources:
+  actor_critic_moe_cts:
+    path: 2_experiment/baseline_rebuild/go2_rl_robotlab_lite3_v12/source/rsl_rl/rsl_rl/modules/actor_critic_moe_cts.py
+    sha256: dfad453ef494a82dde1bb3b65d4ad6f9628f4069308371b2b6e393311afb81b0
+  moe:
+    path: 2_experiment/baseline_rebuild/go2_rl_robotlab_lite3_v12/source/rsl_rl/rsl_rl/networks/moe.py
+    sha256: a7e8b02ab6f800d80d8bd8f48de1032f8a313e5cecd52237ccc0a9985f6c36a1
+  cts_exporter:
+    path: 2_experiment/baseline_rebuild/go2_rl_robotlab_lite3_v12/source/rsl_rl/rsl_rl/utils/exporter_cts.py
+    sha256: 3c95747871640a0acb9dd01e7f446c04599c40c30d8059b463967a44950f1cf7
+  task_env:
+    path: 2_experiment/baseline_rebuild/go2_rl_robotlab_lite3_v12/source/robot_lab/robot_lab/tasks/lite3/env_cfg.py
+    sha256: 5d515802a6ac4d0aa24ae51a68414fd2d04e70356f0bfa418677e53105118cd5
+  robot_asset:
+    path: 2_experiment/baseline_rebuild/go2_rl_robotlab_lite3_v12/source/robot_lab/robot_lab/assets/deeprobotics.py
+    sha256: bb95c272c7e7b0873cde9074e0682dbbfe1db7c42b33f4b6006321d215be496a
+  robot_actuator:
+    path: 2_experiment/baseline_rebuild/go2_rl_robotlab_lite3_v12/source/robot_lab/robot_lab/assets/deeprobotics_actuator.py
+    sha256: fc1658b1ade751665431f73fc3f78286f108d7a682a679e248ba405c05dd4c7b

@@ -17,6 +17,14 @@ server, finite offline prediction, or video without model/control records is
 partial evidence. The kinematic TurtleBot demo cannot validate quadruped
 locomotion, physical collision avoidance, or full published benchmark scores.
 
-The execution contract is
-`.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/OPUS_EXECUTION_PACKAGE.md`.
-Current status: package prepared, not dispatched; no inference performed.
+Round 1 executed three official-case episodes and requires corrections; runtime
+execution and correct target arrival remain separate outcomes.
+
+Dr Sun requested a researched continuation package with better visualization.
+The current manual execution contract is
+`.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/continuation_v3/EXECUTION_PACKAGE.md`.
+It requires three fixed vLLM BF16 repetitions, complete native captures and
+frame-associated state, offline overhead replay, synchronized multi-view MP4s,
+explicit stopping/arrival measurements, and local hash-verified return. Static
+preparation probes do not count as new navigation. The v3 package is prepared,
+not dispatched; earlier packages and raw results remain preserved.

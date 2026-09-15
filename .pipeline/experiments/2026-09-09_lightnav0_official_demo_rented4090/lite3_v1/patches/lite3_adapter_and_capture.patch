@@ -1,0 +1,937 @@
+--- a/docs/CONFIGURATION.md
++++ b/docs/CONFIGURATION.md
+@@ -179,3 +179,7 @@
+ over). `keep` avoids geometric distortion but changes the token grid the model sees, which
+ the released checkpoint was not trained on — validate on your robot before relying on it.
+ Full native resolution (feeding the camera's own pixel count) is not supported.
++
++## Local Lite3 simulation adapter
++
++This experiment adds `python -m vln_mujoco --robot lite3 --robot-model PATH --walking-policy PATH`. It requires the pinned model_149999 ONNX export and prepared Lite3 MJCF. It uses 1 ms physical integration, a 50 Hz walking policy, and a body-mounted RGB camera; it does not control physical hardware.
+--- a/mujoco_demo/vln_mujoco/__main__.py
++++ b/mujoco_demo/vln_mujoco/__main__.py
+@@ -17,7 +17,7 @@
+     parser.add_argument("--vln-server", default="")
+     parser.add_argument(
+         "--robot",
+-        choices=("turtlebot", "microduck"),
++        choices=("turtlebot", "microduck", "lite3"),
+         default="turtlebot",
+     )
+     parser.add_argument("--robot-model", type=Path)
+@@ -29,13 +29,17 @@
+     if args.robot == "turtlebot":
+         if args.robot_model is not None or args.walking_policy is not None:
+             raise SystemExit(
+-                "--robot-model and --walking-policy require --robot microduck"
++                "--robot-model and --walking-policy require --robot microduck or lite3"
+             )
+         return Simulation()
+     if args.robot_model is None or args.walking_policy is None:
+         raise SystemExit(
+-            "--robot microduck requires --robot-model and --walking-policy"
++            f"--robot {args.robot} requires --robot-model and --walking-policy"
+         )
++    if args.robot == "lite3":
++        from .robots.lite3 import Lite3Backend
++
++        return Simulation(Lite3Backend(args.robot_model, args.walking_policy))
+     from .robots.microduck import MicroDuckBackend
+ 
+     return Simulation(MicroDuckBackend(args.robot_model, args.walking_policy))
+--- a/mujoco_demo/vln_mujoco/robots/lite3.py
++++ b/mujoco_demo/vln_mujoco/robots/lite3.py
+@@ -0,0 +1,212 @@
++"""Physical Lite3 backend using the pinned v12 model_149999 ONNX policy."""
++
++from __future__ import annotations
++
++import hashlib
++import math
++import xml.etree.ElementTree as ET
++from pathlib import Path
++
++import mujoco
++import numpy as np
++
++from ..model import PHYSICS_DT, SPAWN, load_scene_xml
++from .base import RenderCamera, RobotState, Twist2D
++
++POLICY_SHA256 = "7030ba4704ab1761e777ba2e268bb6070a1b245b9891bb6dc3c255414996581b"
++JOINT_NAMES = tuple(f"{leg}_{joint}_joint" for leg in ("FL", "FR", "HL", "HR")
++                    for joint in ("HipX", "HipY", "Knee"))
++Q0 = np.tile(np.array([0.0, -0.8, 1.6], dtype=np.float32), 4)
++EFFORT = np.tile(np.array([24.0, 24.0, 36.0], dtype=np.float32), 4)
++SPEED = np.tile(np.array([26.2, 26.2, 17.3], dtype=np.float32), 4)
++FEATURE_DIMS = (3, 3, 3, 12, 12, 12)
++SIM_DT = 0.001
++POLICY_DT = 0.02
++PREFIX = "lite3/"
++CAMERA_NAME = PREFIX + "robot_rgb"
++
++
++def rotation_matrix(quaternion: np.ndarray) -> np.ndarray:
++    """Body-to-world rotation for a MuJoCo wxyz quaternion."""
++    q = np.asarray(quaternion, dtype=np.float64)
++    if q.shape != (4,) or not np.isfinite(q).all() or np.linalg.norm(q) < 1e-8:
++        raise ValueError("Invalid Lite3 quaternion")
++    q = q / np.linalg.norm(q)
++    w, x, y, z = q
++    return np.array([
++        [1 - 2 * (y*y + z*z), 2 * (x*y - z*w), 2 * (x*z + y*w)],
++        [2 * (x*y + z*w), 1 - 2 * (x*x + z*z), 2 * (y*z - x*w)],
++        [2 * (x*z - y*w), 2 * (y*z + x*w), 1 - 2 * (x*x + y*y)],
++    ])
++
++
++class History:
++    def __init__(self) -> None:
++        self.values: np.ndarray | None = None
++
++    def reset(self) -> None:
++        self.values = None
++
++    def push(self, observation: np.ndarray) -> np.ndarray:
++        frame = np.asarray(observation, dtype=np.float32)
++        if frame.shape != (45,) or not np.isfinite(frame).all():
++            raise ValueError("Lite3 observation must be finite shape (45,)")
++        if self.values is None:
++            self.values = np.repeat(frame[None, :], 10, axis=0)
++        else:
++            self.values[:-1] = self.values[1:]
++            self.values[-1] = frame
++        terms = np.split(self.values, np.cumsum(FEATURE_DIMS)[:-1], axis=1)
++        return np.concatenate([term.reshape(-1) for term in terms])[None, :]
++
++
++def build_model(robot_source: Path, scene_source: Path | None = None) -> mujoco.MjModel:
++    scene = mujoco.MjSpec.from_string(ET.tostring(load_scene_xml(scene_source), encoding="unicode"))
++    robot = mujoco.MjSpec.from_file(str(robot_source.resolve()))
++    # ProcTHOR structural floors use contype=8, conaffinity=15. The vendor
++    # robot's 0/1 masks cannot touch them. Reserve bit 2 for robot colliders;
++    # excluding that bit from their affinity preserves disabled self-contact.
++    for geom in robot.geoms:
++        if geom.conaffinity:
++            geom.contype = 2
++            geom.conaffinity = 13
++    torso = robot.body("base_link")
++    if torso is None:
++        raise ValueError("Lite3 MJCF must contain base_link")
++    torso.pos = [SPAWN[0], SPAWN[1], 0.35]
++    torso.add_freejoint(name="base_joint")
++    camera = torso.add_camera(name="robot_rgb", pos=[0.24, 0.0, 0.08])
++    camera.quat = [-0.5, -0.5, 0.5, 0.5]
++    camera.fovy = 79.865
++    chase = torso.add_camera(name="robot_chase", pos=[-1.3, 0.0, 0.70])
++    # Camera x points right (-body Y); camera y points up and slightly forward.
++    angle = math.atan2(0.38, 0.925)
++    qbase = np.array([-0.5, -0.5, 0.5, 0.5])
++    qtilt = np.array([math.cos(angle/2), -math.sin(angle/2), 0, 0])
++    quat = np.empty(4)
++    mujoco.mju_mulQuat(quat, qbase, qtilt)
++    chase.quat = quat
++    chase.fovy = 65
++    scene.attach(robot, prefix=PREFIX, frame=scene.worldbody.add_frame())
++    model = scene.compile()
++    model.opt.timestep = SIM_DT
++    if model.nu != 12:
++        raise ValueError(f"Lite3 requires exactly 12 actuators; got {model.nu}")
++    return model
++
++
++class Lite3Backend:
++    name = "Lite3 (model_149999)"
++    camera_name = CAMERA_NAME
++
++    def __init__(self, robot_model: Path, walking_policy: Path, *, session=None,
++                 scene_source: Path | None = None) -> None:
++        if hashlib.sha256(walking_policy.read_bytes()).hexdigest() != POLICY_SHA256:
++            raise ValueError("Lite3 walking-policy SHA-256 mismatch")
++        if session is None:
++            import onnxruntime as ort
++
++            options = ort.SessionOptions()
++            options.intra_op_num_threads = 1
++            options.inter_op_num_threads = 1
++            session = ort.InferenceSession(str(walking_policy), sess_options=options,
++                                           providers=["CPUExecutionProvider"])
++        self.session = session
++        inp, out = self.session.get_inputs()[0], self.session.get_outputs()[0]
++        if inp.shape != [1, 450] or out.shape != [1, 12] or inp.type != "tensor(float)":
++            raise ValueError("Lite3 policy requires float32 [1,450] -> [1,12]")
++        self.input_name, self.output_name = inp.name, out.name
++        self.model = build_model(robot_model, scene_source)
++        self.data = mujoco.MjData(self.model)
++        self.base_joint = self.model.joint(PREFIX + "base_joint").id
++        self.base_qpos = int(self.model.jnt_qposadr[self.base_joint])
++        self.base_dof = int(self.model.jnt_dofadr[self.base_joint])
++        joints = [self.model.joint(PREFIX + name).id for name in JOINT_NAMES]
++        self.joint_qpos = self.model.jnt_qposadr[joints]
++        self.joint_dof = self.model.jnt_dofadr[joints]
++        self.actuators = np.array([self.model.actuator(PREFIX + name + "_ctrl").id
++                                  for name in JOINT_NAMES])
++        if not np.array_equal(self.model.actuator_trnid[self.actuators, 0], joints):
++            raise ValueError("Lite3 actuator/joint mapping mismatch")
++        self.history = History()
++        self.reset()
++
++    def reset(self) -> None:
++        mujoco.mj_resetData(self.model, self.data)
++        self.history.reset()
++        self.last_action = np.zeros(12, dtype=np.float32)
++        self.target = Q0.copy()
++        self.policy_command = np.zeros(3, dtype=np.float32)
++        self.steps = 0
++        self.inferences = 0
++        self.last_observation = np.zeros(45, dtype=np.float32)
++        self.last_torque = np.zeros(12, dtype=np.float32)
++        self.data.qpos[self.base_qpos:self.base_qpos + 3] = [SPAWN[0], SPAWN[1], 0.35]
++        self.data.qpos[self.base_qpos + 3:self.base_qpos + 7] = [1, 0, 0, 0]
++        self.data.qpos[self.joint_qpos] = Q0
++        mujoco.mj_forward(self.model, self.data)
++
++    def _infer(self, command: Twist2D) -> None:
++        cmd = np.asarray(command, dtype=np.float32)
++        if cmd.shape != (2,) or not np.isfinite(cmd).all():
++            raise ValueError("Lite3 velocity command must be finite shape (2,)")
++        self.policy_command = np.array([np.clip(cmd[0], -1, 1), 0,
++                                        np.clip(cmd[1], -2, 2)], dtype=np.float32)
++        quaternion = self.data.qpos[self.base_qpos + 3:self.base_qpos + 7]
++        rotation = rotation_matrix(quaternion)
++        # The named gyro sensor is already expressed in the torso/IMU frame.
++        ang = self.data.sensor(PREFIX + "imu_gyro").data
++        observation = np.concatenate([
++            np.clip(ang, -100, 100) * 0.25,
++            rotation.T @ np.array([0., 0., -1.]),
++            self.policy_command,
++            np.clip(self.data.qpos[self.joint_qpos] - Q0, -100, 100),
++            np.clip(self.data.qvel[self.joint_dof], -100, 100) * 0.05,
++            np.clip(self.last_action, -100, 100),
++        ]).astype(np.float32)
++        self.last_observation = observation.copy()
++        history = self.history.push(observation)
++        action = np.asarray(self.session.run([self.output_name], {self.input_name: history})[0])
++        if action.shape != (1, 12) or not np.isfinite(action).all():
++            raise ValueError("Lite3 returned invalid actions")
++        self.last_action = action[0].astype(np.float32)
++        self.target = Q0 + 0.25 * self.last_action
++        self.inferences += 1
++
++    def step(self, command: Twist2D) -> None:
++        substeps = round(PHYSICS_DT / SIM_DT)
++        if abs(substeps * SIM_DT - PHYSICS_DT) > 1e-9:
++            raise ValueError("Demo period must be an integer multiple of Lite3 physics dt")
++        for _ in range(substeps):
++            if self.steps % round(POLICY_DT / SIM_DT) == 0:
++                self._infer(command)
++            position = self.data.qpos[self.joint_qpos].astype(np.float32)
++            velocity = self.data.qvel[self.joint_dof].astype(np.float32)
++            requested = 20.0 * (self.target - position) - 0.5 * velocity
++            high = np.clip(EFFORT * (1.0 - velocity / SPEED), 0.0, EFFORT)
++            low = np.clip(EFFORT * (-1.0 - velocity / SPEED), -EFFORT, 0.0)
++            self.last_torque = np.clip(requested, low, high)
++            self.data.ctrl[self.actuators] = self.last_torque
++            mujoco.mj_step(self.model, self.data)
++            self.steps += 1
++            if not np.isfinite(self.data.qpos).all() or not np.isfinite(self.data.qvel).all():
++                raise RuntimeError("Lite3 physics became nonfinite")
++
++    def state(self) -> RobotState:
++        x, y, z = self.data.qpos[self.base_qpos:self.base_qpos + 3]
++        quaternion = self.data.qpos[self.base_qpos + 3:self.base_qpos + 7]
++        rotation = rotation_matrix(quaternion)
++        yaw = math.atan2(rotation[1, 0], rotation[0, 0])
++        velocity = rotation.T @ self.data.qvel[self.base_dof:self.base_dof + 3]
++        angular_world = rotation @ self.data.sensor(PREFIX + "imu_gyro").data
++        tilt = math.acos(float(np.clip(rotation[2, 2], -1, 1)))
++        return RobotState(
++            (float(x), float(y), float(z), yaw),
++            (float(velocity[0]), float(angular_world[2])),
++            {"walking_policy": "model_149999", "walking_precision": "FP32 ONNX CPU",
++             "policy_command": self.policy_command.tolist(), "tilt_rad": tilt,
++             "policy_inferences": self.inferences, "contact_count": int(self.data.ncon)},
++        )
++
++    def third_person_camera(self, _camera: mujoco.MjvCamera) -> RenderCamera:
++        return PREFIX + "robot_chase"
+--- a/mujoco_demo/vln_mujoco/server.py
++++ b/mujoco_demo/vln_mujoco/server.py
+@@ -27,6 +27,7 @@
+     WAYPOINT_DT_S,
+     MpcTracker,
+ )
++from . import v3_capture
+ from .simulation import Simulation
+ from .vln_client import VlnClient
+ 
+@@ -78,6 +79,7 @@
+         self.update_task = asyncio.create_task(self.update_loop())
+ 
+     async def on_shutdown(self, _app: web.Application) -> None:
++        v3_capture.trace("lifecycle", event="server_shutdown")
+         if self.update_task is not None:
+             self.update_task.cancel()
+             with contextlib.suppress(asyncio.CancelledError):
+@@ -89,6 +91,9 @@
+         self.simulation.stop()
+         for socket in tuple(self.sockets):
+             await socket.close(code=1001, message=b"server shutdown")
++        recorder = v3_capture.recorder()
++        if recorder is not None:
++            recorder.flush()
+ 
+     async def index(self, _request: web.Request) -> web.FileResponse:
+         return web.FileResponse(WEB_DIR / "index.html")
+@@ -180,6 +185,13 @@
+             self.capture_poses.clear()
+             self.mpc.reset()
+             self.simulation.set_velocity(0.0, 0.0)
++            v3_capture.trace(
++                "lifecycle",
++                event="vln_started",
++                instruction_len=len(instruction),
++                instruction_sha256=v3_capture.sha256_hex(instruction.encode("utf-8")),
++                sim_snapshot=self.simulation.snapshot(),
++            )
+             await self.result(socket, True, "VLN started")
+             return
+         if kind == "acquire_control":
+@@ -221,11 +233,20 @@
+             self.manual_owner = None
+             self.stop_vln()
+             self.simulation.reset()
++            v3_capture.trace(
++                "lifecycle", event="reset", sim_snapshot=self.simulation.snapshot()
++            )
+             await self.result(socket, True, "simulation reset")
+             return
+         await self.result(socket, False, "unknown command")
+ 
+     def stop_vln(self) -> None:
++        v3_capture.trace(
++            "lifecycle",
++            event="stop_vln",
++            had_auto_owner=self.auto_owner is not None,
++            sim_snapshot=self.simulation.snapshot(),
++        )
+         self.auto_owner = None
+         self.auto_command = (0.0, 0.0)
+         self.waypoints = ()
+@@ -351,11 +372,18 @@
+             frame = self.simulation.frame()
+             if frame is not None and frame.stamp_ns != self.last_frame_stamp:
+                 if self.vln.offer_frame(frame.stamp_ns, frame.jpeg):
++                    v3_capture.trace(
++                        "frame_offered",
++                        stamp_ns=int(frame.stamp_ns),
++                        jpeg_sha256=v3_capture.sha256_hex(frame.jpeg),
++                        capture_pose=[float(value) for value in frame.pose],
++                    )
+                     self.last_frame_stamp = frame.stamp_ns
+                     self.capture_poses[frame.stamp_ns] = frame.pose
+                     while len(self.capture_poses) > 32:
+                         self.capture_poses.pop(next(iter(self.capture_poses)))
+-            for result in self.vln.take_results():
++            pending_results = self.vln.take_results()
++            for result_index, result in enumerate(pending_results):
+                 self.waypoints = result.waypoints
+                 self.last_result = {
+                     "latency_ms": result.latency_ms,
+@@ -367,6 +395,31 @@
+                     "opos_px": result.opos_px,
+                 }
+                 if result.stop is True:
++                    v3_capture.trace(
++                        "consumption",
++                        seq=result.sequence,
++                        stamp_ns=int(result.stamp_ns),
++                        disposition="native_stop_consumed",
++                        applied_to_mpc=False,
++                        native_stop_consumed=True,
++                        had_auto_owner=self.auto_owner is not None,
++                        capture_pose=[
++                            float(value)
++                            for value in self.capture_poses.get(result.stamp_ns, ())
++                        ]
++                        or None,
++                        sim_snapshot=self.simulation.snapshot(),
++                    )
++                    for discarded in pending_results[result_index + 1 :]:
++                        v3_capture.trace(
++                            "consumption",
++                            seq=discarded.sequence,
++                            stamp_ns=int(discarded.stamp_ns),
++                            disposition="discarded_after_stop",
++                            applied_to_mpc=False,
++                            native_stop_consumed=False,
++                            stop=discarded.stop,
++                        )
+                     self.auto_command = (0.0, 0.0)
+                     self.simulation.set_velocity(0.0, 0.0)
+                     self.auto_owner = None
+@@ -376,6 +429,14 @@
+                     break
+                 capture_pose = self.capture_poses.pop(result.stamp_ns, None)
+                 if capture_pose is None:
++                    v3_capture.trace(
++                        "consumption",
++                        seq=result.sequence,
++                        stamp_ns=int(result.stamp_ns),
++                        disposition="missing_capture_pose",
++                        applied_to_mpc=False,
++                        native_stop_consumed=False,
++                    )
+                     self.mpc.reset()
+                     self.mpc.error = "missing robot pose for VLN capture timestamp"
+                     self.auto_command = (0.0, 0.0)
+@@ -383,6 +444,24 @@
+                     continue
+                 self.mpc.set_body_path(result.waypoints, capture_pose)
+                 self.auto_command = self.mpc.command
++                v3_capture.trace(
++                    "consumption",
++                    seq=result.sequence,
++                    stamp_ns=int(result.stamp_ns),
++                    disposition="applied_to_mpc",
++                    applied_to_mpc=True,
++                    native_stop_consumed=False,
++                    capture_pose=[float(value) for value in capture_pose],
++                    latency_ms=result.latency_ms,
++                    visible=result.visible,
++                    apos_state=result.apos_state,
++                    opos_state=result.opos_state,
++                    apos_px=list(result.apos_px) if result.apos_px else None,
++                    opos_px=list(result.opos_px) if result.opos_px else None,
++                    waypoints=[list(point) for point in result.waypoints],
++                    mpc_command=[float(value) for value in self.auto_command],
++                    sim_snapshot=self.simulation.snapshot(),
++                )
+ 
+             solved_command = self.mpc.poll()
+             if solved_command is not None:
+@@ -396,6 +475,23 @@
+                 pose = simulation["pose"]
+                 self.mpc.submit((pose["x"], pose["y"], pose["yaw"]))
+                 self.simulation.set_velocity(*self.auto_command)
++                v3_capture.trace(
++                    "control",
++                    requested_command=[float(value) for value in self.auto_command],
++                    applied_command=[
++                        float(simulation["command"]["linear"]),
++                        float(simulation["command"]["angular"]),
++                    ],
++                    observed_velocity=[
++                        float(simulation["velocity"]["linear"]),
++                        float(simulation["velocity"]["angular"]),
++                    ],
++                    pose=[float(pose["x"]), float(pose["y"]), float(pose["yaw"])],
++                    sim_time=float(simulation["sim_time"]),
++                    control_owner="vln",
++                    mpc_solve_ms=self.mpc.solve_ms,
++                    mpc_error=self.mpc.error,
++                )
+                 while next_control_s <= now_s:
+                     next_control_s += control_period_s
+             elif self.auto_owner is None:
+--- a/mujoco_demo/vln_mujoco/simulation.py
++++ b/mujoco_demo/vln_mujoco/simulation.py
+@@ -9,6 +9,7 @@
+ import numpy as np
+ from PIL import Image
+ 
++from . import v3_capture
+ from .model import CAMERA_HEIGHT, CAMERA_WIDTH, PHYSICS_DT
+ from .mpc import TRACK_V_MAX, W_MAX
+ from .robots.base import RobotBackend
+@@ -40,6 +41,7 @@
+         self._third_person_frame: CameraFrame | None = None
+         self._frame_count = 0
+         self._started_at = time.monotonic()
++        self._v3_state_buffer: np.ndarray | None = None
+ 
+     @property
+     def robot_name(self) -> str:
+@@ -112,7 +114,79 @@
+             }
+             if state.telemetry:
+                 snapshot["backend"] = state.telemetry
++            recorder = v3_capture.recorder()
++            if recorder is not None:
++                snapshot["recording"] = {
++                    key: recorder.stats[key] for key in
++                    ("queue_drops", "write_failures", "duplicate_names", "malformed_rows")
++                }
+             return snapshot
++
++    def _v3_observation(self, recorder: object) -> dict:
++        """Observation-only copy of the just-rendered state. Call with ``self._lock`` held.
++
++        Nothing here changes stepping, commands, camera settings or frame identity.
++        """
++        if self._v3_state_buffer is None:
++            size = mujoco.mj_stateSize(self.model, mujoco.mjtState.mjSTATE_INTEGRATION)
++            self._v3_state_buffer = np.empty(int(size), dtype=np.float64)
++        mujoco.mj_getState(
++            self.model,
++            self.data,
++            self._v3_state_buffer,
++            mujoco.mjtState.mjSTATE_INTEGRATION,
++        )
++        state = self._v3_state_buffer
++        robot_state = self.robot.state()
++        linear, angular = robot_state.velocity
++        x, y, z, yaw = robot_state.pose
++        command = self._command
++        return {
++            "frame_id": recorder.next_frame_id(),
++            "capture_mono_ns": time.monotonic_ns(),
++            "sim_time": float(self.data.time),
++            "state_len": int(state.size),
++            "pose_x": float(x),
++            "pose_y": float(y),
++            "pose_z": float(z),
++            "pose_yaw": float(yaw),
++            "velocity_linear": float(linear),
++            "velocity_angular": float(angular),
++            "command_linear": float(command[0]),
++            "command_angular": float(command[1]),
++            "command_at_mono": float(self._command_at),
++            "_state": state.tobytes(),
++        }
++
++    def _v3_camera_geometry(self) -> dict:
++        """Compiled camera extrinsics/intrinsics for offline overlays (read-only)."""
++        geometry: dict[str, object] = {
++            "camera_width": int(CAMERA_WIDTH),
++            "camera_height": int(CAMERA_HEIGHT),
++            "physics_dt": float(PHYSICS_DT),
++            "frame_period_s": float(FRAME_PERIOD_S),
++            "command_timeout_s": float(COMMAND_TIMEOUT_S),
++            "robot": str(self.robot.name),
++            "cameras": {},
++        }
++        with self._lock:
++            for index in range(int(self.model.ncam)):
++                name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_CAMERA, index)
++                geometry["cameras"][str(name)] = {
++                    "id": index,
++                    "fovy_deg": float(self.model.cam_fovy[index]),
++                    "pos": [float(value) for value in self.model.cam_pos[index]],
++                    "quat": [float(value) for value in self.model.cam_quat[index]],
++                    "mode": int(self.model.cam_mode[index]),
++                    "bodyid": int(self.model.cam_bodyid[index]),
++                }
++            geometry["nq"] = int(self.model.nq)
++            geometry["nv"] = int(self.model.nv)
++            geometry["na"] = int(self.model.na)
++            geometry["state_size_integration"] = int(
++                mujoco.mj_stateSize(self.model, mujoco.mjtState.mjSTATE_INTEGRATION)
++            )
++        return geometry
+ 
+     def _advance(self, now: float) -> None:
+         command = self._command
+@@ -131,6 +205,9 @@
+         mujoco.mjv_defaultCamera(third_person_camera)
+         next_step = time.monotonic()
+         next_frame = next_step
++        recorder = v3_capture.recorder()
++        if recorder is not None:
++            recorder.trace("camera_geometry", **self._v3_camera_geometry())
+         try:
+             while not self._stop.is_set():
+                 now = time.monotonic()
+@@ -158,6 +235,11 @@
+                         ).copy()
+                         x, y, _, yaw = self.robot.state().pose
+                         capture_pose = (x, y, yaw)
++                        observation = (
++                            self._v3_observation(recorder)
++                            if recorder is not None
++                            else None
++                        )
+                     stamp_ns = time.time_ns()
+                     frame = self._encode_frame(stamp_ns, rgb, capture_pose)
+                     third_person_frame = self._encode_frame(
+@@ -169,6 +251,16 @@
+                         self._frame = frame
+                         self._third_person_frame = third_person_frame
+                         self._frame_count += 1
++                    if observation is not None:
++                        observation["stamp_ns"] = int(stamp_ns)
++                        observation["capture_pose"] = [
++                            float(capture_pose[0]),
++                            float(capture_pose[1]),
++                            float(capture_pose[2]),
++                        ]
++                        observation["_front_jpeg"] = frame.jpeg
++                        observation["_third_jpeg"] = third_person_frame.jpeg
++                        recorder.submit_frame(observation)
+                     next_frame = now + FRAME_PERIOD_S
+         finally:
+             renderer.close()
+--- a/mujoco_demo/vln_mujoco/v3_capture.py
++++ b/mujoco_demo/vln_mujoco/v3_capture.py
+@@ -0,0 +1,252 @@
++"""Opt-in observation-only capture recorder for the v3 visual-evidence continuation.
++
++Disabled unless ``LIGHTNAV_V3_TRACE_DIR`` is set. Nothing in this module changes
++robot stepping, MPC optimisation, camera settings, wire messages or control
++decisions: it only copies bytes and state that the demo already produced.
++
++Layout under the trace directory::
++
++    frames/front/front_<frame_id:08d>.jpg
++    frames/third/third_<frame_id:08d>.jpg
++    frames_index.jsonl        one row per captured pair
++    states.f64                fixed-size float64 records, append-only
++    traces.jsonl              request/response/consumption/control/lifecycle
++    recorder_status.json      written on close (and on demand)
++"""
++
++from __future__ import annotations
++
++import atexit
++import hashlib
++import json
++import os
++import queue
++import threading
++import time
++import uuid
++from pathlib import Path
++from typing import Any
++
++_ENV_DIR = "LIGHTNAV_V3_TRACE_DIR"
++_QUEUE_MAX = int(os.environ.get("LIGHTNAV_V3_QUEUE_MAX", "2048"))
++
++
++class _Recorder:
++    def __init__(self, root: Path) -> None:
++        self.root = root
++        self.run_uuid = str(uuid.uuid4())
++        self.front_dir = root / "frames" / "front"
++        self.third_dir = root / "frames" / "third"
++        self.front_dir.mkdir(parents=True, exist_ok=True)
++        self.third_dir.mkdir(parents=True, exist_ok=True)
++        self._queue: queue.Queue[Any] = queue.Queue(maxsize=_QUEUE_MAX)
++        self._id_lock = threading.Lock()
++        self._next_frame_id = 0
++        self._names: set[str] = set()
++        self.state_size: int | None = None
++        self.stats = {
++            "enqueued_frames": 0,
++            "enqueued_traces": 0,
++            "written_frames": 0,
++            "written_traces": 0,
++            "queue_drops": 0,
++            "write_failures": 0,
++            "duplicate_names": 0,
++            "malformed_rows": 0,
++            "enqueue_ns": [],
++        }
++        self._index = (root / "frames_index.jsonl").open("a", buffering=1)
++        self._traces = (root / "traces.jsonl").open("a", buffering=1)
++        self._states = (root / "states.f64").open("ab", buffering=0)
++        self._stop = threading.Event()
++        self._thread = threading.Thread(target=self._writer, name="v3-capture", daemon=True)
++        self._thread.start()
++
++    # ---------- producer side (must stay fast, never block the caller) ----------
++
++    def next_frame_id(self) -> int:
++        with self._id_lock:
++            value = self._next_frame_id
++            self._next_frame_id += 1
++            return value
++
++    def submit_frame(self, payload: dict) -> None:
++        t0 = time.monotonic_ns()
++        try:
++            self._queue.put_nowait(("frame", payload))
++            self.stats["enqueued_frames"] += 1
++        except queue.Full:
++            self.stats["queue_drops"] += 1
++        dt = time.monotonic_ns() - t0
++        samples = self.stats["enqueue_ns"]
++        if len(samples) < 100000:
++            samples.append(dt)
++
++    def trace(self, kind: str, **fields: Any) -> None:
++        row = {"trace": kind, "run_uuid": self.run_uuid, "mono_ns": time.monotonic_ns(),
++               "wall_unix": time.time(), **fields}
++        try:
++            self._queue.put_nowait(("trace", row))
++            self.stats["enqueued_traces"] += 1
++        except queue.Full:
++            self.stats["queue_drops"] += 1
++
++    # ---------- writer thread ----------
++
++    def _writer(self) -> None:
++        while True:
++            try:
++                item = self._queue.get(timeout=0.2)
++            except queue.Empty:
++                if self._stop.is_set():
++                    return
++                continue
++            kind, payload = item
++            try:
++                if kind == "frame":
++                    self._write_frame(payload)
++                else:
++                    self._traces.write(json.dumps(payload) + "\n")
++                    self.stats["written_traces"] += 1
++                if self.stats["written_frames"] and self.stats["written_frames"] % 100 == 0:
++                    self._write_status()
++            except Exception as exc:  # recording failure, never silent
++                self.stats["write_failures"] += 1
++                try:
++                    self._traces.write(json.dumps({
++                        "trace": "recorder_failure", "run_uuid": self.run_uuid,
++                        "mono_ns": time.monotonic_ns(), "error": f"{type(exc).__name__}: {exc}",
++                        "kind": kind,
++                    }) + "\n")
++                except Exception:
++                    pass
++
++    def _exclusive_write(self, path: Path, data: bytes) -> None:
++        if path.name in self._names:
++            self.stats["duplicate_names"] += 1
++            raise FileExistsError(f"duplicate capture file name {path.name}")
++        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
++        fd = os.open(path, flags, 0o644)
++        try:
++            os.write(fd, data)
++        finally:
++            os.close(fd)
++        self._names.add(path.name)
++
++    def _write_frame(self, payload: dict) -> None:
++        frame_id = payload["frame_id"]
++        front_name = f"front_{frame_id:08d}.jpg"
++        third_name = f"third_{frame_id:08d}.jpg"
++        front_jpeg = payload.pop("_front_jpeg")
++        third_jpeg = payload.pop("_third_jpeg")
++        state = payload.pop("_state")
++        self._exclusive_write(self.front_dir / front_name, front_jpeg)
++        self._exclusive_write(self.third_dir / third_name, third_jpeg)
++        if self.state_size is None:
++            self.state_size = len(state)
++        if len(state) != self.state_size:
++            self.stats["malformed_rows"] += 1
++            raise ValueError("state record size changed mid-run")
++        offset = self._states.tell()
++        self._states.write(state)
++        row = {
++            "run_uuid": self.run_uuid,
++            "frame_id": frame_id,
++            "front_file": f"frames/front/{front_name}",
++            "third_file": f"frames/third/{third_name}",
++            "front_sha256": hashlib.sha256(front_jpeg).hexdigest(),
++            "third_sha256": hashlib.sha256(third_jpeg).hexdigest(),
++            "front_bytes": len(front_jpeg),
++            "third_bytes": len(third_jpeg),
++            "state_offset": offset,
++            "state_bytes": len(state),
++            **payload,
++        }
++        self._index.write(json.dumps(row) + "\n")
++        self.stats["written_frames"] += 1
++
++    # ---------- status / shutdown ----------
++
++    def status(self) -> dict:
++        samples = sorted(self.stats["enqueue_ns"])
++        percentile = (samples[int(len(samples) * 0.95)] if samples else None)
++        return {
++            "run_uuid": self.run_uuid,
++            "root": str(self.root),
++            "state_size_bytes": self.state_size,
++            "queue_max": _QUEUE_MAX,
++            "queue_depth": self._queue.qsize(),
++            **{k: v for k, v in self.stats.items() if k != "enqueue_ns"},
++            "enqueue_samples": len(samples),
++            "enqueue_p95_ns": percentile,
++            "enqueue_max_ns": (samples[-1] if samples else None),
++        }
++
++    def _write_status(self) -> None:
++        try:
++            (self.root / "recorder_status.json").write_text(
++                json.dumps(self.status(), indent=2) + "\n"
++            )
++        except Exception:
++            pass
++
++    def flush(self, timeout: float = 10.0) -> None:
++        deadline = time.monotonic() + timeout
++        while not self._queue.empty() and time.monotonic() < deadline:
++            time.sleep(0.02)
++        self._index.flush()
++        self._traces.flush()
++        self._states.flush()
++        self._write_status()
++
++    def close(self) -> None:
++        self.flush()
++        self._stop.set()
++        self._thread.join(timeout=5.0)
++        for handle in (self._index, self._traces, self._states):
++            try:
++                handle.close()
++            except Exception:
++                pass
++
++
++_RECORDER: _Recorder | None = None
++_INIT_LOCK = threading.Lock()
++
++
++def recorder() -> _Recorder | None:
++    """Return the process recorder, creating it on first use when enabled."""
++    global _RECORDER
++    if _RECORDER is not None:
++        return _RECORDER
++    target = os.environ.get(_ENV_DIR, "").strip()
++    if not target:
++        return None
++    with _INIT_LOCK:
++        if _RECORDER is None:
++            _RECORDER = _Recorder(Path(target))
++            _RECORDER.trace("recorder_start", pid=os.getpid())
++    return _RECORDER
++
++
++def _flush_at_exit() -> None:
++    if _RECORDER is not None:
++        _RECORDER.trace("recorder_exit", pid=os.getpid())
++        _RECORDER.flush()
++
++
++atexit.register(_flush_at_exit)
++
++
++def enabled() -> bool:
++    return recorder() is not None
++
++
++def trace(kind: str, **fields: Any) -> None:
++    rec = recorder()
++    if rec is not None:
++        rec.trace(kind, **fields)
++
++
++def sha256_hex(data: bytes) -> str:
++    return hashlib.sha256(data).hexdigest()
+--- a/mujoco_demo/vln_mujoco/vln_client.py
++++ b/mujoco_demo/vln_mujoco/vln_client.py
+@@ -7,14 +7,18 @@
+ import contextlib
+ import json
+ import math
++import hashlib
+ import queue
+ import threading
+ import time
++import uuid
+ from dataclasses import dataclass
+ from typing import Protocol
+ from urllib.parse import urlparse
+ 
+ import aiohttp
++
++from . import v3_capture
+ 
+ Pixel = tuple[float, float]
+ 
+@@ -199,6 +203,10 @@
+     async def _connection(self, session: int) -> None:
+         with self._lock:
+             url = self._server_url
++        connection_id = uuid.uuid4().hex
++        v3_capture.trace(
++            "connection_open", session=session, connection_id=connection_id, url=url
++        )
+         timeout = aiohttp.ClientTimeout(total=None, sock_connect=3.0)
+         async with aiohttp.ClientSession(timeout=timeout) as http:
+             async with http.ws_connect(url, heartbeat=10.0, max_msg_size=0) as websocket:
+@@ -215,6 +223,19 @@
+                     instruction, _ = self._active()
+                     sequence = self._next_sequence(session)
+                     sent_at = time.monotonic()
++                    v3_capture.trace(
++                        "request",
++                        session=session,
++                        connection_id=connection_id,
++                        seq=sequence,
++                        stamp_ns=int(stamp_ns),
++                        jpeg_sha256=v3_capture.sha256_hex(jpeg),
++                        jpeg_bytes=len(jpeg),
++                        instruction_sha256=hashlib.sha256(
++                            instruction.encode("utf-8")
++                        ).hexdigest(),
++                        send_mono_ns=time.monotonic_ns(),
++                    )
+                     await websocket.send_json(
+                         {
+                             "action": "next",
+@@ -225,7 +246,27 @@
+                             },
+                         }
+                     )
+-                    data = self._response_data(await self._receive(websocket, 3.0), "next")
++                    raw_response = await self._receive(websocket, 3.0)
++                    receive_mono_ns = time.monotonic_ns()
++                    try:
++                        data = self._response_data(raw_response, "next")
++                    except Exception as exc:
++                        v3_capture.trace(
++                            "response",
++                            session=session,
++                            connection_id=connection_id,
++                            seq=sequence,
++                            stamp_ns=int(stamp_ns),
++                            receive_mono_ns=receive_mono_ns,
++                            decode_status=f"error: {type(exc).__name__}: {exc}",
++                            enqueued=False,
++                            raw_response=(
++                                raw_response.decode("utf-8", "replace")
++                                if isinstance(raw_response, bytes)
++                                else str(raw_response)
++                            ),
++                        )
++                        raise
+                     if data.get("seq") != sequence:
+                         raise RuntimeError("VLN response sequence mismatch")
+                     pointing = data.get("pointing")
+@@ -243,7 +284,27 @@
+                         opos_px=self._optional_pixel(pointing, "opos_px"),
+                         latency_ms=(time.monotonic() - sent_at) * 1000.0,
+                     )
+-                    if self._is_active(session):
++                    enqueued = self._is_active(session)
++                    v3_capture.trace(
++                        "response",
++                        session=session,
++                        connection_id=connection_id,
++                        seq=sequence,
++                        stamp_ns=int(stamp_ns),
++                        receive_mono_ns=receive_mono_ns,
++                        decode_status="ok",
++                        enqueued=bool(enqueued),
++                        latency_ms=result.latency_ms,
++                        stop=result.stop,
++                        visible=result.visible,
++                        waypoint_count=len(result.waypoints),
++                        raw_response=(
++                            raw_response.decode("utf-8", "replace")
++                            if isinstance(raw_response, bytes)
++                            else str(raw_response)
++                        ),
++                    )
++                    if enqueued:
+                         self._results.put_nowait(result)
+                 with contextlib.suppress(Exception):
+                     await websocket.send_json({"action": "reset"})

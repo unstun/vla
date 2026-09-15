@@ -1,0 +1,10 @@
+2026-09-10T04:08:16Z
+2903 MiB, 21179 MiB, 19 %
+--- our processes ---
+10828 bash -c date -u +%FT%TZ; nvidia-smi --query-gpu=memory.used,memory.free,utilization.gpu --format=csv,noheader; echo '--- our processes ---'; pgrep -af 'ws_server|vln_mujoco' || echo none; echo '--- listeners 8050/8088 ---'; (ss -ltnp 2>/dev/null | grep -E ':(8050|8088)' || echo none); echo '--- protected ---'; ps -eo pid,etimes,cmd | grep -E 'kit/kit|runheadless' | grep -v grep | cut -c1-90; df -h /home/ubuntu | tail -1
+--- listeners 8050/8088 ---
+none
+--- protected ---
+   1213    5252 /bin/sh /isaac-sim/runheadless.sh ./runheadless.sh -v --/app/livestream/pu
+   1251    5252 /isaac-sim/kit/kit /isaac-sim/apps/isaacsim.exp.full.streaming.kit --no-wi
+/dev/vda1       194G  148G   46G  77% /

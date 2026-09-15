@@ -1,0 +1,165 @@
+--- a/docs/CONFIGURATION.md
++++ b/docs/CONFIGURATION.md
+@@ -183,3 +183,7 @@
+ ## Local Lite3 simulation adapter
+ 
+ This experiment adds `python -m vln_mujoco --robot lite3 --robot-model PATH --walking-policy PATH`. It requires the pinned model_149999 ONNX export and prepared Lite3 MJCF. It uses 1 ms physical integration, a 50 Hz walking policy, and a body-mounted RGB camera; it does not control physical hardware.
++
++### Controlled Lite3 scenes
++
++`--scene-model PATH` selects a task-owned MJCF scene for `--robot lite3`. It preserves the robot camera and controllers. Obstacle/boundary contacts are accumulated at every 1 ms physical substep and exposed as telemetry; they do not control navigation.
+--- a/mujoco_demo/vln_mujoco/__main__.py
++++ b/mujoco_demo/vln_mujoco/__main__.py
+@@ -22,10 +22,13 @@
+     )
+     parser.add_argument("--robot-model", type=Path)
+     parser.add_argument("--walking-policy", type=Path)
++    parser.add_argument("--scene-model", type=Path)
+     return parser.parse_args(argv)
+ 
+ 
+ def simulation_from_args(args: argparse.Namespace) -> Simulation:
++    if getattr(args, "scene_model", None) is not None and args.robot != "lite3":
++        raise SystemExit("--scene-model requires --robot lite3")
+     if args.robot == "turtlebot":
+         if args.robot_model is not None or args.walking_policy is not None:
+             raise SystemExit(
+@@ -39,7 +42,8 @@
+     if args.robot == "lite3":
+         from .robots.lite3 import Lite3Backend
+ 
+-        return Simulation(Lite3Backend(args.robot_model, args.walking_policy))
++        return Simulation(Lite3Backend(args.robot_model, args.walking_policy,
++                                       scene_source=getattr(args, "scene_model", None)))
+     from .robots.microduck import MicroDuckBackend
+ 
+     return Simulation(MicroDuckBackend(args.robot_model, args.walking_policy))
+--- a/mujoco_demo/vln_mujoco/robots/lite3.py
++++ b/mujoco_demo/vln_mujoco/robots/lite3.py
+@@ -118,6 +118,17 @@
+         self.input_name, self.output_name = inp.name, out.name
+         self.model = build_model(robot_model, scene_source)
+         self.data = mujoco.MjData(self.model)
++        self.scene_metadata = ({"id": f"lite3-capability-{scene_source.stem}",
++                                "name": f"Controlled {scene_source.stem} arena",
++                                "dataset": "task-owned arena with pinned ProcTHOR trashcan"}
++                               if scene_source is not None else None)
++        self.robot_geoms = {g for g in range(self.model.ngeom)
++                            if (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "").startswith(PREFIX)}
++        self.obstacle_geoms = {g for g in range(self.model.ngeom)
++                               if mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) == "test_obstacle"}
++        self.boundary_geoms = {g for g in range(self.model.ngeom)
++                               if (mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, g) or "").startswith("test_wall_")}
++        self._contact_force = np.zeros(6)
+         self.base_joint = self.model.joint(PREFIX + "base_joint").id
+         self.base_qpos = int(self.model.jnt_qposadr[self.base_joint])
+         self.base_dof = int(self.model.jnt_dofadr[self.base_joint])
+@@ -141,6 +152,11 @@
+         self.inferences = 0
+         self.last_observation = np.zeros(45, dtype=np.float32)
+         self.last_torque = np.zeros(12, dtype=np.float32)
++        self.obstacle_contact_steps = 0
++        self.boundary_contact_steps = 0
++        self.maximum_obstacle_force = 0.0
++        self.minimum_obstacle_contact_distance = None
++        self.first_obstacle_contact_sim_time = None
+         self.data.qpos[self.base_qpos:self.base_qpos + 3] = [SPAWN[0], SPAWN[1], 0.35]
+         self.data.qpos[self.base_qpos + 3:self.base_qpos + 7] = [1, 0, 0, 0]
+         self.data.qpos[self.joint_qpos] = Q0
+@@ -188,9 +204,44 @@
+             self.last_torque = np.clip(requested, low, high)
+             self.data.ctrl[self.actuators] = self.last_torque
+             mujoco.mj_step(self.model, self.data)
++            self._observe_contacts()
+             self.steps += 1
+             if not np.isfinite(self.data.qpos).all() or not np.isfinite(self.data.qvel).all():
+                 raise RuntimeError("Lite3 physics became nonfinite")
++
++    def _observe_contacts(self) -> None:
++        """Accumulate obstacle contacts every 1 ms, including between camera samples."""
++        obstacle_hit = False
++        boundary_hit = False
++        for index in range(self.data.ncon):
++            contact = self.data.contact[index]
++            first, second = int(contact.geom1), int(contact.geom2)
++            if first in self.robot_geoms:
++                environment = second
++            elif second in self.robot_geoms:
++                environment = first
++            else:
++                continue
++            if environment not in self.obstacle_geoms | self.boundary_geoms:
++                continue
++            if contact.efc_address < 0:
++                continue
++            mujoco.mj_contactForce(self.model, self.data, index, self._contact_force)
++            force = abs(float(self._contact_force[0]))
++            if contact.dist > 0 and force <= 0.1:
++                continue
++            if environment in self.obstacle_geoms:
++                obstacle_hit = True
++                self.maximum_obstacle_force = max(self.maximum_obstacle_force, force)
++                self.minimum_obstacle_contact_distance = min(
++                    float(contact.dist), self.minimum_obstacle_contact_distance
++                    if self.minimum_obstacle_contact_distance is not None else float(contact.dist))
++                if self.first_obstacle_contact_sim_time is None:
++                    self.first_obstacle_contact_sim_time = float(self.data.time)
++            else:
++                boundary_hit = True
++        self.obstacle_contact_steps += int(obstacle_hit)
++        self.boundary_contact_steps += int(boundary_hit)
+ 
+     def state(self) -> RobotState:
+         x, y, z = self.data.qpos[self.base_qpos:self.base_qpos + 3]
+@@ -205,7 +256,12 @@
+             (float(velocity[0]), float(angular_world[2])),
+             {"walking_policy": "model_149999", "walking_precision": "FP32 ONNX CPU",
+              "policy_command": self.policy_command.tolist(), "tilt_rad": tilt,
+-             "policy_inferences": self.inferences, "contact_count": int(self.data.ncon)},
++             "policy_inferences": self.inferences, "contact_count": int(self.data.ncon),
++             "obstacle_contact_steps": self.obstacle_contact_steps,
++             "boundary_contact_steps": self.boundary_contact_steps,
++             "maximum_obstacle_force_N": self.maximum_obstacle_force,
++             "minimum_obstacle_contact_distance_m": self.minimum_obstacle_contact_distance,
++             "first_obstacle_contact_sim_time": self.first_obstacle_contact_sim_time},
+         )
+ 
+     def third_person_camera(self, _camera: mujoco.MjvCamera) -> RenderCamera:
+--- a/mujoco_demo/vln_mujoco/server.py
++++ b/mujoco_demo/vln_mujoco/server.py
+@@ -10,6 +10,7 @@
+ 
+ from aiohttp import WSMsgType, web
+ 
++from . import v3_capture
+ from .model import SCENE_DATASET, SCENE_ID, SCENE_NAME
+ from .mpc import (
+     A_MAX_V,
+@@ -27,7 +28,6 @@
+     WAYPOINT_DT_S,
+     MpcTracker,
+ )
+-from . import v3_capture
+ from .simulation import Simulation
+ from .vln_client import VlnClient
+ 
+@@ -274,7 +274,8 @@
+             "RUNNING" if self.auto_owner is not None else "IDLE"
+         )
+         return {
+-            "scene": {"id": SCENE_ID, "name": SCENE_NAME, "dataset": SCENE_DATASET},
++            "scene": (getattr(self.simulation.robot, "scene_metadata", None)
++                      or {"id": SCENE_ID, "name": SCENE_NAME, "dataset": SCENE_DATASET}),
+             "robot": {"name": self.simulation.robot_name, "connected": True},
+             "simulation": self.simulation.snapshot(),
+             "vln": {
+--- a/mujoco_demo/vln_mujoco/simulation.py
++++ b/mujoco_demo/vln_mujoco/simulation.py
+@@ -150,6 +150,7 @@
+             "pose_y": float(y),
+             "pose_z": float(z),
+             "pose_yaw": float(yaw),
++            "backend": dict(robot_state.telemetry),
+             "velocity_linear": float(linear),
+             "velocity_angular": float(angular),
+             "command_linear": float(command[0]),

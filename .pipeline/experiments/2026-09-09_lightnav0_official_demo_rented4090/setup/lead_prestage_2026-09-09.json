@@ -1,0 +1,124 @@
+{
+  "prepared_utc": "2026-09-09T15:30:00Z",
+  "lead": "Claude Fable 5.1 (Claude Code session, Dr Sun's Mac)",
+  "purpose": "Lead pre-staging performed before handing the package to Opus. Preparation only; no model inference, no simulator run, no navigation claim.",
+  "ssh": {
+    "alias": "rented4090",
+    "target": "ubuntu@117.50.179.202:22",
+    "auth": "existing key, BatchMode yes; no password stored in artifacts"
+  },
+  "host_facts_measured": {
+    "checked_utc": "2026-09-09T15:07:21Z",
+    "hostname": "10-60-164-100",
+    "os": "Ubuntu 22.04.4 LTS",
+    "cpu": "AMD EPYC 7542, 16 vCPU",
+    "ram_gib": 62,
+    "disk_free_gib_at_15_22Z": 73,
+    "gpu": "NVIDIA GeForce RTX 4090 24564 MiB",
+    "driver": "575.57.08",
+    "cuda_driver_api": "12.9",
+    "protected_process": {
+      "pid": 1247,
+      "args": "/isaac-sim/kit/kit ... isaacsim.exp.full.streaming.kit",
+      "gpu_mib": 2859,
+      "started": "Sep 9 22:30:01 2026 local"
+    },
+    "system_python": "3.10.12 (no pip module, no uv, no conda, docker socket denied for ubuntu)",
+    "sudo": "passwordless sudo works",
+    "compilers": "gcc/g++/make present; python3.10-dev present",
+    "egl": "/usr/lib/x86_64-linux-gnu/libEGL.so.1 present",
+    "fonts": "/usr/share/fonts/truetype/dejavu present",
+    "listening_ports": {
+      "8011": "isaac",
+      "49100": "isaac",
+      "8050": "free",
+      "8088": "free"
+    }
+  },
+  "network_measured_bytes_per_s": {
+    "github_release_assets": 17534,
+    "github_python_build_standalone": 9751,
+    "pypi_direct_single": 609302,
+    "pypi_direct_six_parallel_aggregate": 1046548,
+    "pypi_mirror_tuna": 19098865,
+    "pypi_mirror_ustc": 18713100,
+    "pypi_mirror_aliyun": 15998944,
+    "pypi_mirror_huawei": 7404936,
+    "pypi_mirror_tencent": 2709897,
+    "huggingface_direct_large_file": 15357439,
+    "conda_forge": 2179488,
+    "mac_to_server_scp_45MB": 808000,
+    "mac_huggingface_direct": 2520228,
+    "decision": "PyPI via https://pypi.tuna.tsinghua.edu.cn/simple; HF and conda-forge direct; nothing from GitHub on the host"
+  },
+  "remote_root": "/home/ubuntu/sun/vla_exec/2026-09-09_lightnav0_official_demo_rented4090",
+  "remote_prestaged": {
+    "tools/bin/micromamba": {
+      "sha256": "0d2dd49fb0171f27a63175e2c21941aafabdd6e46f521c498620b4b14ff604d8",
+      "version": "2.1.1",
+      "copied_from": "/home/ubuntu/sun/vla_exec/2026-09-08_dualvln_rented4090/tools/bin/micromamba"
+    },
+    "env/py311": {
+      "job": "runs/env_py311",
+      "exit_code": 0,
+      "wall_seconds": 41.0,
+      "python": "3.11.16 h5f976f7_2_cpython conda-forge",
+      "uv": "0.11.21",
+      "pip_index": "https://pypi.tuna.tsinghua.edu.cn/simple",
+      "list": "setup/py311_conda_list.txt"
+    },
+    "work/LightNav-0": {
+      "source_archive": "setup/lightnav0_src.tgz",
+      "archive_sha256": "6acc17157bc93f40f9b612c38e2d69edc77b473d1c78205c516d8ca32d4db835",
+      "excluded_from_archive": [
+        ".git",
+        "docs/assets (10 image/gif files, not needed at runtime)"
+      ],
+      "pitfall": "macOS tar wrote 3,094 '._*' AppleDouble entries; deleted with find -name '._*' -delete (setup/work_copy_verification_initial.json shows the pre-cleanup state)",
+      "verification": "setup/work_copy_verification_clean.json: 2449 matched, 0 mismatched, 0 missing, 0 extra, 10 ignored (docs/assets)"
+    },
+    "checkpoints/LightNav-0": {
+      "job": "runs/download_ckpt",
+      "supervisor_pid": 3201,
+      "started_utc": "2026-09-09T15:18:21Z",
+      "ended_utc": "2026-09-09T15:27:24Z",
+      "exit_code": 0,
+      "wall_seconds": 543.8,
+      "status": "complete; 20 files verified (19 by git blob id, shard by LFS SHA-256)",
+      "manifest": "setup/checkpoint_manifest_remote.json",
+      "total_bytes": 9709350260,
+      "file_count": 20,
+      "note": "HF usedStorage 9,709,932,119 includes repository overhead; the sibling byte sum is 9,709,350,260"
+    }
+  },
+  "local_prestaged": {
+    "scripts": {
+      "run_job.py": "executed remotely (env_py311, download_ckpt)",
+      "download_checkpoint.py": "executing remotely and locally",
+      "verify_work_copy.py": "executed remotely",
+      "setup_py311.sh": "executed remotely, PY311_COMPLETE",
+      "install_lightnav.sh": "pushed, NOT executed",
+      "setup_demo.sh": "pushed, NOT executed"
+    },
+    "checkpoints/LightNav-0": {
+      "process": "download_checkpoint.py on the Mac, started 2026-09-09T15:17Z, log setup/local_checkpoint_download.log, manifest setup/checkpoint_manifest_local.json on completion",
+      "rate": "~2.5 MB/s, expected ~65 min",
+      "resume": "re-run the same command; curl resumes .part files"
+    },
+    "gitignore": "path-specific entries for EXP/checkpoints/ and EXP/work/ appended to /.gitignore",
+    "trellis": {
+      "task": ".trellis/tasks/09-09-lightnav0-official-demo-rented4090",
+      "status": "in_progress (task.py start executed 2026-09-09T15:15Z)",
+      "meta.execution_status": "prepared_v2_not_dispatched"
+    }
+  },
+  "not_done_by_lead": [
+    "pip install -e .[vllm,video]",
+    "mujoco_demo uv sync",
+    "model load",
+    "any inference",
+    "any simulator or navigation run",
+    "any video",
+    "any git staging or commit"
+  ]
+}
