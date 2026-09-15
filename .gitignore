@@ -81,3 +81,218 @@ __pycache__/
 /third_party/2026-08-18_omnivla_5182600/checkpoints/omnivla-original/
 /third_party/2026-08-18_omnivla_5182600/checkpoints/clip/
 /.pipeline/experiments/2026-08-18_omnivla_offline_smoke/work/
+
+# 2026-09-08 TIC-VLA DynaNav single-scene trial. Exact asset URLs, revisions,
+# sizes and hashes: this experiment's manifests/official_assets.json.
+# Download/recovery: scripts/download_assets.py. The work copy is reconstructed
+# by scripts/prepare_workcopy.py from the pinned source plus recorded patches.
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/models/
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/checkpoints/
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/work/
+# Original 133 MB camera archive. Hash, size and exact run-local storage are in
+# runs/20260908T131741Z/artifact_sha256.json; recovery uses fetch_remote_artifact.py.
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/runs/20260908T131741Z/original_camera_frames.tar.gz
+
+# Interactive hospital demo: pinned/rebuildable local bytes; manifests are tracked.
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/demo/.venv/
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/demo/models/
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/demo/work/
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/demo/runs/*/raw_overlay_frames.tar.gz
+
+# NaVILA NF4 deployment bytes. Pinned original revisions and verified hashes:
+# experiment setup/original_weight_manifest.json; exported NF4 SHA-256 values:
+# runs/*/export_manifest.json. Regeneration: scripts/download_assets.py and
+# scripts/probe.py --export. Local source, patches, inputs and logs stay visible.
+/.pipeline/experiments/2026-09-08_navila_8b_quantized_5070ti/models/
+/.pipeline/experiments/2026-09-08_navila_8b_quantized_5070ti/venv/
+/.pipeline/experiments/2026-09-08_navila_8b_quantized_5070ti/work/
+
+# 2026-09-09 LightNav-0 official MuJoCo demo on rented4090
+# (task 09-09-lightnav0-official-demo-rented4090). The pinned checkpoint bytes
+# (HF LightOriginsHQ/LightNav-0 @ 826dc5fbfa37afa8293d2e336d329b6ffc0bfb64; per-file
+# SHA-256 in this experiment's setup/checkpoint_manifest*.json; regenerate with
+# scripts/download_checkpoint.py) and the disposable execution work copy (rebuilt from
+# references/upstream/2026-09-09_lightnav0_official_demo/source/LightNav-0 plus
+# setup/compatibility.patch) stay local-only. Manifests, patches and logs stay visible.
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/checkpoints/
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/work/
+
+# LightNav 5070 Ti source transport; tracked hash and regeneration in setup/source_archive_provenance.json
+/.pipeline/experiments/2026-09-09_lightnav0_5070ti_inference/setup/lightnav0_src.tgz
+
+# X-NavDP Lite3 trial: selected checkpoint identity in setup/selected_model.json;
+# regenerate with scripts/download_model.py. Source dependencies are pinned in
+# references/upstream/2026-09-10_navdp_lite3/repository_manifest.yaml.
+/.pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/models/
+/.pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/work/
+/.pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/runtime/
+/.pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/tools/
+
+# 2026-09-11 Lite3 V12 locomotion runtime and checkpoint
+# (task 09-11-internvla-n1-lite3-isaac-sim). The only navigation-qualified Lite3 policy.
+# Bytes are local-only: 217-file recovered runtime tree plus model_149999.pt (26,367,345 B,
+# sha256 a9d31dce...3d5450), 111 MB total. Identity, the pinned machine-dog commit 8c3fdffa,
+# the reason that commit cannot export them, per-file SHA-256 in SHA256SUMS.txt, and
+# regeneration instructions are all tracked in
+# references/upstream/2026-09-11_lite3_v12_locomotion/SOURCE.md.
+# NOTE: these bytes are ALREADY ignored by the pre-existing references/upstream/.gitignore
+# rule `**/source/`. The entry below is deliberately redundant, so that a 111 MB local-only
+# artifact is documented alongside the repository's other large-byte exceptions rather than
+# being invisible here. Removing it does not un-ignore anything.
+/references/upstream/2026-09-11_lite3_v12_locomotion/source/
+
+# 2026-09-11 Phase A transport bundle (task 09-11-internvla-n1-lite3-isaac-sim).
+# A 56.8 MB tar.gz assembled from the two pinned trees above by
+# .pipeline/experiments/2026-09-11_lite3_isaac_v12_vla/scripts/build_bundle.py, purely to move bytes
+# to an execution host. Fully rebuildable from tracked inputs; its SHA-256, size, file counts and
+# layout are tracked in that experiment's setup/bundle/bundle_manifest.json, which is NOT ignored.
+/.pipeline/experiments/2026-09-11_lite3_isaac_v12_vla/setup/bundle/*.tar.gz
+
+# 2026-09-11 Lite3 Isaac V12 VLA, Phase B/C run bytes (task 09-11-internvla-n1-lite3-isaac-sim; approved by
+# Dr Sun 2026-09-14 at C.5). Per-file SHA-256 of every ignored file is in the tracked manifest.sha256 of its run.
+# Storage: this local path only (plus the rented4090 run root until deleted). Not bit-reproducible by re-running:
+# System 1 sampling is unseeded, RTX rendering and wall-clock tick counts vary (RESULT_PHASE_C.md, "Variance").
+# Saved camera frames, the agent's debug images/text, and Phase B depth/colour arrays:
+/.pipeline/experiments/2026-09-11_lite3_isaac_v12_vla/runs/phase_c_*/isaac/frames/
+/.pipeline/experiments/2026-09-11_lite3_isaac_v12_vla/runs/phase_c_*/client/decision_frames/
+/.pipeline/experiments/2026-09-11_lite3_isaac_v12_vla/runs/phase_*/**/test_data/
+/.pipeline/experiments/2026-09-11_lite3_isaac_v12_vla/runs/phase_b_*/**/*.npy
+
+# ---------------------------------------------------------------------------------------------
+# 2026-09-14 backlog commit (task 09-14-commit-backlog-evidence), approved by Dr Sun: text is tracked;
+# media, frames, arrays, archives, meshes, work copies and vendored source below stay local-only.
+# Every rule is scoped to one directory. Hashes: each of those directories holds a tracked LOCAL_ONLY_BYTES.sha256
+# (run `shasum -a 256 -c LOCAL_ONLY_BYTES.sha256` inside it). Storage: this Mac, at these paths.
+# ---------------------------------------------------------------------------------------------
+
+# 2026-08-19_omnivla_edge_orin64 (12 files, 3.8 MB).
+# OmniVLA-edge Orin receive-only smoke: camera frames (run outputs, not regenerable) and the offline
+# Orin wheelhouse (.whl and sdist .tar.gz; re-download the exact versions named in the file names).
+# Older records: manifests/experiment_manifest.sha256, manifests/input_manifest.sha256.
+/.pipeline/experiments/2026-08-19_omnivla_edge_orin64/**/*.gz
+/.pipeline/experiments/2026-08-19_omnivla_edge_orin64/**/*.jpg
+/.pipeline/experiments/2026-08-19_omnivla_edge_orin64/**/*.whl
+
+# 2026-08-19_omnivla_lite3_receive_only (2 files, 0.3 MB).
+# OmniVLA Lite3 receive-only deployment: received camera frames (run outputs, not regenerable).
+/.pipeline/experiments/2026-08-19_omnivla_lite3_receive_only/**/*.jpg
+
+# 2026-08-19_omnivla_original_cuda_gpu40901 (4267 files, 74.7 MB).
+# OmniVLA-original CUDA run: vendored upstream source, transformers-openvla-oft @ bc339d9a (Apache-2.0) and
+# dlimp_openvla @ 040105d2 (no license file). Re-clone at those commits: vendor-src/VENDOR_PROVENANCE.md;
+# vendor-src/SOURCE_MANIFEST.sha256 also covers them. Two run-output frames.
+/.pipeline/experiments/2026-08-19_omnivla_original_cuda_gpu40901/vendor-src/dlimp_openvla/
+/.pipeline/experiments/2026-08-19_omnivla_original_cuda_gpu40901/vendor-src/transformers-openvla-oft/
+/.pipeline/experiments/2026-08-19_omnivla_original_cuda_gpu40901/**/*.jpg
+
+# 2026-08-19_omnivla_vla_evidence_audit (8 files, 1.9 MB).
+# OmniVLA evidence audit: images (not regenerable). Older record: manifests/evidence_manifest.sha256.
+/.pipeline/experiments/2026-08-19_omnivla_vla_evidence_audit/**/*.jpg
+/.pipeline/experiments/2026-08-19_omnivla_vla_evidence_audit/**/*.png
+
+# 2026-08-20_tic_vla_lite3_active_mvp_v2_no_motor (7 files, 0.4 MB).
+# TIC-VLA Active MVP v2 (no motor): Orin camera frames (run outputs, not regenerable).
+/.pipeline/experiments/2026-08-20_tic_vla_lite3_active_mvp_v2_no_motor/**/*.jpg
+
+# 2026-08-20_tic_vla_orin_pretrained (9 files, 18.0 MB).
+# TIC-VLA Orin reproduction: offline Python wheelhouse (re-download the versions named in the file names)
+# and four waypoint .npy arrays from runs/013_offline_cuda (run outputs, not regenerable).
+/.pipeline/experiments/2026-08-20_tic_vla_orin_pretrained/**/*.npy
+/.pipeline/experiments/2026-08-20_tic_vla_orin_pretrained/**/*.whl
+# Exception (Dr Sun, 2026-09-15): the four offline-CUDA waypoint arrays (1.6 KB) are tracked.
+!/.pipeline/experiments/2026-08-20_tic_vla_orin_pretrained/runs/013_offline_cuda/*_waypoints.npy
+
+# 2026-09-08_dualvln_rented4090 (4558 files, 2551.1 MB).
+# DualVLN / InternVLA-N1 on rented4090, incl. the camera ablation: evaluator videos, goal and observation
+# frames (run outputs; System 1 is unseeded, so not regenerable); the InternNav work copy (rebuild from
+# references/upstream/2026-09-08_dualvln plus setup/compatibility.patch, identity in
+# setup/work_source_manifest.json); third-party Habitat public scene assets (setup/habitat_scene_source.json);
+# episode .json.gz files (official R2R subsets from the upstream dataset; the Chinese-chairs episode is recorded in
+# public_scenes/requests/2026-09-09_zh_between_two_chairs/provenance.json); micromamba and virtualenv installer
+# binaries (third-party tools, identified by hash only).
+/.pipeline/experiments/2026-09-08_dualvln_rented4090/public_scenes/data/scene_data/
+/.pipeline/experiments/2026-09-08_dualvln_rented4090/work/
+/.pipeline/experiments/2026-09-08_dualvln_rented4090/**/*.bz2
+/.pipeline/experiments/2026-09-08_dualvln_rented4090/**/*.gz
+/.pipeline/experiments/2026-09-08_dualvln_rented4090/**/*.jpg
+/.pipeline/experiments/2026-09-08_dualvln_rented4090/**/*.mp4
+/.pipeline/experiments/2026-09-08_dualvln_rented4090/**/*.png
+/.pipeline/experiments/2026-09-08_dualvln_rented4090/**/*.pyz
+# Exception (Dr Sun, 2026-09-15): the three authored public-scene episode definitions (2.8 KB) are tracked.
+!/.pipeline/experiments/2026-09-08_dualvln_rented4090/public_scenes/data/vln_ce/raw_data/public/**/*.json.gz
+
+# 2026-09-08_navila_8b_quantized_5070ti (30 files, 8.7 MB).
+# NaVILA 8B NF4 on the 5070 Ti: input and overlay frames. Existing block above covers models, venv, work.
+/.pipeline/experiments/2026-09-08_navila_8b_quantized_5070ti/**/*.jpg
+
+# 2026-09-08_tic_vla_dynanav_5070ti (218 files, 262.8 MB).
+# TIC-VLA DynaNav: per-attempt source work copies (about 1 MB each; rebuilt by prepare_distance.py or
+# prepare_pair.py, per-file SHA-256 in the sibling manifests/source.json),
+# raw overlay frame tarballs, videos, frames, plot PDFs and demo audio fixtures. Run outputs are not
+# regenerable. Existing block above covers models, checkpoints, the top-level work copy and demo bytes.
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/distance_language_pair_2026-09-08/work/
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/distance_stop_2026-09-08/attempts/20260908T161736Z_3m_zh_source/work/
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/distance_stop_2026-09-08/work/
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/**/*.aiff
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/**/*.gz
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/**/*.jpg
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/**/*.mp4
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/**/*.pdf
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/**/*.png
+/.pipeline/experiments/2026-09-08_tic_vla_dynanav_5070ti/**/*.wav
+
+# 2026-09-09_lightnav0_5070ti_inference (65 files, 0.7 MB).
+# LightNav-0 5070 Ti inference: 64 observation frames and return_evidence.tgz (transport archive; setup/return_manifest.json
+# lists the SHA-256 of 48 of its 49 files). Older record: setup/fixture_manifest.json.
+/.pipeline/experiments/2026-09-09_lightnav0_5070ti_inference/**/*.jpg
+/.pipeline/experiments/2026-09-09_lightnav0_5070ti_inference/**/*.tgz
+
+# 2026-09-09_lightnav0_official_demo_rented4090 (8338 files, 266.7 MB).
+# LightNav-0 official demo and Lite3 runs on rented4090: capture frames, videos, state buffers
+# (.f64/.npy/.npz), transport archives (lightnav0_src.tgz, v3_return.tgz, opus_package_v3.zip), Lite3 STL
+# meshes and the exported policy ONNX (identity: lite3_v1/policy/policy_manifest.yaml). Run outputs are
+# not regenerable. Existing block above covers checkpoints and work.
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/**/*.STL
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/**/*.f64
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/**/*.jpg
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/**/*.mp4
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/**/*.npy
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/**/*.npz
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/**/*.onnx
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/**/*.png
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/**/*.tgz
+/.pipeline/experiments/2026-09-09_lightnav0_official_demo_rented4090/**/*.zip
+
+# 2026-09-10_x_navdp_lite3_rented4090 (526 files, 71.7 MB).
+# X-NavDP Lite3 trial: frames, videos, per-call input and camera .npz, Lite3 STL meshes, scene .obj and the
+# policy ONNX (identity: policy/policy_manifest.yaml). Run outputs are not regenerable. Existing block
+# above covers models, work, runtime and tools.
+/.pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/**/*.STL
+/.pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/**/*.jpg
+/.pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/**/*.mp4
+/.pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/**/*.npz
+/.pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/**/*.obj
+/.pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/**/*.onnx
+/.pipeline/experiments/2026-09-10_x_navdp_lite3_rented4090/**/*.png
+
+# 2026-09-11_lite3_isaac_v12_vla (11873 files, 439.3 MB).
+# Lite3 Isaac V12 VLA, Phases A-D: camera and fusion frames, fusion depth .npy, videos and analysis
+# figures. Run directories also carry a tracked manifest.sha256. Not bit-reproducible (RESULT_PHASE_C.md,
+# "Variance"). Existing blocks above cover the bundle and Phase B/C run bytes.
+/.pipeline/experiments/2026-09-11_lite3_isaac_v12_vla/**/*.jpg
+/.pipeline/experiments/2026-09-11_lite3_isaac_v12_vla/**/*.mp4
+/.pipeline/experiments/2026-09-11_lite3_isaac_v12_vla/**/*.npy
+/.pipeline/experiments/2026-09-11_lite3_isaac_v12_vla/**/*.png
+
+# 2026-09-10_lite3_cameras_web_sources (8 files, 75.2 MB).
+# Lite3 camera web sources: vendor PDFs, the InternVLA-N1 technical report PDF, and one PNG rendered from a manual
+# page. Source URLs and SHA-256 are also in README.md and SHA256SUMS.txt; the PDFs can be re-fetched from those URLs
+# while still published, the rendered PNG only by re-rendering.
+/.pipeline/survey/2026-09-10_lite3_cameras_web_sources/**/*.pdf
+/.pipeline/survey/2026-09-10_lite3_cameras_web_sources/**/*.png
+
+# 09-10-internvla-n1-camera-ablation-sim (53 files, 17.1 MB).
+# Camera ablation task: real-robot head-camera calibration JPEGs and PNG frames from 2026-09-11
+# (research/head_camera_live_2026-09-11/); cannot be regenerated.
+/.trellis/tasks/09-10-internvla-n1-camera-ablation-sim/**/*.jpg
+/.trellis/tasks/09-10-internvla-n1-camera-ablation-sim/**/*.png
