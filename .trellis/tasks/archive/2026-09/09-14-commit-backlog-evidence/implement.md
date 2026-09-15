@@ -18,7 +18,7 @@ Nothing in steps 1–4 stages or commits. Step 5 is the approval gate.
 - [x] 5. **Gate** (approved 2026-09-15, with two small exceptions tracked): show Dr Sun the table and wait for approval, which may come with changes. Changes send us back to
       step 2.
 - [x] 6. `git restore --staged` the Phase A list. Confirm the index is empty and those files are still byte-identical.
-- [ ] 7. For groups 1–10, one at a time (1–9 committed 2026-09-15, `ab7c8414`..`0374716f`; 10 awaits Dr Sun's review):
+- [x] 7. For groups 1–10, one at a time (committed 2026-09-15, `ab7c8414`..`7870e9cd`, each checked against its list):
       1. `git add --pathspec-from-file=review/group_NN.txt`;
       2. check that the staged names equal the group list;
       3. run the credential scan on staged text;
@@ -30,7 +30,7 @@ Nothing in steps 1–4 stages or commits. Step 5 is the approval gate.
       shown to Dr Sun before the commit.
 - [x] 8. Final checks (AC1–AC5): the commands below; also `review/after.sha256` equals `before.sha256` for every
       evidence file.
-- [ ] 9. Report the outcome, including the repository size and the deferred playwright paths.
+- [x] 9. Report the outcome, including the repository size and the deferred playwright paths.
 
 ## Validation commands
 

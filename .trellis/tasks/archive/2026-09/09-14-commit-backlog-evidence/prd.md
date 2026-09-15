@@ -57,7 +57,7 @@ ignore rule and a tracked SHA-256 record. Opened 2026-09-14 after the status rev
 
 ## Acceptance Criteria
 
-- [ ] AC1 After the last commit, `git status --porcelain` lists only the deferred paths named in Out of Scope.
+- [x] AC1 After the last commit, `git status --porcelain` lists only the deferred paths named in Out of Scope.
 - [x] AC2 For every root, each ignored untracked file appears in a tracked manifest, and `shasum -a 256 -c` passes
       with 0 failures.
 - [x] AC3 No committed blob larger than 5 MB is media, an archive, an array or a work copy. Every committed file over
@@ -67,7 +67,7 @@ ignore rule and a tracked SHA-256 record. Opened 2026-09-14 after the status rev
 - [x] AC5 `CLAUDE.md` is still exactly `@AGENTS.md\n`. Every changed JSON, YAML, TOML, Python and shell file parses.
 - [x] AC6 A credential re-scan of the staged text is clean before each commit.
 - [x] AC7 Dr Sun approved the review table before the first commit, and every commit matches its approved path list.
-- [ ] AC8 The hot-zone status brief, recent changes and journal describe Isaac Phases B–D and this commit, and the
+- [x] AC8 The hot-zone status brief, recent changes and journal describe Isaac Phases B–D and this commit, and the
       Isaac task's E.2 item is ticked.
 
 ## Out of Scope
