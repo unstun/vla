@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -42,6 +43,13 @@ DEFAULT_REMOTE_CHECKPOINT = (
     "/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/"
     "source/checkpoint/model_149999.pt"
 )
+STANCE_HOLD_CHOICES = ("off", "auto")
+DEFAULT_DURATION_SECONDS = 8.0
+DEFAULT_FINISH_AFTER_SIM_SECONDS = 2.0
+# Patched runner cap for stand_probe (materializer anchor stand_probe_duration_cap_60s).
+MAX_STAND_DURATION_SECONDS = 60.0
+FINISH_STILLNESS_SECONDS = 1.0
+FINISH_MARGIN_SECONDS = 1.0
 
 
 def sha256(path: Path) -> str:
@@ -191,7 +199,31 @@ def make_bridge_config(path: Path, telemetry_port: int, command_port: int) -> No
     )
 
 
+def stand_settings(args) -> Dict[str, object]:
+    """Validated stand duration, finish time and stance-hold mode for one package."""
+    stance_hold = getattr(args, "stance_hold", "off")
+    duration = float(getattr(args, "duration_seconds", DEFAULT_DURATION_SECONDS))
+    finish_after = float(getattr(args, "finish_after_sim_seconds", DEFAULT_FINISH_AFTER_SIM_SECONDS))
+    if stance_hold not in STANCE_HOLD_CHOICES:
+        raise ValueError("--stance-hold must be one of %s" % (STANCE_HOLD_CHOICES,))
+    if not (math.isfinite(duration) and 0.0 < duration <= MAX_STAND_DURATION_SECONDS):
+        raise ValueError("--duration-seconds must be within (0, %g]" % MAX_STAND_DURATION_SECONDS)
+    if not (math.isfinite(finish_after) and finish_after >= 0.0):
+        raise ValueError("--finish-after-sim-seconds must be finite and non-negative")
+    if finish_after + FINISH_STILLNESS_SECONDS + FINISH_MARGIN_SECONDS > duration + 1e-9:
+        raise ValueError(
+            "--finish-after-sim-seconds %g leaves less than %g s stillness plus %g s margin before "
+            "--duration-seconds %g" % (finish_after, FINISH_STILLNESS_SECONDS, FINISH_MARGIN_SECONDS, duration)
+        )
+    return {
+        "stance_hold": stance_hold,
+        "duration_seconds": duration,
+        "finish_after_sim_seconds": finish_after,
+    }
+
+
 def build_runner_argv(args, remote_run: str, external_run_id: str) -> List[str]:
+    settings = stand_settings(args)
     return [
         "--scene",
         remote_run + "/inputs/building.usda",
@@ -210,7 +242,7 @@ def build_runner_argv(args, remote_run: str, external_run_id: str) -> List[str]:
         "--case",
         "stand_probe",
         "--duration-seconds",
-        "8.0",
+        str(settings["duration_seconds"]),
         "--telemetry-host",
         "127.0.0.1",
         "--telemetry-port",
@@ -263,6 +295,8 @@ def build_runner_argv(args, remote_run: str, external_run_id: str) -> List[str]:
         "1.0",
         "--external-status-freshness-seconds",
         "2.0",
+        "--stance-hold",
+        settings["stance_hold"],
         "--seed",
         "42",
         "--device",
@@ -300,7 +334,8 @@ def make_scope(
                 json.dumps(spawn, sort_keys=True).encode("utf-8")
             ).hexdigest(),
         },
-        "resource_ceiling": {"simulation_seconds": 8.0, "wall_seconds": 600.0},
+        "resource_ceiling": {"simulation_seconds": parsed.duration_seconds, "wall_seconds": 600.0},
+        "stance_hold": parsed.stance_hold,
         "ros_domain_id": 94,
         "tcp_ports": {"telemetry": 46240, "command": 46241},
         "claim": (
@@ -415,6 +450,7 @@ def main():
     parser.add_argument("--remote-checkpoint", required=True)
     parser.add_argument("--runner-argv-json", required=True)
     parser.add_argument("--ros-domain-id", type=int, required=True)
+    parser.add_argument("--finish-after-sim-seconds", type=float, default=2.0)
     args = parser.parse_args()
 
     run_root = Path(args.run_root)
@@ -465,6 +501,9 @@ def main():
         }, indent=2) + "\n")
 
         runner_argv = json.loads(args.runner_argv_json)
+        stance_hold = runner_arg_value(runner_argv, "--stance-hold")
+        result["stance_hold"] = stance_hold
+        result["finish_after_sim_seconds"] = args.finish_after_sim_seconds
         ensure_container_absent(container_name)
         ensure_tcp_port_free(runner_arg_value(runner_argv, "--telemetry-port"))
         ensure_tcp_port_free(runner_arg_value(runner_argv, "--command-port"))
@@ -572,11 +611,12 @@ print(json.dumps({
                     time.sleep(0.05)
                     continue
                 last_snapshot = snapshot
-                if snapshot.get("run_id") == run_root.name and float(snapshot.get("sim_time_s", 0.0)) >= 2.0:
+                if (snapshot.get("run_id") == run_root.name
+                        and float(snapshot.get("sim_time_s", 0.0)) >= args.finish_after_sim_seconds):
                     break
             time.sleep(0.05)
         else:
-            raise RuntimeError("current_command.json did not reach 2 sim seconds")
+            raise RuntimeError("current_command.json did not reach %g sim seconds" % args.finish_after_sim_seconds)
         finish = {
             "schema_version": 1,
             "run_id": run_root.name,
@@ -584,7 +624,7 @@ print(json.dumps({
             "observed_run_epoch_ns": int(last_snapshot["run_epoch_ns"]),
             "requested_at_monotonic_ns": time.monotonic_ns(),
             "backend_terminal_status": "FINISHED",
-            "note": "stand-only qualification finish after >=2 sim seconds",
+            "note": "stand-only qualification finish after >=%g sim seconds" % args.finish_after_sim_seconds,
         }
         write_json(run_root / "artifacts/external_episode/finish_request.json", finish)
         result["finish_request"] = finish
@@ -601,9 +641,12 @@ print(json.dumps({
             "max_admitted_command_norm_mps": summary.get("max_admitted_command_norm_mps"),
             "max_horizontal_speed_mps": summary.get("max_horizontal_speed_mps"),
             "case_failed": summary.get("case_failed"),
+            "stance_hold": summary.get("stance_hold"),
         }
         if summary.get("status") != "EXTERNAL_EPISODE_FINISHED":
             raise RuntimeError("unexpected summary status: " + str(summary.get("status")))
+        if (summary.get("stance_hold") or {}).get("mode") != stance_hold:
+            raise RuntimeError("runner summary stance_hold mode differs from --stance-hold " + stance_hold)
         result["passed"] = True
     except Exception as exc:
         result["error"] = str(exc)
@@ -658,6 +701,7 @@ def prepare(args) -> Tuple[Path, dict]:
     if local_run.exists():
         raise FileExistsError("local run already exists: " + str(local_run))
     remote_run = args.remote_root.rstrip("/") + "/" + run_id
+    settings = stand_settings(args)
 
     verify_input_manifest()
     bridge_expected = verify_bridge_source()
@@ -787,6 +831,8 @@ def prepare(args) -> Tuple[Path, dict]:
                 runner_argv_json,
                 "--ros-domain-id",
                 str(args.ros_domain_id),
+                "--finish-after-sim-seconds",
+                repr(settings["finish_after_sim_seconds"]),
             ])
         ],
         "collect": [
@@ -805,17 +851,47 @@ def prepare(args) -> Tuple[Path, dict]:
         "default_execute": False,
         "case": "stand_probe",
         "contact_policy": "native_v12",
-        "duration_seconds": 8.0,
+        "duration_seconds": settings["duration_seconds"],
+        "finish_after_sim_seconds": settings["finish_after_sim_seconds"],
+        "stance_hold": settings["stance_hold"],
         "max_wall_seconds": 600.0,
         "telemetry_port": args.telemetry_port,
         "command_port": args.command_port,
         "ros_domain_id": args.ros_domain_id,
         "claim_boundary": (
             "If executed and passed, this qualifies patched runner + real Foxy "
-            "bridge stand-only physics/transport. It is not PCT/SCAN navigation."
+            "bridge stand-only physics/transport. It is not PCT/SCAN navigation. "
+            "With --stance-hold auto it is also a simulator-only stand-hold "
+            "diagnostic; the AC3 verdict comes from analyze_stance_hold.py."
         ),
     })
     return local_run, commands
+
+
+def check_prepared_request(args, local_run: Path) -> Dict[str, object]:
+    """Refuse --execute when stand settings differ from the prepared package.
+
+    Packages written before these flags ran the legacy runner: stance hold
+    off, 8 s duration, finish request after 2 sim seconds.
+    """
+    request = json.loads((Path(local_run) / "run_request.json").read_text(encoding="utf-8"))
+    prepared = {
+        "stance_hold": request.get("stance_hold", "off"),
+        "duration_seconds": float(request.get("duration_seconds", DEFAULT_DURATION_SECONDS)),
+        "finish_after_sim_seconds": float(request.get("finish_after_sim_seconds", DEFAULT_FINISH_AFTER_SIM_SECONDS)),
+    }
+    requested = {
+        "stance_hold": getattr(args, "stance_hold", "off"),
+        "duration_seconds": float(getattr(args, "duration_seconds", DEFAULT_DURATION_SECONDS)),
+        "finish_after_sim_seconds": float(getattr(args, "finish_after_sim_seconds", DEFAULT_FINISH_AFTER_SIM_SECONDS)),
+    }
+    for key, value in requested.items():
+        if value != prepared[key]:
+            raise RuntimeError(
+                "--%s %r differs from the prepared package (package %s=%r)"
+                % (key.replace("_", "-"), value, key, prepared[key])
+            )
+    return prepared
 
 
 def run_command(label: str, command: List[str], log_path: Path, timeout: int = 1800) -> None:
@@ -913,6 +989,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--telemetry-port", type=int, default=46240)
     parser.add_argument("--command-port", type=int, default=46241)
     parser.add_argument("--ros-domain-id", type=int, default=94)
+    parser.add_argument("--stance-hold", choices=STANCE_HOLD_CHOICES, default="off",
+                        help="runner stance hold mode; auto enables the PD stand hold (stance_hold.py)")
+    parser.add_argument("--duration-seconds", type=float, default=DEFAULT_DURATION_SECONDS,
+                        help="stand_probe duration, at most 60 s (AC3 uses 60)")
+    parser.add_argument("--finish-after-sim-seconds", type=float, default=DEFAULT_FINISH_AFTER_SIM_SECONDS,
+                        help="sim time before the worker writes the finish request; needs 2 s before the duration end")
     return parser
 
 
@@ -925,6 +1007,7 @@ def main(argv=None) -> int:
             raise
         local_run, commands = load_prepared_run(args)
     if args.execute:
+        check_prepared_request(args, local_run)
         execute(local_run, commands)
     print(json.dumps({
         "local_run": str(local_run),

@@ -210,5 +210,150 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(json.loads(output.with_suffix(".json").read_text())["inputs"]["video"]["path"], str(moved))
 
 
+PINNED_TOOL_COMMIT = "20f24308afac3c5668722f058524b2942b8d1c3b"  # last make_walk_review.py before stance modes
+STANCE_SEQUENCE = (["RL"] * 3 + ["STAND_SETTLING"] * 3 + ["STAND_TRANSITION"] * 4 + ["FIXED_STAND"] * 4
+                   + ["REJOIN"] * 2 + ["RL"])
+
+
+def stance_rows():
+    rows = metric_rows()
+    for row, mode in zip(rows, STANCE_SEQUENCE):
+        row["stance_mode"] = mode
+        row["stance_hold"] = "auto"
+    return rows
+
+
+def load_pinned_tool(tmp):
+    repo = Path(subprocess.run(["git", "-C", str(HERE), "rev-parse", "--show-toplevel"], capture_output=True,
+                               text=True).stdout.strip() or HERE)
+    rel = SCRIPT.resolve().relative_to(repo.resolve()).as_posix()
+    proc = subprocess.run(["git", "-C", str(repo), "show", "%s:%s" % (PINNED_TOOL_COMMIT, rel)], capture_output=True)
+    if proc.returncode:
+        return None
+    path = Path(tmp) / "make_walk_review_pinned.py"
+    path.write_bytes(proc.stdout)
+    spec = importlib.util.spec_from_file_location("make_walk_review_pinned", str(path))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def context_for(module, run):
+    artifacts = run / "returned_artifacts"
+    paths = {
+        "camera_frames": artifacts / "runner_output/camera_frames.jsonl",
+        "metrics": artifacts / "runner_output/metrics.jsonl",
+        "pilot_journal": artifacts / "pilot_journal.json",
+        "pilot": run / "inputs/pilot.json",
+        "run_request": None,
+    }
+    return module.build_context(run, paths)
+
+
+def render_frame(module, ctx, index):
+    renderer = module.Renderer(ctx)
+    frame = bytes(range(256)) * (module.CAM_W * module.CAM_H * 3 // 256) + bytes(module.CAM_W * module.CAM_H * 3 % 256)
+    cam_row = ctx["camera_rows"][index]
+    state_idx, _ = ctx["state"].row_for_frame(cam_row)
+    return bytes(renderer.render(frame, index, len(ctx["camera_rows"]), cam_row, state_idx))
+
+
+class StanceModeTests(unittest.TestCase):
+    def setUp(self):
+        self.m = load_module()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+
+    def write_run(self, name, rows):
+        run = self.root / name / RUN_ID
+        out = run / "returned_artifacts/runner_output"
+        out.mkdir(parents=True)
+        (run / "inputs").mkdir()
+        (run / "inputs/pilot.json").write_text(json.dumps({"goal_xy_tolerance_m": 0.25, "goals": [
+            {"goal_id": "goal-a", "ground_xyz_m": [2.0, 0.0, 0.0]}, {"goal_id": "goal-b", "ground_xyz_m": [3.0, 0.0, 0.0]}]}))
+        (run / "returned_artifacts/pilot_journal.json").write_text(json.dumps(journal(True)))
+        (out / "metrics.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+        (out / "camera_frames.jsonl").write_text("".join(
+            json.dumps({"frame_index": i, "step": 4 * i, "sim_time_s": 0.02 * (4 * i + 1)}) + "\n" for i in range(5)))
+        return run
+
+    def test_segments_and_optional_field(self):
+        rows = stance_rows()
+        sim = [r["sim_time_s"] for r in rows]
+        stance = self.m.stance_segments(rows, sim)
+        self.assertEqual([s["mode"] for s in stance["segments"]],
+                         ["RL", "STAND_SETTLING", "STAND_TRANSITION", "FIXED_STAND", "REJOIN", "RL"])
+        fixed = stance["segments"][3]
+        self.assertAlmostEqual(fixed["start_s"], sim[10])
+        self.assertAlmostEqual(fixed["end_s"], sim[14])
+        self.assertEqual(fixed["rows"], 4)
+        self.assertAlmostEqual(stance["mode_seconds"]["FIXED_STAND"], 0.08)
+        self.assertIsNone(self.m.stance_segments(metric_rows(), sim))
+        run = self.write_run("rows", rows)
+        kept = self.m.load_state_rows(run / "returned_artifacts/runner_output/metrics.jsonl")
+        self.assertEqual([r["stance_mode"] for r in kept], STANCE_SEQUENCE)
+        self.assertNotIn("stance_hold", kept[0])
+        old = self.m.load_state_rows(self.write_run("old", metric_rows()) / "returned_artifacts/runner_output/metrics.jsonl")
+        self.assertNotIn("stance_mode", old[0])
+
+    def test_old_run_frames_match_the_pinned_tool(self):
+        pinned = load_pinned_tool(self.root)
+        if pinned is None:
+            self.skipTest("git history with commit %s is unavailable" % PINNED_TOOL_COMMIT)
+        self.assertFalse(hasattr(pinned, "stance_segments"))
+        run = self.write_run("old", metric_rows())
+        new_ctx = context_for(self.m, run)
+        old_ctx = context_for(pinned, run)
+        self.assertIsNone(new_ctx.pop("stance"))
+        self.assertEqual(set(new_ctx), set(old_ctx))
+        for index in (0, 2, 4):
+            self.assertEqual(render_frame(self.m, new_ctx, index), render_frame(pinned, old_ctx, index), index)
+
+    def test_stance_run_shows_mode_label_and_shading(self):
+        run = self.write_run("stance", stance_rows())
+        ctx = context_for(self.m, run)
+        renderer = self.m.Renderer(ctx)
+        self.assertIsNotNone(renderer.banner_stance)
+        spans = [p for p in renderer.speed_ax.patches if p.get_facecolor()[:3] == matplotlib_rgb("#1f77b4")]
+        self.assertEqual(len(spans), 1)
+        cam_row = ctx["camera_rows"][3]
+        state_idx, _ = ctx["state"].row_for_frame(cam_row)
+        self.assertEqual(ctx["stance"]["modes"][state_idx], "FIXED_STAND")
+        frame = bytes(self.m.CAM_W * self.m.CAM_H * 3)
+        renderer.render(frame, 3, 5, cam_row, state_idx)
+        self.assertEqual(renderer.banner_stance.get_text(), "stance: FIXED_STAND")
+        renderer.render(frame, 0, 5, ctx["camera_rows"][0], 0)
+        self.assertEqual(renderer.banner_stance.get_text(), "stance: RL")
+        plain = self.write_run("plain", metric_rows())
+        self.assertNotEqual(render_frame(self.m, ctx, 3), render_frame(self.m, context_for(self.m, plain), 3))
+
+
+def matplotlib_rgb(color):
+    from matplotlib.colors import to_rgb
+    return tuple(to_rgb(color))
+
+
+@unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg is not installed")
+class StanceRenderTests(unittest.TestCase):
+    def test_sidecar_lists_stance_segments_only_for_stance_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = write_run(Path(tmp) / "s")
+            metrics = run / "returned_artifacts/runner_output/metrics.jsonl"
+            metrics.write_text("".join(json.dumps(r) + "\n" for r in stance_rows()))
+            output = Path(tmp) / "out/stance.mp4"
+            proc = subprocess.run([sys.executable, str(SCRIPT), str(run), "--output", str(output), "--preset", "ultrafast"],
+                                  capture_output=True, text=True)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            sidecar = json.loads(output.with_suffix(".json").read_text())
+            self.assertEqual([s["mode"] for s in sidecar["stance_hold"]["segments"]][3], "FIXED_STAND")
+            plain = write_run(Path(tmp) / "p")
+            output = Path(tmp) / "out/plain.mp4"
+            proc = subprocess.run([sys.executable, str(SCRIPT), str(plain), "--output", str(output), "--preset", "ultrafast"],
+                                  capture_output=True, text=True)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertNotIn("stance_hold", json.loads(output.with_suffix(".json").read_text()))
+
+
 if __name__ == "__main__":
     unittest.main()

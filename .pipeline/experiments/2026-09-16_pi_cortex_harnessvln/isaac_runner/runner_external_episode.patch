@@ -11,7 +11,7 @@
  import time
  import traceback
  from contextlib import ExitStack
-@@ -42,6 +45,171 @@
+@@ -42,6 +45,1066 @@
  
  def write_json(path: Path, payload) -> None:
      Path(path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -180,10 +180,905 @@
 +        "age_s": age_s,
 +        "request": request,
 +    }
++
++
++# ---- stance hold state machine, inserted verbatim from stance_hold.py ------
++STANCE_HOLD_SOURCE_REL = '.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/stance_hold.py'
++STANCE_HOLD_SOURCE_SHA256 = '2d244efeea1708b02bc33243789464006af65bb32fc999463548d221d1bc3541'
++STANCE_HOLD_BODY_SHA256 = '8dc51c1bfa726b8ae1316d80674912869168f08116d0f58763e2dbcd4b3831ba'
++import math
++from typing import Dict
++
++import numpy as np
++
++STANCE_HOLD_MODES = ("off", "auto")
++STANCE_HOLD_FSM_MODES = ("RL", "STAND_SETTLING", "STAND_TRANSITION", "FIXED_STAND", "REJOIN")
++STANCE_HOLD_JOINT_COUNT = 12
++STANCE_HOLD_FOOT_ORDER = ("FL", "FR", "HL", "HR")
++
++# V12 Lite3ActuatorCfg "Hip"/"Knee": stiffness 20.0, damping 0.5 (robot_lab
++# assets/deeprobotics.py LITE3_CFG_V12). Replaces MJ KP/KD (MJ:71-72).
++BASE_KP = 20.0
++BASE_KD = 0.5
++# MJ FIXED_STAND_KP / FIXED_STAND_KD (MJ:119-120), MuJoCo-qualified hold gains.
++HOLD_KP = 60.0
++HOLD_KD = 1.0
++# MJ HOLD_COMMAND_DEADBAND (MJ:109); compared with max |command| (MJ:1561, 1585).
++COMMAND_DEADBAND = 1.0e-3
++# MJ HOLD_LINEAR_SPEED_LIMIT / HOLD_ANGULAR_SPEED_LIMIT (MJ:110-111). Norms of
++# the full 3-D base linear/angular velocity (MJ _hold_motion_metrics, MJ:2374-2396).
++SETTLE_LINEAR_SPEED_MAX = 0.15
++SETTLE_ANGULAR_SPEED_MAX = 0.5
++# MJ HOLD_TILT_LIMIT_DEG (MJ:112): angle between body z and world z.
++TILT_MAX_DEG = 10.0
++# MJ FIXED_STAND_ENTRY_FORCE_N (MJ:152): every foot >= 10 N to enter.
++ENTRY_FOOT_FORCE_N = 10.0
++# MJ FIXED_STAND_DWELL_S (MJ:121).
++SETTLE_DWELL_S = 0.25
++# MJ FIXED_STAND_BALANCE_LOW/HIGH (MJ:159-160): dwell-mean front (FL+FR), left
++# (FL+HL) and diagonal (FL+HR) shares of the total foot force (MJ:1660-1672).
++BALANCE_LOW = 0.35
++BALANCE_HIGH = 0.65
++# MJ FIXED_STAND_TRANSITION_S / FIXED_STAND_REJOIN_S (MJ:127-128).
++TRANSITION_S = 2.0
++REJOIN_S = 0.25
++# MJ FIXED_STAND_CONTACT_THRESHOLD (MJ:130): hold needs every foot > 1 N.
++HOLD_CONTACT_N = 1.0
++# MJ FIXED_STAND_DISTURBANCE_DWELL_S (MJ:129) and HOLD_REENTRY_LOCKOUT_S (MJ:108).
++DISTURBANCE_DWELL_S = 0.25
++REENTRY_LOCKOUT_S = 0.5
++# MJ FIXED_STAND_REQUEST_TIMEOUT_S (MJ:126). Auto mode restarts the wait window
++# and RL keeps control (MJ:1603-1609).
++SETTLE_TIMEOUT_S = 10.0
++# MJ compares elapsed times with a 1e-9 s slack (MJ:1573, 1603, 1668, 1734, 1760, 1767).
++STANCE_TIME_EPS = 1.0e-9
++STANCE_TRANSITION_LOG_LIMIT = 2000
++
++
++class StanceHoldError(RuntimeError):
++    """Invalid hold input. The hold latches failed and the runner stops the case."""
++
++
++def stance_hold_constants() -> Dict[str, object]:
++    """Every constant that shapes the hold, for run records."""
++    return {
++        "base_kp": BASE_KP,
++        "base_kd": BASE_KD,
++        "hold_kp": HOLD_KP,
++        "hold_kd": HOLD_KD,
++        "command_deadband": COMMAND_DEADBAND,
++        "settle_linear_speed_max_mps": SETTLE_LINEAR_SPEED_MAX,
++        "settle_angular_speed_max_radps": SETTLE_ANGULAR_SPEED_MAX,
++        "tilt_max_deg": TILT_MAX_DEG,
++        "entry_foot_force_n": ENTRY_FOOT_FORCE_N,
++        "settle_dwell_s": SETTLE_DWELL_S,
++        "balance_band": [BALANCE_LOW, BALANCE_HIGH],
++        "balance_shares": ["FL+FR", "FL+HL", "FL+HR"],
++        "transition_s": TRANSITION_S,
++        "rejoin_s": REJOIN_S,
++        "rejoin_blend": "smoothstep",
++        "hold_contact_n": HOLD_CONTACT_N,
++        "disturbance_dwell_s": DISTURBANCE_DWELL_S,
++        "reentry_lockout_s": REENTRY_LOCKOUT_S,
++        "settle_timeout_s": SETTLE_TIMEOUT_S,
++        "foot_order": list(STANCE_HOLD_FOOT_ORDER),
++        "seed": "q + (applied_kp / HOLD_KP) * (applied_target - q)",
++        "reference": (
++            "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py "
++            "LocalMotionFSM stand path (commit fd751b8b)"
++        ),
++    }
++
++
++def _stance_progress(elapsed_s: float, duration_s: float) -> float:
++    """MJ _motion_progress (MJ:1228-1230)."""
++    return float(np.clip(elapsed_s / duration_s, 0.0, 1.0))
++
++
++def _stance_smoothstep(progress: float) -> float:
++    """MJ _motion_smoothstep (MJ:1233-1236)."""
++    progress = float(np.clip(progress, 0.0, 1.0))
++    return progress * progress * (3.0 - 2.0 * progress)
++
++
++class HoldInput:
++    """One control-step sample. Joint vectors use one consistent joint order.
++
++    A plain class on purpose: the patched runner is loaded with `exec_module`
++    under `from __future__ import annotations`, and dataclass field
++    inspection then needs the module in `sys.modules`.
++    """
++
++    __slots__ = ("now_s", "command", "joint_pos", "joint_vel", "policy_target", "applied_target",
++                 "applied_kp", "applied_kd", "linear_speed", "angular_speed", "tilt_deg", "foot_forces")
++
++    def __init__(self, now_s, command, joint_pos, joint_vel, policy_target, applied_target,
++                 applied_kp, applied_kd, linear_speed, angular_speed, tilt_deg, foot_forces):
++        self.now_s = now_s
++        self.command = command
++        self.joint_pos = joint_pos
++        self.joint_vel = joint_vel
++        self.policy_target = policy_target
++        self.applied_target = applied_target
++        self.applied_kp = applied_kp
++        self.applied_kd = applied_kd
++        self.linear_speed = linear_speed
++        self.angular_speed = angular_speed
++        self.tilt_deg = tilt_deg
++        self.foot_forces = foot_forces
++
++
++class HoldOutput:
++    """Joint target and gains for the next control step."""
++
++    __slots__ = ("target", "kp", "kd", "policy_owns_joints", "mode", "reason", "progress")
++
++    def __init__(self, target, kp, kd, policy_owns_joints, mode, reason, progress):
++        self.target = target
++        self.kp = kp
++        self.kd = kd
++        self.policy_owns_joints = policy_owns_joints
++        self.mode = mode
++        self.reason = reason
++        self.progress = progress
++
++
++def _stance_vector(name: str, value, size: int) -> np.ndarray:
++    array = np.array(value, dtype=np.float64, copy=True)
++    if array.shape != (size,):
++        raise StanceHoldError("%s must have shape (%d,), got %s" % (name, size, array.shape))
++    if not np.isfinite(array).all():
++        raise StanceHoldError("%s is not finite" % name)
++    return array
++
++
++def _stance_scalar(name: str, value) -> float:
++    if isinstance(value, bool):
++        raise StanceHoldError("%s must be a number" % name)
++    try:
++        result = float(value)
++    except (TypeError, ValueError):
++        raise StanceHoldError("%s must be a number" % name)
++    if not math.isfinite(result):
++        raise StanceHoldError("%s is not finite" % name)
++    return result
++
++
++class StanceHold:
++    """Stand path of MJ LocalMotionFSM with automatic entry (MJ:1329-1821)."""
++
++    def __init__(self, mode: str = "off", joint_lower=None, joint_upper=None,
++                 joint_count: int = STANCE_HOLD_JOINT_COUNT) -> None:
++        if mode not in STANCE_HOLD_MODES:
++            raise ValueError("stance hold mode must be one of %s, got %r" % (STANCE_HOLD_MODES, mode))
++        if (joint_lower is None) != (joint_upper is None):
++            raise ValueError("joint_lower and joint_upper must be given together")
++        self.setting = mode
++        self.joint_count = int(joint_count)
++        self._lower = None
++        self._upper = None
++        if joint_lower is not None:
++            lower = np.array(joint_lower, dtype=np.float64, copy=True)
++            upper = np.array(joint_upper, dtype=np.float64, copy=True)
++            shape = (self.joint_count,)
++            if lower.shape != shape or upper.shape != shape:
++                raise ValueError("joint limits must have shape %s" % (shape,))
++            if not (np.isfinite(lower).all() and np.isfinite(upper).all() and np.all(lower < upper)):
++                raise ValueError("joint limits must be finite with lower < upper")
++            self._lower, self._upper = lower, upper
++        self._base_kp = np.full(self.joint_count, BASE_KP)
++        self._base_kd = np.full(self.joint_count, BASE_KD)
++        self._hold_kp = np.full(self.joint_count, HOLD_KP)
++        self._hold_kd = np.full(self.joint_count, HOLD_KD)
++        self.reset()
++
++    def reset(self) -> None:
++        self.mode = "RL"
++        self.reason = "reset"
++        self.progress = 0.0
++        self.failure = None
++        self._phase_start = 0.0
++        self._settle_started = None
++        self._settle_split_sum = np.zeros(3)
++        self._settle_split_count = 0
++        self._settle_block_reason = "dwell"
++        self._hold_target = None
++        self._rejoin_target = None
++        self._rejoin_kp = None
++        self._rejoin_kd = None
++        self._reentry_until = -math.inf
++        self._disturbance_started = None
++        self._disturbance_reason = None
++        self._last_now = None
++        self.transitions = []
++        self.transitions_dropped = 0
++        self.counters = {
++            "updates": 0,
++            "settle_starts": 0,
++            "settle_cancels": 0,
++            "settle_timeouts": 0,
++            "support_balance_blocks": 0,
++            "entries": 0,
++            "fixed_stand": 0,
++            "rejoins": 0,
++            "rejoin_complete": 0,
++            "disturbance_exits": 0,
++        }
++        self.mode_time_s = {name: 0.0 for name in STANCE_HOLD_FSM_MODES}
++        self.last_entry = None
++
++    # -- bookkeeping ---------------------------------------------------------
++    def _set_mode(self, mode: str, reason: str, now: float) -> None:
++        previous = self.mode
++        self.mode = mode
++        self.reason = reason
++        if previous == mode:
++            return
++        if len(self.transitions) < STANCE_TRANSITION_LOG_LIMIT:
++            self.transitions.append({"t_s": float(now), "from": previous, "to": mode, "reason": reason})
++        else:
++            self.transitions_dropped += 1
++
++    def status(self) -> Dict[str, object]:
++        pairs = {}
++        for item in self.transitions:
++            key = "%s->%s" % (item["from"], item["to"])
++            pairs[key] = pairs.get(key, 0) + 1
++        return {
++            "setting": self.setting,
++            "mode": self.mode,
++            "reason": self.reason,
++            "progress": float(self.progress),
++            "failure": self.failure,
++            "counters": dict(self.counters),
++            "mode_time_s": dict(self.mode_time_s),
++            "transition_counts": pairs,
++            "transitions": list(self.transitions),
++            "transitions_dropped": self.transitions_dropped,
++            "last_entry": self.last_entry,
++            "joint_limits_applied": self._lower is not None,
++            "constants": stance_hold_constants(),
++        }
++
++    def _fail(self, message: str) -> None:
++        self.failure = message
++        raise StanceHoldError(message)
++
++    def _clip_target(self, target: np.ndarray) -> np.ndarray:
++        # MJ _non_rl_motion_control clips every supervisor target (MJ:1223).
++        if self._lower is None:
++            return target
++        return np.clip(target, self._lower, self._upper)
++
++    # -- update ----------------------------------------------------------------
++    def update(self, x: HoldInput) -> HoldOutput:
++        if self.setting == "off":
++            # Stateless pass-through: exactly the policy target at V12 gains.
++            return HoldOutput(
++                target=np.array(x.policy_target, dtype=np.float64, copy=True),
++                kp=self._base_kp.copy(),
++                kd=self._base_kd.copy(),
++                policy_owns_joints=True,
++                mode="OFF",
++                reason="stance_hold_off",
++                progress=0.0,
++            )
++        if self.failure is not None:
++            raise StanceHoldError("stance hold already failed: " + self.failure)
++        n = self.joint_count
++        try:
++            now = _stance_scalar("now_s", x.now_s)
++            command = _stance_vector("command", x.command, 3)
++            joint_pos = _stance_vector("joint_pos", x.joint_pos, n)
++            _stance_vector("joint_vel", x.joint_vel, n)
++            policy_target = _stance_vector("policy_target", x.policy_target, n)
++            applied_target = _stance_vector("applied_target", x.applied_target, n)
++            applied_kp = _stance_vector("applied_kp", x.applied_kp, n)
++            applied_kd = _stance_vector("applied_kd", x.applied_kd, n)
++            linear_speed = _stance_scalar("linear_speed", x.linear_speed)
++            angular_speed = _stance_scalar("angular_speed", x.angular_speed)
++            tilt_deg = _stance_scalar("tilt_deg", x.tilt_deg)
++            forces = _stance_vector("foot_forces", x.foot_forces, len(STANCE_HOLD_FOOT_ORDER))
++        except StanceHoldError as exc:
++            self._fail(str(exc))
++        if self._last_now is not None and now < self._last_now - STANCE_TIME_EPS:
++            self._fail("now_s went backwards: %.9f < %.9f" % (now, self._last_now))
++        if self._last_now is not None:
++            self.mode_time_s[self.mode] += now - self._last_now
++        self._last_now = now
++        self.counters["updates"] += 1
++        zero_command = float(np.max(np.abs(command))) <= COMMAND_DEADBAND
++
++        # Automatic arming with zero delay (MJ:1557-1581).
++        if self.mode == "RL" and zero_command and now >= self._reentry_until:
++            self._set_mode("STAND_SETTLING", "waiting_for_quiet_four_contact", now)
++            self.progress = 0.0
++            self._phase_start = now
++            self._settle_started = None
++            self.counters["settle_starts"] += 1
++
++        if self.mode == "STAND_SETTLING":
++            # Whole-body settle gate (MJ:1583-1708, per-leg latch path omitted).
++            failure = None
++            if not zero_command:
++                failure = "new_command"
++            elif linear_speed > SETTLE_LINEAR_SPEED_MAX:
++                failure = "linear_speed"
++            elif angular_speed > SETTLE_ANGULAR_SPEED_MAX:
++                failure = "angular_speed"
++            elif tilt_deg > TILT_MAX_DEG:
++                failure = "tilt"
++            elif not bool(np.all(forces >= ENTRY_FOOT_FORCE_N)):
++                failure = "four_contact"
++            if failure == "new_command":
++                self._set_mode("RL", "fixed_stand_cancelled:new_command", now)
++                self.progress = 0.0
++                self._settle_started = None
++                self.counters["settle_cancels"] += 1
++            elif now - self._phase_start + STANCE_TIME_EPS >= SETTLE_TIMEOUT_S:
++                # Auto mode: RL keeps control; restart the wait window (MJ:1603-1609).
++                self._phase_start = now
++                self.counters["settle_timeouts"] += 1
++            elif failure is None:
++                if self._settle_started is None:
++                    self._settle_started = now
++                    self._settle_split_sum = np.zeros(3)
++                    self._settle_split_count = 0
++                self._settle_split_sum += np.array([
++                    forces[0] + forces[1],
++                    forces[0] + forces[2],
++                    forces[0] + forces[3],
++                ]) / float(np.sum(forces))
++                self._settle_split_count += 1
++                dwell = now - self._settle_started
++                self.progress = _stance_progress(dwell, SETTLE_DWELL_S)
++                if dwell + STANCE_TIME_EPS >= SETTLE_DWELL_S:
++                    splits = self._settle_split_sum / self._settle_split_count
++                    if bool(np.any(splits < BALANCE_LOW) or np.any(splits > BALANCE_HIGH)):
++                        self._settle_started = None
++                        self._settle_block_reason = "support_balance"
++                        self.progress = 0.0
++                        self.reason = "waiting_for_support_balance"
++                        self.counters["support_balance_blocks"] += 1
++                    else:
++                        # Torque-matched seed (MJ:1686-1703): the target offset that
++                        # reproduces the applied PD stiffness torque at the hold gain.
++                        self._hold_target = joint_pos + (applied_kp / self._hold_kp) * (
++                            applied_target - joint_pos
++                        )
++                        self._set_mode("STAND_TRANSITION", "quiet_four_contact_confirmed", now)
++                        self.progress = 0.0
++                        self._phase_start = now
++                        self.counters["entries"] += 1
++                        self.last_entry = {
++                            "t_s": now,
++                            "support_shares": [float(v) for v in splits],
++                            "dwell_samples": int(self._settle_split_count),
++                            "foot_forces_n": [float(v) for v in forces],
++                        }
++            else:
++                self._settle_started = None
++                self._settle_block_reason = failure
++                self.progress = 0.0
++                self.reason = "waiting_for_" + failure
++
++        if self.mode == "FIXED_STAND" and zero_command:
++            # Disturbance exit with persistence (MJ:1709-1746).
++            disturbance = None
++            if linear_speed > SETTLE_LINEAR_SPEED_MAX:
++                disturbance = "linear_speed"
++            elif angular_speed > SETTLE_ANGULAR_SPEED_MAX:
++                disturbance = "angular_speed"
++            elif tilt_deg > TILT_MAX_DEG:
++                disturbance = "tilt"
++            elif not bool(np.all(forces > HOLD_CONTACT_N)):
++                disturbance = "four_contact"
++            if disturbance is None:
++                self._disturbance_started = None
++                self._disturbance_reason = None
++            else:
++                if self._disturbance_reason != disturbance:
++                    self._disturbance_started = now
++                    self._disturbance_reason = disturbance
++                if now - self._disturbance_started + STANCE_TIME_EPS >= DISTURBANCE_DWELL_S:
++                    self._set_mode("RL", "fixed_stand_disturbance:" + disturbance, now)
++                    self.progress = 0.0
++                    self._reentry_until = now + REENTRY_LOCKOUT_S
++                    self._disturbance_started = None
++                    self._disturbance_reason = None
++                    self.counters["disturbance_exits"] += 1
++
++        if self.mode in ("STAND_TRANSITION", "FIXED_STAND") and not zero_command:
++            # New command: blend back from what was actually applied (MJ:1747-1756).
++            self._set_mode("REJOIN", "new_command_rejoin", now)
++            self.progress = 0.0
++            self._phase_start = now
++            self._rejoin_target = applied_target.copy()
++            self._rejoin_kp = applied_kp.copy()
++            self._rejoin_kd = applied_kd.copy()
++            # Deviation from MJ: clear the disturbance timer here too, so a stale
++            # timer cannot skip the 0.25 s persistence in a later FIXED_STAND.
++            self._disturbance_started = None
++            self._disturbance_reason = None
++            self.counters["rejoins"] += 1
++        if self.mode == "STAND_TRANSITION":
++            elapsed = now - self._phase_start
++            self.progress = _stance_progress(elapsed, TRANSITION_S)
++            if elapsed + STANCE_TIME_EPS >= TRANSITION_S:
++                self._set_mode("FIXED_STAND", "fixed_stand_active", now)
++                self.progress = 1.0
++                self.counters["fixed_stand"] += 1
++        if self.mode == "REJOIN":
++            elapsed = now - self._phase_start
++            self.progress = _stance_progress(elapsed, REJOIN_S)
++            if elapsed + STANCE_TIME_EPS >= REJOIN_S:
++                self._set_mode("RL", "rejoin_complete", now)
++                self.progress = 1.0
++                self.counters["rejoin_complete"] += 1
++
++        if self.mode in ("RL", "STAND_SETTLING"):
++            return self._output(policy_target, self._base_kp, self._base_kd, True)
++        if self.mode in ("STAND_TRANSITION", "FIXED_STAND"):
++            return self._output(self._clip_target(self._hold_target), self._hold_kp, self._hold_kd, False)
++        if self.mode == "REJOIN":
++            blend = _stance_smoothstep(self.progress)
++            return self._output(
++                self._clip_target((1.0 - blend) * self._rejoin_target + blend * policy_target),
++                (1.0 - blend) * self._rejoin_kp + blend * self._base_kp,
++                (1.0 - blend) * self._rejoin_kd + blend * self._base_kd,
++                False,
++            )
++        self._fail("unhandled stance hold mode: " + str(self.mode))
++
++    def _output(self, target, kp, kd, owns: bool) -> HoldOutput:
++        return HoldOutput(
++            target=np.array(target, dtype=np.float64, copy=True),
++            kp=np.array(kp, dtype=np.float64, copy=True),
++            kd=np.array(kd, dtype=np.float64, copy=True),
++            policy_owns_joints=bool(owns),
++            mode=self.mode,
++            reason=self.reason,
++            progress=float(self.progress),
++        )
++
++
++# ---- stance hold runner integration (materialize_runner_patch.py) ----------
++STANCE_HOLD_ACTION_TERM = "joint_pos"
++STANCE_HOLD_ACTUATOR_GROUPS = ("Hip", "Knee")
++STANCE_HOLD_ACTUATOR_CLASS = "Lite3Actuator"
++STANCE_HOLD_ACTION_SCALE = 0.25
++STANCE_HOLD_V12_DEFAULT_POS = (("_HipX_joint", 0.0), ("_HipY_joint", -0.8), ("_Knee_joint", 1.6))
++STANCE_HOLD_VALUE_TOL = 1.0e-6
++STANCE_HOLD_GAIN_READBACK_TOL = 1.0e-4
++STANCE_HOLD_TORQUE_CLIP_TOL_NM = 1.0e-6
++
++
++def _stance_hold_numpy(value):
++    if hasattr(value, "detach"):
++        value = value.detach().cpu().numpy()
++    return np.array(value, dtype=np.float64, copy=True)
++
++
++def _stance_hold_env0(value, count):
++    """Env-0 row of a per-env tensor, a vector or a scalar, as float64 (count,)."""
++    array = _stance_hold_numpy(value)
++    if array.ndim == 0:
++        array = np.full(count, float(array))
++    elif array.ndim >= 2:
++        array = array[0]
++    if array.shape != (count,):
++        raise ValueError("expected %d values, got shape %s" % (count, array.shape))
++    return array
++
++
++def _stance_hold_indices(value, total):
++    if isinstance(value, slice):
++        return list(range(total))[value]
++    if hasattr(value, "tolist"):
++        value = value.tolist()
++    return [int(item) for item in value]
++
++
++def _stance_hold_optional(owner, name):
++    if owner is None:
++        return None
++    try:
++        return getattr(owner, name, None)
++    except Exception:  # noqa: BLE001 - deprecated properties may raise; recorded as absent
++        return None
++
++
++def _stance_hold_physx_gains(robot):
++    """Joint drive gains held by PhysX; explicit actuators require zero."""
++    count = len(robot.joint_names)
++    record = {}
++    for key in ("joint_stiffness", "joint_damping"):
++        value = _stance_hold_optional(robot.data, key)
++        record["data_" + key] = None if value is None else _stance_hold_env0(value, count).tolist()
++    view = _stance_hold_optional(robot, "root_physx_view")
++    for key, method in (("view_dof_stiffnesses", "get_dof_stiffnesses"),
++                        ("view_dof_dampings", "get_dof_dampings")):
++        try:
++            record[key] = _stance_hold_env0(getattr(view, method)(), count).tolist()
++        except Exception as exc:  # noqa: BLE001 - optional API; recorded, not assumed
++            record[key] = None
++            record[key + "_error"] = "%s: %s" % (type(exc).__name__, exc)
++    return record
++
++
++def _stance_hold_physx_problems(physx):
++    problems = []
++    for key in ("data_joint_stiffness", "data_joint_damping", "view_dof_stiffnesses", "view_dof_dampings"):
++        values = physx.get(key)
++        if values is not None and max(abs(float(item)) for item in values) > STANCE_HOLD_VALUE_TOL:
++            problems.append("PhysX joint drive %s is not zero: %s" % (key, values))
++    return problems
++
++
++def _stance_hold_inspect(env, robot, wrapped):
++    """Read the V12 action term, actuators, limits and PhysX gains. Reads only."""
++    names = [str(name) for name in robot.joint_names]
++    total = len(names)
++    term = env.action_manager.get_term(STANCE_HOLD_ACTION_TERM)
++    action_ids = _stance_hold_indices(term._joint_ids, total)
++    count = len(action_ids)
++    offset = _stance_hold_env0(term._offset, count)
++    scale = _stance_hold_env0(term._scale, count)
++    clip = _stance_hold_optional(term, "_clip")
++    default = _stance_hold_env0(robot.data.default_joint_pos, total)
++    kp = np.full(total, np.nan)
++    kd = np.full(total, np.nan)
++    effort = np.full(total, np.nan)
++    coverage = [0] * total
++    groups = {}
++    maps = []
++    for group, actuator in robot.actuators.items():
++        ids = _stance_hold_indices(actuator.joint_indices, total)
++        stiffness = _stance_hold_env0(actuator.stiffness, len(ids))
++        damping = _stance_hold_env0(actuator.damping, len(ids))
++        limit = _stance_hold_env0(actuator.effort_limit, len(ids))
++        buffer = _stance_hold_optional(actuator, "positions_delay_buffer")
++        lags = _stance_hold_optional(buffer, "time_lags")
++        cfg = _stance_hold_optional(actuator, "cfg")
++        groups[str(group)] = {
++            "class": type(actuator).__name__,
++            "mro": [cls.__name__ for cls in type(actuator).__mro__],
++            "joint_indices": ids,
++            "joint_names": [names[index] for index in ids],
++            "stiffness": stiffness.tolist(),
++            "damping": damping.tolist(),
++            "effort_limit": limit.tolist(),
++            "gain_tensor_shape": [int(item) for item in actuator.stiffness.shape],
++            "position_delay_time_lags": (
++                None if lags is None else [int(item) for item in _stance_hold_numpy(lags).reshape(-1)]
++            ),
++            "min_delay": _stance_hold_optional(cfg, "min_delay"),
++            "max_delay": _stance_hold_optional(cfg, "max_delay"),
++        }
++        maps.append((str(group), actuator, np.asarray(ids, dtype=np.int64)))
++        for position, index in enumerate(ids):
++            coverage[index] += 1
++            kp[index] = stiffness[position]
++            kd[index] = damping[position]
++            effort[index] = limit[position]
++    limits = None
++    limits_source = None
++    for key in ("joint_pos_limits", "joint_limits"):
++        value = _stance_hold_optional(robot.data, key)
++        if value is not None:
++            limits = _stance_hold_numpy(value)
++            if limits.ndim == 3:
++                limits = limits[0]
++            limits_source = "robot.data." + key
++            break
++    clip_actions = _stance_hold_optional(wrapped, "clip_actions")
++    physx = _stance_hold_physx_gains(robot)
++    record = {
++        "joint_names": names,
++        "action_term": {
++            "name": STANCE_HOLD_ACTION_TERM,
++            "class": type(term).__name__,
++            "joint_ids": action_ids,
++            "joint_names": [names[index] for index in action_ids] if max(action_ids, default=-1) < total else None,
++            "offset": offset.tolist(),
++            "scale": scale.tolist(),
++            "clip": None if clip is None else _stance_hold_numpy(clip).tolist(),
++        },
++        "default_joint_pos": default.tolist(),
++        "actuators": groups,
++        "joint_coverage": coverage,
++        "joint_pos_limits": None if limits is None else limits.tolist(),
++        "joint_pos_limits_source": limits_source,
++        "wrapper_clip_actions": clip_actions,
++        "physx_gains_at_setup": physx,
++    }
++    return {
++        "record": record, "names": names, "action_ids": np.asarray(action_ids, dtype=np.int64),
++        "offset": offset, "scale": scale, "default": default, "kp": kp, "kd": kd, "effort": effort,
++        "coverage": coverage, "groups": groups, "maps": maps, "limits": limits, "physx": physx,
++        "clip_actions": clip_actions,
++    }
++
++
++def _stance_hold_validate(info):
++    """Fail-closed preflight for --stance-hold auto; returns every problem found."""
++    problems = []
++    names = info["names"]
++    total = len(names)
++    if total != STANCE_HOLD_JOINT_COUNT:
++        problems.append("articulation has %d joints, expected %d" % (total, STANCE_HOLD_JOINT_COUNT))
++    ids = [int(item) for item in info["action_ids"]]
++    permutation = len(ids) == total and sorted(ids) == list(range(total))
++    if not permutation:
++        problems.append("action term joints are not a permutation of the articulation joints: %s" % ids)
++    if not np.all(np.abs(info["scale"] - STANCE_HOLD_ACTION_SCALE) <= STANCE_HOLD_VALUE_TOL):
++        problems.append("action scale is not %s: %s" % (STANCE_HOLD_ACTION_SCALE, info["scale"].tolist()))
++    if permutation and not np.all(np.abs(info["offset"] - info["default"][ids]) <= STANCE_HOLD_VALUE_TOL):
++        problems.append("action offset is not the default joint position")
++    for index, name in enumerate(names):
++        expected = [value for suffix, value in STANCE_HOLD_V12_DEFAULT_POS if name.endswith(suffix)]
++        if len(expected) != 1:
++            problems.append("joint %s has no V12 default position rule" % name)
++        elif abs(info["default"][index] - expected[0]) > STANCE_HOLD_VALUE_TOL:
++            problems.append("default position of %s is %s, expected %s" % (name, info["default"][index], expected[0]))
++    if set(info["groups"]) != set(STANCE_HOLD_ACTUATOR_GROUPS):
++        problems.append("actuator groups are %s, expected %s" % (sorted(info["groups"]), list(STANCE_HOLD_ACTUATOR_GROUPS)))
++    for group, item in sorted(info["groups"].items()):
++        if item["class"] != STANCE_HOLD_ACTUATOR_CLASS:
++            problems.append("actuator %s is %s, expected %s" % (group, item["class"], STANCE_HOLD_ACTUATOR_CLASS))
++        if "DelayedPDActuator" not in item["mro"] or "ImplicitActuator" in item["mro"]:
++            problems.append("actuator %s is not an explicit DelayedPDActuator: %s" % (group, item["mro"]))
++        if item["gain_tensor_shape"] != [1, len(item["joint_indices"])]:
++            problems.append("actuator %s gain tensor shape %s is not [1, %d]" % (
++                group, item["gain_tensor_shape"], len(item["joint_indices"])))
++        if max(abs(value - BASE_KP) for value in item["stiffness"]) > STANCE_HOLD_VALUE_TOL:
++            problems.append("actuator %s stiffness %s is not %s" % (group, item["stiffness"], BASE_KP))
++        if max(abs(value - BASE_KD) for value in item["damping"]) > STANCE_HOLD_VALUE_TOL:
++            problems.append("actuator %s damping %s is not %s" % (group, item["damping"], BASE_KD))
++    if info["coverage"] != [1] * total:
++        problems.append("actuators do not cover every joint exactly once: %s" % info["coverage"])
++    if not (np.isfinite(info["effort"]).all() and np.all(info["effort"] > 0.0)):
++        problems.append("effort limits are not finite and positive: %s" % info["effort"].tolist())
++    problems.extend(_stance_hold_physx_problems(info["physx"]))
++    limits = info["limits"]
++    if limits is None or limits.shape != (total, 2):
++        problems.append("joint position limits are unavailable")
++    elif not (np.isfinite(limits).all() and np.all(limits[:, 0] < limits[:, 1])):
++        problems.append("joint position limits are not finite with lower < upper")
++    clip = info["clip_actions"]
++    if clip is not None and (isinstance(clip, bool) or not isinstance(clip, (int, float))
++                             or not math.isfinite(float(clip)) or float(clip) <= 0.0):
++        problems.append("wrapper clip_actions is not None or a positive number: %r" % (clip,))
++    return problems
++
++
++def _stance_hold_setup(mode, env, robot, wrapped, output_dir):
++    """Record the control contract; auto mode also validates it and builds the hold."""
++    if mode not in STANCE_HOLD_MODES:
++        raise AdapterFailure("unsupported --stance-hold value: %r" % (mode,))
++    record = {
++        "schema_version": 1,
++        "mode": mode,
++        "module": {
++            "path": STANCE_HOLD_SOURCE_REL,
++            "sha256": STANCE_HOLD_SOURCE_SHA256,
++            "body_sha256": STANCE_HOLD_BODY_SHA256,
++        },
++        "constants": stance_hold_constants(),
++        "control_path": (
++            "off: the V12 policy action goes to previous_actions unchanged and no gain is written"
++            if mode == "off" else
++            "auto: the applied joint target goes to wrapped.step as (target - offset) / scale, so the "
++            "policy's last_action observation is the applied action; actuator Kp/Kd are written before "
++            "the next step only when they change; the policy is evaluated every step"
++        ),
++        "joint_order": (
++            "robot.joint_names (articulation order); the V12 action term order is mapped through "
++            "its _joint_ids"
++        ),
++        "torque_clip_basis": (
++            "robot.data.computed_torque vs robot.data.applied_torque read after the control step: "
++            "the last physics substep only"
++        ),
++        "delayed_target_note": (
++            "Lite3Actuator delays position targets by the recorded time lags (physics substeps) while "
++            "stiffness and damping apply at once, so a gain change meets the previous step's target for "
++            "that many substeps; metrics delayed_target_torque_max_ratio_estimate bounds that torque"
++        ),
++        "inspection": None,
++        "inspection_error": None,
++        "validation_problems": [],
++    }
++    runtime = {
++        "mode": mode,
++        "active": mode == "auto",
++        "hold": None,
++        "record": record,
++        "failure": None,
++        "effort_limit": None,
++        "row": None,
++        "row_error_count": 0,
++        "row_last_error": None,
++        "gain_writes": 0,
++        "gain_readback_max_abs_error": 0.0,
++        "physx_after_first_gain_write": None,
++    }
++    info = None
++    try:
++        info = _stance_hold_inspect(env, robot, wrapped)
++        record["inspection"] = info["record"]
++        if np.isfinite(info["effort"]).all() and np.all(info["effort"] > 0.0):
++            runtime["effort_limit"] = info["effort"]
++    except Exception as exc:  # noqa: BLE001 - off mode records only; auto mode fails below
++        record["inspection_error"] = "%s: %s" % (type(exc).__name__, exc)
++    if mode == "auto":
++        if info is None:
++            problems = ["inspection failed: %s" % record["inspection_error"]]
++        else:
++            problems = _stance_hold_validate(info)
++        record["validation_problems"] = problems
++        if problems:
++            write_json(Path(output_dir) / "stance_hold_setup.json", record)
++            raise AdapterFailure("stance hold preflight failed: " + "; ".join(problems))
++        ids = info["action_ids"]
++        initial_target = np.empty(len(ids))
++        initial_target[ids] = info["offset"]
++        limits = info["limits"]
++        runtime.update({
++            "hold": StanceHold("auto", joint_lower=limits[:, 0], joint_upper=limits[:, 1],
++                               joint_count=len(ids)),
++            "action_ids": ids,
++            "action_offset": info["offset"],
++            "action_scale": info["scale"],
++            "clip_actions": None if info["clip_actions"] is None else float(info["clip_actions"]),
++            "actuator_maps": info["maps"],
++            # previous_actions starts at zero, so the first step applies the offset.
++            "applied_target": initial_target,
++            "applied_kp": info["kp"].copy(),
++            "applied_kd": info["kd"].copy(),
++        })
++    write_json(Path(output_dir) / "stance_hold_setup.json", record)
++    return runtime
++
++
++def _stance_hold_write_gains(runtime, robot, kp, kd):
++    """Write per-joint Kp/Kd into the explicit actuators, then read them back."""
++    for _group, actuator, ids in runtime["actuator_maps"]:
++        for key, values in (("stiffness", kp), ("damping", kd)):
++            tensor = getattr(actuator, key)
++            tensor[:] = tensor.new_tensor(values[ids])
++    worst = 0.0
++    for _group, actuator, ids in runtime["actuator_maps"]:
++        for key, values in (("stiffness", kp), ("damping", kd)):
++            got = _stance_hold_env0(getattr(actuator, key), len(ids))
++            worst = max(worst, float(np.max(np.abs(got - values[ids]))))
++    runtime["gain_writes"] += 1
++    runtime["gain_readback_max_abs_error"] = max(runtime["gain_readback_max_abs_error"], worst)
++    if worst > STANCE_HOLD_GAIN_READBACK_TOL:
++        raise AdapterFailure("actuator gain read-back differs from the written value by %.6g" % worst)
++    if runtime["physx_after_first_gain_write"] is None:
++        physx = _stance_hold_physx_gains(robot)
++        physx["problems"] = _stance_hold_physx_problems(physx)
++        runtime["physx_after_first_gain_write"] = physx
++        if physx["problems"]:
++            raise AdapterFailure("PhysX joint drive gains are not zero after a stance gain write: "
++                                 + "; ".join(physx["problems"]))
++
++
++def _stance_hold_control_step(runtime, robot, contact, foot_ids, actions, command, now_s):
++    """Run the hold after the policy; return the action for the next wrapped.step."""
++    hold = runtime["hold"]
++    ids = runtime["action_ids"]
++    offset = runtime["action_offset"]
++    scale = runtime["action_scale"]
++    count = len(ids)
++    action = _stance_hold_env0(actions, count)
++    policy_target = np.empty(count)
++    policy_target[ids] = offset + scale * action
++    joint_pos = _stance_hold_env0(robot.data.joint_pos, count)
++    joint_vel = _stance_hold_env0(robot.data.joint_vel, count)
++    linear_speed = float(np.linalg.norm(_stance_hold_env0(robot.data.root_lin_vel_w, 3)))
++    angular_speed = float(np.linalg.norm(_stance_hold_env0(robot.data.root_ang_vel_w, 3)))
++    gravity_z = float(_stance_hold_env0(robot.data.projected_gravity_b, 3)[2])
++    tilt_deg = (math.degrees(math.acos(min(1.0, max(-1.0, -gravity_z))))
++                if math.isfinite(gravity_z) else float("nan"))
++    foot_forces = np.linalg.norm(_stance_hold_numpy(contact.data.net_forces_w[0, foot_ids]), axis=-1)
++    previous_target = runtime["applied_target"]
++    out = hold.update(HoldInput(
++        now_s=float(now_s),
++        command=np.asarray(command, dtype=np.float64),
++        joint_pos=joint_pos,
++        joint_vel=joint_vel,
++        policy_target=policy_target,
++        applied_target=previous_target,
++        applied_kp=runtime["applied_kp"],
++        applied_kd=runtime["applied_kd"],
++        linear_speed=linear_speed,
++        angular_speed=angular_speed,
++        tilt_deg=tilt_deg,
++        foot_forces=foot_forces,
++    ))
++    if out.policy_owns_joints:
++        applied_actions = actions
++        applied_action = action
++    else:
++        applied_action = (out.target[ids] - offset) / scale
++        if not np.isfinite(applied_action).all():
++            raise StanceHoldError("stance hold produced a non-finite action")
++        clip = runtime["clip_actions"]
++        if clip is not None and float(np.max(np.abs(applied_action))) > clip:
++            raise AdapterFailure("stance hold action exceeds the wrapper clip_actions bound %s" % clip)
++        applied_actions = actions.new_tensor(applied_action).reshape(actions.shape)
++    gains_changed = not (np.array_equal(out.kp, runtime["applied_kp"])
++                         and np.array_equal(out.kd, runtime["applied_kd"]))
++    if gains_changed:
++        _stance_hold_write_gains(runtime, robot, out.kp, out.kd)
++    delayed_torque = out.kp * (previous_target - joint_pos) - out.kd * joint_vel
++    runtime["row"] = {
++        "stance_mode": out.mode,
++        "stance_reason": out.reason,
++        "stance_progress": out.progress,
++        "policy_owns_joints": bool(out.policy_owns_joints),
++        "applied_kp_mean": float(np.mean(out.kp)),
++        "applied_kd_mean": float(np.mean(out.kd)),
++        "applied_target": [float(item) for item in out.target],
++        "applied_target_minus_policy_max_abs": float(np.max(np.abs(out.target - policy_target))),
++        "applied_action_max": float(np.max(np.abs(applied_action))),
++        "stance_gains_written": bool(gains_changed),
++        "delayed_target_torque_max_ratio_estimate": float(np.max(np.abs(delayed_torque) / runtime["effort_limit"])),
++        "stance_linear_speed_mps": linear_speed,
++        "stance_angular_speed_radps": angular_speed,
++        "stance_tilt_deg": tilt_deg,
++    }
++    runtime["applied_target"] = out.target
++    runtime["applied_kp"] = out.kp
++    runtime["applied_kd"] = out.kd
++    return applied_actions
++
++
++def _stance_hold_row(runtime, robot):
++    """Additive metrics fields. Recording errors are counted, never raised."""
++    row = {"stance_hold": runtime["mode"]}
++    if runtime["active"]:
++        if runtime["row"] is not None:
++            row.update(runtime["row"])
++    else:
++        row.update({"stance_mode": "OFF", "policy_owns_joints": True})
++    effort = runtime["effort_limit"]
++    if effort is None:
++        return row
++    try:
++        applied = _stance_hold_env0(robot.data.applied_torque, len(effort))
++        row["applied_torque_max_ratio"] = float(np.max(np.abs(applied) / effort))
++        computed = _stance_hold_optional(robot.data, "computed_torque")
++        if computed is not None:
++            gap = np.abs(_stance_hold_env0(computed, len(effort)) - applied)
++            row["torque_clip_joint_count"] = int(np.sum(gap > STANCE_HOLD_TORQUE_CLIP_TOL_NM))
++            row["torque_clip_max_nm"] = float(np.max(gap))
++    except Exception as exc:  # noqa: BLE001 - recording must not change the control path
++        runtime["row_error_count"] += 1
++        runtime["row_last_error"] = "%s: %s" % (type(exc).__name__, exc)
++        row["stance_record_error"] = True
++    return row
++
++
++def _stance_hold_summary(runtime):
++    return {
++        "mode": runtime["mode"],
++        "setup_record": "stance_hold_setup.json",
++        "module_sha256": STANCE_HOLD_SOURCE_SHA256,
++        "failure": runtime["failure"],
++        "gain_writes": runtime["gain_writes"],
++        "gain_readback_max_abs_error": runtime["gain_readback_max_abs_error"],
++        "physx_after_first_gain_write": runtime["physx_after_first_gain_write"],
++        "row_error_count": runtime["row_error_count"],
++        "row_last_error": runtime["row_last_error"],
++        "fsm": None if runtime["hold"] is None else runtime["hold"].status(),
++    }
  
  
  def _read_viewer_camera_intrinsics(stage, cam_prim_path: str, resolution) -> dict:
-@@ -169,6 +337,14 @@
+@@ -169,6 +1232,17 @@
      parser.add_argument("--no-freeze-gc", dest="freeze_gc", action="store_false")
      parser.add_argument("--feedback-dropout-start-s", type=float, default=-1.0)
      parser.add_argument("--feedback-dropout-wall-s", type=float, default=0.0)
@@ -195,10 +1090,23 @@
 +                        help="Directory for current_command.json and finish_request.json; defaults to OUTPUT/external_episode")
 +    parser.add_argument("--external-finish-stillness-seconds", type=float, default=1.0)
 +    parser.add_argument("--external-status-freshness-seconds", type=float, default=2.0)
++    parser.add_argument("--stance-hold", choices=STANCE_HOLD_MODES, default="off",
++                        help="off: the V12 policy owns the joints at every step and no gain is written. "
++                             "auto: PD stance hold after an exactly zero command (stance_hold.py)")
      parser.add_argument("--seed", type=int, default=42)
      parser.add_argument("--device", default="cuda:0")
      return parser
-@@ -208,7 +384,7 @@
+@@ -193,7 +1267,8 @@
+ 
+ def validate_run_duration(case, duration):
+     """Long runs require their own case; old dispatch bounds stay unchanged."""
+-    maximum = {"full_nominal": 180.0, "native_nominal": 600.0}.get(case, 45.0)
++    maximum = {"full_nominal": 180.0, "native_nominal": 600.0,
++               "stand_probe": 60.0}.get(case, 45.0)
+     if case not in CASES or not math.isfinite(duration) or not 0 < duration <= maximum:
+         raise ValueError(f"duration-seconds must be within (0, {maximum:g}] for {case}")
+ 
+@@ -208,7 +1283,7 @@
  def execution_configuration(args):
      """Freeze every runner setting independently of host/artifact paths."""
      paths = {"scene", "runtime", "checkpoint", "route_artifact", "scope", "output",
@@ -207,7 +1115,7 @@
      # Round-trip normalizes argparse tuples and JSON lists identically.
      return json.loads(json.dumps({key: value for key, value in vars(args).items() if key not in paths}))
  
-@@ -240,6 +416,7 @@
+@@ -240,6 +1315,7 @@
      prove which copy of this source the interpreter actually loaded.
      """
      args = build_parser().parse_args(argv)
@@ -215,7 +1123,7 @@
      if args.case == "native_nominal" and args.contact_policy != "native_v12":
          raise SystemExit("native_nominal records contact and preserves native V12 termination")
      from .feedback_dropout import FeedbackDropout
-@@ -322,6 +499,8 @@
+@@ -322,6 +1398,8 @@
      from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper  # noqa: E402
  
      __import__("robot_lab.tasks")
@@ -224,7 +1132,16 @@
  
      # ---- identity gates before anything physical happens -------------------
      scope = json.loads(args.scope.read_text(encoding="utf-8"))
-@@ -658,6 +837,31 @@
+@@ -480,6 +1558,8 @@
+         raise AdapterFailure("expected four foot contact bodies")
+     nonfoot_ids = [index for index in range(len(contact.body_names)) if index not in foot_ids]
+     body_foot_ids, _ = robot.find_bodies(foot_names, preserve_order=True)
++    # Off mode only reads and records the control contract; auto mode fails closed.
++    stance_hold_runtime = _stance_hold_setup(args.stance_hold, env, robot, wrapped, args.output)
+ 
+     # Contact data is consumed after every physics scene update below. History
+     # ordering is no longer used to infer when the case should have stopped.
+@@ -658,6 +1738,31 @@
          "seed": helper_args.seed,
          "autoreset_allowed": False,
          "duration_seconds": args.duration_seconds,
@@ -256,7 +1173,7 @@
          "actor_obs_shape": list(observation["policy"].shape),
      }
      config_sha256 = canonical_config_sha256(identity)
-@@ -686,6 +890,18 @@
+@@ -686,6 +1791,18 @@
      # it sees, so a packet replayed from an earlier run can never be mistaken
      # for current state.
      run_epoch_ns = time.time_ns()
@@ -275,7 +1192,7 @@
      recorder = AsyncRecorder(max_pending=64) if args.async_recording else None
      metrics_path = args.output / "metrics.jsonl"
      sensor_path = args.output / "sensor_metrics.jsonl"
-@@ -797,6 +1013,7 @@
+@@ -797,6 +1914,7 @@
                      status = "WALL_TIMEOUT"
                      break
                  sim_time = float(env.sim.current_time) - initial_sim_time
@@ -283,7 +1200,39 @@
                  snapshot = command_server.snapshot(time.monotonic_ns())
                  command = (snapshot.command.vx, snapshot.command.vy, snapshot.command.wz)
                  if args.case == "stand_probe":
-@@ -1051,6 +1268,56 @@
+@@ -936,7 +2054,22 @@
+                 if not torch.isfinite(actions).all() or not torch.isfinite(observation["policy"]).all():
+                     status = "NONFINITE"
+                     break
+-                previous_actions = actions
++                if stance_hold_runtime["active"]:
++                    try:
++                        previous_actions = _stance_hold_control_step(
++                            stance_hold_runtime, robot, contact, foot_ids, actions, command,
++                            float(env.sim.current_time) - initial_sim_time,
++                        )
++                    except StanceHoldError as exc:
++                        stance_hold_runtime["failure"] = {
++                            "type": type(exc).__name__,
++                            "message": str(exc),
++                            "step": step,
++                        }
++                        status = "NONFINITE"
++                        break
++                else:
++                    previous_actions = actions
+ 
+                 sim_time = float(env.sim.current_time) - initial_sim_time
+                 position = robot.data.root_pos_w[0].detach().cpu().numpy().copy()
+@@ -1011,6 +2144,7 @@
+                     "goal_error_xy_m": goal_error_xy,
+                     "goal_layer_error_m": goal_layer_error,
+                 }
++                row.update(_stance_hold_row(stance_hold_runtime, robot))
+                 # ---- complete body state, every control step ---------------
+                 # Position, orientation and both twist representations all come
+                 # from the physics update that has just completed, so a consumer
+@@ -1051,6 +2185,56 @@
                          complete_state_frames += 1
                          complete_state_dropped += int(not published)
  
@@ -340,7 +1289,7 @@
                  records.append(row)
                  metrics_file.write(json.dumps(row, sort_keys=True) + "\n")
  
-@@ -1074,6 +1341,41 @@
+@@ -1074,6 +2258,41 @@
                          terminal_window_satisfied_s = sim_time
                  else:
                      terminal_window_start_s = None
@@ -382,7 +1331,7 @@
  
                  # ---- sensing and telemetry --------------------------------
                  if step % sensor_stride == 0:
-@@ -1338,8 +1640,12 @@
+@@ -1338,8 +2557,12 @@
                          and robot.data.projected_gravity_b[0, 2].item() > -0.5):
                      status = "EXCESSIVE_TILT"
                      break
@@ -396,7 +1345,7 @@
                      and sim_time - terminal_window_satisfied_s > 0.5
                  ):
                      status = "GOAL_REACHED_AND_STOPPED"
-@@ -1419,6 +1725,21 @@
+@@ -1419,6 +2642,22 @@
              "maximum_command_obs_error": max_command_obs_error,
              "nonfoot_contact_events_over_threshold": nonfoot_events,
              "contact_guard": contact_guard.as_record(),
@@ -414,11 +1363,12 @@
 +                    "legacy fixed-goal metric and terminal target"
 +                ),
 +            },
++            "stance_hold": _stance_hold_summary(stance_hold_runtime),
 +            "runtime_import_identity": runtime_import_identity,
              "case_failed": case_failure is not None,
              "contact_policy": args.contact_policy,
              "case_failure_reason": (
-@@ -1484,7 +1805,7 @@
+@@ -1484,7 +2723,7 @@
          events.restore()
          raw_env.close()
      # A latched physical failure is a failed trial, not a completed one.

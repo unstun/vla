@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import tempfile
 import unittest
@@ -118,6 +120,102 @@ class StandRunnerPackageTests(unittest.TestCase):
             self.assertTrue(verdict["remote_worker_started"])
             self.assertIn("remote worker failed", verdict["run_error"])
             self.assertTrue(verdict["returned_hashes_match"])
+
+
+class StandHoldSettingsTests(unittest.TestCase):
+    def prepare(self, tmp, run_id, *extra):
+        args = qualify.build_parser().parse_args([
+            "--run-id", run_id,
+            "--local-runs-root", str(Path(tmp) / "runs"),
+            "--remote-root", "/remote/root",
+            *extra,
+        ])
+        return args, qualify.prepare(args)
+
+    def test_defaults_keep_the_legacy_stand_and_pass_stance_hold_off(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args, (local_run, commands) = self.prepare(tmp, "stand_defaults")
+            argv = qualify.build_runner_argv(args, "/remote/root/stand_defaults", "stand_defaults")
+            self.assertEqual(argv[argv.index("--duration-seconds") + 1], "8.0")
+            self.assertEqual(argv[argv.index("--stance-hold") + 1], "off")
+            scope = json.loads((local_run / "inputs/stand_scope.json").read_text())
+            self.assertEqual(scope["execution_configuration"]["stance_hold"], "off")
+            self.assertEqual(scope["execution_configuration"]["duration_seconds"], 8.0)
+            self.assertEqual(scope["resource_ceiling"]["simulation_seconds"], 8.0)
+            request = json.loads((local_run / "run_request.json").read_text())
+            self.assertEqual((request["stance_hold"], request["duration_seconds"], request["finish_after_sim_seconds"]),
+                             ("off", 8.0, 2.0))
+            self.assertEqual(commands["run"][-1].split()[-2:], ["--finish-after-sim-seconds", "2.0"])
+            runner_text = (local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py").read_text()
+            self.assertIn("def _stance_hold_setup(", runner_text)
+
+    def test_sixty_second_auto_stand_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args, (local_run, commands) = self.prepare(
+                tmp, "stand_auto", "--stance-hold", "auto", "--duration-seconds", "60", "--finish-after-sim-seconds", "58")
+            scope = json.loads((local_run / "inputs/stand_scope.json").read_text())
+            self.assertEqual(scope["execution_configuration"]["stance_hold"], "auto")
+            self.assertEqual(scope["execution_configuration"]["duration_seconds"], 60.0)
+            self.assertEqual(scope["stance_hold"], "auto")
+            runner = qualify.import_runner(local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py")
+            parsed = runner.build_parser().parse_args(json.loads(
+                commands["run"][-1].split("--runner-argv-json ")[1].split(" --ros-domain-id")[0].strip("'")))
+            runner.validate_run_duration(parsed.case, parsed.duration_seconds)
+            self.assertEqual(runner.execution_configuration(parsed), scope["execution_configuration"])
+            request = json.loads((local_run / "run_request.json").read_text())
+            self.assertEqual((request["stance_hold"], request["duration_seconds"], request["finish_after_sim_seconds"]),
+                             ("auto", 60.0, 58.0))
+            self.assertIn("--finish-after-sim-seconds 58.0", commands["run"][-1])
+            worker = (local_run / "remote_worker.py").read_text()
+            self.assertIn('runner_arg_value(runner_argv, "--stance-hold")', worker)
+            self.assertIn("runner summary stance_hold mode differs", worker)
+            self.assertIn(">= args.finish_after_sim_seconds", worker)
+
+    def test_invalid_settings_are_refused_before_creating_the_package(self):
+        cases = [
+            ["--duration-seconds", "60.5"],
+            ["--duration-seconds", "0"],
+            ["--duration-seconds", "nan"],
+            ["--duration-seconds", "60", "--finish-after-sim-seconds", "58.5"],
+            ["--finish-after-sim-seconds", "-1"],
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            for index, extra in enumerate(cases):
+                with self.subTest(extra=extra):
+                    with self.assertRaises(ValueError):
+                        self.prepare(tmp, "stand_bad_%d" % index, *extra)
+                    self.assertFalse((Path(tmp) / "runs" / ("stand_bad_%d" % index)).exists())
+            with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                qualify.build_parser().parse_args(["--stance-hold", "on"])
+
+    def test_execute_refuses_settings_that_differ_from_the_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.prepare(tmp, "stand_prepared", "--stance-hold", "auto", "--duration-seconds", "60",
+                         "--finish-after-sim-seconds", "58")
+            runs = str(Path(tmp) / "runs")
+            base = ["--run-id", "stand_prepared", "--local-runs-root", runs, "--execute"]
+            same = base + ["--stance-hold", "auto", "--duration-seconds", "60", "--finish-after-sim-seconds", "58"]
+            with mock.patch.object(qualify, "execute") as execute, contextlib.redirect_stdout(io.StringIO()):
+                qualify.main(same)
+                execute.assert_called_once()
+            for extra, flag in (([], "stance-hold"),
+                                (["--stance-hold", "auto"], "duration-seconds"),
+                                (["--stance-hold", "auto", "--duration-seconds", "60"], "finish-after-sim-seconds")):
+                with self.subTest(flag=flag), mock.patch.object(qualify, "execute") as execute:
+                    with self.assertRaisesRegex(RuntimeError, "--%s .* differs from the prepared package" % flag):
+                        qualify.main(base + extra)
+                    execute.assert_not_called()
+
+    def test_legacy_package_request_counts_as_off_eight_seconds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            (run / "run_request.json").write_text(json.dumps({"duration_seconds": 8.0}))
+            args = qualify.build_parser().parse_args([])
+            self.assertEqual(qualify.check_prepared_request(args, run),
+                             {"stance_hold": "off", "duration_seconds": 8.0, "finish_after_sim_seconds": 2.0})
+            args = qualify.build_parser().parse_args(["--stance-hold", "auto"])
+            with self.assertRaisesRegex(RuntimeError, "stance-hold"):
+                qualify.check_prepared_request(args, run)
 
 
 if __name__ == "__main__":

@@ -30,6 +30,10 @@ The route artifact remains accepted for spawn and legacy metric metadata. In
 external mode it is recorded as non-commanding metadata; the actual target
 ownership belongs to the external PCT/SCAN backend.
 
+`--stance-hold {off,auto}` (default `off`) selects the PD stance hold described
+in "Stance Hold" below. With `off`, the step path is the runner's own
+`previous_actions = actions` and no actuator gain is written.
+
 ## Shared Files
 
 The runner atomically replaces:
@@ -142,9 +146,25 @@ records and asserts the actual `sys.modules` origins after `AppLauncher` and
 after the normal `robot_lab.tasks` / vendored `rsl_rl` imports. The remote
 worker starts only the patched Isaac runner and the real Foxy bridge container;
 it does not start SCAN, PCT, a motion publisher, or any hardware device path.
-It waits for `current_command.json` to reach at least two simulation seconds,
-writes a valid finish request, and lets the runner independently enforce the
-stillness exit.
+It waits for `current_command.json` to reach `--finish-after-sim-seconds`
+(default 2), writes a valid finish request, and lets the runner independently
+enforce the stillness exit.
+
+Stand options (added 2026-09-17 for the stance-hold task): `--stance-hold
+{off,auto}` (default `off`), `--duration-seconds` (default 8, at most 60) and
+`--finish-after-sim-seconds` (default 2; it must leave 1 s of stillness plus
+1 s of margin before the duration ends). All three are written to
+`run_request.json`. `--execute` refuses a value that differs from the prepared
+package, and a package without these keys counts as `off`, 8 s and 2 s. The
+worker also checks that the runner summary reports the requested stance-hold
+mode. The AC3 stand pair is:
+
+```bash
+python3 .pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/qualify_stand_runner.py \
+  --run-id stand_YYYYMMDDTHHMMSSZ_hold_off --stance-hold off --duration-seconds 60 --finish-after-sim-seconds 58
+python3 .pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/qualify_stand_runner.py \
+  --run-id stand_YYYYMMDDTHHMMSSZ_hold_auto --stance-hold auto --duration-seconds 60 --finish-after-sim-seconds 58
+```
 
 ## Claim Boundary
 
@@ -156,6 +176,65 @@ If `qualify_stand_runner.py --execute` passes, the strongest claim is narrower:
 the patched runner, V12 physics/policy runtime and real Foxy bridge transport
 worked together in a stand-only, zero-command diagnostic simulator run. It is
 not navigation, PCT/SCAN execution, goal replacement, or language control.
+
+## Stance Hold
+
+Task: `.trellis/tasks/09-17-isaac-runner-stance-hold` (design.md, implement.md).
+
+- `stance_hold.py`: the state machine (RL, STAND_SETTLING, STAND_TRANSITION,
+  FIXED_STAND, REJOIN). It is ported from the stand path of the machine-dog
+  MuJoCo preview (`0_trials/2026-08-22/v17a28_mujoco_wasd`, commit `fd751b8b`)
+  and uses only NumPy. The text between its body markers is inserted verbatim
+  into the patched runner, which records the module SHA-256.
+- `materialize_runner_patch.py` applies the external-episode anchors, then
+  seven stance-hold anchors:
+  - `stance_hold_module`: module body plus runner glue;
+  - `cli_stance_hold`: the flag, default `off`;
+  - `stand_probe_duration_cap_60s`: `stand_probe` may run 60 s, up from 45; no
+    other case changes;
+  - `stance_hold_setup`: after the foot ids are resolved;
+  - `stance_hold_step`: replaces `previous_actions = actions`;
+  - `stance_hold_metrics_row`: additive `metrics.jsonl` fields;
+  - `stance_hold_summary`: the `summary.json` `stance_hold` block.
+
+  `--check` verifies that the external-episode anchors alone still reproduce
+  the executed runner (`e215a601...`) and that the patch has no duplicate
+  top-level definitions.
+- Off mode: setup only reads the action term, actuators, limits and PhysX
+  gains into `runner_output/stance_hold_setup.json`. The step branch runs the
+  original assignment, and rows gain `stance_hold`, `stance_mode: OFF` and the
+  torque ratio and clip fields.
+- Auto mode:
+  - Setup fails closed unless all of these hold: the V12 `joint_pos` action
+    term (scale 0.25, default-pose offset, a joint-order permutation); exactly
+    the `Hip` and `Knee` `Lite3Actuator` groups at Kp 20 / Kd 0.5; zero PhysX
+    drive gains; finite joint limits.
+  - The robot joint order differs from the action order and is mapped through
+    the term's `_joint_ids`.
+  - The applied target goes to `wrapped.step` as `(target - offset) / scale`.
+  - Kp/Kd are written to the actuator tensors only when they change, then read
+    back, and PhysX gains are rechecked after the first write.
+  - Non-finite input stops the case as `NONFINITE`.
+- Delayed targets: `Lite3Actuator` delays position targets by 0-4 physics
+  substeps. The lags are recorded at setup, while gains act at once. A gain
+  change therefore meets the previous target for that many substeps. The row
+  field `delayed_target_torque_max_ratio_estimate` bounds that torque.
+- `analyze_stance_hold.py stand --on RUN --off RUN` gives the AC3 verdict and
+  the hold-off baseline over the same window. `analyze_stance_hold.py run
+  RUN...` gives AC5 and hold timing for any run.
+  - Thresholds live in `stance_hold_thresholds.json`, frozen at SHA-256
+    `fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66`. A
+    different file is refused.
+  - Rows without stance fields are reported as "hold off / no stance fields".
+  - AC3 also fails when the hold-on run has no `summary.json`, ended with a
+    status other than `EXTERNAL_EPISODE_FINISHED` or `DURATION_REACHED`, or
+    recorded a stance-hold failure.
+- The walk review shows `stance: MODE` in the banner and shades non-RL modes
+  on the time strip when `stance_mode` is present. Old runs render the same
+  frames as before.
+- Claim boundary: the local tests use fake Isaac objects and synthetic rows.
+  An Isaac result, even a passing one, is simulation only: V12 in Isaac on one
+  flat Building route. It is not a real-robot or deployment fix.
 
 ## Two-Goal P2B Pilot Prepared Package
 
@@ -244,8 +323,10 @@ records, so AC7 also needs `returned_artifacts/scan_workspace_gate.json` and
 `scan_workspace_gate_after.json` with `passed` true. The worker exits nonzero
 when the post-run recheck fails.
 
-`--execute` on an existing package refuses a `--remote-only-bulk` or
-`--cancel-displacement-m` value that differs from the prepared package.
+`--execute` on an existing package refuses a `--remote-only-bulk`,
+`--cancel-displacement-m` or `--stance-hold` value that differs from the
+prepared package. `--stance-hold` (default `off`) is passed to the runner and
+recorded in `run_request.json`. A package without the key counts as `off`.
 
 ## Walk Review Video
 

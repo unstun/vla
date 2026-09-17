@@ -4,10 +4,10 @@ Paths are relative to `.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/` u
 
 ## A. Local code (no remote calls)
 
-- [ ] A1 `isaac_runner/stance_hold.py` per design.md section 2, plus `isaac_runner/test_stance_hold.py` covering
+- [x] A1 `isaac_runner/stance_hold.py` per design.md section 2, plus `isaac_runner/test_stance_hold.py` covering
       every AC1 case. Use synthetic sequences, including a torque-continuity check at entry and a rejoin blend
       check at 0, 0.125 and 0.25 s.
-- [ ] A2 `isaac_runner/materialize_runner_patch.py`:
+- [x] A2 `isaac_runner/materialize_runner_patch.py`:
       - insert the module source verbatim;
       - add CLI flags (`--stance-hold {off,auto}`, default `off`), setup, the per-step call, the applied-action
         feedback, gain writes with read-back, and the record and summary fields (design.md section 3);
@@ -16,16 +16,18 @@ Paths are relative to `.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/` u
         - an `off`-path equivalence test on the materialized text;
         - a mock-env step test (fake robot with actuator tensors) for both modes;
         - a test that `off` never writes gains.
-- [ ] A3 `isaac_runner/qualify_stand_runner.py` and `isaac_runner/run_two_goal_pilot.py`:
+- [x] A3 `isaac_runner/qualify_stand_runner.py` and `isaac_runner/run_two_goal_pilot.py`:
       - pass `--stance-hold` into the runner argv;
       - record it in `run_request.json`;
       - refuse `--execute` when the flag mismatches the prepared package;
       - add tests.
-- [ ] A4 `isaac_runner/make_walk_review.py`: a mode label in the banner and mode shading on the timeline when
+- [x] A4 `isaac_runner/make_walk_review.py`: a mode label in the banner and mode shading on the timeline when
       `stance_mode` exists; unchanged output for old runs (test with a synthetic metrics file).
-- [ ] A5 `isaac_runner/analyze_stance_hold.py`: AC3 and AC5 metrics from a returned run (thresholds from a frozen
+- [x] A5 `isaac_runner/analyze_stance_hold.py`: AC3 and AC5 metrics from a returned run (thresholds from a frozen
       `stance_hold_thresholds.json`, whose SHA-256 is recorded in this file before any run), plus tests.
-- [ ] A6 A check pass (trellis-check) over A1-A5. All isaac_runner, p2b and scan_fix_qualification tests pass.
+      Frozen 2026-09-17 before any Isaac run: `isaac_runner/stance_hold_thresholds.json` SHA-256
+      `fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66`.
+- [x] A6 A check pass (trellis-check) over A1-A5. All isaac_runner, p2b and scan_fix_qualification tests pass.
 
 Validation:
 
@@ -35,7 +37,10 @@ python3 .pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/mater
 python3 -m pytest -q .pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_fix_qualification --ignore=.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_fix_qualification/runs --ignore=.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_fix_qualification/report --ignore=.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_fix_qualification/fixtures
 ```
 
-Review gate: stop after A6 and ask Dr Sun to approve the C budget.
+Review gate: stop after A6 and ask Dr Sun to approve the C budget. Done 2026-09-17: A1-A5 implemented (isaac_runner
+126 tests, materializer --check clean, patched runner `3e1bacf2…`); A6 check GO (analyzer fixed to fail AC3 on an
+early-ended or hold-failed run). Open risk before C2: Kp steps immediately while position targets are delayed 0-4
+substeps, so the entry torque can jump for up to 20 ms. Dr Sun approved the budget (PRD D3).
 
 ## C. 5070 Ti host (needs Dr Sun's approval)
 

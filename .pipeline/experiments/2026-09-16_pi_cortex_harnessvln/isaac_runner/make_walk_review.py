@@ -11,7 +11,9 @@ left) with a banner, a top-down map (top right, 427x480) and a time strip
 - events and phases <-> pilot_journal.json driver events and backend terminal
   records. Wall/backend monotonic times are mapped to simulation time with the
   rule of p2b_execution/review_two_goal.py: the last metrics row whose
-  state_sample_monotonic_ns is not later than the event.
+  state_sample_monotonic_ns is not later than the event;
+- stance-hold mode <-> the optional metrics.jsonl stance_mode field (runs with a
+  stance-hold runner). Runs without it render exactly as before.
 
 The script only reads a run and never drives a simulator. Run packages are
 immutable, so --output is required and must point outside them unless the
@@ -65,6 +67,15 @@ EXPECTED_EVENTS = [
 ]
 EXPECTED_KEYS = [key for key, _, _ in EXPECTED_EVENTS]
 INITIAL_PHASE = "standing, no goal sent"
+# Optional metrics.jsonl field written by the stance-hold runner (isaac_runner/stance_hold.py).
+STANCE_FIELD = "stance_mode"
+STANCE_POLICY_MODES = ("RL", "OFF")
+STANCE_COLORS = {
+    "STAND_SETTLING": "#bcbd22",
+    "STAND_TRANSITION": "#ff7f0e",
+    "FIXED_STAND": "#1f77b4",
+    "REJOIN": "#9467bd",
+}
 
 
 class InputError(RuntimeError):
@@ -137,7 +148,10 @@ def load_state_rows(path: Path) -> List[dict]:
             missing = [key for key in keep if key not in row]
             if missing:
                 raise InputError("metrics.jsonl row lacks " + ", ".join(missing))
-            rows.append({key: row[key] for key in keep})
+            kept = {key: row[key] for key in keep}
+            if STANCE_FIELD in row:
+                kept[STANCE_FIELD] = row[STANCE_FIELD]
+            rows.append(kept)
     if not rows:
         raise InputError("metrics.jsonl is empty")
     return rows
@@ -326,6 +340,26 @@ def extract_journal(journal: dict, run_id: str, state: StateIndex) -> dict:
     return {"request_ids": request_ids, "events": events, "missing": missing, "points": points, "plans": plan_records}
 
 
+def stance_segments(rows: List[dict], sim: List[float]) -> Optional[dict]:
+    """Contiguous stance-hold modes from metrics rows; None when no row carries the field."""
+    if not any(STANCE_FIELD in row for row in rows):
+        return None
+    modes = [str(row.get(STANCE_FIELD, "not recorded")) for row in rows]
+    segments = []
+    start = 0
+    for index in range(1, len(modes) + 1):
+        if index == len(modes) or modes[index] != modes[start]:
+            end = sim[index] if index < len(modes) else sim[-1]
+            segments.append({"mode": modes[start], "start_s": sim[start], "end_s": end,
+                             "first_step_row": start, "rows": index - start})
+            start = index
+    seconds = {}
+    for segment in segments:
+        seconds[segment["mode"]] = seconds.get(segment["mode"], 0.0) + segment["end_s"] - segment["start_s"]
+    return {"modes": modes, "segments": segments, "mode_seconds": seconds,
+            "source": "metrics.jsonl " + STANCE_FIELD + " (segment end = next row's sim_time_s)"}
+
+
 def phase_text(event: dict, events: List[dict]) -> str:
     key = event["key"]
     if key == "cancel_confirmed":
@@ -471,6 +505,10 @@ class Renderer:
                                      fontweight="bold", va="center", zorder=6)
         self.banner_recent = fig.text(8 / FRAME_W, (FRAME_H - 52) / FRAME_H, "", color="#dddddd", fontsize=8.5,
                                       va="center", zorder=6)
+        self.banner_stance = None
+        if ctx.get("stance"):
+            self.banner_stance = fig.text((CAM_W - 8) / FRAME_W, (FRAME_H - 35) / FRAME_H, "", color="white",
+                                          fontsize=10.5, fontweight="bold", ha="right", va="center", zorder=6)
         fig.text((CAM_W - 6) / FRAME_W, (STRIP_H + 6) / FRAME_H, "runner third-person camera (observes only)",
                  color="white", fontsize=7.5, ha="right", va="bottom", zorder=6,
                  bbox={"facecolor": "black", "alpha": 0.5, "edgecolor": "none", "pad": 2})
@@ -618,6 +656,22 @@ class Renderer:
                 axis.axvspan(dwell[0]["sim_time_s"], still[0]["sim_time_s"], color="#2ca02c", alpha=0.15, linewidth=0)
             self.speed_ax.text(dwell[0]["sim_time_s"], 0.05, " still dwell", transform=transform, fontsize=6.5,
                                color="#2ca02c", va="bottom")
+        stance = ctx.get("stance")
+        if stance:
+            shown = []
+            for segment in stance["segments"]:
+                color = STANCE_COLORS.get(segment["mode"])
+                if color is None or segment["end_s"] <= segment["start_s"]:
+                    continue
+                for axis in (self.speed_ax, self.force_ax):
+                    axis.axvspan(segment["start_s"], segment["end_s"], color=color, alpha=0.14, linewidth=0, zorder=0)
+                if segment["mode"] not in shown:
+                    shown.append(segment["mode"])
+            if shown:
+                self.force_ax.legend([Rectangle((0, 0), 1, 1, facecolor=STANCE_COLORS[m], alpha=0.4) for m in shown],
+                                     ["stance " + m for m in shown], loc="upper left", fontsize=6, ncol=len(shown),
+                                     frameon=True, framealpha=0.85, borderpad=0.25, handlelength=1.0,
+                                     columnspacing=0.8)
         marked = [e for e in timeline if e["key"] != "still_dwell_start"]
         px_per_s = width / max(1e-6, t1 - t0)
         label_rows = assign_label_rows([e["sim_time_s"] - t0 for e in marked], [e["label"] for e in marked], px_per_s)
@@ -672,6 +726,10 @@ class Renderer:
         phase, done = phase_at(ctx["events"], t)
         self.banner_run.set_text("%s    sim t = %.2f s    frame %d/%d" % (ctx["run_id"], t, frame_no + 1, total))
         self.banner_phase.set_text("phase: " + phase)
+        if self.banner_stance is not None:
+            mode = ctx["stance"]["modes"][state_idx]
+            self.banner_stance.set_text("stance: " + mode)
+            self.banner_stance.set_color(STANCE_COLORS.get(mode, "white") if mode not in STANCE_POLICY_MODES else "white")
         recent = [e for e in done if e["key"] != "still_dwell_start"][-3:]
         self.banner_recent.set_text("recent events: " + (
             "  |  ".join("%s @ %.2f s" % (e["label"], e["sim_time_s"]) for e in recent) if recent else "none yet"))
@@ -714,6 +772,7 @@ def build_context(run: Path, paths: dict) -> dict:
         "goal_tolerance_source": "inputs/pilot.json goal_xy_tolerance_m" if pilot and "goal_xy_tolerance_m" in pilot else "default 0.25 m (pilot.json absent)",
         "event_time": event_time,
         "labels": labels,
+        "stance": stance_segments(state_rows, state.sim),
         **parsed,
     }
 
@@ -943,6 +1002,8 @@ def main(argv=None) -> int:
         },
         "render_wall_seconds": time.monotonic() - started,
     }
+    if ctx["stance"] is not None:
+        sidecar["stance_hold"] = {k: v for k, v in ctx["stance"].items() if k != "modes"}
     sidecar_path = output.with_suffix(".json")
     sidecar_path.write_text(json.dumps(sidecar, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     if not sidecar["size_target"]["within_target"]:

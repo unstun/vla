@@ -53,6 +53,7 @@ DEFAULT_REMOTE_CHECKPOINT = (
 )
 # The review check p2b_execution/review_two_goal.py requires an absolute 0.4 m.
 CANCEL_DISPLACEMENT_MIN_M = 0.40
+STANCE_HOLD_CHOICES = ("off", "auto")
 CANCEL_GOAL_A_CLEARANCE_MIN_M = 0.30
 GPU_SAMPLE_INTERVAL_S = 1.0
 # --remote-only-bulk leaves exactly these runner outputs (paths relative to
@@ -607,9 +608,17 @@ def build_runner_argv(args, remote_run: str, run_id: str, pilot: dict) -> List[s
         "--external-control-dir", remote_run + "/artifacts/external_episode",
         "--external-finish-stillness-seconds", str(pilot["stop_dwell_sim_seconds"]),
         "--external-status-freshness-seconds", "2.0",
+        "--stance-hold", stance_hold_setting(args),
         "--seed", "42",
         "--device", "cuda:0",
     ]
+
+
+def stance_hold_setting(args) -> str:
+    value = getattr(args, "stance_hold", "off")
+    if value not in STANCE_HOLD_CHOICES:
+        raise ValueError("--stance-hold must be one of %s" % (STANCE_HOLD_CHOICES,))
+    return value
 
 
 def make_scope(runner_module, runner_argv: List[str], execution_manifest_sha: str, patched_runner_sha: str, pilot: dict, baseline_scope: dict) -> dict:
@@ -1661,8 +1670,12 @@ def walk_review_remote_script(remote_run: str) -> str:
 
 
 def runbook_text(run_id: str, remote_run: str, cancel_displacement_m: float = CANCEL_DISPLACEMENT_MIN_M,
-                 remote_only_bulk: bool = False) -> str:
+                 remote_only_bulk: bool = False, stance_hold: str = "off") -> str:
     text = runbook_base_text(run_id, remote_run, cancel_displacement_m)
+    if stance_hold == "auto":
+        text += """
+Stance hold (`--stance-hold auto`): the patched runner hands the joints from the V12 policy to a PD stand hold (Kp 60 / Kd 1) after an exactly zero command with a quiet, loaded and balanced four-foot stance, and blends back over 0.25 s when a command arrives (`isaac_runner/stance_hold.py`). The runner writes `runner_output/stance_hold_setup.json`, per-step `stance_*` fields in `metrics.jsonl` and a `stance_hold` summary block. `isaac_runner/analyze_stance_hold.py` reports the AC5 transition checks; the 41 review checks are unchanged.
+"""
     if remote_only_bulk:
         text += f"""
 Remote-only bulk return (`--remote-only-bulk`): `{"`, `".join(REMOTE_ONLY_BULK_FILES)}` stay in `{remote_run}/artifacts/`. After the worker ends, the host hashes them into `{REMOTE_ONLY_RECORD}`, checks that the worker wrote its final result and that none of its process groups is alive (`{WALK_REVIEW_DIR}/render_guard.json`), then renders `{WALK_REVIEW_DIR}/walk_review.mp4` from the remote original video with `h264_nvenc` (fallback `libx264`), and returns the record and the review. Local verification accepts exactly those two files as absent. `p2b_execution/review_two_goal.py` accepts the same two files as absent only when the returned `{REMOTE_ONLY_RECORD}` has `all_match` true and hashes equal to `artifact_hashes.json` (task decision D9, 2026-09-17); its other 40 checks are unchanged.
@@ -1725,6 +1738,7 @@ def prepare(args) -> Tuple[Path, dict]:
     pilot = json.loads((P2B / "inputs/pilot.json").read_text(encoding="utf-8"))
     validate_pilot(pilot)
     cancel_check = cancel_trigger_check(args.cancel_displacement_m, pilot)
+    stance_hold = stance_hold_setting(args)
     scan_gate = None
     if args.accepted_scan_build_dir:
         scan_gate = build_scan_workspace_gate(
@@ -1776,7 +1790,8 @@ def prepare(args) -> Tuple[Path, dict]:
     write_json(local_run / "inputs/two_goal_scope.json", scope)
     write_file(local_run / "pilot_driver.py", pilot_driver_source(), executable=True)
     write_file(local_run / "remote_worker.py", remote_worker_source(), executable=True)
-    write_file(local_run / "RUNBOOK.md", runbook_text(run_id, remote_run, cancel_check["cancel_displacement_m"], remote_only_bulk))
+    write_file(local_run / "RUNBOOK.md", runbook_text(run_id, remote_run, cancel_check["cancel_displacement_m"], remote_only_bulk,
+                                                    stance_hold))
 
     v12_runtime_expected = {
         rel.removeprefix("source/v12_runtime/"): digest
@@ -1931,6 +1946,7 @@ def prepare(args) -> Tuple[Path, dict]:
             "review_two_goal_note": "review_two_goal.py (D9, 2026-09-17) accepts exactly these two files as absent when remote_only_artifacts.json has all_match true and hashes equal to artifact_hashes.json; its other 40 checks are unchanged",
         },
         "package_storage": package_storage,
+        "stance_hold": stance_hold,
     })
     return local_run, commands
 
@@ -2060,12 +2076,21 @@ def execute(args, local_run: Path, commands: dict) -> None:
         raise RuntimeError("--remote-only-bulk differs from the prepared package (package remote_only_bulk=%s)" % remote_only)
     request_path = local_run / "run_request.json"
     if request_path.is_file():
-        prepared_cancel = json.loads(request_path.read_text(encoding="utf-8")).get("cancel_displacement_m", CANCEL_DISPLACEMENT_MIN_M)
+        prepared_request = json.loads(request_path.read_text(encoding="utf-8"))
+        prepared_cancel = prepared_request.get("cancel_displacement_m", CANCEL_DISPLACEMENT_MIN_M)
         requested_cancel = float(getattr(args, "cancel_displacement_m", CANCEL_DISPLACEMENT_MIN_M))
         if float(prepared_cancel) != requested_cancel:
             raise RuntimeError(
                 "--cancel-displacement-m %r differs from the prepared package (package cancel_displacement_m=%r)"
                 % (requested_cancel, prepared_cancel)
+            )
+        # Packages prepared before the flag ran the runner without a stance hold.
+        prepared_stance = prepared_request.get("stance_hold", "off")
+        requested_stance = getattr(args, "stance_hold", "off")
+        if prepared_stance != requested_stance:
+            raise RuntimeError(
+                "--stance-hold %r differs from the prepared package (package stance_hold=%r)"
+                % (requested_stance, prepared_stance)
             )
     logs = local_run / "host_logs"
     logs.mkdir(exist_ok=True)
@@ -2164,6 +2189,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--cancel-displacement-m", type=float, default=CANCEL_DISPLACEMENT_MIN_M,
         help="Measured XY displacement that triggers the goal-a cancel; at least 0.40 m and >= 0.30 m short of goal A.",
+    )
+    parser.add_argument(
+        "--stance-hold", choices=STANCE_HOLD_CHOICES, default="off",
+        help="Runner stance hold mode passed to the patched runner; auto enables the PD stand hold (stance_hold.py).",
     )
     parser.add_argument(
         "--allow-missing-install-identity", action="store_true", default=False,

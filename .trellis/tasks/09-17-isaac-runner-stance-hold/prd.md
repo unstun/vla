@@ -39,6 +39,9 @@ robot still without the policy's standing jitter, and resume walking without a f
     time. REJOIN blends back to Kp 20 / Kd 0.5 over 0.25 s.
   - **Trigger:** automatic. The command must be exactly zero, and the body must be quiet with four loaded, balanced
     feet. Any non-zero command cancels the settle or starts REJOIN.
+- D3 (Dr Sun, 2026-09-17) Run budget approved: "approved, run the stand test after the check". C1 (stand A/B,
+  2 × 60 s) runs after the A6 check pass; C2 (8 two-goal episodes) follows only if AC3 passes. About 30-35 min and
+  7 GB GPU in total on the 5070 Ti host.
 
 ## Constraints
 

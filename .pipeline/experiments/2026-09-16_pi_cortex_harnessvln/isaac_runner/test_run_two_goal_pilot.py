@@ -2,6 +2,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import shlex
 import subprocess
 from pathlib import Path
 import shutil
@@ -18,7 +19,10 @@ ACTUAL4 = HERE / "two_goal_runs/two_goal_20260916T162236Z_p2b_actual4"
 SCAN_03 = HERE.parent / "p2b_execution/builds/scan_03"
 SCAN_03_REMOTE = "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03"
 NEW_RUN_REQUEST_FIELDS = {"cancel_displacement_m", "cancel_trigger_check", "allow_missing_install_identity", "scan_workspace_gate", "resource_recording",
-                          "remote_only_bulk", "remote_only_bulk_detail", "package_storage"}
+                          "remote_only_bulk", "remote_only_bulk_detail", "package_storage", "stance_hold"}
+# Runner bytes executed by actual4 (external-episode anchors only); see materialize_runner_patch.py.
+ACTUAL4_RUNNER_SHA256 = "e215a6014bf15dc22a3261cb97c3435252b83ce2bde2f042375ae313493470f3"
+RUNNER_REL = "lite3_sim_bridge/run_pct_scan_building.py"
 
 
 def load_module():
@@ -501,6 +505,7 @@ class ScanGateCancelAndResourceTests(unittest.TestCase):
         self.assertEqual(new_request["scan_workspace_gate"]["installed_file_count"], 380)
         self.assertIs(new_request["remote_only_bulk"], False)
         self.assertIsNone(new_request["remote_only_bulk_detail"])
+        self.assertEqual(new_request["stance_hold"], "off")
         storage = new_request["package_storage"]
         self.assertEqual(storage["linked_count"] + storage["copied_count"], storage["linked_files_hash_checked"])
         self.assertFalse((local_run / "make_walk_review.py").exists())
@@ -508,11 +513,41 @@ class ScanGateCancelAndResourceTests(unittest.TestCase):
         old_commands = normalized(ACTUAL4 / "commands.json", ACTUAL4)
         new_commands = normalized(local_run / "commands.json", local_run)
         self.assertEqual(new_commands["run"][:-1], old_commands["run"][:-1])
-        self.assertEqual(new_commands["run"][-1], old_commands["run"][-1] + " --cancel-displacement-m 0.4")
+        # Intended differences: the runner argv gains exactly `--stance-hold off` (stance-hold task) and the
+        # worker gains `--cancel-displacement-m 0.4`. Every other token is unchanged.
+        old_tokens = shlex.split(old_commands["run"][-1])
+        new_tokens = shlex.split(new_commands["run"][-1])
+        old_argv = json.loads(old_tokens[old_tokens.index("--runner-argv-json") + 1])
+        new_argv = json.loads(new_tokens[new_tokens.index("--runner-argv-json") + 1])
+        at = new_argv.index("--stance-hold")
+        self.assertEqual(new_argv[at:at + 2], ["--stance-hold", "off"])
+        self.assertEqual(new_argv[:at] + new_argv[at + 2:], old_argv)
+        old_tokens[old_tokens.index("--runner-argv-json") + 1] = "ARGV"
+        new_tokens[new_tokens.index("--runner-argv-json") + 1] = "ARGV"
+        self.assertEqual(new_tokens, old_tokens + ["--cancel-displacement-m", "0.4"])
         self.assertEqual({k: v for k, v in new_commands.items() if k != "run"}, {k: v for k, v in old_commands.items() if k != "run"})
-        for rel in ["inputs/two_goal_scope.json", "inputs/two_goal_route_artifact.json", "inputs/execution_manifest.json",
+        for rel in ["inputs/two_goal_route_artifact.json",
                     "config/p2b_backend_ros.two_goal.json", "config/foxy_bridge_two_goal.yaml", "config/planner.yaml", "config/controller.yaml"]:
             self.assertEqual((local_run / rel).read_bytes(), (ACTUAL4 / rel).read_bytes(), rel)
+        # The scope and execution manifest differ only by the stance-hold runner bytes and configuration key.
+        new_runner_sha = digest(local_run / "bridge" / RUNNER_REL)
+        self.assertNotEqual(new_runner_sha, ACTUAL4_RUNNER_SHA256)
+        old_manifest = json.loads((ACTUAL4 / "inputs/execution_manifest.json").read_text(encoding="utf-8"))
+        new_manifest = json.loads((local_run / "inputs/execution_manifest.json").read_text(encoding="utf-8"))
+        old_files = {item["path"]: item for item in old_manifest.pop("files")}
+        new_files = {item["path"]: item for item in new_manifest.pop("files")}
+        self.assertEqual(new_manifest, old_manifest)
+        self.assertEqual(old_files.pop(RUNNER_REL)["sha256"], ACTUAL4_RUNNER_SHA256)
+        self.assertEqual(new_files.pop(RUNNER_REL)["sha256"], new_runner_sha)
+        self.assertEqual(new_files, old_files)
+        old_scope = json.loads((ACTUAL4 / "inputs/two_goal_scope.json").read_text(encoding="utf-8"))
+        new_scope = json.loads((local_run / "inputs/two_goal_scope.json").read_text(encoding="utf-8"))
+        self.assertEqual(new_scope["execution_configuration"].pop("stance_hold"), "off")
+        self.assertEqual(old_scope.pop("execution_source_sha256"), ACTUAL4_RUNNER_SHA256)
+        self.assertEqual(new_scope.pop("execution_source_sha256"), new_runner_sha)
+        self.assertEqual(old_scope.pop("execution_manifest_sha256"), digest(ACTUAL4 / "inputs/execution_manifest.json"))
+        self.assertEqual(new_scope.pop("execution_manifest_sha256"), digest(local_run / "inputs/execution_manifest.json"))
+        self.assertEqual(new_scope, old_scope)
         old_source = json.loads((ACTUAL4 / "source_env_hashes.json").read_text(encoding="utf-8"))
         new_source = json.loads((local_run / "source_env_hashes.json").read_text(encoding="utf-8"))
         self.assertEqual(new_source["accepted_scan_build_identity"]["install_identity"], old_source["accepted_scan_build_identity"]["install_identity"])
@@ -886,6 +921,48 @@ class PackageStorageAndRemoteOnlyTests(unittest.TestCase):
         self.assertLess(src.index('finalize_result_artifacts(artifacts, result, "final")'), exit_check)
         self.assertLess(exit_check, src.index('if __name__ == "__main__":'))
         self.assertIn('raise SystemExit("SCAN workspace hash gate failed after the run', src[exit_check:])
+
+    def test_stance_hold_auto_reaches_runner_scope_request_and_runbook(self):
+        _, local_run, commands = self.prepare("stance_auto", "--stance-hold", "auto")
+        tokens = shlex.split(commands["run"][-1])
+        argv = json.loads(tokens[tokens.index("--runner-argv-json") + 1])
+        self.assertEqual(argv[argv.index("--stance-hold") + 1], "auto")
+        scope = json.loads((local_run / "inputs/two_goal_scope.json").read_text(encoding="utf-8"))
+        self.assertEqual(scope["execution_configuration"]["stance_hold"], "auto")
+        runner = self.m.import_runner(local_run / "bridge" / RUNNER_REL)
+        self.assertEqual(runner.execution_configuration(runner.build_parser().parse_args(argv)),
+                         scope["execution_configuration"])
+        request = json.loads((local_run / "run_request.json").read_text(encoding="utf-8"))
+        self.assertEqual(request["stance_hold"], "auto")
+        self.assertIn("--stance-hold auto", (local_run / "RUNBOOK.md").read_text(encoding="utf-8"))
+        _, off_run, _ = self.prepare("stance_off")
+        self.assertNotIn("Stance hold", (off_run / "RUNBOOK.md").read_text(encoding="utf-8"))
+        with self.assertRaises(ValueError):
+            self.m.build_runner_argv(types.SimpleNamespace(stance_hold="on", remote_v12_runtime="r",
+                                                           remote_checkpoint="c", telemetry_port=1, command_port=2),
+                                     "/remote", "run", json.loads((self.m.P2B / "inputs/pilot.json").read_text()))
+
+    def test_execute_refuses_stance_hold_that_differs_from_package(self):
+        _, local_run, commands = self.prepare("stance_mismatch", "--stance-hold", "auto")
+        for extra in ([], ["--stance-hold", "off"]):
+            args = self.m.build_parser().parse_args([
+                "--run-id", "stance_mismatch", "--local-runs-root", str(self.root / "runs"), "--execute",
+                "--lead-authorized-execute", "--remote-scan-workspace", self.remote, *extra,
+            ])
+            with self.assertRaisesRegex(RuntimeError, "--stance-hold 'off' differs from the prepared package"):
+                self.m.execute(args, local_run, commands)
+        self.assertFalse((local_run / "host_logs").exists())
+        # A package prepared before the flag existed counts as off.
+        request_path = local_run / "run_request.json"
+        request = json.loads(request_path.read_text(encoding="utf-8"))
+        del request["stance_hold"]
+        request_path.write_text(json.dumps(request), encoding="utf-8")
+        args = self.m.build_parser().parse_args([
+            "--run-id", "stance_mismatch", "--local-runs-root", str(self.root / "runs"), "--execute",
+            "--lead-authorized-execute", "--remote-scan-workspace", self.remote, "--stance-hold", "auto",
+        ])
+        with self.assertRaisesRegex(RuntimeError, "--stance-hold 'auto' differs from the prepared package .*'off'"):
+            self.m.execute(args, local_run, commands)
 
     def test_execute_refuses_flag_that_differs_from_package(self):
         args, local_run, commands = self.prepare("flag_mismatch")
