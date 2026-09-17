@@ -1,0 +1,68 @@
+{
+  "schema": "scan_fix_qualification_thresholds_v1",
+  "frozen": "2026-09-17, before any remote call; SHA-256 recorded in PLAN.md; analyze_suite.py refuses any other file",
+  "source": ".trellis/tasks/09-16-scan-terminal-accel-fix-qualification/prd.md AC2-AC6, decisions D3 and D7",
+  "expected_parameters": {
+    "manager.max_vel": 1.0,
+    "manager.max_acc": 0.5,
+    "optimization.vel_tolerance": 1.0,
+    "optimization.acc_tolerance": 1.0
+  },
+  "acceleration_gate_mps2": 1.5,
+  "acceleration_gate_derivation": "planner_manager.cpp:462 acc_limit = manager.max_acc 0.5 + optimization.acc_tolerance 1.0; unchanged (D3)",
+  "sampled_max_acc_limit_mps2": 1.5,
+  "sampled_max_acc_method": "norm of the second derivative of the returned position spline at 1001 uniform samples, as diagnosticSpline in scan_replan_diagnosis/instrument_manager.py",
+  "endpoint_xy_limit_m": 0.05,
+  "endpoint_xy_derivation": "D7; derived from the 0.25 m arrival tolerance, fixed before the candidate was run on new fixtures",
+  "endpoint_method": "XY distance from the returned spline position at its full duration to the target passed to that call",
+  "max_collision_samples": 0,
+  "collision_method": "scan_replan_fsm.cpp checkCollisionCallback loop from t=0: every 0.01 s, GridMap::getInflateOccupancy(pos, yaw of the next 0.01 s segment); any nonzero value (inflated occupied = 1, outside the map = -1) counts",
+  "follow_up": {
+    "timing_tolerance_s": 1e-09,
+    "timing_method": "requested and measured offsets (node clock minus stored trajectory start) must equal the fixture offset differences"
+  },
+  "comparison": {
+    "same_run": "original and candidate runs are paired by fixture label (same start, target, map, initialization, seed and repeat)",
+    "acceptance_of_first_call": "a single run is accepted when its first reboundReplan call returns true"
+  },
+  "ac0": {
+    "prd": "Validity control (added 2026-09-17, stricter only): the original build must reproduce the recorded failure. For failed_run_resume (polynomial, seed 0, empty map) all 3 repeats are rejected by the acceleration gate, and the other 3 recorded cases pass 3/3 each, as in native_original_20260916T180500Z. Otherwise the suite is invalid and no other native verdict is used.",
+    "build": "original",
+    "reference_run": ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_replan_diagnosis/runs/native_original_20260916T180500Z",
+    "scope": {"kinds": ["single"], "map_ids": ["empty"], "random_poly": [false]},
+    "expectations": [
+      {"start_id": "failed_run_resume", "repeats": 3, "outcome": "acceleration_gate"},
+      {"start_id": "failed_run_initial", "repeats": 3, "outcome": "accepted"},
+      {"start_id": "successful_run_initial", "repeats": 3, "outcome": "accepted"},
+      {"start_id": "successful_run_resume", "repeats": 3, "outcome": "accepted"}
+    ],
+    "reference_gate_warning": {"start_id": "failed_run_resume", "t": 3.5, "value": 1.567, "limit": 1.5, "use": "reported only"},
+    "on_failure": "the suite is INVALID: AC2-AC6 are reported as not_evaluated and the suite does not pass"
+  },
+  "ac2": {
+    "prd": "The candidate returns a trajectory in every fixture where the original does, plus every acceleration-gate rejection case; every accepted trajectory's sampled maximum acceleration is at most 1.5 m/s^2.",
+    "scope": {"kinds": ["single"], "map_ids": ["empty"], "random_poly": [false]},
+    "sampled_limit_applies_to": "every accepted candidate call in the whole suite; original values are reported only"
+  },
+  "ac3": {
+    "prd": "Every accepted candidate trajectory ends within 0.05 m of its target (XY).",
+    "scope": "every accepted candidate call in the whole suite, follow-up calls included; original values are reported only"
+  },
+  "ac4": {
+    "prd": "No accepted trajectory (either build) has a sample inside an inflated occupied cell; rejections are reported, not counted as failures of the fix unless the original accepts the same case.",
+    "scope": {"kinds": ["single"], "map_ids": ["far_box", "near_box"], "random_poly": [false, true]},
+    "fail_when": "an accepted call of either build has collision samples, or the candidate rejects a run the original accepts"
+  },
+  "ac5": {
+    "prd": "The candidate's success count is at least the original's in every case group, and any candidate-only failure is explained before continuing.",
+    "scope": {"kinds": ["single"], "map_ids": ["empty", "far_box", "near_box"], "random_poly": [true]},
+    "case_group": "(start_id, map_id) over random-initialization seeds 0-9",
+    "needs_explanation_when": "any run the original accepts and the candidate rejects, even if the group counts pass"
+  },
+  "ac6": {
+    "prd": "The candidate completes every sequence the original completes, and every sequence the original fails only at the acceleration gate.",
+    "scope": {"kinds": ["follow_up"], "map_ids": ["empty"], "random_poly": [false]},
+    "completed": "the first call and every follow-up step return a trajectory (any attempt of the FSM chain)",
+    "original_fails_only_at_gate": "the original does not complete and every rejected attempt in its sequence was an acceleration-gate rejection"
+  }
+}

@@ -1,0 +1,252 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCAN Fix Qualification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;650;750&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --ground: #eef1f0; --surface: #ffffff; --ink: #14201c; --muted: #56655f; --rule: #cfd8d4;
+  --fixed: #0072b2; --orig: #c75200; --ok: #1b7a4a; --bad: #b3261e; --lead: #8a5a00;
+  --ok-bg: #dcefe4; --bad-bg: #f7dedb; --lead-bg: #f4e8cf; --band: #fbeee3;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0f1614; --surface: #17211e; --ink: #e3ebe7; --muted: #9aaba4; --rule: #2c3a35;
+    --fixed: #5aaee0; --orig: #f08a3c; --ok: #6cc796; --bad: #f08a80; --lead: #e0b460;
+    --ok-bg: #1d3a2b; --bad-bg: #452523; --lead-bg: #3d3220; --band: #2d241c;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0f1614; --surface: #17211e; --ink: #e3ebe7; --muted: #9aaba4; --rule: #2c3a35;
+  --fixed: #5aaee0; --orig: #f08a3c; --ok: #6cc796; --bad: #f08a80; --lead: #e0b460;
+  --ok-bg: #1d3a2b; --bad-bg: #452523; --lead-bg: #3d3220; --band: #2d241c;
+}
+body { background: var(--ground); color: var(--ink); font: 400 17px/1.6 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 750; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 650; margin-top: 56px; padding-top: 14px; border-top: 2px solid var(--ink); }
+h3 { font-size: 17px; font-weight: 650; }
+p { max-width: 68ch; margin: 10px 0; }
+.eyebrow { font: 500 12px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 0.86em; }
+header { display: grid; gap: 14px; }
+.lede { font-size: 19px; max-width: 62ch; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1px; background: var(--rule);
+  border: 1px solid var(--rule); margin-top: 22px; }
+.fact { background: var(--surface); padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.fact b { font: 650 30px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.fact span { font-size: 14px; color: var(--muted); line-height: 1.4; }
+.fact.bad b { color: var(--bad); } .fact.ok b { color: var(--ok); }
+.boundary { margin-top: 22px; border-left: 4px solid var(--lead); background: var(--surface); padding: 12px 16px; font-size: 15px; }
+.boundary p { margin: 4px 0; max-width: none; }
+.scroll { overflow-x: auto; margin-top: 14px; border: 1px solid var(--rule); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+thead th { font: 500 11px/1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+tbody th { font-weight: 600; white-space: nowrap; }
+.num td { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 13px; }
+.ac { font-family: var(--mono); color: var(--muted); }
+.pill { display: inline-block; font: 500 12px/1 var(--mono); padding: 4px 8px; border-radius: 3px; white-space: nowrap; }
+.pill-pass { background: var(--ok-bg); color: var(--ok); }
+.pill-fail, .pill-mismatch { background: var(--bad-bg); color: var(--bad); }
+.pill-lead, .pill-stated { background: var(--lead-bg); color: var(--lead); }
+.ok { color: var(--ok); } .bad { color: var(--bad); }
+tr.row-fail td { background: color-mix(in srgb, var(--bad-bg) 45%, transparent); }
+tr.is-current td { box-shadow: inset 0 -2px 0 var(--fixed); }
+.ep-link { font: 500 13px var(--mono); color: var(--fixed); background: none; border: 1px solid var(--rule); border-radius: 3px; padding: 3px 7px; cursor: pointer; }
+.ep-link:hover, .ep-link:focus-visible { border-color: var(--fixed); outline: none; }
+.plate { margin: 18px 0 0; background: #ffffff; border: 1px solid var(--rule); padding: 10px; }
+.plate img { display: block; width: 100%; height: auto; }
+figcaption { font-size: 14px; color: #3d4a45; padding: 10px 4px 2px; max-width: 80ch; }
+.viewer { display: grid; gap: 14px; margin-top: 16px; }
+.picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.picker button { font: 500 13px var(--mono); padding: 7px 11px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); border-radius: 3px; cursor: pointer; }
+.picker button[aria-pressed="true"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+.picker button.failed { border-color: var(--bad); }
+.picker button:focus-visible { outline: 2px solid var(--fixed); outline-offset: 2px; }
+video { width: 100%; max-width: 100%; aspect-ratio: 16 / 9; background: #0b0f0e; display: block; }
+.ep-summary { font: 400 14px/1.5 var(--mono); }
+.ep-note { font-size: 15px; border-left: 3px solid var(--bad); padding-left: 12px; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px 28px; align-items: start; }
+ul.plain { padding-left: 18px; margin: 8px 0; max-width: 72ch; }
+ul.plain li { margin: 6px 0; }
+footer { margin-top: 56px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 12px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Lite3 VLA · task 09-16 · PCT → SCAN → V12 · 5070 Ti host · 2026-09-17</div>
+  <h1>SCAN terminal-acceleration fix</h1>
+  <p class="lede">A one-line change in SCAN's planner (<code>planner_manager.cpp:171</code>,
+  <code>evaluateAcc(t)</code> → <code>evaluateAcc(time)</code>) removes the replan rejection that stopped the robot
+  after a cancel. The native suite passes every criterion. In Isaac, 7 of 8 episodes passed all checks;
+  the one failure came from the robot not standing still after arriving, not from the planner.</p>
+  <div class="facts">
+    <div class="fact"><b>7/8</b><span>Isaac episodes passed all 41 checks (one-sided 95 % lower bound 0.529)</span></div>
+    <div class="fact"><b>6/8</b><span>episodes stopped where the original build rejects the resume plan (native replay); 6 of them resumed with the fix</span></div>
+    <div class="fact ok"><b>AC0–AC6</b><span>native suite: pass, including the validity control</span></div>
+    <div class="fact bad"><b>AC7</b><span>not met as written: e03 failed 1 check (goal-b:raw_physics_stop_dwell)</span></div>
+  </div>
+  <div class="boundary">
+    <p><strong>Claim boundary.</strong> Simulation only: Isaac Lab and native replays on the 5070 Ti host. One known-map
+    route on a flat platform, with no placed obstacle and simulator-truth pose. N = 8 episodes. No physical-robot,
+    SLAM, language-navigation or Pi/Cortex claim. The fix was not checked against an unmodified official build.
+    <strong>Adopting <code>scan_04</code> is Dr Sun's decision.</strong></p>
+  </div>
+</header>
+
+<h2>Verdicts</h2>
+<p class="muted">Computed from the returned files and compared with the task's acceptance criteria. AC8 is the lead's judgement.</p>
+<div class="scroll"><table>
+<thead><tr><th>Criterion</th><th>Status</th><th>Evidence</th></tr></thead>
+<tbody>
+<tr><th scope="row"><span class="ac">AC0</span> Validity control</th><td><span class="pill pill-pass">pass</span></td><td>native_suite_20260917T083723Z VALID: failed_run_resume acceleration_gate 3/3; failed_run_initial accepted 3/3; successful_run_initial accepted 3/3; successful_run_resume accepted 3/3</td></tr>
+<tr><th scope="row"><span class="ac">AC1</span> One-line build</th><td><span class="pill pill-pass">pass</span></td><td>changed plan_manage/src/planner_manager.cpp line 171; build passed True; install identity 380 files, differing from scan_03: install/scan_planner/lib/scan_planner/scan_planner_node</td></tr>
+<tr><th scope="row"><span class="ac">AC2</span> Gate rejections removed</th><td><span class="pill pill-pass">pass</span></td><td>runs 63; original accepted 27 (gate rejections 36); fixed accepted 63; fixed calls over 1.5 m/s^2: 0 of 855</td></tr>
+<tr><th scope="row"><span class="ac">AC3</span> Single-call endpoint</th><td><span class="pill pill-pass">pass</span></td><td>fixed single-call max endpoint 0.0438 m (limit 0.05 m, over limit 0); follow-up report only: original max 0.0785 m, fixed max 0.0805 m</td></tr>
+<tr><th scope="row"><span class="ac">AC4</span> Occupancy grid</th><td><span class="pill pill-pass">pass</span></td><td>runs 546; fixed collision hits 0; counted fixed rejections 0; finding: 8 original-build trajectories with collision samples</td></tr>
+<tr><th scope="row"><span class="ac">AC5</span> Seeds and random init</th><td><span class="pill pill-pass">pass</span></td><td>groups 63; successes original 218, fixed 624; fixed-only failures 0</td></tr>
+<tr><th scope="row"><span class="ac">AC6</span> Follow-up replans</th><td><span class="pill pill-pass">pass</span></td><td>sequences 15; completed original 6, fixed 15</td></tr>
+<tr><th scope="row"><span class="ac">AC7</span> Isaac episodes</th><td><span class="pill pill-fail">fail</span></td><td>8 of 8 planned episodes counted, 7 passed; one-sided 95 % lower bound 0.529; series ended</td></tr>
+<tr><th scope="row"><span class="ac">AC8</span> Claim boundary</th><td><span class="pill pill-stated">stated</span></td><td>RESULT.md states the boundary (lead judgement, awaiting review): RESULT.md present</td></tr>
+</tbody></table></div>
+
+<h2>Where the bug bites</h2>
+<p>The top chart shows the planned path's maximum acceleration against the resume start position. The original build
+(orange) is rejected by the 1.5 m/s² gate for every start between x = −1.19 and −1.11 m (shaded). The fixed
+build (blue) peaks at 0.54–0.60 m/s² at every resume start. Diamonds are native replays of the real
+Isaac stops. The lower strip marks where each Isaac run stopped: 3 of the 3 failed Sep 16 runs
+stopped inside the band; of the 8 Sep 17 episodes, 5 stopped inside it, 1 at its edge and
+2 beyond it. Failed Sep 17 marks (e03) failed for a different reason (see below).</p>
+<figure class="plate"><img src="figures/panel2_where_the_bug_bites.png" alt="Plan acceleration against resume start x for both builds, with the failure band and Isaac stop positions">
+<figcaption>Native suite <code>native_suite_20260917T083723Z</code>, empty map, polynomial init, seed 0; stop replay <code>native_replay_20260917T092127Z</code>.</figcaption></figure>
+
+<h2>Isaac episodes</h2>
+<p>Each episode: walk toward goal A, cancel after the trigger distance, wait for a confirmed stop, resubmit A, arrive,
+then go to B. The resume x is the still-confirmed pose; each resubmitted plan started within 0.2 mm of it.
+The native column shows what each build does with a plan from that recorded plan start.</p>
+<div class="scroll"><table class="num">
+<thead><tr><th>Ep</th><th>Trigger (m)</th><th>Resume x (m)</th><th>vs band</th><th>Native at this pose: original / fixed</th><th>Checks</th><th>Arrival A (m)</th><th>Arrival B (m)</th><th>Non-foot force (N)</th><th>Wall (s)</th><th>GPU peak (MiB)</th></tr></thead>
+<tbody>
+<tr class="" data-ep="1"><td><button type="button" class="ep-link" data-ep="1">e01</button></td><td>0.40</td><td>-1.1375</td><td>inside</td><td><span class="bad">gate-rejected 3/3</span> / <span class="ok">accepted 3/3</span></td><td><span class="pill pill-pass">41/41</span></td><td>0.186</td><td>0.186</td><td>0.0</td><td>22.1</td><td>7,136</td></tr>
+<tr class="" data-ep="2"><td><button type="button" class="ep-link" data-ep="2">e02</button></td><td>0.40</td><td>-1.1289</td><td>inside</td><td><span class="bad">gate-rejected 3/3</span> / <span class="ok">accepted 3/3</span></td><td><span class="pill pill-pass">41/41</span></td><td>0.184</td><td>0.186</td><td>0.0</td><td>21.7</td><td>7,086</td></tr>
+<tr class="row-fail" data-ep="3"><td><button type="button" class="ep-link" data-ep="3">e03</button></td><td>0.40</td><td>-1.1130</td><td>inside</td><td><span class="bad">gate-rejected 3/3</span> / <span class="ok">accepted 3/3</span></td><td><span class="pill pill-fail">40/41</span></td><td>0.189</td><td>0.177</td><td>0.0</td><td>21.8</td><td>7,262</td></tr>
+<tr class="" data-ep="4"><td><button type="button" class="ep-link" data-ep="4">e04</button></td><td>0.40</td><td>-1.1373</td><td>inside</td><td><span class="bad">gate-rejected 3/3</span> / <span class="ok">accepted 3/3</span></td><td><span class="pill pill-pass">41/41</span></td><td>0.184</td><td>0.167</td><td>0.0</td><td>21.7</td><td>7,086</td></tr>
+<tr class="" data-ep="5"><td><button type="button" class="ep-link" data-ep="5">e05</button></td><td>0.40</td><td>-1.1062</td><td>edge</td><td><span class="bad">gate-rejected 3/3</span> / <span class="ok">accepted 3/3</span></td><td><span class="pill pill-pass">41/41</span></td><td>0.192</td><td>0.159</td><td>0.0</td><td>21.6</td><td>7,134</td></tr>
+<tr class="" data-ep="6"><td><button type="button" class="ep-link" data-ep="6">e06</button></td><td>0.40</td><td>-1.1301</td><td>inside</td><td><span class="bad">gate-rejected 3/3</span> / <span class="ok">accepted 3/3</span></td><td><span class="pill pill-pass">41/41</span></td><td>0.183</td><td>0.193</td><td>0.0</td><td>21.7</td><td>7,088</td></tr>
+<tr class="" data-ep="7"><td><button type="button" class="ep-link" data-ep="7">e07</button></td><td>0.45</td><td>-1.0649</td><td>outside</td><td><span class="ok">accepted 3/3</span> / <span class="ok">accepted 3/3</span></td><td><span class="pill pill-pass">41/41</span></td><td>0.175</td><td>0.157</td><td>0.0</td><td>21.5</td><td>7,133</td></tr>
+<tr class="" data-ep="8"><td><button type="button" class="ep-link" data-ep="8">e08</button></td><td>0.50</td><td>-0.9948</td><td>beyond sweep</td><td><span class="ok">accepted 3/3</span> / <span class="ok">accepted 3/3</span></td><td><span class="pill pill-pass">41/41</span></td><td>0.174</td><td>0.183</td><td>0.0</td><td>21.1</td><td>7,096</td></tr>
+</tbody></table></div>
+
+<div class="viewer" id="viewer">
+  <h3>Walk review and timeline</h3>
+  <div class="picker" id="picker" role="group" aria-label="Choose an episode"></div>
+  <div class="ep-summary" id="ep-summary"></div>
+  <div class="ep-note" id="ep-note" hidden></div>
+  <div class="two">
+    <video id="ep-video" controls preload="metadata" playsinline></video>
+    <div>
+      <p class="muted" style="margin-top:0">The video is the runner's third-person camera beside the top-down trail and a speed/command strip,
+      synchronized by simulation time (12.5 fps; one second of video is one second of simulated time, not wall time).
+      The chart below is the same episode's timeline with the review's full-rate still windows.</p>
+    </div>
+  </div>
+  <figure class="plate" style="margin-top:0"><img id="ep-timeline" alt="Episode timeline: speed, command and non-foot force over simulation time"></figure>
+</div>
+
+<h2>Episode 3: why one check failed</h2>
+<div class="two">
+<div>
+<p>At goal B the review needs 1.00 s of continuous stillness in the full 0.02 s physics record. One sample at
+sim 14.30 s had a yaw rate of 0.1595 rad/s (limit 0.15). The window before the arrival report was therefore 0.88 s.
+The backend's own dwell check polls a single overwritten snapshot file and never read that sample, so it reported
+arrival.</p>
+<p>The runs used the intended V12 <code>model_149999.pt</code> (sha256 <code>a9d31dce…</code>). After a stop the runner
+keeps the RL policy running on a zero command and has no PD stance hold. As Dr Sun notes, an RL policy almost never
+stands perfectly still, and switching smoothly to a PD hold is hard. The failure sits in the locomotion stop, after
+SCAN; resubmission and arrival at A worked. It is counted as a failure, and no threshold was changed.</p>
+</div>
+<ul class="plain">
+<li>Not a planner rejection, collision, reset or contact.</li>
+<li>Integrity checks passed: SCAN hash gate before and after, returned hashes.</li>
+<li>The series continued under the stop rule (no repeated failure).</li>
+<li>A PD stance hold is locomotion-layer work, outside this task.</li>
+</ul>
+</div>
+
+<h2>Robot paths</h2>
+<p>All 8 Sep 17 paths from the simulator's base position, with the Sep 16 runs in grey. The zoom shows the cancel
+points, the braking overshoot and the confirmed stops relative to the failure band.</p>
+<figure class="plate"><img src="figures/panel8_isaac_top_down.png" alt="Top-down robot paths of all episodes with goals and stop points" loading="lazy"></figure>
+
+<h2>Native suite detail</h2>
+<p>834 planner runs per build: 21 start poses × 13 initializations × 3 maps, plus
+15 follow-up sequences, in the pinned Foxy image on the 5070 Ti host's CPU.</p>
+<figure class="plate"><img src="figures/panel3_pass_fail_grid.png" alt="Pass/fail grid" loading="lazy"><figcaption><strong>Pass/fail grid.</strong> Every native first call: 21 starts × 13 initializations per map, each cell split original / fixed. On the empty and far-box maps the fix changes only acceleration-gate rejections. On the near-box map it accepts 264 of 273 cases (original 47); 0 of its accepted first calls have a collision sample (original 8).</figcaption></figure>
+<figure class="plate"><img src="figures/panel4_endpoint_distance.png" alt="Endpoint distance" loading="lazy"><figcaption><strong>Endpoint distance.</strong> Single calls are judged against 0.05 m: fixed calls end 1.7–4.4 cm from the target, original 1.4–1.9 cm. Follow-up calls are reported only (PRD D10); they end up to 7.9 cm (original) and 8.1 cm (fixed) from the target.</figcaption></figure>
+<figure class="plate"><img src="figures/panel5_top_down_paths.png" alt="Top-down paths" loading="lazy"><figcaption><strong>Top-down paths.</strong> The failing resume case, the near-box case and one follow-up sequence, with target and inflated box.</figcaption></figure>
+<figure class="plate"><img src="figures/panel6_follow_up_replans.png" alt="Follow-up replans" loading="lazy"><figcaption><strong>Follow-up replans.</strong> Maximum acceleration per call in each replan sequence. Original: 6 of 15 sequences complete; fixed: 15 of 15.</figcaption></figure>
+
+<h2>Disclosed changes to the plan</h2>
+<ul class="plain">
+<li><strong>AC0</strong>: validity control added before any result; stricter only.</li>
+<li><strong>D8, D10</strong>: AC3/AC4 amended after a local preview; follow-up endpoints reported, not judged.</li>
+<li><strong>D9</strong>: two bulky files stay on the 5070 Ti; the hash check accepts them as absent only when their recorded hashes match.</li>
+<li><strong>D11</strong>: run all 8 episodes; stop early only on the same failure twice in a row, an integrity failure, or a reset, pose-injection or contact-guard failure.</li>
+<li><strong>D12</strong>: 6 episodes cancel at 0.40 m, 1 at 0.45 m, 1 at 0.50 m.</li>
+<li><strong>D13</strong>: the 1.5 m/s² gate stays; raising it to 2.0 was considered and rejected.</li>
+</ul>
+
+<footer>
+Generated by <code>make_report_page.py</code> from <code>report_data.json</code> (da101e599551…, 2026-09-17T10:22:57Z).
+Full record: <code>scan_fix_qualification/RESULT.md</code>. Findings and failure analysis:
+<code>isaac_series/e03_failure_analysis.md</code>.
+</footer>
+</div>
+
+<script>
+(function () {
+  var EPISODES = {"1": {"video": "videos/e01.mp4", "timeline": "figures/panel9_timeline_e01.png", "run": "two_goal_20260917T085059Z_scanfix_e01", "summary": "Trigger 0.40 m \u00b7 resume x -1.1375 m \u00b7 41/41 checks \u00b7 arrival A 0.186 m, B 0.186 m", "failed": []}, "2": {"video": "videos/e02.mp4", "timeline": "figures/panel9_timeline_e02.png", "run": "two_goal_20260917T085819Z_scanfix_e02", "summary": "Trigger 0.40 m \u00b7 resume x -1.1289 m \u00b7 41/41 checks \u00b7 arrival A 0.184 m, B 0.186 m", "failed": []}, "3": {"video": "videos/e03.mp4", "timeline": "figures/panel9_timeline_e03.png", "run": "two_goal_20260917T090126Z_scanfix_e03", "summary": "Trigger 0.40 m \u00b7 resume x -1.1130 m \u00b7 40/41 checks \u00b7 arrival A 0.189 m, B 0.177 m", "failed": ["two_goal_20260917T090126Z_scanfix_e03-goal-b:raw_physics_stop_dwell"]}, "4": {"video": "videos/e04.mp4", "timeline": "figures/panel9_timeline_e04.png", "run": "two_goal_20260917T090506Z_scanfix_e04", "summary": "Trigger 0.40 m \u00b7 resume x -1.1373 m \u00b7 41/41 checks \u00b7 arrival A 0.184 m, B 0.167 m", "failed": []}, "5": {"video": "videos/e05.mp4", "timeline": "figures/panel9_timeline_e05.png", "run": "two_goal_20260917T090814Z_scanfix_e05", "summary": "Trigger 0.40 m \u00b7 resume x -1.1062 m \u00b7 41/41 checks \u00b7 arrival A 0.192 m, B 0.159 m", "failed": []}, "6": {"video": "videos/e06.mp4", "timeline": "figures/panel9_timeline_e06.png", "run": "two_goal_20260917T091122Z_scanfix_e06", "summary": "Trigger 0.40 m \u00b7 resume x -1.1301 m \u00b7 41/41 checks \u00b7 arrival A 0.183 m, B 0.193 m", "failed": []}, "7": {"video": "videos/e07.mp4", "timeline": "figures/panel9_timeline_e07.png", "run": "two_goal_20260917T091429Z_scanfix_e07", "summary": "Trigger 0.45 m \u00b7 resume x -1.0649 m \u00b7 41/41 checks \u00b7 arrival A 0.175 m, B 0.157 m", "failed": []}, "8": {"video": "videos/e08.mp4", "timeline": "figures/panel9_timeline_e08.png", "run": "two_goal_20260917T091735Z_scanfix_e08", "summary": "Trigger 0.50 m \u00b7 resume x -0.9948 m \u00b7 41/41 checks \u00b7 arrival A 0.174 m, B 0.183 m", "failed": []}};
+  var picker = document.getElementById('picker');
+  var video = document.getElementById('ep-video');
+  var timeline = document.getElementById('ep-timeline');
+  var summary = document.getElementById('ep-summary');
+  var note = document.getElementById('ep-note');
+  var keys = Object.keys(EPISODES).map(Number).sort(function (a, b) { return a - b; });
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function show(n, scroll) {
+    var ep = EPISODES[n];
+    if (!ep) return;
+    video.src = ep.video;
+    timeline.src = ep.timeline;
+    summary.textContent = 'e' + pad(n) + ' · ' + ep.summary;
+    if (ep.failed.length) { note.hidden = false; note.textContent = 'Failed check: ' + ep.failed.join(', '); }
+    else { note.hidden = true; note.textContent = ''; }
+    picker.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.ep) === n)); });
+    document.querySelectorAll('tr[data-ep]').forEach(function (r) { r.classList.toggle('is-current', Number(r.dataset.ep) === n); });
+    try { localStorage.setItem('scanfix-ep', String(n)); } catch (e) {}
+    if (scroll) document.getElementById('viewer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  keys.forEach(function (n) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.dataset.ep = n; b.id = 'pick-e' + pad(n);
+    b.textContent = 'e' + pad(n);
+    if (EPISODES[n].failed.length) b.classList.add('failed');
+    b.addEventListener('click', function () { show(n, false); });
+    picker.appendChild(b);
+  });
+  document.querySelectorAll('.ep-link').forEach(function (b) {
+    b.addEventListener('click', function () { show(Number(b.dataset.ep), true); });
+  });
+  var start = 3;
+  try { var saved = Number(localStorage.getItem('scanfix-ep')); if (EPISODES[saved]) start = saved; } catch (e) {}
+  show(EPISODES[start] ? start : keys[0], false);
+})();
+</script>

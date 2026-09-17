@@ -14,7 +14,9 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import importlib.util
+import inspect
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -23,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import textwrap
+import time
 from typing import Dict, Iterable, List, Optional, Tuple
 
 HERE = Path(__file__).resolve().parent
@@ -48,10 +51,68 @@ DEFAULT_REMOTE_CHECKPOINT = (
     "/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/"
     "source/checkpoint/model_149999.pt"
 )
+# The review check p2b_execution/review_two_goal.py requires an absolute 0.4 m.
+CANCEL_DISPLACEMENT_MIN_M = 0.40
+CANCEL_GOAL_A_CLEARANCE_MIN_M = 0.30
+GPU_SAMPLE_INTERVAL_S = 1.0
+# --remote-only-bulk leaves exactly these runner outputs (paths relative to
+# artifacts/) on the execution host; their hashes come back in
+# remote_only_artifacts.json. review_two_goal.py reads neither file's content.
+REMOTE_ONLY_BULK_FILES = ("runner_output/clouds.jsonl", "runner_output/third_person_master.mp4")
+REMOTE_ONLY_RECORD = "remote_only_artifacts.json"
+WALK_REVIEW_SCRIPT = HERE / "make_walk_review.py"
+WALK_REVIEW_DIR = "walk_review"
 
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+class PackageStorage:
+    """Hardlink frozen, never-rewritten files into a run package, copying when linking fails.
+
+    A hardlink shares the source inode, so its bytes and hash equal the source.
+    Only files that the package never rewrites may be linked; editing a linked
+    package file in place would edit the frozen source as well.
+    """
+
+    def __init__(self) -> None:
+        self.linked: List[str] = []
+        self.linked_bytes = 0
+        self.copied: List[str] = []
+        self.copy_reasons: Dict[str, str] = {}
+        self.pairs: List[Tuple[str, str]] = []
+
+    def link_or_copy(self, src, dst):
+        src, dst = str(src), str(dst)
+        self.pairs.append((src, dst))
+        try:
+            if os.path.islink(src):
+                raise OSError("source is a symlink; copied to keep content semantics")
+            os.link(src, dst)
+        except OSError as exc:
+            shutil.copy2(src, dst)
+            self.copied.append(dst)
+            self.copy_reasons.setdefault("%s: %s" % (exc.__class__.__name__, exc), dst)
+        else:
+            self.linked.append(dst)
+            self.linked_bytes += os.stat(dst).st_size
+        return dst
+
+    def record(self, root: Path) -> dict:
+        def rel(paths):
+            return sorted(Path(p).relative_to(root).as_posix() for p in paths)
+
+        return {
+            "method": "os.link with shutil.copy2 fallback",
+            "scope": "pct_runtime/ tree and inputs/{building.usda,new_building.pickle,pilot.json,input_manifest.json}",
+            "linked_count": len(self.linked),
+            "linked_bytes": self.linked_bytes,
+            "copied_count": len(self.copied),
+            "copied_paths": rel(self.copied),
+            "copy_reasons": sorted(self.copy_reasons),
+            "hash_checks": "package_manifest hashes every file; linked files are also compared with the source manifests",
+        }
 
 
 def write_json(path: Path, payload) -> None:
@@ -59,7 +120,7 @@ def write_json(path: Path, payload) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def copytree_clean(src: Path, dst: Path) -> None:
+def copytree_clean(src: Path, dst: Path, copy_function=shutil.copy2) -> None:
     def ignore(_dir, names):
         ignored = set()
         for name in names:
@@ -69,7 +130,7 @@ def copytree_clean(src: Path, dst: Path) -> None:
                 ignored.add(name)
         return ignored
 
-    shutil.copytree(src, dst, ignore=ignore)
+    shutil.copytree(src, dst, ignore=ignore, copy_function=copy_function)
 
 
 def dir_hashes(root: Path, max_bytes: Optional[int] = None) -> Dict[str, dict]:
@@ -160,6 +221,164 @@ def bridge_manifest(bridge_dir: Path, remote_bridge_dir: str) -> dict:
         rel = path.relative_to(bridge_dir).as_posix()
         files.append({"path": rel, "sha256": sha256(path), "bytes": path.stat().st_size})
     return {"schema_version": 1, "root": remote_bridge_dir, "files": files}
+
+
+# scan_tree_hashes, compare_hash_maps and scan_workspace_gate are embedded
+# verbatim in remote_worker.py (scan_gate_source) and in
+# p2b_execution/capture_install_identity.py, so every SCAN identity is hashed
+# by one implementation. They may use only Path and hashlib.
+def scan_tree_hashes(workspace, subdir):
+    """Hash regular files under workspace/subdir, keyed relative to workspace.
+
+    Python bytecode caches are listed as excluded instead of hashed; the
+    recorded scan_03 install identity contains none although the Foxy build
+    ran compileall on the installed message package.
+    """
+    workspace = Path(workspace)
+    files = {}
+    excluded = []
+    base = workspace / subdir
+    if base.is_dir():
+        for path in sorted(p for p in base.rglob("*") if p.is_file()):
+            rel = path.relative_to(workspace)
+            if "__pycache__" in rel.parts or path.suffix in (".pyc", ".pyo"):
+                excluded.append(rel.as_posix())
+                continue
+            files[rel.as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return files, excluded
+
+
+def compare_hash_maps(expected, actual):
+    shared = set(expected) & set(actual)
+    return {
+        "expected_count": len(expected),
+        "actual_count": len(actual),
+        "missing": sorted(set(expected) - set(actual)),
+        "unexpected": sorted(set(actual) - set(expected)),
+        "mismatched": sorted(k for k in shared if expected[k] != actual[k]),
+        "match": bool(expected) and expected == actual,
+    }
+
+
+def scan_workspace_gate(workspace, identity):
+    """Compare a SCAN workspace with an accepted build identity; returns a record."""
+    workspace = Path(workspace)
+    identity = identity or {}
+    record = {"schema_version": 1, "workspace": str(workspace), "passed": False, "errors": []}
+    gate = identity.get("workspace_gate")
+    if not isinstance(gate, dict):
+        record["errors"].append("accepted SCAN identity lacks workspace_gate")
+        return record
+    expected_remote = gate.get("expected_remote_workspace")
+    record["expected_remote_workspace"] = expected_remote
+    if expected_remote is not None and expected_remote != str(workspace):
+        record["errors"].append("workspace path differs from the build identity")
+    source, source_excluded = scan_tree_hashes(workspace, "src")
+    record["source"] = compare_hash_maps(gate.get("expected_source_files") or {}, source)
+    record["source"]["excluded"] = source_excluded
+    if not record["source"]["match"]:
+        record["errors"].append("SCAN src/ differs from source_sha256.json")
+    installed_expected = (identity.get("install_identity") or {}).get("installed_files")
+    if installed_expected:
+        installed, install_excluded = scan_tree_hashes(workspace, "install")
+        record["install_checked"] = True
+        record["install"] = compare_hash_maps(installed_expected, installed)
+        record["install"]["excluded"] = install_excluded
+        if not record["install"]["match"]:
+            record["errors"].append("SCAN install/ differs from install_identity.json")
+    elif gate.get("allow_missing_install_identity") is True:
+        record["install_checked"] = False
+        record["install_dir_exists"] = (workspace / "install").is_dir()
+        if not record["install_dir_exists"]:
+            record["errors"].append("SCAN workspace lacks install/")
+    else:
+        record["errors"].append("install identity missing and not explicitly allowed")
+    record["passed"] = not record["errors"]
+    return record
+
+
+def scan_gate_source() -> str:
+    return "\n\n".join(inspect.getsource(f) for f in (scan_tree_hashes, compare_hash_maps, scan_workspace_gate))
+
+
+def build_scan_workspace_gate(scan_path: Path, remote_scan_workspace: Optional[str], allow_missing_install_identity: bool) -> dict:
+    """Validate an accepted local SCAN build and freeze the remote gate expectations."""
+    if not scan_path.exists():
+        raise FileNotFoundError("accepted SCAN build dir missing: " + str(scan_path))
+    source_manifest = scan_path / "source_sha256.json"
+    if not source_manifest.is_file():
+        raise RuntimeError("accepted SCAN build lacks source_sha256.json from build_scan.py: " + str(scan_path))
+    expected_source = json.loads(source_manifest.read_text(encoding="utf-8"))
+    if not expected_source or not all(isinstance(k, str) and k.startswith("src/") for k in expected_source):
+        raise RuntimeError("source_sha256.json must map src/ paths to hashes")
+    local_source, local_excluded = scan_tree_hashes(scan_path, "src")
+    local_check = compare_hash_maps(expected_source, local_source)
+    local_check["excluded"] = local_excluded
+    if not local_check["match"]:
+        raise RuntimeError("local SCAN src/ differs from source_sha256.json: " + json.dumps(local_check, sort_keys=True)[:2000])
+    install_identity_path = scan_path / "install_identity.json"
+    install_identity = None
+    if install_identity_path.is_file():
+        install_identity = json.loads(install_identity_path.read_text(encoding="utf-8"))
+        installed = install_identity.get("installed_files")
+        if not isinstance(installed, dict) or not installed or not all(str(k).startswith("install/") for k in installed):
+            raise RuntimeError("install_identity.json must map install/ paths to hashes")
+        if install_identity.get("source_matches") is not True or install_identity.get("source_file_count") != len(expected_source):
+            raise RuntimeError("install_identity.json was not captured against this source manifest")
+    elif not allow_missing_install_identity:
+        raise RuntimeError(
+            "accepted SCAN build lacks install_identity.json; capture it with "
+            "p2b_execution/capture_install_identity.py or pass --allow-missing-install-identity"
+        )
+    build_result_path = scan_path / "build_result.json"
+    build_result = json.loads(build_result_path.read_text(encoding="utf-8")) if build_result_path.is_file() else {}
+    expected_remote = (install_identity or {}).get("remote_workspace") or build_result.get("remote_workspace")
+    if remote_scan_workspace and expected_remote and remote_scan_workspace != expected_remote:
+        raise RuntimeError("--remote-scan-workspace %s differs from the build identity %s" % (remote_scan_workspace, expected_remote))
+    return {
+        "schema_version": 1,
+        "source_manifest_path": str(source_manifest),
+        "source_manifest_sha256": sha256(source_manifest),
+        "expected_source_files": expected_source,
+        "install_identity_present": install_identity is not None,
+        "installed_files_source": "accepted_scan_build_identity.install_identity.installed_files" if install_identity else None,
+        "installed_file_count": len(install_identity["installed_files"]) if install_identity else None,
+        "allow_missing_install_identity": bool(allow_missing_install_identity),
+        "expected_remote_workspace": expected_remote,
+        "local_source_check": {k: local_check[k] for k in ("expected_count", "actual_count", "match")},
+        "exclusion_rule": "files under __pycache__/ and *.pyc/*.pyo are listed as excluded, not hashed",
+        "remote_records": ["artifacts/scan_workspace_gate.json", "artifacts/scan_workspace_gate_after.json"],
+    }
+
+
+def cancel_trigger_check(value, pilot: dict) -> dict:
+    """Refuse cancel triggers below the review minimum or too close to goal A."""
+    value = finite_number(value, "cancel_displacement_m")
+    spawn = [float(v) for v in pilot["spawn_ground_xyz_m"]]
+    goal_a = [float(v) for v in pilot["goals"][0]["ground_xyz_m"]]
+    straight = math.hypot(goal_a[0] - spawn[0], goal_a[1] - spawn[1])
+    record = {
+        "cancel_displacement_m": value,
+        "minimum_m": CANCEL_DISPLACEMENT_MIN_M,
+        "minimum_source": "p2b_execution/review_two_goal.py requires cancel displacement >= 0.4 m",
+        "goal_a_clearance_min_m": CANCEL_GOAL_A_CLEARANCE_MIN_M,
+        "spawn_to_goal_a_xy_m": straight,
+        "maximum_allowed_m": straight - CANCEL_GOAL_A_CLEARANCE_MIN_M,
+        "guaranteed_xy_distance_to_goal_a_at_trigger_m": straight - value,
+        "bound": (
+            "Triangle inequality on inputs/pilot.json: after XY displacement d from the start, the XY distance "
+            "to goal A is at least |start - goal A| - d, and any route length to goal A is at least that. "
+            "The driver measures d from its first runner snapshot, the standing pose near the spawn."
+        ),
+    }
+    if value < CANCEL_DISPLACEMENT_MIN_M:
+        raise ValueError("--cancel-displacement-m %.3f is below the %.2f m review minimum" % (value, CANCEL_DISPLACEMENT_MIN_M))
+    if straight - value < CANCEL_GOAL_A_CLEARANCE_MIN_M:
+        raise ValueError(
+            "--cancel-displacement-m %.3f could trigger within %.2f m of goal A (spawn to goal A %.3f m)"
+            % (value, CANCEL_GOAL_A_CLEARANCE_MIN_M, straight)
+        )
+    return record
 
 
 def finite_number(value, name: str) -> float:
@@ -439,10 +658,26 @@ def package_manifest(run_dir: Path) -> dict:
                 continue
             rel = path.relative_to(run_dir).as_posix()
             files.append({"path": rel, "sha256": sha256(path), "bytes": path.stat().st_size})
-    for rel in ["pilot_driver.py", "remote_worker.py", "source_env_hashes.json", "RUNBOOK.md"]:
+    top_level = ["pilot_driver.py", "remote_worker.py", "source_env_hashes.json", "RUNBOOK.md"]
+    if (run_dir / WALK_REVIEW_SCRIPT.name).exists():
+        top_level.append(WALK_REVIEW_SCRIPT.name)
+    for rel in top_level:
         path = run_dir / rel
         files.append({"path": rel, "sha256": sha256(path), "bytes": path.stat().st_size})
     return {"schema_version": 1, "root": str(run_dir), "files": files}
+
+
+def check_linked_package_files(run_dir: Path, manifest: dict, pairs: Iterable[Tuple[str, str]], known: Dict[str, str]) -> int:
+    """Linked or fallback-copied package files must hash as their frozen source manifests record."""
+    hashes = {item["path"]: item["sha256"] for item in manifest["files"]}
+    checked = 0
+    for src, dst in pairs:
+        rel = Path(dst).relative_to(run_dir).as_posix()
+        want = known.get(rel) or sha256(Path(src))
+        if hashes.get(rel) != want:
+            raise RuntimeError("linked package file differs from its frozen source: " + rel)
+        checked += 1
+    return checked
 
 
 def pilot_driver_source() -> str:
@@ -600,7 +835,7 @@ def wait_displacement(snapshot_path, run_id, start_xyz, min_distance_m, journal,
         if distance >= min_distance_m:
             return snap
         time.sleep(0.05)
-    raise RuntimeError("cancel displacement threshold not reached")
+    raise RuntimeError("cancel displacement threshold %.3f m not reached" % min_distance_m)
 
 
 def wait_post_stop(snapshot_path, run_id, dwell_sim_s, thresholds, journal, timeout_s=120.0):
@@ -657,7 +892,10 @@ def main():
     parser.add_argument("--run-root", required=True)
     parser.add_argument("--http-port", type=int, required=True)
     parser.add_argument("--run-id", required=True)
+    parser.add_argument("--cancel-displacement-m", type=float, default=0.4)
     args = parser.parse_args()
+    if not (math.isfinite(args.cancel_displacement_m) and args.cancel_displacement_m >= 0.4):
+        parser.error("--cancel-displacement-m must be a finite value of at least 0.4")
     run_root = Path(args.run_root)
     pilot = read_json(run_root / "inputs/pilot.json")
     snapshot_path = run_root / "artifacts/external_episode/current_command.json"
@@ -686,9 +924,9 @@ def main():
         flush_journal(run_root, journal)
         if resp.get("ok") is not True:
             raise RuntimeError("goal-a attempt1 rejected: %r" % (resp,))
-        moved = wait_displacement(snapshot_path, args.run_id, start_xyz, 0.4, journal)
+        moved = wait_displacement(snapshot_path, args.run_id, start_xyz, args.cancel_displacement_m, journal)
         cancel_resp = post_json(base, "/cancel", {"request_id": args.run_id + "-cancel-goal-a-attempt-1", "target_request_id": request_a1})
-        journal.append({"event": "post_cancel", "response": cancel_resp, "trigger_snapshot": moved, "wall_monotonic_ns": time.monotonic_ns()})
+        journal.append({"event": "post_cancel", "response": cancel_resp, "trigger_snapshot": moved, "cancel_displacement_m": args.cancel_displacement_m, "wall_monotonic_ns": time.monotonic_ns()})
         flush_journal(run_root, journal)
         wait_terminal(base, request_a1, "cancelled", journal, timeout_s=120.0)
         wait_post_stop(snapshot_path, args.run_id, pilot["stop_dwell_sim_seconds"], thresholds, journal, timeout_s=120.0)
@@ -743,6 +981,7 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 
 
@@ -783,6 +1022,95 @@ def artifact_hashes(root):
         rel = path.relative_to(root).as_posix()
         result[rel] = sha256(path)
     return result
+
+
+''' + scan_gate_source() + "\n\nGPU_SAMPLE_INTERVAL_S = %r\n" % GPU_SAMPLE_INTERVAL_S + r'''
+
+def query_gpus(timeout_s=2.0):
+    proc = subprocess.run(
+        ["nvidia-smi", "--query-gpu=index,memory.used,memory.total,utilization.gpu", "--format=csv,noheader,nounits"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout_s, check=False,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError("nvidia-smi exit %d: %s" % (proc.returncode, proc.stderr.strip()[-500:]))
+    rows = []
+    for line in proc.stdout.splitlines():
+        if not line.strip():
+            continue
+        values = [value.strip() for value in line.split(",")]
+        try:
+            utilization = float(values[3])
+        except ValueError:
+            utilization = None
+        rows.append({"index": int(values[0]), "memory_used_mib": float(values[1]), "memory_total_mib": float(values[2]), "utilization_percent": utilization})
+    if not rows:
+        raise RuntimeError("nvidia-smi returned no GPU rows")
+    return rows
+
+
+class GpuSampler:
+    """Device-wide nvidia-smi sampling in a background thread, one JSONL row per interval."""
+
+    def __init__(self, path, interval_s):
+        self.path = Path(path)
+        self.interval_s = float(interval_s)
+        self.stop_event = threading.Event()
+        self.thread = None
+        self.started = None
+        self.summary = {
+            "interval_s": self.interval_s,
+            "samples_path": self.path.name,
+            "scope": "device-wide nvidia-smi memory.used; includes any process on the GPU, not only this run",
+            "sample_count": 0,
+            "error_count": 0,
+            "errors": [],
+            "first_sample": None,
+            "peak_memory_used_mib": None,
+            "peak_elapsed_s": None,
+            "peak_by_gpu": {},
+        }
+
+    def start(self):
+        self.started = time.monotonic()
+        self.thread = threading.Thread(target=self._loop, name="gpu-sampler", daemon=True)
+        self.thread.start()
+
+    def _record(self, row):
+        summary = self.summary
+        if summary["first_sample"] is None:
+            summary["first_sample"] = row
+        for gpu in row["gpus"]:
+            peak = summary["peak_by_gpu"].setdefault(str(gpu["index"]), {"memory_used_mib": None})
+            if peak["memory_used_mib"] is None or gpu["memory_used_mib"] > peak["memory_used_mib"]:
+                peak.update(memory_used_mib=gpu["memory_used_mib"], memory_total_mib=gpu["memory_total_mib"], elapsed_s=row["elapsed_s"])
+            if summary["peak_memory_used_mib"] is None or gpu["memory_used_mib"] > summary["peak_memory_used_mib"]:
+                summary["peak_memory_used_mib"] = gpu["memory_used_mib"]
+                summary["peak_elapsed_s"] = row["elapsed_s"]
+
+    def _loop(self):
+        with self.path.open("w", encoding="utf-8") as stream:
+            while True:
+                row = {"monotonic_ns": time.monotonic_ns(), "wall_time_ns": time.time_ns(), "elapsed_s": time.monotonic() - self.started}
+                try:
+                    row["gpus"] = query_gpus()
+                    self._record(row)
+                except Exception as exc:
+                    row["error"] = "%s: %s" % (exc.__class__.__name__, exc)
+                    self.summary["error_count"] += 1
+                    if len(self.summary["errors"]) < 5:
+                        self.summary["errors"].append(row["error"])
+                stream.write(json.dumps(row, sort_keys=True) + "\n")
+                stream.flush()
+                self.summary["sample_count"] += 1
+                if self.stop_event.wait(self.interval_s):
+                    return
+
+    def stop(self):
+        if self.thread is None:
+            return dict(self.summary, started=False)
+        self.stop_event.set()
+        self.thread.join(timeout=5.0)
+        return dict(self.summary, started=True, stopped=not self.thread.is_alive(), sampled_wall_s=time.monotonic() - self.started)
 
 
 def ensure_tcp_port_free(port):
@@ -928,8 +1256,10 @@ def main():
     parser.add_argument("--command-port", type=int, required=True)
     parser.add_argument("--http-port", type=int, required=True)
     parser.add_argument("--pct-port", type=int, required=True)
+    parser.add_argument("--cancel-displacement-m", type=float, required=True)
     args = parser.parse_args()
 
+    started_monotonic = time.monotonic()
     run_root = Path(args.run_root)
     artifacts = run_root / "artifacts"
     logs = artifacts / "logs"
@@ -938,13 +1268,19 @@ def main():
         "passed": False,
         "claim": "known-map truth-pose diagnostic two-goal pilot; no LLM/Cortex/SLAM/physical robot",
         "remote_scan_workspace": args.remote_scan_workspace,
+        "cancel_displacement_m": args.cancel_displacement_m,
+        "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
+    gpu_sampler = GpuSampler(artifacts / "gpu_samples.jsonl", GPU_SAMPLE_INTERVAL_S)
+    scan_ws = None
+    scan_identity = None
     processes = []
     owned_containers = []
     bridge_container = "vla-p2b-bridge-" + run_root.name.lower().replace("_", "-")
     backend_container = "vla-p2b-backend-" + run_root.name.lower().replace("_", "-")
     pct_container = "vla-p2b-pct-" + run_root.name.lower().replace("_", "-")
     try:
+        gpu_sampler.start()
         verify_manifest(run_root, read_json(run_root / "inputs/package_manifest.json"))
         verify_manifest(run_root / "bridge", read_json(run_root / "inputs/execution_manifest.json"))
         source_env = read_json(run_root / "source_env_hashes.json")
@@ -954,8 +1290,12 @@ def main():
         if not args.remote_scan_workspace:
             raise RuntimeError("accepted remote SCAN workspace is required")
         scan_ws = Path(args.remote_scan_workspace)
-        if not (scan_ws / "install").exists():
-            raise RuntimeError("remote SCAN workspace lacks install/: " + str(scan_ws))
+        scan_identity = source_env.get("accepted_scan_build_identity")
+        scan_gate = scan_workspace_gate(scan_ws, scan_identity)
+        write_json(artifacts / "scan_workspace_gate.json", scan_gate)
+        result["scan_workspace_gate"] = {"passed": scan_gate["passed"], "errors": scan_gate["errors"], "record": "scan_workspace_gate.json"}
+        if not scan_gate["passed"]:
+            raise RuntimeError("remote SCAN workspace hash gate failed: " + "; ".join(scan_gate["errors"]))
         for port in [args.telemetry_port, args.command_port, args.http_port, args.pct_port]:
             ensure_tcp_port_free(port)
         for container in [bridge_container, backend_container, pct_container]:
@@ -1134,7 +1474,7 @@ python3 -m p2b_backend_ros.node --config /config/p2b_backend_ros.two_goal.json -
         if backend_proc.poll() is not None:
             raise RuntimeError("backend/SCAN container exited early")
 
-        driver_cmd = ["python3", str(run_root / "pilot_driver.py"), "--run-root", str(run_root), "--http-port", str(args.http_port), "--run-id", run_root.name]
+        driver_cmd = ["python3", str(run_root / "pilot_driver.py"), "--run-root", str(run_root), "--http-port", str(args.http_port), "--run-id", run_root.name, "--cancel-displacement-m", repr(args.cancel_displacement_m)]
         write_json(artifacts / "pilot_driver_command.json", driver_cmd)
         driver = subprocess.run(driver_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=1200)
         (logs / "pilot_driver.log").write_text(driver.stdout, encoding="utf-8")
@@ -1178,11 +1518,31 @@ python3 -m p2b_backend_ros.node --config /config/p2b_backend_ros.two_goal.json -
             "http": tcp_port_free_record(args.http_port),
             "pct": tcp_port_free_record(args.pct_port),
         }
+        try:
+            result["gpu_memory"] = gpu_sampler.stop()
+        except BaseException as exc:
+            result["gpu_memory"] = {"ok": False, "error_type": exc.__class__.__name__, "error": str(exc)}
+        if scan_ws is not None and (result.get("scan_workspace_gate") or {}).get("passed"):
+            try:
+                scan_gate_after = scan_workspace_gate(scan_ws, scan_identity)
+                write_json(artifacts / "scan_workspace_gate_after.json", scan_gate_after)
+                result["scan_workspace_gate_after"] = {"passed": scan_gate_after["passed"], "errors": scan_gate_after["errors"], "record": "scan_workspace_gate_after.json"}
+            except BaseException as exc:
+                result["scan_workspace_gate_after"] = {"passed": False, "error_type": exc.__class__.__name__, "error": str(exc)}
+            if not result["scan_workspace_gate_after"]["passed"]:
+                result["passed"] = False
+        result["finished_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        result["remote_wall_seconds"] = time.monotonic() - started_monotonic
+        result["remote_wall_seconds_scope"] = "remote_worker.py main() start to cleanup end, before the last result writes"
         result["cleanup_errors"] = [item for item in cleanup_records + container_records if item.get("ok") is False]
         result["artifact_finalization"] = finalization_records
         finalization_records.append(finalize_result_artifacts(artifacts, result, "after_container_cleanup"))
         result["artifact_finalization"] = finalization_records
         finalize_result_artifacts(artifacts, result, "final")
+    # Reached only when the episode raised nothing: a post-run SCAN workspace
+    # change must still fail the remote command instead of exiting 0.
+    if (result.get("scan_workspace_gate_after") or {}).get("passed") is not True:
+        raise SystemExit("SCAN workspace hash gate failed after the run; see artifacts/scan_workspace_gate_after.json")
 
 
 if __name__ == "__main__":
@@ -1190,7 +1550,127 @@ if __name__ == "__main__":
 '''
 
 
-def runbook_text(run_id: str, remote_run: str) -> str:
+def remote_only_record_source(remote_run: str) -> str:
+    """Python run on the execution host after the worker: hash the files left there."""
+    return textwrap.dedent(
+        f"""\
+        import hashlib, json
+        from pathlib import Path
+        run = Path({remote_run!r})
+        artifacts = run / "artifacts"
+        manifest = json.loads((artifacts / "artifact_hashes.json").read_text(encoding="utf-8"))
+        files = []
+        for rel in {list(REMOTE_ONLY_BULK_FILES)!r}:
+            path = artifacts / rel
+            digest = hashlib.sha256()
+            with path.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1 << 20), b""):
+                    digest.update(chunk)
+            files.append({{"path": rel, "remote_path": str(path), "bytes": path.stat().st_size,
+                           "sha256": digest.hexdigest(), "manifest_sha256": manifest.get(rel)}})
+        all_match = all(item["sha256"] == item["manifest_sha256"] for item in files)
+        record = {{"schema_version": 1, "run_id": run.name, "remote_run": str(run),
+                   "manifest": "artifacts/artifact_hashes.json", "files": files, "all_match": all_match,
+                   "policy": "--remote-only-bulk: these bytes stay in the execution copy; only hashes and sizes return"}}
+        (run / {REMOTE_ONLY_RECORD!r}).write_text(json.dumps(record, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+        if not all_match:
+            raise SystemExit("remote-only artifact hash differs from artifact_hashes.json")
+        """
+    )
+
+
+def walk_review_guard_source(remote_run: str) -> str:
+    """Python run on the execution host before the render.
+
+    The render uses the GPU encoder, so it starts only after remote_worker.py
+    wrote its final result without cleanup errors and none of the process
+    groups it started (bridge, Isaac runner, PCT, backend) is still alive. A
+    local ssh timeout or disconnect can leave the worker running; this guard
+    then refuses instead of sharing the GPU with Isaac. The guard record is
+    written to walk_review/render_guard.json and returned with the review.
+    """
+    return textwrap.dedent(
+        f"""\
+        import json, os, subprocess, time
+        from pathlib import Path
+        run = Path({remote_run!r})
+        result_path = run / "artifacts" / "result.json"
+        record = {{"schema_version": 1, "checked_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                   "result_json": str(result_path), "problems": [], "alive_process_groups": []}}
+        result = json.loads(result_path.read_text(encoding="utf-8")) if result_path.is_file() else {{}}
+        if not result_path.is_file():
+            record["problems"].append("artifacts/result.json is missing")
+        record["last_result_write_phase"] = result.get("last_result_write_phase")
+        if result.get("last_result_write_phase") != "final":
+            record["problems"].append("remote worker has not written its final result")
+        if result.get("cleanup_errors"):
+            record["problems"].append("remote worker cleanup reported errors")
+        groups = sorted({{int(item["pid"]) for item in result.get("process_cleanup") or [] if item.get("pid")}})
+        record["process_groups"] = groups
+        for pgid in groups:
+            try:
+                os.killpg(pgid, 0)
+            except ProcessLookupError:
+                continue
+            except PermissionError:
+                pass
+            record["alive_process_groups"].append(pgid)
+        if record["alive_process_groups"]:
+            record["problems"].append("worker process groups still alive: %s" % record["alive_process_groups"])
+        try:
+            apps = subprocess.run(["nvidia-smi", "--query-compute-apps=pid,process_name,used_memory",
+                                   "--format=csv,noheader"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  text=True, timeout=10, check=False)
+            record["gpu_compute_apps"] = {{"returncode": apps.returncode, "stdout": apps.stdout[-2000:]}}
+        except Exception as exc:
+            record["gpu_compute_apps"] = {{"error": "%s: %s" % (exc.__class__.__name__, exc)}}
+        record["render_allowed"] = not record["problems"]
+        out = run / {WALK_REVIEW_DIR!r}
+        out.mkdir(exist_ok=True)
+        (out / "render_guard.json").write_text(json.dumps(record, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+        if record["problems"]:
+            raise SystemExit("walk review not started: " + "; ".join(record["problems"]))
+        """
+    )
+
+
+def walk_review_remote_script(remote_run: str) -> str:
+    """Shell command for the execution host: render the walk review from the remote original video.
+
+    The guard (walk_review_guard_source) runs first with the system python3.
+    ffmpeg/ffprobe are resolved in the non-login ssh shell (the one the display
+    observer used for h264_nvenc) before conda changes PATH; the render uses the
+    isaaclab conda Python like the runner. libx264 is the recorded fallback.
+    """
+    render = shlex.join([
+        "python", remote_run + "/" + WALK_REVIEW_SCRIPT.name, remote_run,
+        "--artifacts-dir", remote_run + "/artifacts",
+        "--video", remote_run + "/artifacts/" + REMOTE_ONLY_BULK_FILES[1],
+        "--output", remote_run + "/" + WALK_REVIEW_DIR + "/walk_review.mp4",
+        "--encoder", "h264_nvenc",
+        "--fallback-encoder", "libx264",
+    ])
+    inner = " && ".join([
+        "source /home/sun/miniconda3/etc/profile.d/conda.sh",
+        "conda activate isaaclab",
+        "export PYTHONDONTWRITEBYTECODE=1",
+        "exec " + render + ' --ffmpeg "$FFMPEG_BIN" --ffprobe "$FFPROBE_BIN"',
+    ])
+    guard = "python3 -c " + shlex.quote(walk_review_guard_source(remote_run))
+    return guard + ' && FFMPEG_BIN="$(command -v ffmpeg)" FFPROBE_BIN="$(command -v ffprobe)" bash -lc ' + shlex.quote(inner)
+
+
+def runbook_text(run_id: str, remote_run: str, cancel_displacement_m: float = CANCEL_DISPLACEMENT_MIN_M,
+                 remote_only_bulk: bool = False) -> str:
+    text = runbook_base_text(run_id, remote_run, cancel_displacement_m)
+    if remote_only_bulk:
+        text += f"""
+Remote-only bulk return (`--remote-only-bulk`): `{"`, `".join(REMOTE_ONLY_BULK_FILES)}` stay in `{remote_run}/artifacts/`. After the worker ends, the host hashes them into `{REMOTE_ONLY_RECORD}`, checks that the worker wrote its final result and that none of its process groups is alive (`{WALK_REVIEW_DIR}/render_guard.json`), then renders `{WALK_REVIEW_DIR}/walk_review.mp4` from the remote original video with `h264_nvenc` (fallback `libx264`), and returns the record and the review. Local verification accepts exactly those two files as absent. `p2b_execution/review_two_goal.py` accepts the same two files as absent only when the returned `{REMOTE_ONLY_RECORD}` has `all_match` true and hashes equal to `artifact_hashes.json` (task decision D9, 2026-09-17); its other 40 checks are unchanged.
+"""
+    return text
+
+
+def runbook_base_text(run_id: str, remote_run: str, cancel_displacement_m: float) -> str:
     return f"""# P2B two-goal pilot prepared package
 
 Run id: `{run_id}`
@@ -1202,14 +1682,15 @@ Claim boundary if later executed and accepted: known-map + truth-pose diagnostic
 
 Runtime sequence encoded by `remote_worker.py`:
 
-1. Verify package, frozen inputs, patched bridge, local PCT runtime files, V12 runtime and checkpoint hashes.
+1. Start device-wide GPU sampling (`artifacts/gpu_samples.jsonl`, every {GPU_SAMPLE_INTERVAL_S:g} s). Verify package, frozen inputs, patched bridge, local PCT runtime files, V12 runtime and checkpoint hashes, then hash the mounted SCAN workspace `src/` and `install/` trees against the accepted build identity (`artifacts/scan_workspace_gate.json`) and refuse on any difference.
 2. Confirm localhost ports are free and owned container names are absent.
 3. Start the Foxy bridge only.
 4. Start one Isaac runner with `--case flat_nominal` and `--external-goal-mode`.
 5. Read fresh `current_command.json` to capture the runner `run_epoch_ns`.
 6. Start the Humble PCT worker.
 7. Start SCAN, controller and backend_ros using that `run_epoch_ns`; it does not start a second bridge.
-8. Run `pilot_driver.py`: POST goal-a attempt 1, cancel after at least 0.4 m measured displacement, require explicit cancelled plus post-cancel stop proof, POST goal-a attempt 2 and require arrived, POST goal-b and require arrived, then write the valid finish request.
+8. Run `pilot_driver.py`: POST goal-a attempt 1, cancel after at least {cancel_displacement_m:g} m measured displacement, require explicit cancelled plus post-cancel stop proof, POST goal-a attempt 2 and require arrived, POST goal-b and require arrived, then write the valid finish request.
+9. After cleanup, re-hash the SCAN workspace (`artifacts/scan_workspace_gate_after.json`) and record the GPU peak and remote wall time in `artifacts/result.json`.
 
 HTTP contract used by the driver:
 
@@ -1237,26 +1718,39 @@ def prepare(args) -> Tuple[Path, dict]:
         raise FileExistsError("local run already exists: " + str(local_run))
     remote_run = args.remote_root.rstrip("/") + "/" + run_id
 
-    verify_input_manifest()
+    input_manifest = verify_input_manifest()
     bridge_expected = verify_bridge_source()
     v12_expected = verify_v12_reference()
     pct_manifest = verify_pct_runtime_manifest()
     pilot = json.loads((P2B / "inputs/pilot.json").read_text(encoding="utf-8"))
     validate_pilot(pilot)
+    cancel_check = cancel_trigger_check(args.cancel_displacement_m, pilot)
+    scan_gate = None
+    if args.accepted_scan_build_dir:
+        scan_gate = build_scan_workspace_gate(
+            Path(args.accepted_scan_build_dir), args.remote_scan_workspace, args.allow_missing_install_identity
+        )
     baseline_scope = json.loads((P2B / "baseline_config/native_nominal_scope.json").read_text(encoding="utf-8"))
 
     (local_run / "inputs").mkdir(parents=True)
     (local_run / "config").mkdir()
     (local_run / "artifacts").mkdir()
+    # Frozen inputs and the PCT runtime are never rewritten in the package, so
+    # they are hardlinked. Config files are rewritten below and the bridge tree
+    # receives the patched runner, so those stay real copies.
+    storage = PackageStorage()
     for rel in ["inputs/building.usda", "inputs/new_building.pickle", "inputs/pilot.json", "input_manifest.json"]:
         src = P2B / rel
         dst = local_run / "inputs" / ("input_manifest.json" if rel == "input_manifest.json" else Path(rel).name)
-        shutil.copy2(src, dst)
+        storage.link_or_copy(src, dst)
     for name in ["bridge.yaml", "controller.yaml", "planner.yaml", "native_nominal_scope.json", "pct_inputs.json"]:
         shutil.copy2(P2B / "baseline_config" / name, local_run / "config" / name)
     make_scan_runtime_configs(local_run / "config")
-    copytree_clean(PCT_RUNTIME, local_run / "pct_runtime")
+    copytree_clean(PCT_RUNTIME, local_run / "pct_runtime", copy_function=storage.link_or_copy)
     copytree_clean(BRIDGE_REF, local_run / "bridge")
+    remote_only_bulk = bool(getattr(args, "remote_only_bulk", False))
+    if remote_only_bulk:
+        shutil.copy2(WALK_REVIEW_SCRIPT, local_run / WALK_REVIEW_SCRIPT.name)
     copytree_clean(BACKEND_ADAPTER, local_run / "backend_adapter")
     copytree_clean(BACKEND_ROS, local_run / "backend_ros")
     copytree_clean(NAVIGATION_SERVICE, local_run / "navigation_service")
@@ -1282,7 +1776,7 @@ def prepare(args) -> Tuple[Path, dict]:
     write_json(local_run / "inputs/two_goal_scope.json", scope)
     write_file(local_run / "pilot_driver.py", pilot_driver_source(), executable=True)
     write_file(local_run / "remote_worker.py", remote_worker_source(), executable=True)
-    write_file(local_run / "RUNBOOK.md", runbook_text(run_id, remote_run))
+    write_file(local_run / "RUNBOOK.md", runbook_text(run_id, remote_run, cancel_check["cancel_displacement_m"], remote_only_bulk))
 
     v12_runtime_expected = {
         rel.removeprefix("source/v12_runtime/"): digest
@@ -1301,6 +1795,7 @@ def prepare(args) -> Tuple[Path, dict]:
             "install_identity_path": str(install_identity_path) if install_identity_path.exists() else None,
             "install_identity_sha256": sha256(install_identity_path) if install_identity_path.exists() else None,
             "install_identity": json.loads(install_identity_path.read_text(encoding="utf-8")) if install_identity_path.exists() else None,
+            "workspace_gate": scan_gate,
         }
     source_hashes = {
         "bridge_reference_expected": bridge_expected,
@@ -1321,8 +1816,17 @@ def prepare(args) -> Tuple[Path, dict]:
         "accepted_scan_build_identity": scan_identity,
         "accepted_scan_build_required_for_execute": True,
     }
+    if remote_only_bulk:
+        source_hashes["walk_review_tool"] = {"path": WALK_REVIEW_SCRIPT.name, "sha256": sha256(WALK_REVIEW_SCRIPT)}
     write_json(local_run / "source_env_hashes.json", source_hashes)
     manifest = package_manifest(local_run)
+    known_hashes = dict(pct_manifest["files"]) if isinstance(pct_manifest["files"], dict) else {
+        item["path"]: item["sha256"] for item in pct_manifest["files"]}
+    known_hashes.update({item["path"]: item["sha256"] for item in input_manifest["files"] if item["path"].startswith("inputs/")})
+    known_hashes["inputs/input_manifest.json"] = source_hashes["input_manifest_sha256"]
+    known_hashes["inputs/pilot.json"] = source_hashes["pilot_sha256"]
+    package_storage = storage.record(local_run)
+    package_storage["linked_files_hash_checked"] = check_linked_package_files(local_run, manifest, storage.pairs, known_hashes)
     write_json(local_run / "inputs/package_manifest.json", manifest)
 
     ssh = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", args.host]
@@ -1362,10 +1866,27 @@ def prepare(args) -> Tuple[Path, dict]:
                 "--command-port", str(args.command_port),
                 "--http-port", str(args.http_port),
                 "--pct-port", str(args.pct_port),
+                "--cancel-displacement-m", repr(cancel_check["cancel_displacement_m"]),
             ])
         ],
         "collect": ["rsync", "-a", f"{args.host}:{remote_run}/artifacts/", str(local_run / "returned_artifacts") + "/"],
     }
+    if remote_only_bulk:
+        commands["sync_whitelist"].append(WALK_REVIEW_SCRIPT.name)
+        commands["sync"].insert(commands["sync"].index("--exclude=*"), "--include=/" + WALK_REVIEW_SCRIPT.name)
+        commands["collect"] = ["rsync", "-a"] + ["--exclude=/" + rel for rel in REMOTE_ONLY_BULK_FILES] + commands["collect"][2:]
+        commands["remote_only_record"] = ssh + ["python3 - <<'PY'\n" + remote_only_record_source(remote_run) + "PY"]
+        commands["walk_review"] = ssh + [walk_review_remote_script(remote_run)]
+        commands["collect_extras"] = [
+            "rsync", "-a", "--include=/" + REMOTE_ONLY_RECORD, "--include=/" + WALK_REVIEW_DIR + "/***", "--exclude=*",
+            f"{args.host}:{remote_run}/", str(local_run) + "/",
+        ]
+        commands["collect_sequence"] = ["collect", "remote_only_record", "walk_review", "collect_extras"]
+        commands["remote_only_bulk"] = {
+            "files": list(REMOTE_ONLY_BULK_FILES),
+            "record": REMOTE_ONLY_RECORD,
+            "walk_review": WALK_REVIEW_DIR + "/walk_review.mp4",
+        }
     write_json(local_run / "commands.json", commands)
     write_json(local_run / "run_request.json", {
         "schema_version": 1,
@@ -1381,6 +1902,35 @@ def prepare(args) -> Tuple[Path, dict]:
         "ports": {"telemetry": args.telemetry_port, "command": args.command_port, "http": args.http_port, "pct": args.pct_port},
         "ros_domain_id": args.ros_domain_id,
         "claim_boundary": "Prepared only. If later executed and independently accepted, this is known-map/truth-pose P2B diagnostic integration, not LLM/Cortex/SLAM or physical robot evidence.",
+        "cancel_displacement_m": cancel_check["cancel_displacement_m"],
+        "cancel_trigger_check": cancel_check,
+        "allow_missing_install_identity": bool(args.allow_missing_install_identity),
+        "scan_workspace_gate": None if scan_gate is None else {
+            "accepted_scan_build_dir": str(args.accepted_scan_build_dir),
+            "source_manifest_sha256": scan_gate["source_manifest_sha256"],
+            "source_file_count": len(scan_gate["expected_source_files"]),
+            "install_identity_present": scan_gate["install_identity_present"],
+            "installed_file_count": scan_gate["installed_file_count"],
+            "allow_missing_install_identity": scan_gate["allow_missing_install_identity"],
+            "expected_remote_workspace": scan_gate["expected_remote_workspace"],
+            "remote_records": scan_gate["remote_records"],
+        },
+        "resource_recording": {
+            "gpu_samples": "artifacts/gpu_samples.jsonl (nvidia-smi memory.used/memory.total/utilization.gpu, device-wide)",
+            "gpu_sample_interval_s": GPU_SAMPLE_INTERVAL_S,
+            "gpu_summary": "artifacts/result.json gpu_memory",
+            "remote_wall_seconds": "artifacts/result.json remote_wall_seconds",
+            "host_wall_seconds": "return_verdict.json host_wall_seconds",
+        },
+        "remote_only_bulk": remote_only_bulk,
+        "remote_only_bulk_detail": None if not remote_only_bulk else {
+            "remote_only_files": list(REMOTE_ONLY_BULK_FILES),
+            "record": REMOTE_ONLY_RECORD + " (run package root; SHA-256 and bytes measured on the execution host)",
+            "walk_review": WALK_REVIEW_DIR + "/walk_review.mp4 and walk_review.json, rendered remotely with h264_nvenc, libx264 fallback",
+            "walk_review_tool_sha256": sha256(WALK_REVIEW_SCRIPT),
+            "review_two_goal_note": "review_two_goal.py (D9, 2026-09-17) accepts exactly these two files as absent when remote_only_artifacts.json has all_match true and hashes equal to artifact_hashes.json; its other 40 checks are unchanged",
+        },
+        "package_storage": package_storage,
     })
     return local_run, commands
 
@@ -1407,7 +1957,7 @@ def load_prepared_run(args) -> Tuple[Path, dict]:
     return local_run, commands
 
 
-def verify_returned_artifacts(local_run: Path) -> dict:
+def verify_returned_artifacts(local_run: Path, remote_only: bool = False) -> dict:
     returned = local_run / "returned_artifacts"
     expected = json.loads((returned / "artifact_hashes.json").read_text(encoding="utf-8"))
     actual = {
@@ -1416,7 +1966,83 @@ def verify_returned_artifacts(local_run: Path) -> dict:
         if path.relative_to(returned).as_posix() != "artifact_hashes.json"
     }
     expected_no_self = {k: v for k, v in expected.items() if k != "artifact_hashes.json"}
-    return {"returned_hashes_match": actual == expected_no_self, "expected_count": len(expected_no_self), "actual_count": len(actual)}
+    if not remote_only:
+        return {"returned_hashes_match": actual == expected_no_self, "expected_count": len(expected_no_self), "actual_count": len(actual)}
+    record = check_remote_only_record(local_run, expected_no_self)
+    missing = sorted(set(expected_no_self) - set(actual))
+    accepted = [rel for rel in missing if rel in record["declared"]]
+    undeclared = [rel for rel in missing if rel not in record["declared"]]
+    unexpected = sorted(set(actual) - set(expected_no_self))
+    mismatched = sorted(rel for rel in set(actual) & set(expected_no_self) if actual[rel] != expected_no_self[rel])
+    return {
+        "returned_hashes_match": not (record["errors"] or undeclared or unexpected or mismatched),
+        "expected_count": len(expected_no_self),
+        "actual_count": len(actual),
+        "remote_only_accepted": accepted,
+        "missing_not_remote_only": undeclared,
+        "unexpected": unexpected,
+        "mismatched": mismatched,
+        "remote_only_record": {k: v for k, v in record.items() if k != "declared"},
+    }
+
+
+def check_remote_only_record(local_run: Path, expected: Dict[str, str]) -> dict:
+    """The returned record must declare exactly REMOTE_ONLY_BULK_FILES with manifest-equal hashes."""
+    path = local_run / REMOTE_ONLY_RECORD
+    result = {"path": REMOTE_ONLY_RECORD, "errors": [], "declared": {}}
+    if not path.is_file():
+        result["errors"].append(REMOTE_ONLY_RECORD + " was not returned")
+        return result
+    result["sha256"] = sha256(path)
+    record = json.loads(path.read_text(encoding="utf-8"))
+    files = record.get("files") or []
+    declared = {item.get("path"): item for item in files}
+    if len(declared) != len(files) or sorted(declared) != sorted(REMOTE_ONLY_BULK_FILES):
+        result["errors"].append("declared files %s differ from the fixed list %s" % (sorted(map(str, declared)), list(REMOTE_ONLY_BULK_FILES)))
+    for rel, item in declared.items():
+        if rel not in REMOTE_ONLY_BULK_FILES:
+            continue
+        if item.get("sha256") != expected.get(rel) or item.get("manifest_sha256") != expected.get(rel):
+            result["errors"].append(rel + ": remote hash differs from artifact_hashes.json")
+        if not isinstance(item.get("bytes"), int) or item["bytes"] <= 0:
+            result["errors"].append(rel + ": remote size missing")
+    if record.get("all_match") is not True:
+        result["errors"].append("remote record all_match is not true")
+    result["declared"] = {rel: item for rel, item in declared.items() if rel in REMOTE_ONLY_BULK_FILES}
+    result["files"] = [{k: item.get(k) for k in ("path", "bytes", "sha256")} for item in files]
+    return result
+
+
+def verify_walk_review(local_run: Path) -> dict:
+    """The returned walk review must match its sidecar and name the manifest's input hashes."""
+    base = local_run / WALK_REVIEW_DIR
+    video, sidecar_path = base / "walk_review.mp4", base / "walk_review.json"
+    result = {"video_present": video.is_file(), "sidecar_present": sidecar_path.is_file(), "ok": False, "errors": []}
+    guard_path = base / "render_guard.json"
+    if guard_path.is_file():
+        guard = json.loads(guard_path.read_text(encoding="utf-8"))
+        result["render_guard"] = {k: guard.get(k) for k in ("render_allowed", "problems", "alive_process_groups", "last_result_write_phase")}
+    else:
+        result["render_guard"] = None
+    if not (result["video_present"] and result["sidecar_present"]):
+        result["errors"].append("walk review video or sidecar was not returned")
+        return result
+    sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    manifest = json.loads((local_run / "returned_artifacts/artifact_hashes.json").read_text(encoding="utf-8"))
+    result.update({"sha256": sha256(video), "bytes": video.stat().st_size,
+                   "encoder_used": (sidecar.get("encoder") or {}).get("used"),
+                   "frames": (sidecar.get("output") or {}).get("frames")})
+    if (result["render_guard"] or {}).get("render_allowed") is not True:
+        result["errors"].append("walk review has no passing render_guard.json")
+    if result["sha256"] != (sidecar.get("output") or {}).get("sha256"):
+        result["errors"].append("walk_review.mp4 hash differs from its sidecar")
+    inputs = sidecar.get("inputs") or {}
+    for name, rel in (("video", REMOTE_ONLY_BULK_FILES[1]), ("camera_frames", "runner_output/camera_frames.jsonl"),
+                      ("metrics", "runner_output/metrics.jsonl"), ("pilot_journal", "pilot_journal.json")):
+        if (inputs.get(name) or {}).get("sha256") != manifest.get(rel):
+            result["errors"].append("walk review input %s is not the manifest's %s" % (name, rel))
+    result["ok"] = not result["errors"]
+    return result
 
 
 def execute(args, local_run: Path, commands: dict) -> None:
@@ -1427,29 +2053,53 @@ def execute(args, local_run: Path, commands: dict) -> None:
     source_env = json.loads((local_run / "source_env_hashes.json").read_text(encoding="utf-8"))
     if not source_env.get("accepted_scan_build_identity"):
         raise RuntimeError("refusing execution without captured accepted SCAN build identity")
+    if not source_env["accepted_scan_build_identity"].get("workspace_gate"):
+        raise RuntimeError("refusing execution: package predates the SCAN workspace hash gate")
+    remote_only = bool(commands.get("remote_only_bulk"))
+    if bool(getattr(args, "remote_only_bulk", False)) != remote_only:
+        raise RuntimeError("--remote-only-bulk differs from the prepared package (package remote_only_bulk=%s)" % remote_only)
+    request_path = local_run / "run_request.json"
+    if request_path.is_file():
+        prepared_cancel = json.loads(request_path.read_text(encoding="utf-8")).get("cancel_displacement_m", CANCEL_DISPLACEMENT_MIN_M)
+        requested_cancel = float(getattr(args, "cancel_displacement_m", CANCEL_DISPLACEMENT_MIN_M))
+        if float(prepared_cancel) != requested_cancel:
+            raise RuntimeError(
+                "--cancel-displacement-m %r differs from the prepared package (package cancel_displacement_m=%r)"
+                % (requested_cancel, prepared_cancel)
+            )
     logs = local_run / "host_logs"
     logs.mkdir(exist_ok=True)
     remote_started = False
     original_error = None
     collect_error = None
-    verdict = {"remote_worker_started": False}
+    verdict = {"remote_worker_started": False, "host_wall_seconds": {}}
+
+    def timed(label: str, log_name: str, timeout: int = 1800) -> None:
+        started = time.monotonic()
+        try:
+            run_command(label, commands[label], logs / log_name, timeout=timeout)
+        finally:
+            verdict["host_wall_seconds"][label] = time.monotonic() - started
+
     try:
-        run_command("mkdir", commands["mkdir"], logs / "00_mkdir.log")
-        run_command("sync", commands["sync"], logs / "01_sync.log")
+        timed("mkdir", "00_mkdir.log")
+        timed("sync", "01_sync.log")
         remote_started = True
         verdict["remote_worker_started"] = True
-        run_command("run", commands["run"], logs / "02_remote_worker.log", timeout=1500)
+        timed("run", "02_remote_worker.log", timeout=1500)
     except Exception as exc:  # noqa: BLE001 - preserve failure and collect artifacts
         original_error = exc
         verdict["run_error"] = str(exc)
     finally:
-        if remote_started:
+        if remote_started and not remote_only:
             try:
-                run_command("collect", commands["collect"], logs / "03_collect.log")
+                timed("collect", "03_collect.log")
                 verdict.update(verify_returned_artifacts(local_run))
             except Exception as exc:  # noqa: BLE001
                 collect_error = exc
                 verdict["collect_error"] = str(exc)
+        elif remote_started:
+            collect_error = collect_remote_only(commands, timed, verdict, local_run)
     write_json(local_run / "return_verdict.json", verdict)
     if original_error is not None:
         if collect_error is not None:
@@ -1459,6 +2109,39 @@ def execute(args, local_run: Path, commands: dict) -> None:
         raise collect_error
     if not verdict.get("returned_hashes_match"):
         raise RuntimeError("returned artifact hashes do not match")
+    if remote_only and not (verdict.get("walk_review") or {}).get("ok"):
+        raise RuntimeError("walk review was not returned and verified: %s" % (verdict.get("walk_review") or {}).get("errors"))
+
+
+COLLECT_STEP_LOGS = {
+    "collect": ("03_collect.log", 1800),
+    "remote_only_record": ("04_remote_only_record.log", 600),
+    "walk_review": ("05_walk_review.log", 1800),
+    "collect_extras": ("06_collect_extras.log", 1800),
+}
+
+
+def collect_remote_only(commands: dict, timed, verdict: dict, local_run: Path) -> Optional[Exception]:
+    """Run every collect step even after one fails, then verify; only a walk review failure is non-fatal here."""
+    step_errors = {}
+    for label in commands["collect_sequence"]:
+        log_name, timeout = COLLECT_STEP_LOGS[label]
+        try:
+            timed(label, log_name, timeout)
+        except Exception as exc:  # noqa: BLE001 - keep collecting the remaining evidence
+            step_errors[label] = str(exc)
+    verdict["collect_step_errors"] = step_errors
+    try:
+        verdict.update(verify_returned_artifacts(local_run, remote_only=True))
+        verdict["walk_review"] = verify_walk_review(local_run)
+    except Exception as exc:  # noqa: BLE001
+        verdict["collect_error"] = str(exc)
+        return exc
+    fatal = {label: error for label, error in step_errors.items() if label != "walk_review"}
+    if fatal:
+        verdict["collect_error"] = "; ".join("%s: %s" % item for item in sorted(fatal.items()))
+        return RuntimeError("collection step failed: " + verdict["collect_error"])
+    return None
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1478,6 +2161,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--http-port", type=int, default=8765)
     parser.add_argument("--pct-port", type=int, default=47631)
     parser.add_argument("--ros-domain-id", type=int, default=94)
+    parser.add_argument(
+        "--cancel-displacement-m", type=float, default=CANCEL_DISPLACEMENT_MIN_M,
+        help="Measured XY displacement that triggers the goal-a cancel; at least 0.40 m and >= 0.30 m short of goal A.",
+    )
+    parser.add_argument(
+        "--allow-missing-install-identity", action="store_true", default=False,
+        help="Accept a SCAN build without install_identity.json; the remote gate then checks src/ only and records it.",
+    )
+    parser.add_argument(
+        "--remote-only-bulk", action="store_true", default=False,
+        help=(
+            "Needs Dr Sun's approval. Leave runner_output/clouds.jsonl and third_person_master.mp4 on the execution "
+            "host, return their hashes in remote_only_artifacts.json and a remotely rendered walk review. "
+            "review_two_goal.py accepts exactly these two files as absent when that record matches (D9)."
+        ),
+    )
     return parser
 
 

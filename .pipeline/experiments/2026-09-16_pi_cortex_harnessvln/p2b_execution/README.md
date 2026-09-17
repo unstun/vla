@@ -59,6 +59,45 @@ spline delivery. `builds/scan_03/install_identity.json` records a fresh source
 comparison and the 380 installed-file hashes. This is a controller boundary
 test, not robot movement.
 
+### scan_04: terminal-acceleration fix candidate (task 09-16-scan-terminal-accel-fix-qualification)
+
+`builds/scan_04/src` was materialized by the unchanged materializer (SHA-256
+`69954316…`, same invocation as scan_03, recorded in
+`builds/scan_04/materialize_record.json`). Before the fix it was byte-identical
+to `scan_03/src`. `apply_scan_terminal_accel_fix.py scan_04` then changed
+`planner_manager.cpp:171` from `evaluateAcc(t)` to `evaluateAcc(time)`. It
+refuses a wrong base hash (`0c51df…`), a wrong line, a repeated application
+and an already built tree. The result is in
+`builds/scan_04/terminal_accel_fix_manifest.json`.
+`compare_scan_trees.py builds/scan_03/src builds/scan_04/src --expect-one-line`
+wrote `builds/scan_04/tree_compare_scan_03.json`: one file and one line differ,
+and nothing else. scan_04 was built on 2026-09-17 (`build_result.json`, 74 s) and its install identity
+captured (380 files; only `scan_planner_node` differs from scan_03).
+
+**Accepted build since 2026-09-17 (Dr Sun):** pass `builds/scan_04` as `--accepted-scan-build-dir` (remote
+`.../p2b/builds/scan_04`). Evidence: `../scan_fix_qualification/RESULT.md`. The native suite passed AC0-AC6.
+Isaac passed 7/8 episodes (one-sided 95 % bound 0.529). Episode 3 failed the goal-B stillness check: the V12
+policy stands on a zero command with no PD stance hold. A native replay shows the original build rejects the
+resume plan at 6 of the 8 stops. Rollback: pass `builds/scan_03` again; nothing was overwritten.
+
+Remaining steps, which need Dr Sun's approval of the run budget:
+
+```sh
+python3 build_scan.py scan_04
+python3 capture_install_identity.py scan_04 --dry-run   # inspect first
+python3 capture_install_identity.py scan_04
+```
+
+`capture_install_identity.py` hashes the remote `install/` tree over SSH. It
+writes `install_identity.json` in scan_03's form only when the remote `src/`
+matches `source_sha256.json`. Bytecode caches (`__pycache__/`, `*.pyc`) are
+listed as excluded, not hashed; scan_03's identity contains none, although
+compileall ran during its build. `--compare-existing scan_03` re-hashes a
+recorded build and writes nothing, so the Isaac launch gate can be checked
+against scan_03 before any episode. The capture code, the Isaac launch gate
+(`../isaac_runner/run_two_goal_pilot.py`) and the local check all share one
+hashing implementation.
+
 The articulated stand qualification is stored in
 `../isaac_runner/runs/stand_20260916T152235Z_p2b_fix1/`. Independent metrics and
 video checks are in `qualification/stand_lead_review/`. The run covers 3.06

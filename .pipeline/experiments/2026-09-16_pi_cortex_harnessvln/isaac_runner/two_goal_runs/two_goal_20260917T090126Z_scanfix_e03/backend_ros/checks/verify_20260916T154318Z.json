@@ -1,0 +1,72 @@
+{
+  "claim": "CPU source/schema tests only; no ROS graph, PCT worker, Isaac or robot execution.",
+  "commands": [
+    {
+      "command": [
+        "/Users/sun/.openviking-venv/bin/python3",
+        "-m",
+        "compileall",
+        "-q",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_ros/p2b_backend_ros",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_ros/tests"
+      ],
+      "elapsed_s": 0.031619166999007575,
+      "label": "compile",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "/Users/sun/.openviking-venv/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_ros/tests",
+        "-v"
+      ],
+      "elapsed_s": 4.3062424159979855,
+      "label": "tests",
+      "returncode": 0,
+      "stderr": "test_body_pose_wrong_frame_closes_gate_without_measurement_update (test_ros_port_logic.WatchdogGraceTests.test_body_pose_wrong_frame_closes_gate_without_measurement_update) ... ok\ntest_default_raw_twist_identity_is_zeroed_without_crashing_or_closing_owner (test_ros_port_logic.WatchdogGraceTests.test_default_raw_twist_identity_is_zeroed_without_crashing_or_closing_owner) ... ok\ntest_initial_owner_wait_publishes_zero_without_pre_faulting_gate (test_ros_port_logic.WatchdogGraceTests.test_initial_owner_wait_publishes_zero_without_pre_faulting_gate) ... ok\ntest_layered_pct_client_adds_configured_layer_when_adapter_request_omits_it (test_ros_port_logic.WatchdogGraceTests.test_layered_pct_client_adds_configured_layer_when_adapter_request_omits_it) ... ok\ntest_print_contract_accepts_launch_ros_remap_args (test_ros_port_logic.WatchdogGraceTests.test_print_contract_accepts_launch_ros_remap_args) ... ok\ntest_stale_body_pose_is_not_ready_for_planning (test_ros_port_logic.WatchdogGraceTests.test_stale_body_pose_is_not_ready_for_planning) ... ok\ntest_wrong_run_applied_snapshot_blocks_matching_raw_before_publish (test_ros_port_logic.WatchdogGraceTests.test_wrong_run_applied_snapshot_blocks_matching_raw_before_publish) ... ok\ntest_accepts_adapter_config_and_renders_contract (test_runtime.RuntimeContractTests.test_accepts_adapter_config_and_renders_contract) ... ok\ntest_goal_payload_requires_ground_xyz_and_map_identity (test_runtime.RuntimeContractTests.test_goal_payload_requires_ground_xyz_and_map_identity) ... ok\ntest_pct_start_subtracts_nominal_height_without_touching_body_measurement (test_runtime.RuntimeContractTests.test_pct_start_subtracts_nominal_height_without_touching_body_measurement) ... ok\ntest_rejects_non_loopback_http_host (test_runtime.RuntimeContractTests.test_rejects_non_loopback_http_host) ... ok\ntest_state_exposes_missing_applied_snapshot_as_not_ready (test_runtime.RuntimeContractTests.test_state_exposes_missing_applied_snapshot_as_not_ready) ... ok\ntest_terminal_ledger_keeps_request_causes (test_runtime.RuntimeContractTests.test_terminal_ledger_keeps_request_causes) ... ok\ntest_arrival_drift_after_stop_does_not_claim_arrived (test_runtime.StopFlowRuntimeTests.test_arrival_drift_after_stop_does_not_claim_arrived) ... ok\ntest_cancel_promotes_simultaneous_arrival_flow (test_runtime.StopFlowRuntimeTests.test_cancel_promotes_simultaneous_arrival_flow) ... ok\ntest_goal_worker_refuses_stale_body_pose_before_pct (test_runtime.StopFlowRuntimeTests.test_goal_worker_refuses_stale_body_pose_before_pct) ... ok\ntest_noninstant_stop_records_terminal_only_after_poll_confirms_stop (test_runtime.StopFlowRuntimeTests.test_noninstant_stop_records_terminal_only_after_poll_confirms_stop) ... ok\n\n----------------------------------------------------------------------\nRan 17 tests in 4.239s\n\nOK\n",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "/Users/sun/.openviking-venv/bin/python3",
+        "-m",
+        "p2b_backend_ros.node",
+        "--config",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_ros/config/p2b_backend_ros.example.json",
+        "--print-contract"
+      ],
+      "elapsed_s": 0.06567212500158348,
+      "label": "contract",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "{\n  \"goal_payload\": {\n    \"frame\": \"world by default\",\n    \"required\": [\n      \"request_id\",\n      \"goal_id\",\n      \"target_ground_xyz\",\n      \"map_epoch\",\n      \"map_revision\"\n    ],\n    \"schema\": \"p2b_http_goal_request_v1\",\n    \"target_ground_xyz\": \"[x_m, y_m, z_m] in world frame; PCT input target, not native body-reference output\"\n  },\n  \"http\": {\n    \"endpoints\": {\n      \"GET /state\": \"readiness, measured pose, owner, jobs and terminal result records\",\n      \"POST /cancel\": \"cancel active P2A owner and require controller hold plus causal stop evidence\",\n      \"POST /goal\": \"asynchronous spatial goal admission; returns a job_id and later terminal record\"\n    },\n    \"host\": \"127.0.0.1\",\n    \"port\": 8765\n  },\n  \"schema\": \"p2b_backend_ros_wire_contract_v1\",\n  \"semantics\": {\n    \"admission\": \"route accepted only from matching P2BAdmission consumer=fsm\",\n    \"planning\": \"PCT runs in a bounded separate worker through backend_adapter.PctIpcClient\",\n    \"route_z\": \"native route waypoints are Lite3 body-reference z with no display +0.5 m offset\",\n    \"start_z\": \"PCT start is measured body pose minus nominal_body_height_m\",\n    \"stop\": \"release requires matching consumer=controller hold plus post-cancel applied-zero/stillness dwell\",\n    \"watchdog\": \"before first same-generation raw heartbeat the gate publishes zero and waits within grace; it does not pre-fault a new owner\"\n  },\n  \"state_payload\": {\n    \"readiness\": \"separate body_pose, active owner, gate and last error fields; owner=None is not success\",\n    \"terminal_results\": \"per-request arrived/cancelled/failed/rejected/ignored records with route and cause\"\n  },\n  \"topics\": {\n    \"admission\": \"/p2b/scan_admission\",\n    \"cancel\": \"/p2b/scan_cancel\",\n    \"gated_bridge_velocity\": \"/quad_0/cmd_vel\",\n    \"measured_body_pose\": \"/quad_0/body_pose\",\n    \"raw_scan_velocity\": \"/quad_0/raw_scan_cmd_vel\",\n    \"route\": \"/p2b/route\"\n  }\n}\n"
+    }
+  ],
+  "ok": true,
+  "owned_files": 15,
+  "owned_sha256": {
+    "README.md": "1d6cc159c622b8db1a53c932484e39e432eba8768f949592c9aecbce804aca27",
+    "RESULT.md": "bbc01737ce4dd8c623e62e04a7dae7bc84219fd412e14bcd34023997370e39a1",
+    "config/p2b_backend_ros.example.json": "11b2d60011d92cead68a354091ce7061d1f5ede5204fd8365726012dd110dc05",
+    "launch/p2b_backend.launch.py": "b0bcd0a97b7f4bf75eab3a9414fdb96a8f46d254c7ede2e044bbcaf68febd499",
+    "p2b_backend_ros/__init__.py": "7dd80d5e789470f74ed43d28995c630a1b367392743f1766e120c809cb5adf20",
+    "p2b_backend_ros/config.py": "ff4428479892c0cd4b31d211a26c2ca0b4917372f3e40d565be4a8712a777cd3",
+    "p2b_backend_ros/node.py": "296877ccc37a2bc5665cb6596ab26dc9ef61efc421501b6df996c2506ce6fffa",
+    "p2b_backend_ros/runtime.py": "b601f542d5ef8132834ae55c10a85f938a47ae62297c66fa1aae825ecdae8bb3",
+    "package.xml": "2e41319d8c98da949e540fbcdee66e57cac83157387ae7f1d45c7cef4fe7bb50",
+    "resource/p2b_backend_ros": "72fdee3f3f89207722e746a901a0006d95ccafe6741c593afffc2ffddbc5bead",
+    "setup.cfg": "ee22aa456bdf95e0b533d8d7b5b496384de02caa18b4ecffd4b9a818f67f7d1c",
+    "setup.py": "6e8e27fb3a8517f88845a3791eca3b40996d755e78ed5ff390131b34ea9ec28f",
+    "tests/test_ros_port_logic.py": "aef4fc46ef71722309a7aaf046ab0fdef72e4570feb8a50fcf582548ea0370a0",
+    "tests/test_runtime.py": "6d50205465b827ddd3e593fc53d2cbc42acee15f3ea1afab1f566725be83177d",
+    "verify.py": "951a0cc3fb7d85d7af2f625059f3e65f259b574df684beb42bb63254249e8b91"
+  },
+  "schema": "p2b_backend_ros_verify_v1",
+  "timestamp_utc": "2026-09-16T15:43:18Z"
+}

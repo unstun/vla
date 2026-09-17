@@ -1,0 +1,106 @@
+{
+  "accepted_scan_build_required": true,
+  "collect": [
+    "rsync",
+    "-a",
+    "--exclude=/runner_output/clouds.jsonl",
+    "--exclude=/runner_output/third_person_master.mp4",
+    "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/artifacts/",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/two_goal_runs/two_goal_20260917T090126Z_scanfix_e03/returned_artifacts/"
+  ],
+  "collect_extras": [
+    "rsync",
+    "-a",
+    "--include=/remote_only_artifacts.json",
+    "--include=/walk_review/***",
+    "--exclude=*",
+    "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/two_goal_runs/two_goal_20260917T090126Z_scanfix_e03/"
+  ],
+  "collect_sequence": [
+    "collect",
+    "remote_only_record",
+    "walk_review",
+    "collect_extras"
+  ],
+  "mkdir": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "python3 - <<'PY'\nfrom pathlib import Path\np=Path('/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03')\nassert not p.exists(), p\np.mkdir(parents=True)\nPY"
+  ],
+  "remote_only_bulk": {
+    "files": [
+      "runner_output/clouds.jsonl",
+      "runner_output/third_person_master.mp4"
+    ],
+    "record": "remote_only_artifacts.json",
+    "walk_review": "walk_review/walk_review.mp4"
+  },
+  "remote_only_record": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "python3 - <<'PY'\nimport hashlib, json\nfrom pathlib import Path\nrun = Path('/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03')\nartifacts = run / \"artifacts\"\nmanifest = json.loads((artifacts / \"artifact_hashes.json\").read_text(encoding=\"utf-8\"))\nfiles = []\nfor rel in ['runner_output/clouds.jsonl', 'runner_output/third_person_master.mp4']:\n    path = artifacts / rel\n    digest = hashlib.sha256()\n    with path.open(\"rb\") as stream:\n        for chunk in iter(lambda: stream.read(1 << 20), b\"\"):\n            digest.update(chunk)\n    files.append({\"path\": rel, \"remote_path\": str(path), \"bytes\": path.stat().st_size,\n                   \"sha256\": digest.hexdigest(), \"manifest_sha256\": manifest.get(rel)})\nall_match = all(item[\"sha256\"] == item[\"manifest_sha256\"] for item in files)\nrecord = {\"schema_version\": 1, \"run_id\": run.name, \"remote_run\": str(run),\n           \"manifest\": \"artifacts/artifact_hashes.json\", \"files\": files, \"all_match\": all_match,\n           \"policy\": \"--remote-only-bulk: these bytes stay in the execution copy; only hashes and sizes return\"}\n(run / 'remote_only_artifacts.json').write_text(json.dumps(record, indent=2, sort_keys=True) + \"\\n\", encoding=\"utf-8\")\nif not all_match:\n    raise SystemExit(\"remote-only artifact hash differs from artifact_hashes.json\")\nPY"
+  ],
+  "remote_run": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03",
+  "requires_lead_authorized_execute": true,
+  "run": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "python3 /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/remote_worker.py --run-root /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03 --foxy-image-id e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 --pct-image-id 40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555 --remote-v12-runtime /home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/v12 --remote-checkpoint /home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/checkpoint/model_149999.pt --remote-scan-workspace /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_04 --runner-argv-json '[\"--scene\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/inputs/building.usda\",\"--runtime\",\"/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/v12\",\"--checkpoint\",\"/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/checkpoint/model_149999.pt\",\"--route-artifact\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/inputs/two_goal_route_artifact.json\",\"--scope\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/inputs/two_goal_scope.json\",\"--execution-manifest\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/inputs/execution_manifest.json\",\"--output\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/artifacts/runner_output\",\"--case\",\"flat_nominal\",\"--duration-seconds\",\"45.0\",\"--telemetry-host\",\"127.0.0.1\",\"--telemetry-port\",\"46240\",\"--command-host\",\"127.0.0.1\",\"--command-port\",\"46241\",\"--max-vx\",\"1.0\",\"--max-vy\",\"0.35\",\"--max-wz\",\"1.0\",\"--max-horizontal-norm\",\"1.0\",\"--speed-profile\",\"speed_1p0\",\"--contact-policy\",\"native_v12\",\"--unfiltered-planner-cloud\",\"--goal-tolerance-m\",\"0.25\",\"--terminal-window-seconds\",\"2.0\",\"--terminal-command-norm\",\"0.01\",\"--terminal-speed-mps\",\"0.1\",\"--terminal-yaw-rate-radps\",\"0.15\",\"--connection-ready-timeout-seconds\",\"120.0\",\"--max-wall-seconds\",\"1200.0\",\"--video-fps\",\"12.5\",\"--camera-capture-stride\",\"4\",\"--complete-body-state\",\"--priority-telemetry\",\"--async-recording\",\"--freeze-gc\",\"--external-goal-mode\",\"--external-run-id\",\"two_goal_20260917T090126Z_scanfix_e03\",\"--external-control-dir\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/artifacts/external_episode\",\"--external-finish-stillness-seconds\",\"1.0\",\"--external-status-freshness-seconds\",\"2.0\",\"--seed\",\"42\",\"--device\",\"cuda:0\"]' --ros-domain-id 94 --telemetry-port 46240 --command-port 46241 --http-port 8765 --pct-port 47631 --cancel-displacement-m 0.4"
+  ],
+  "sync": [
+    "rsync",
+    "-a",
+    "--delete",
+    "--include=/bridge/***",
+    "--include=/backend_adapter/***",
+    "--include=/backend_ros/***",
+    "--include=/navigation_service/***",
+    "--include=/pct_runtime/***",
+    "--include=/inputs/***",
+    "--include=/config/***",
+    "--include=/pilot_driver.py",
+    "--include=/remote_worker.py",
+    "--include=/source_env_hashes.json",
+    "--include=/RUNBOOK.md",
+    "--include=/make_walk_review.py",
+    "--exclude=*",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/two_goal_runs/two_goal_20260917T090126Z_scanfix_e03/",
+    "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/"
+  ],
+  "sync_whitelist": [
+    "bridge/",
+    "backend_adapter/",
+    "backend_ros/",
+    "navigation_service/",
+    "pct_runtime/",
+    "inputs/",
+    "config/",
+    "pilot_driver.py",
+    "remote_worker.py",
+    "source_env_hashes.json",
+    "RUNBOOK.md",
+    "make_walk_review.py"
+  ],
+  "walk_review": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "python3 -c 'import json, os, subprocess, time\nfrom pathlib import Path\nrun = Path('\"'\"'/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03'\"'\"')\nresult_path = run / \"artifacts\" / \"result.json\"\nrecord = {\"schema_version\": 1, \"checked_utc\": time.strftime(\"%Y-%m-%dT%H:%M:%SZ\", time.gmtime()),\n           \"result_json\": str(result_path), \"problems\": [], \"alive_process_groups\": []}\nresult = json.loads(result_path.read_text(encoding=\"utf-8\")) if result_path.is_file() else {}\nif not result_path.is_file():\n    record[\"problems\"].append(\"artifacts/result.json is missing\")\nrecord[\"last_result_write_phase\"] = result.get(\"last_result_write_phase\")\nif result.get(\"last_result_write_phase\") != \"final\":\n    record[\"problems\"].append(\"remote worker has not written its final result\")\nif result.get(\"cleanup_errors\"):\n    record[\"problems\"].append(\"remote worker cleanup reported errors\")\ngroups = sorted({int(item[\"pid\"]) for item in result.get(\"process_cleanup\") or [] if item.get(\"pid\")})\nrecord[\"process_groups\"] = groups\nfor pgid in groups:\n    try:\n        os.killpg(pgid, 0)\n    except ProcessLookupError:\n        continue\n    except PermissionError:\n        pass\n    record[\"alive_process_groups\"].append(pgid)\nif record[\"alive_process_groups\"]:\n    record[\"problems\"].append(\"worker process groups still alive: %s\" % record[\"alive_process_groups\"])\ntry:\n    apps = subprocess.run([\"nvidia-smi\", \"--query-compute-apps=pid,process_name,used_memory\",\n                           \"--format=csv,noheader\"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,\n                          text=True, timeout=10, check=False)\n    record[\"gpu_compute_apps\"] = {\"returncode\": apps.returncode, \"stdout\": apps.stdout[-2000:]}\nexcept Exception as exc:\n    record[\"gpu_compute_apps\"] = {\"error\": \"%s: %s\" % (exc.__class__.__name__, exc)}\nrecord[\"render_allowed\"] = not record[\"problems\"]\nout = run / '\"'\"'walk_review'\"'\"'\nout.mkdir(exist_ok=True)\n(out / \"render_guard.json\").write_text(json.dumps(record, indent=2, sort_keys=True) + \"\\n\", encoding=\"utf-8\")\nif record[\"problems\"]:\n    raise SystemExit(\"walk review not started: \" + \"; \".join(record[\"problems\"]))\n' && FFMPEG_BIN=\"$(command -v ffmpeg)\" FFPROBE_BIN=\"$(command -v ffprobe)\" bash -lc 'source /home/sun/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && export PYTHONDONTWRITEBYTECODE=1 && exec python /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/make_walk_review.py /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03 --artifacts-dir /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/artifacts --video /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/artifacts/runner_output/third_person_master.mp4 --output /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T090126Z_scanfix_e03/walk_review/walk_review.mp4 --encoder h264_nvenc --fallback-encoder libx264 --ffmpeg \"$FFMPEG_BIN\" --ffprobe \"$FFPROBE_BIN\"'"
+  ]
+}

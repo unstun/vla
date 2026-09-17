@@ -313,7 +313,8 @@ __pycache__/
 /.pipeline/experiments/2026-09-16_mip_5070ti/**/*.png
 /.pipeline/experiments/2026-09-16_mip_5070ti/setup/mp3d_zip_tail.bin
 
-# 2026-09-16_pi_cortex_harnessvln (238 files, 886.8 MB).
+# 2026-09-16_pi_cortex_harnessvln (468 files, 1008.0 MB apparent; 2026-09-17 SCAN fix runs hardlink
+# their frozen inputs and PCT runtime, so they add little real disk).
 # HarnessVLN native PCT/SCAN/Lite3 V12 Isaac runs on gpu5070ti:
 # - per-run copies of the materialized PCT runtime, native libraries plus pinned Python source (identity:
 #   p2b_execution/pct_runtime_manifest.json and each run's source_env_hashes.json; rebuild with
@@ -322,6 +323,9 @@ __pycache__/
 # - third-person, RViz and preview videos and review frames;
 # - 17 point-cloud, journal and metrics dumps over 5 MB (Dr Sun, 2026-09-16; 13 are also in
 #   .pipeline/handoffs/2026-09-16_harnessvln_archive/evidence.tar.gz).
+# - 2026-09-17 SCAN fix qualification: per-episode walk review videos, and report figures and video links
+#   (scan_fix_qualification/report; regenerate with make_report.py). The episodes' clouds.jsonl and original
+#   third-person video stay on gpu5070ti (hashes in each run's remote_only_artifacts.json, PRD D9).
 # Run outputs are not regenerable. Nested .gitignore files in this root cover pi/node_modules and the
 # p2b_execution inputs, runtime and build sources.
 /.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/**/pct_runtime/

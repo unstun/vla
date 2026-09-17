@@ -1,0 +1,52 @@
+{
+  "applied_evidence": {
+    "current_command_path": "/shared/current_command.json",
+    "finish_request_path": "/shared/finish_request.json",
+    "stop_command_norm": 0.01,
+    "stop_dwell_sim_seconds": 1.0,
+    "stop_speed_mps": 0.1,
+    "stop_yaw_rate_radps": 0.15
+  },
+  "gate": {
+    "heartbeat_stale_s": 0.2,
+    "odom_stale_s": 0.25,
+    "still_speed_mps": 0.05,
+    "still_window_s": 0.5
+  },
+  "http": {
+    "host": "127.0.0.1",
+    "port": 8765
+  },
+  "pct_worker": {
+    "connect_timeout_s": 0.2,
+    "host": "127.0.0.1",
+    "optimize": true,
+    "port": 47631,
+    "reference_height_m": 0.35,
+    "response_timeout_s": 5.0,
+    "runtime": "existing PCT/Humble image; do not import native PCT extensions inside Foxy Python 3.8",
+    "z_semantics": "lite3_body_reference_no_display_offset"
+  },
+  "pilot_contract": {
+    "frame_id": "world",
+    "map_epoch": "flat_nominal",
+    "map_revision": 1,
+    "measured_body_height_reference_m": 0.35,
+    "pct_layer": 1,
+    "stop_semantics": "closed_loop_controller hold acknowledgement plus post-cancel runner applied-zero and measured stillness dwell for 1.0 sim second; gate publication alone is not enough"
+  },
+  "run_epoch_ns": 1234567890,
+  "run_id": "p2b-two-goal-001",
+  "schema": "p2b_backend_adapter_config_v2",
+  "topics": {
+    "admission_topic": "/p2b/scan_admission",
+    "body_state_topic": "/p2b/body_state",
+    "cancel_topic": "/p2b/scan_cancel",
+    "gated_cmd_topic": "/quad_0/cmd_vel",
+    "heartbeat_topic": "/p2b/scan_heartbeat",
+    "path_topic": "/initial_path",
+    "raw_cmd_topic": "/quad_0/raw_scan_cmd_vel",
+    "route_meta_topic": "/p2b/scan_route_meta",
+    "route_topic": "/p2b/route"
+  }
+}

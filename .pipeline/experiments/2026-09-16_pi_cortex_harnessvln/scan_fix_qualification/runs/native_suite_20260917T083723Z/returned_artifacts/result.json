@@ -1,0 +1,201 @@
+{
+  "after_run": {
+    "candidate_scan_source_unchanged": true,
+    "original_scan_install_unchanged": true,
+    "original_scan_source_unchanged": true,
+    "package_unchanged": true
+  },
+  "cleanup": {
+    "vla-scan-fixq-build-candidate-native-suite-20260917t083723z": {
+      "absent": true,
+      "rm_returncode": 0
+    },
+    "vla-scan-fixq-build-original-native-suite-20260917t083723z": {
+      "absent": true,
+      "rm_returncode": 0
+    },
+    "vla-scan-fixq-replay-candidate-native-suite-20260917t083723z": {
+      "absent": true,
+      "rm_returncode": 0
+    },
+    "vla-scan-fixq-replay-original-native-suite-20260917t083723z": {
+      "absent": true,
+      "rm_returncode": 0
+    }
+  },
+  "owned_containers_absent": true,
+  "replay_completed": true,
+  "run_id": "native_suite_20260917T083723Z",
+  "scope": "Native SCAN planner-only A/B replay; no Isaac, controller, sensor publisher, physical driver or GPU workload",
+  "source_gate": {
+    "all_match": true,
+    "candidate_manager_equals_scan_04": true,
+    "candidate_scan_source": {
+      "all_match": true,
+      "files": 67,
+      "mismatched": []
+    },
+    "original_manager_equals_scan_03": true,
+    "original_scan_install": {
+      "all_match": true,
+      "files": 380,
+      "mismatched": []
+    },
+    "original_scan_source": {
+      "all_match": true,
+      "files": 67,
+      "mismatched": []
+    },
+    "package": {
+      "all_match": true,
+      "files": 59,
+      "mismatched": []
+    }
+  },
+  "variants": {
+    "candidate": {
+      "build": {
+        "ceiling_s": 180,
+        "command": [
+          "podman",
+          "run",
+          "--rm",
+          "--pull=never",
+          "--network=none",
+          "--name",
+          "vla-scan-fixq-build-candidate-native-suite-20260917t083723z",
+          "-e",
+          "CMAKE_BUILD_PARALLEL_LEVEL=2",
+          "-e",
+          "MAKEFLAGS=-j2",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/work_candidate:/ws:rw",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03:/scan_03:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/inputs:/inputs:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/managers:/managers:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/artifacts/candidate:/out:rw",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/container_suite.py:/container_suite.py:ro",
+          "e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8",
+          "bash",
+          "-lc",
+          "set -e\nsource /opt/ros/foxy/setup.bash\nsource /scan_03/install/setup.bash\ncd /ws\ncolcon build --base-paths src --executor sequential --event-handlers console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DSCAN03_SOURCE_ROOT=/scan_03 -DSCAN_MANAGER_CPP=/managers/candidate/planner_manager.cpp\n"
+        ],
+        "returncode": 0,
+        "wall_seconds": 6.27278728201054
+      },
+      "executable_sha256": "6303cce2126f8aa009a2cb3ca205bc438d1726680a099b295bb1255bf26a6d93",
+      "replay": {
+        "ceiling_s": 900,
+        "command": [
+          "podman",
+          "run",
+          "--rm",
+          "--pull=never",
+          "--network=none",
+          "--name",
+          "vla-scan-fixq-replay-candidate-native-suite-20260917t083723z",
+          "-e",
+          "CMAKE_BUILD_PARALLEL_LEVEL=2",
+          "-e",
+          "MAKEFLAGS=-j2",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/work_candidate:/ws:rw",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03:/scan_03:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/inputs:/inputs:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/managers:/managers:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/artifacts/candidate:/out:rw",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/container_suite.py:/container_suite.py:ro",
+          "e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8",
+          "bash",
+          "-lc",
+          "set -e\nsource /opt/ros/foxy/setup.bash\nsource /scan_03/install/setup.bash\nsource /ws/install/setup.bash\nexport ROS_DOMAIN_ID=96\nexport ROS_LOCALHOST_ONLY=1\nexport PYTHONDONTWRITEBYTECODE=1\npython3 /container_suite.py --build candidate\n"
+        ],
+        "returncode": 0,
+        "wall_seconds": 95.59866981199593
+      },
+      "replay_completed": true
+    },
+    "original": {
+      "build": {
+        "ceiling_s": 180,
+        "command": [
+          "podman",
+          "run",
+          "--rm",
+          "--pull=never",
+          "--network=none",
+          "--name",
+          "vla-scan-fixq-build-original-native-suite-20260917t083723z",
+          "-e",
+          "CMAKE_BUILD_PARALLEL_LEVEL=2",
+          "-e",
+          "MAKEFLAGS=-j2",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/work_original:/ws:rw",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03:/scan_03:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/inputs:/inputs:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/managers:/managers:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/artifacts/original:/out:rw",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/container_suite.py:/container_suite.py:ro",
+          "e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8",
+          "bash",
+          "-lc",
+          "set -e\nsource /opt/ros/foxy/setup.bash\nsource /scan_03/install/setup.bash\ncd /ws\ncolcon build --base-paths src --executor sequential --event-handlers console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DSCAN03_SOURCE_ROOT=/scan_03 -DSCAN_MANAGER_CPP=/managers/original/planner_manager.cpp\n"
+        ],
+        "returncode": 0,
+        "wall_seconds": 6.322086873988155
+      },
+      "executable_sha256": "df9968ea4a0894094f8b50b0ac426e5029ef33d78b7f336ae18998d6481b60f8",
+      "replay": {
+        "ceiling_s": 900,
+        "command": [
+          "podman",
+          "run",
+          "--rm",
+          "--pull=never",
+          "--network=none",
+          "--name",
+          "vla-scan-fixq-replay-original-native-suite-20260917t083723z",
+          "-e",
+          "CMAKE_BUILD_PARALLEL_LEVEL=2",
+          "-e",
+          "MAKEFLAGS=-j2",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/work_original:/ws:rw",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03:/scan_03:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/inputs:/inputs:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/managers:/managers:ro",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/artifacts/original:/out:rw",
+          "-v",
+          "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/scan_fix_qualification/native_suite_20260917T083723Z/container_suite.py:/container_suite.py:ro",
+          "e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8",
+          "bash",
+          "-lc",
+          "set -e\nsource /opt/ros/foxy/setup.bash\nsource /scan_03/install/setup.bash\nsource /ws/install/setup.bash\nexport ROS_DOMAIN_ID=96\nexport ROS_LOCALHOST_ONLY=1\nexport PYTHONDONTWRITEBYTECODE=1\npython3 /container_suite.py --build original\n"
+        ],
+        "returncode": 0,
+        "wall_seconds": 95.64784699201118
+      },
+      "replay_completed": true
+    }
+  }
+}

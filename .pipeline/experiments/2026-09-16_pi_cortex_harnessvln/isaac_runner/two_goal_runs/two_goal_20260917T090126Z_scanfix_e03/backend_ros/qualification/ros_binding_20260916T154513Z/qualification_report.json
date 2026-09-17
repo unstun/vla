@@ -1,0 +1,56 @@
+{
+  "claim": "Foxy CPU node startup/HTTP/readiness/invalid-goal/zero-output smoke only; no PCT worker, Isaac, GPU, C++ motion acceptance or robot claim.",
+  "image": "e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8",
+  "local_dir": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_ros/qualification/ros_binding_20260916T154513Z",
+  "ok": true,
+  "preflight": {
+    "command": [
+      "ssh",
+      "gpu5070ti",
+      "mkdir -p /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_qualification/ros_binding_20260916T154513Z"
+    ],
+    "elapsed_s": 4.354171625000163,
+    "returncode": 0,
+    "stderr": "",
+    "stdout": ""
+  },
+  "pull": {
+    "command": [
+      "rsync",
+      "-a",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_qualification/ros_binding_20260916T154513Z/",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_ros/qualification/ros_binding_20260916T154513Z/"
+    ],
+    "elapsed_s": 9.133264624997537,
+    "returncode": 0,
+    "stderr": "",
+    "stdout": ""
+  },
+  "remote_dir": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_qualification/ros_binding_20260916T154513Z",
+  "remote_run": {
+    "command": [
+      "ssh",
+      "gpu5070ti",
+      "podman run --rm --pull=never --network=host --name vla-p2b-ros-binding-ros-binding-20260916t154513z -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_qualification/ros_binding_20260916T154513Z:/qualification -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_02:/workspace:ro e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'source /opt/ros/foxy/setup.bash && source /workspace/install/setup.bash && timeout 60s python3 /qualification/source/remote_probe.py'"
+    ],
+    "elapsed_s": 5.845681000002514,
+    "returncode": 0,
+    "stderr": "",
+    "stdout": ""
+  },
+  "run_id": "ros_binding_20260916T154513Z",
+  "scan02_mount": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_02",
+  "schema": "p2b_backend_ros_foxy_cpu_qualification_v1",
+  "sync": {
+    "command": [
+      "rsync",
+      "-a",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_ros/qualification/ros_binding_20260916T154513Z/",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_qualification/ros_binding_20260916T154513Z/"
+    ],
+    "elapsed_s": 8.252664209001523,
+    "returncode": 0,
+    "stderr": "",
+    "stdout": ""
+  }
+}

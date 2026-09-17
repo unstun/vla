@@ -1,0 +1,381 @@
+{
+  "artifact_finalization": [
+    {
+      "artifact_count": 36,
+      "monotonic_ns": 148593812515096,
+      "ok": true,
+      "phase": "after_process_cleanup"
+    },
+    {
+      "artifact_count": 38,
+      "monotonic_ns": 148624062723624,
+      "ok": true,
+      "phase": "after_container_cleanup"
+    }
+  ],
+  "cancel_displacement_m": 0.4,
+  "claim": "known-map truth-pose diagnostic two-goal pilot; no LLM/Cortex/SLAM/physical robot",
+  "cleanup_errors": [],
+  "container_cleanup": [
+    {
+      "container": "vla-p2b-backend-two-goal-20260917t085059z-scanfix-e01",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "time=\"2026-09-17T04:53:20-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-p2b-backend-two-goal-20260917t085059z-scanfix-e01 in 10 seconds, resorting to SIGKILL\"\n",
+      "stdout": "vla-p2b-backend-two-goal-20260917t085059z-scanfix-e01\n",
+      "timeout_s": 20.0
+    },
+    {
+      "container": "vla-p2b-pct-two-goal-20260917t085059z-scanfix-e01",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "time=\"2026-09-17T04:53:30-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-p2b-pct-two-goal-20260917t085059z-scanfix-e01 in 10 seconds, resorting to SIGKILL\"\n",
+      "stdout": "vla-p2b-pct-two-goal-20260917t085059z-scanfix-e01\n",
+      "timeout_s": 20.0
+    },
+    {
+      "container": "vla-p2b-bridge-two-goal-20260917t085059z-scanfix-e01",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "time=\"2026-09-17T04:53:41-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-p2b-bridge-two-goal-20260917t085059z-scanfix-e01 in 10 seconds, resorting to SIGKILL\"\n",
+      "stdout": "vla-p2b-bridge-two-goal-20260917t085059z-scanfix-e01\n",
+      "timeout_s": 20.0
+    }
+  ],
+  "finished_utc": "2026-09-17T08:53:41Z",
+  "gpu_memory": {
+    "error_count": 0,
+    "errors": [],
+    "first_sample": {
+      "elapsed_s": 0.0009716030035633594,
+      "gpus": [
+        {
+          "index": 0,
+          "memory_total_mib": 16303.0,
+          "memory_used_mib": 202.0,
+          "utilization_percent": 0.0
+        }
+      ],
+      "monotonic_ns": 148499491780287,
+      "wall_time_ns": 1789635096532872704
+    },
+    "interval_s": 1.0,
+    "peak_by_gpu": {
+      "0": {
+        "elapsed_s": 12.165828493976733,
+        "memory_total_mib": 16303.0,
+        "memory_used_mib": 7136.0
+      }
+    },
+    "peak_elapsed_s": 12.165828493976733,
+    "peak_memory_used_mib": 7136.0,
+    "sample_count": 123,
+    "sampled_wall_s": 124.52214260300389,
+    "samples_path": "gpu_samples.jsonl",
+    "scope": "device-wide nvidia-smi memory.used; includes any process on the GPU, not only this run",
+    "started": true,
+    "stopped": true
+  },
+  "last_result_write_phase": "final",
+  "passed": true,
+  "pilot_driver_exit_code": 0,
+  "post_cleanup_ports": {
+    "command": {
+      "free": true,
+      "port": 46241
+    },
+    "http": {
+      "free": true,
+      "port": 8765
+    },
+    "pct": {
+      "free": true,
+      "port": 47631
+    },
+    "telemetry": {
+      "free": true,
+      "port": 46240
+    }
+  },
+  "process_cleanup": [
+    {
+      "action": "sigkill",
+      "name": "backend",
+      "ok": true,
+      "pid": 339871,
+      "returncode": -9
+    },
+    {
+      "action": "sigkill",
+      "name": "pct_worker",
+      "ok": true,
+      "pid": 339740,
+      "returncode": -9
+    },
+    {
+      "action": "none",
+      "name": "runner",
+      "ok": true,
+      "pid": 339368,
+      "reason": "already_exited",
+      "returncode": 0
+    },
+    {
+      "action": "sigkill",
+      "name": "bridge",
+      "ok": true,
+      "pid": 339259,
+      "returncode": -9
+    }
+  ],
+  "remote_scan_workspace": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_04",
+  "remote_wall_seconds": 124.57415663500433,
+  "remote_wall_seconds_scope": "remote_worker.py main() start to cleanup end, before the last result writes",
+  "run_epoch_ns": 1789635107303349840,
+  "runner_exit_code": 0,
+  "runner_summary": {
+    "autoresets": 0,
+    "bridge_connected_wall_s": 0.010421899991342798,
+    "camera": {
+      "capture_fps": 12.5,
+      "capture_stride_steps": 4,
+      "height_m": 0.55,
+      "intrinsics": {
+        "aperture_fit": "horizontal",
+        "authored_vertical_aperture": 15.290800094604492,
+        "cam_prim_path": "/OmniverseKit_Persp",
+        "focal_length": 18.14756202697754,
+        "horizontal_aperture": 20.954999923706055,
+        "horizontal_fov_rad": 1.0471975628049432,
+        "render_height": 1080,
+        "render_width": 1920,
+        "source": "usd_camera_prim"
+      },
+      "lateral_m": 0.0,
+      "look_ahead_m": 0.6,
+      "look_down_m": 0.25,
+      "note": "world-side follow camera; observes only, changes no robot state",
+      "pose_log": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T085059Z_scanfix_e01/artifacts/runner_output/camera_frames.jsonl",
+      "pose_rows": 206,
+      "trail_m": 2.0
+    },
+    "case": "flat_nominal",
+    "case_failed": false,
+    "case_failure_reason": null,
+    "claim": "Frozen PCT ground-route segment consumed by Foxy SCAN mode 3, with the existing SCAN trajectory controller driving V12 over TCP. Bounded simulation preflight on one same-level Building platform segment.",
+    "command_sequence_gaps": 0,
+    "command_watchdog_events": 1,
+    "complete_body_state": {
+      "enabled": true,
+      "frames_dropped": 0,
+      "frames_published": 822,
+      "last_state_sequence": 822,
+      "message": "BODY_STATE_V2 id 8, !19dQQQ, 176 bytes, network byte order",
+      "period_s": 0.02,
+      "run_epoch_ns": 1789635107303349840
+    },
+    "contact_guard": {
+      "acquisition": "after_each_physics_substep_scene_update",
+      "contact_detected": false,
+      "contact_policy": "native_v12",
+      "failed": false,
+      "failure": null,
+      "first_contact": null,
+      "history_newest_first": true,
+      "maximum_nonfoot_force_n": 0.0,
+      "nonfoot_body_indices": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        13,
+        14,
+        15
+      ],
+      "nonfoot_body_names": [
+        "TORSO",
+        "FL_HIP",
+        "FL_THIGH",
+        "FL_SHANK",
+        "FR_HIP",
+        "FR_THIGH",
+        "FR_SHANK",
+        "HL_HIP",
+        "HL_THIGH",
+        "HL_SHANK",
+        "HR_HIP",
+        "HR_THIGH",
+        "HR_SHANK"
+      ],
+      "observed_control_steps": 822,
+      "observed_substeps": 3288,
+      "physics_dt_s": 0.005,
+      "required_substeps": 4,
+      "threshold_n": 5.0
+    },
+    "contact_policy": "native_v12",
+    "control_loop_timing": {
+      "freshness_deadline_s": 0.25,
+      "max_s": 0.5334692439937498,
+      "over_freshness_deadline_count": 1,
+      "p50_s": 0.018949218007037416,
+      "p95_s": 0.04863361400202848,
+      "p99_s": 0.05170319299213588,
+      "samples": 821
+    },
+    "dropped_telemetry_frames": 0,
+    "end_xyz": [
+      2.2018661499023438,
+      -4.436745643615723,
+      1.8667539358139038
+    ],
+    "external_goal_mode": {
+      "control_dir": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T085059Z_scanfix_e01/artifacts/external_episode",
+      "enabled": true,
+      "finish_request": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T085059Z_scanfix_e01/artifacts/external_episode/finish_request.json",
+      "finish_state": {
+        "final_reason": "backend_terminal_and_measured_still",
+        "last_check": {
+          "reason": "latched",
+          "request": {
+            "backend_terminal_status": "FINISHED",
+            "note": "two arrivals and one explicit cancel confirmed by backend",
+            "observed_run_epoch_ns": 1789635107303349840,
+            "request_id": "two_goal_20260917T085059Z_scanfix_e01-finish",
+            "requested_at_monotonic_ns": 148530697927017,
+            "run_id": "two_goal_20260917T085059Z_scanfix_e01",
+            "schema_version": 1
+          },
+          "requested": true,
+          "status": "EXTERNAL_EPISODE_FINISHED"
+        },
+        "last_request": {
+          "backend_terminal_status": "FINISHED",
+          "observed_run_epoch_ns": 1789635107303349840,
+          "request_id": "two_goal_20260917T085059Z_scanfix_e01-finish",
+          "run_id": "two_goal_20260917T085059Z_scanfix_e01"
+        }
+      },
+      "finish_window_start_s": 15.419999655336142,
+      "legacy_fixed_goal_auto_termination_disabled": true,
+      "route_artifact_role": "spawn and legacy metric metadata only",
+      "run_id": "two_goal_20260917T085059Z_scanfix_e01",
+      "status_snapshot": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T085059Z_scanfix_e01/artifacts/external_episode/current_command.json"
+    },
+    "feedback_dropout": {
+      "duration_wall_s": 0.0,
+      "enabled": false,
+      "restored_monotonic_ns": null,
+      "scheduled_sim_s": -1.0,
+      "started_monotonic_ns": null,
+      "withheld_sequences": []
+    },
+    "final_goal_error_xy_m": 0.1886433140046342,
+    "final_goal_layer_error_m": 0.04413053989410409,
+    "first_nonzero_command_s": 2.819999936968088,
+    "garbage_collection": {
+      "collections_after": [
+        2841,
+        257,
+        20
+      ],
+      "collections_before": [
+        433,
+        39,
+        1
+      ],
+      "freeze_requested": true,
+      "frozen_objects": 752149
+    },
+    "goal_reached_s": 14.039999686181545,
+    "max_abs_pitch_deg": 4.614720789404479,
+    "max_abs_roll_deg": 3.0285401948471784,
+    "max_admitted_command_norm_mps": 1.0000000000000002,
+    "max_horizontal_speed_mps": 1.069997325048695,
+    "max_nonfoot_force_n": 0.0,
+    "maximum_command_obs_error": 0.0,
+    "nonfoot_contact_events_over_threshold": [],
+    "pose_injection_events": 0,
+    "pose_write_attempts": 0,
+    "record_count": 822,
+    "recorded_control_seconds": 16.44,
+    "recording_load": {
+      "blocked_submits": 0,
+      "completed": 371,
+      "max_queue_depth": 1,
+      "max_submit_block_ns": 0,
+      "mean_submit_block_ns": 0,
+      "submitted": 371,
+      "total_submit_block_ns": 0
+    },
+    "reset_attempts": 0,
+    "runtime_import_identity": {
+      "expected_robot_lab_root": "/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/v12/source/robot_lab",
+      "expected_rsl_rl_root": "/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/v12/source/rsl_rl",
+      "python_executable": "/home/sun/miniconda3/envs/isaaclab/bin/python",
+      "robot_lab_file": "/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/v12/source/robot_lab/robot_lab/__init__.py",
+      "rsl_rl_file": "/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/v12/source/rsl_rl/rsl_rl/__init__.py"
+    },
+    "scan_count": 165,
+    "sim_seconds": 16.439999632537365,
+    "start_xyz": [
+      -1.6115705966949463,
+      -4.543034553527832,
+      1.9114270210266113
+    ],
+    "state_mutation_monitor": "runtime_state_writes_blocked_and_counted",
+    "status": "EXTERNAL_EPISODE_FINISHED",
+    "telemetry_frames": 1317,
+    "telemetry_transport": {
+      "high_enqueued": 987,
+      "high_overflow": 0,
+      "high_queue_depth_limit": 256,
+      "high_sent": 987,
+      "last_assigned_wire_sequence": 1317,
+      "low_dropped_oldest": 0,
+      "low_enqueued": 330,
+      "low_frames_overtaken_by_high": 9,
+      "low_queue_depth_limit": 8,
+      "low_sent": 330,
+      "max_high_latency_ns": 8761096,
+      "max_high_queue_depth": 1,
+      "max_low_latency_ns": 6032477,
+      "max_low_queue_depth": 1,
+      "mean_high_latency_ns": 173875,
+      "mean_low_latency_ns": 233206,
+      "priority_send_enabled": 1,
+      "send_failures": 0,
+      "total_high_latency_ns": 171615420,
+      "total_low_latency_ns": 76958178,
+      "wire_sequence_owned_by_sender": 1
+    },
+    "terminal_window_satisfied_s": 16.319999635219574,
+    "termination_code": 0,
+    "travel_xy_m": 3.9843036732165804,
+    "video_frame_contrast": {
+      "featureless_frames_below_std_8": 1,
+      "frames": 206,
+      "luminance_std_mean": 15.717178127140675,
+      "luminance_std_min": 0.0
+    },
+    "video_master": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260917T085059Z_scanfix_e01/artifacts/runner_output/third_person_master.mp4",
+    "wall_seconds": 22.07725163397845
+  },
+  "scan_workspace_gate": {
+    "errors": [],
+    "passed": true,
+    "record": "scan_workspace_gate.json"
+  },
+  "scan_workspace_gate_after": {
+    "errors": [],
+    "passed": true,
+    "record": "scan_workspace_gate_after.json"
+  },
+  "started_utc": "2026-09-17T08:51:36Z"
+}

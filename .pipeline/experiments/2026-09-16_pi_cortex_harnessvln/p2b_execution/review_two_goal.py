@@ -20,6 +20,27 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+# Dr Sun, 2026-09-17 (task 09-16-scan-terminal-accel-fix-qualification, D9): with the launcher's
+# --remote-only-bulk these two files stay on the execution host. They may be absent here only when the
+# returned remote_only_artifacts.json records a hash equal to the manifest's. No check reads their content.
+REMOTE_ONLY_FILES = ("runner_output/clouds.jsonl", "runner_output/third_person_master.mp4")
+
+
+def remote_only_accepted(run, expected):
+    record_path = run / "remote_only_artifacts.json"
+    if not record_path.exists():
+        return {}
+    record = load(record_path)
+    if record.get("all_match") is not True:
+        return {}
+    accepted = {}
+    for item in record.get("files", []):
+        rel = item.get("path")
+        if rel in REMOTE_ONLY_FILES and expected.get(rel) and item.get("sha256") == item.get("manifest_sha256") == expected[rel]:
+            accepted[rel] = item["sha256"]
+    return accepted
+
+
 def instant_still(row, pilot):
     command = row["admitted_command"]
     return (
@@ -45,10 +66,17 @@ def review(run):
         for p in artifacts.rglob("*") if p.is_file() and p.name != "artifact_hashes.json"
     }
     expected.pop("artifact_hashes.json", None)
+    remote_only = remote_only_accepted(run, expected)
+    missing = set(expected) - set(returned)
     source = load(run / "source_env_hashes.json")
     checks = {
         "artifact_hash_manifest_present": hash_manifest.exists(),
-        "returned_hashes_match": bool(expected) and returned == expected,
+        "returned_hashes_match": (
+            bool(expected)
+            and set(returned) <= set(expected)
+            and all(returned[k] == expected[k] for k in returned)
+            and missing <= set(remote_only)
+        ),
         "executed_runner_matches_package": digest(artifacts / "runner_output/executed_run_pct_scan_building.py") == source["patched_runner_sha256"],
         "external_finished": summary.get("status") == "EXTERNAL_EPISODE_FINISHED",
         "driver_finished": journal.get("passed") is True,
@@ -158,6 +186,7 @@ def review(run):
         "passed": all(checks.values()),
         "claim": "Known-map, simulator-truth continuous PCT/SCAN/V12 two-goal pilot only; not language/vision/SLAM or physical deployment validation.",
         "checks": checks,
+        "remote_only_accepted": sorted(missing & set(remote_only)),
         "terminals": records,
         "plan_history": list(plans.values()),
         "plan_pose_reviews": plan_reviews,

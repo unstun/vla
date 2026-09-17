@@ -46,6 +46,12 @@ Already established:
 - [x] Selected committed Lite3 bridge exported into VLA without dirty-tree
   copying; 93 selected CPU tests passed, 1 ROS-dependent test skipped.
 - [x] Read-only source audit of the native planner port and prior Building run.
+- [x] SCAN local planner build: `scan_04` (one-line terminal-acceleration fix) is the accepted build since
+  2026-09-17 (Dr Sun). Child task `09-16-scan-terminal-accel-fix-qualification`: native A/B AC0-AC6 passed;
+  8 continuous Isaac cancel/resume episodes, 7/8 passed (episode 3 failed the goal-B stillness check: V12
+  policy on a zero command, no PD stance hold); evidence
+  `.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_fix_qualification/RESULT.md`. Simulation only,
+  one flat route, no placed obstacle.
 
 Still required:
 

@@ -173,11 +173,113 @@ This creates `isaac_runner/two_goal_runs/RUN_ID/commands.json` and defaults to
 `--lead-authorized-execute`, and it refuses to execute unless an accepted SCAN
 workspace path and captured accepted SCAN build identity are present.
 
+SCAN workspace hash gate (added 2026-09-16 for the scan_04 qualification).
+When `--accepted-scan-build-dir` is given, `prepare` requires the build's
+`source_sha256.json` and `install_identity.json`. It checks that the local
+`src/` matches the manifest and that `--remote-scan-workspace` equals the
+identity's `remote_workspace`, and it freezes these expectations in
+`source_env_hashes.json` (`accepted_scan_build_identity.workspace_gate`). Every
+check runs before a run directory is created. A build without an install
+identity is refused unless `--allow-missing-install-identity` is passed; that
+flag is recorded in `run_request.json`, and the remote gate then checks only
+`src/`. Before any port, container or process is started, the remote worker
+hashes the mounted workspace's complete `src/` and `install/` trees and refuses
+on a missing, extra or changed file. Bytecode caches are listed, not hashed.
+The comparison is returned as `artifacts/scan_workspace_gate.json`, and a
+post-cleanup recheck as `scan_workspace_gate_after.json`. `--execute` refuses a
+package prepared before this gate existed.
+
+`--cancel-displacement-m` (default `0.40`, the previous fixed value) sets the
+measured XY displacement that triggers the goal-a cancel. Values below 0.40 m
+are refused because `p2b_execution/review_two_goal.py` checks an absolute
+0.4 m. Values are also refused when the straight-line spawn-to-goal-A distance
+from `inputs/pilot.json` (1.9998 m) minus the value is under 0.30 m, which caps
+the value at 1.6998 m. By the triangle inequality this bound holds for any
+route shape. The value and its check are recorded in `run_request.json`, the
+remote command, the driver command and the `post_cancel` journal event.
+Resource records: `artifacts/gpu_samples.jsonl` holds device-wide `nvidia-smi`
+samples every 1 s; `result.json` holds `gpu_memory` (peak and first sample),
+`remote_wall_seconds`, `started_utc` and `finished_utc`; and
+`return_verdict.json` holds `host_wall_seconds` for each host command. With
+default flags, `run_request.json` and `commands.json` match the actual4 package
+except for these new fields and the explicit `--cancel-displacement-m 0.4`.
+The launcher tests check this.
+
+Package storage (added 2026-09-17, design 5.2). `prepare` hardlinks the frozen
+`pct_runtime/` tree and `inputs/{building.usda,new_building.pickle,pilot.json,input_manifest.json}`
+(27 files, 15.1 MB) and falls back to a copy when linking fails. Config files and
+the bridge tree are still copied because the launcher rewrites them. A linked
+file shares its inode with the frozen source, so never edit a package file in
+place. The package manifest and remote gates are unchanged. The linked files
+are also compared with the PCT runtime and input manifests.
+`run_request.json` records the outcome as `package_storage`.
+
+`--remote-only-bulk` (default off; requires Dr Sun's approval) leaves
+`runner_output/clouds.jsonl` and `runner_output/third_person_master.mp4` on the
+execution host. After the worker ends, `commands.json` `collect_sequence` runs:
+
+1. `collect`: rsync that excludes those two files.
+2. `remote_only_record`: hashes both files on the host and compares them with
+   `artifact_hashes.json`, writing `remote_only_artifacts.json`.
+3. `walk_review`: a guard first requires the worker's final `result.json`
+   write, no cleanup errors and no live process group started by the worker
+   (Isaac runner, bridge, PCT, backend), and records this in
+   `walk_review/render_guard.json`. Only then does it render
+   `walk_review/walk_review.mp4` with the packaged `make_walk_review.py`,
+   using `h264_nvenc` with a `libx264` fallback. A local ssh timeout that
+   leaves the worker running therefore never shares the GPU with Isaac.
+4. `collect_extras`: returns the record and the walk review.
+
+Local verification accepts exactly those two files as absent and still fails
+on any other missing, extra or changed file. A missing walk review, or one
+without a passing render guard, fails `--execute` after all evidence has been
+collected; it is not a navigation result.
+
+Review rule (task decision D9, Dr Sun 2026-09-17): `p2b_execution/review_two_goal.py`
+accepts exactly those two files as absent when the returned
+`remote_only_artifacts.json` has `all_match` true and hashes equal to
+`artifact_hashes.json`. The other 40 checks are unchanged, and the full actual4
+package still reviews 41/41. `review_two_goal.py` does not read the SCAN gate
+records, so AC7 also needs `returned_artifacts/scan_workspace_gate.json` and
+`scan_workspace_gate_after.json` with `passed` true. The worker exits nonzero
+when the post-run recheck fails.
+
+`--execute` on an existing package refuses a `--remote-only-bulk` or
+`--cancel-displacement-m` value that differs from the prepared package.
+
+## Walk Review Video
+
+`make_walk_review.py RUN --output OUT.mp4` builds one synchronized 1280x720
+review video for a two-goal run (design 5.1). The layout is:
+
+- the runner camera, 853x480, with a banner showing run ID, simulation time,
+  phase and recent events;
+- a top-down map with an equal-scale zoom on the cancel and stop points;
+- a strip plotting measured speed, admitted command and non-foot force against
+  simulation time.
+
+Video frame i is paired with `camera_frames.jsonl` row i, and the robot state
+comes from the `metrics.jsonl` row with the same step. Events come from the
+`pilot_journal.json` driver events and backend `terminal_results`. They are
+mapped to simulation time with the `review_two_goal.py` rule. Events more than
+0.25 s after the last state row are listed, not drawn. Missing expected events
+are shown as "event not recorded".
+
+A frame-count difference of one is tolerated, and the sidecar names the rule
+applied; a larger difference is refused. Encoders are `libx264` (CRF 30,
+`-preset slow`), `h264_nvenc` or `h264_videotoolbox`; `--fallback-encoder`
+names a second choice. Use `--video` for a remote-only original and
+`--artifacts-dir RUN/artifacts` on the execution host. The JSON sidecar next
+to the video records input hashes, frame alignment, events, encoder attempts
+and output hash. The tool refuses to overwrite an existing output, and it is a
+review aid, not an acceptance check. The actual4 prototype is 207 frames and
+16.56 s long, 164 kB with libx264, and rendered in about 8 s on the Mac.
+
 The full pilot worker starts one Foxy bridge, one Isaac runner, reads the
 runner epoch from fresh `current_command.json`, then starts the Humble PCT
 worker and the Foxy SCAN/controller/backend stack with that epoch. It does not
 start a duplicate bridge. The pilot driver then posts goal-a attempt 1, cancels
-once after at least 0.4 m measured displacement, requires explicit `cancelled`
+once after at least the configured displacement (default 0.4 m), requires explicit `cancelled`
 and post-cancel stop proof, posts goal-a attempt 2 and goal-b, and writes the
 finish request only after two explicit `arrived` terminal records. Owner `None`
 alone is logged but never treated as success.

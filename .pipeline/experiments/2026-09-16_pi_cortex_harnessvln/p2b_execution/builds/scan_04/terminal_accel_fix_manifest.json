@@ -1,0 +1,38 @@
+{
+  "after_line": "        start_end_derivatives.push_back(gl_traj.evaluateAcc(time));",
+  "after_sha256": "6eec7d6fbbd8df35817f526a644b86fbc8245df295ad69295b3cf3786139d081",
+  "applied_utc": "2026-09-17T07:04:17.185909+00:00",
+  "before_line": "        start_end_derivatives.push_back(gl_traj.evaluateAcc(t));",
+  "before_sha256": "0c51df6396f32d2563d50be0a16f3346c82a5c4d5659acb18b898da1df463981",
+  "build_dir": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/p2b_execution/builds/scan_04",
+  "changed_line_numbers": [
+    171
+  ],
+  "expected_base_sha256": "0c51df6396f32d2563d50be0a16f3346c82a5c4d5659acb18b898da1df463981",
+  "file": "src/plan_manage/src/planner_manager.cpp",
+  "line_number": 171,
+  "line_terminator": "\r\n",
+  "purpose": "SCAN terminal-acceleration fix (evaluateAcc(t) -> evaluateAcc(time)) for a new materialized build",
+  "rationale": {
+    "defect": "Polynomial initialization supplies the acceleration at the last sample strictly before the polynomial end as the terminal acceleration.",
+    "evidence": [
+      ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_replan_diagnosis/RESULT.md",
+      ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_replan_diagnosis/runs/native_true_end_20260916T180700Z/"
+    ],
+    "time_is_true_end": [
+      "planner_manager.cpp:124 declares `double time`, the requested polynomial duration, in the enclosing block.",
+      "planner_manager.cpp:128 builds one segment of duration `time` with end acceleration Eigen::Vector3d::Zero().",
+      "planner_manager.cpp:141-143 builds two segments of `time / 2` each (total `time`) with end acceleration Zero().",
+      "planner_manager.cpp:155 samples `for (t = 0; t < time; t += ts)` and line 167 applies `t -= ts`, so `t` is the last sample, strictly before `time`.",
+      "planner_manager.cpp:169 already supplies the requested end velocity, local_target_vel, not a sampled value.",
+      "planner_manager.cpp:242 (previous-trajectory branch) already supplies a zero end acceleration.",
+      "traj_utils/include/traj_utils/polynomial_traj.h:131-139 evaluateAcc(t) locates the segment with a 1e-4 s tolerance, so evaluateAcc(time) evaluates the last segment at its end."
+    ],
+    "unchanged": "No limit, gate, deadline, optimizer setting or sampling step is changed.",
+    "upstream_divergence": "The base file hash equals the pinned PCT-SCAN-ROS2 base (1cf45a1c). This build diverges from that base by this line only; an unmodified official build was not verified."
+  },
+  "schema_version": 1,
+  "script": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/p2b_execution/apply_scan_terminal_accel_fix.py",
+  "script_sha256": "987fc8b87148d1876cdc8332cd3bffbc072f270e0fa6dcd966e19300288fc72f",
+  "unified_diff": "--- a/src/plan_manage/src/planner_manager.cpp\n+++ b/src/plan_manage/src/planner_manager.cpp\n@@ -168,7 +168,7 @@\n         start_end_derivatives.push_back(gl_traj.evaluateVel(0));\r\n         start_end_derivatives.push_back(local_target_vel);\r\n         start_end_derivatives.push_back(gl_traj.evaluateAcc(0));\r\n-        start_end_derivatives.push_back(gl_traj.evaluateAcc(t));\r\n+        start_end_derivatives.push_back(gl_traj.evaluateAcc(time));\r\n       }\r\n       else // Initial path generated from previous trajectory.\r\n       {\r\n"
+}

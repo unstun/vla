@@ -1,0 +1,429 @@
+--- references/upstream/2026-09-16_lite3_isaac_harness_backend/source/machine-dog-nav/integration/lite3_sim_bridge/lite3_sim_bridge/run_pct_scan_building.py
++++ run_pct_scan_building.py.external_episode
+@@ -24,7 +24,10 @@
+ import hashlib
+ import json
+ import math
++import os
++import re
+ import shutil
++import sys
+ import time
+ import traceback
+ from contextlib import ExitStack
+@@ -42,6 +45,171 @@
+ 
+ def write_json(path: Path, payload) -> None:
+     Path(path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
++
++
++def write_json_atomic(path: Path, payload) -> None:
++    """Write compact JSON through a same-directory atomic rename."""
++    path = Path(path)
++    path.parent.mkdir(parents=True, exist_ok=True)
++    tmp = path.with_name(f"{path.name}.tmp.{os.getpid()}.{time.time_ns()}")
++    tmp.write_text(
++        json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n",
++        encoding="utf-8",
++    )
++    os.replace(str(tmp), str(path))
++
++
++def _module_origin(name: str) -> str:
++    module = sys.modules.get(name)
++    if module is None:
++        return ""
++    origin = getattr(module, "__file__", None)
++    return "" if origin is None else str(Path(origin).resolve())
++
++
++def _validate_runtime_module_origins(runtime: Path) -> dict:
++    runtime = Path(runtime).resolve()
++    expected = {
++        "robot_lab": runtime / "source/robot_lab",
++        "rsl_rl": runtime / "source/rsl_rl",
++    }
++    origins = {name: _module_origin(name) for name in expected}
++    for name, root in expected.items():
++        origin = origins.get(name) or ""
++        root_text = str(root.resolve())
++        if not origin.startswith(root_text + os.sep):
++            raise AdapterFailure(f"{name} imported from unexpected path: {origin or '<missing>'}; expected under {root_text}")
++    return {
++        "robot_lab_file": origins["robot_lab"],
++        "rsl_rl_file": origins["rsl_rl"],
++        "expected_robot_lab_root": str(expected["robot_lab"].resolve()),
++        "expected_rsl_rl_root": str(expected["rsl_rl"].resolve()),
++        "python_executable": sys.executable,
++    }
++
++
++def _validate_external_goal_args(args) -> None:
++    if not args.external_goal_mode:
++        return
++    if not args.external_run_id or not re.match(r"^[A-Za-z0-9_.:-]{1,128}$", args.external_run_id):
++        raise ValueError("--external-goal-mode requires a stable --external-run-id")
++    finite_nonnegative = (
++        ("--external-finish-stillness-seconds", args.external_finish_stillness_seconds),
++        ("--terminal-command-norm", args.terminal_command_norm),
++        ("--terminal-speed-mps", args.terminal_speed_mps),
++        ("--terminal-yaw-rate-radps", args.terminal_yaw_rate_radps),
++    )
++    for name, value in finite_nonnegative:
++        if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(float(value)) or float(value) < 0.0:
++            raise ValueError(f"{name} must be finite and non-negative")
++    if not isinstance(args.external_status_freshness_seconds, (int, float)) or isinstance(args.external_status_freshness_seconds, bool) or not math.isfinite(float(args.external_status_freshness_seconds)) or args.external_status_freshness_seconds <= 0.0:
++        raise ValueError("--external-status-freshness-seconds must be finite and positive")
++
++
++def _is_plain_int(value) -> bool:
++    return isinstance(value, int) and not isinstance(value, bool)
++
++
++def _external_exit_code(status: str, native_trial_exit_code) -> int:
++    if status == "EXTERNAL_EPISODE_FINISHED":
++        return 0
++    if status == "EXTERNAL_EPISODE_FAILED":
++        return 3
++    return native_trial_exit_code(status)
++
++
++def _external_finish_status(backend_status: str) -> str:
++    if backend_status == "FINISHED":
++        return "EXTERNAL_EPISODE_FINISHED"
++    if backend_status == "FAILED":
++        return "EXTERNAL_EPISODE_FAILED"
++    return ""
++
++
++def _external_zero_command(command, threshold: float) -> bool:
++    return (
++        math.hypot(float(command[0]), float(command[1])) <= float(threshold)
++        and abs(float(command[2])) <= float(threshold)
++    )
++
++
++def _external_finish_step(latched: dict, finish_check: dict, zero_applied: bool,
++                          still: bool, sim_time_s: float, dwell_seconds: float) -> tuple:
++    """Latch one valid backend request, then wait on local command/stillness."""
++    if latched is None:
++        if not finish_check.get("requested"):
++            return None, None, None
++        latched = dict(finish_check)
++        latched["latched_sim_time_s"] = sim_time_s
++        latched["dwell_start_s"] = None
++    if zero_applied and still:
++        if latched.get("dwell_start_s") is None:
++            latched["dwell_start_s"] = sim_time_s
++        elif sim_time_s - float(latched["dwell_start_s"]) >= float(dwell_seconds):
++            return latched, latched["dwell_start_s"], str(latched["status"])
++    else:
++        latched["dwell_start_s"] = None
++    return latched, latched.get("dwell_start_s"), None
++
++
++def _external_request_identity(check: dict) -> dict:
++    request = check.get("request") if isinstance(check, dict) else None
++    if not isinstance(request, dict):
++        return {}
++    return {
++        "run_id": request.get("run_id"),
++        "request_id": request.get("request_id"),
++        "observed_run_epoch_ns": request.get("observed_run_epoch_ns"),
++        "backend_terminal_status": request.get("backend_terminal_status"),
++    }
++
++
++def _external_finish_request(path: Path, run_id: str, run_epoch_ns: int,
++                             now_monotonic_ns: int, max_age_s: float) -> dict:
++    """Validate the backend's immutable finish request for this runner epoch."""
++    path = Path(path)
++    if not path.exists():
++        return {"requested": False, "reason": "missing"}
++    try:
++        request = json.loads(path.read_text(encoding="utf-8"))
++    except Exception as exc:  # noqa: BLE001 - evidence should preserve parse failure
++        return {"requested": False, "reason": f"invalid_json:{type(exc).__name__}"}
++    if not isinstance(request, dict):
++        return {"requested": False, "reason": "request_not_object", "request": request}
++    if request.get("schema_version") != 1:
++        return {"requested": False, "reason": "unsupported_schema", "request": request}
++    if request.get("run_id") != run_id:
++        return {"requested": False, "reason": "run_id_mismatch", "request": request}
++    request_id = request.get("request_id")
++    if not isinstance(request_id, str) or not request_id or len(request_id) > 128:
++        return {"requested": False, "reason": "invalid_request_id", "request": request}
++    observed_epoch = request.get("observed_run_epoch_ns")
++    if not _is_plain_int(observed_epoch):
++        return {"requested": False, "reason": "invalid_observed_run_epoch_ns", "request": request}
++    if not _is_plain_int(run_epoch_ns) or observed_epoch != run_epoch_ns:
++        return {"requested": False, "reason": "run_epoch_mismatch", "request": request}
++    requested_at = request.get("requested_at_monotonic_ns")
++    if not _is_plain_int(requested_at):
++        return {"requested": False, "reason": "missing_requested_at_monotonic_ns", "request": request}
++    if not _is_plain_int(now_monotonic_ns):
++        return {"requested": False, "reason": "invalid_now_monotonic_ns", "request": request}
++    if not isinstance(max_age_s, (int, float)) or isinstance(max_age_s, bool) or not math.isfinite(float(max_age_s)) or max_age_s <= 0.0:
++        return {"requested": False, "reason": "invalid_max_age_s", "request": request}
++    age_s = (int(now_monotonic_ns) - int(requested_at)) / 1.0e9
++    if age_s < -0.025:
++        return {"requested": False, "reason": "finish_request_from_future", "request": request}
++    if age_s > float(max_age_s):
++        return {"requested": False, "reason": "finish_request_stale", "age_s": age_s, "request": request}
++    terminal_status = _external_finish_status(request.get("backend_terminal_status"))
++    if not terminal_status:
++        return {"requested": False, "reason": "backend_not_terminal", "request": request}
++    return {
++        "requested": True,
++        "status": terminal_status,
++        "reason": "accepted",
++        "age_s": age_s,
++        "request": request,
++    }
+ 
+ 
+ def _read_viewer_camera_intrinsics(stage, cam_prim_path: str, resolution) -> dict:
+@@ -169,6 +337,14 @@
+     parser.add_argument("--no-freeze-gc", dest="freeze_gc", action="store_false")
+     parser.add_argument("--feedback-dropout-start-s", type=float, default=-1.0)
+     parser.add_argument("--feedback-dropout-wall-s", type=float, default=0.0)
++    parser.add_argument("--external-goal-mode", action="store_true", default=False,
++                        help="Disable only legacy fixed-goal auto-success termination and wait for an external backend finish request")
++    parser.add_argument("--external-run-id", default=None,
++                        help="Run identity shared with the external backend; required with --external-goal-mode")
++    parser.add_argument("--external-control-dir", type=Path, default=None,
++                        help="Directory for current_command.json and finish_request.json; defaults to OUTPUT/external_episode")
++    parser.add_argument("--external-finish-stillness-seconds", type=float, default=1.0)
++    parser.add_argument("--external-status-freshness-seconds", type=float, default=2.0)
+     parser.add_argument("--seed", type=int, default=42)
+     parser.add_argument("--device", default="cuda:0")
+     return parser
+@@ -208,7 +384,7 @@
+ def execution_configuration(args):
+     """Freeze every runner setting independently of host/artifact paths."""
+     paths = {"scene", "runtime", "checkpoint", "route_artifact", "scope", "output",
+-             "execution_manifest"}
++             "execution_manifest", "external_control_dir"}
+     # Round-trip normalizes argparse tuples and JSON lists identically.
+     return json.loads(json.dumps({key: value for key, value in vars(args).items() if key not in paths}))
+ 
+@@ -240,6 +416,7 @@
+     prove which copy of this source the interpreter actually loaded.
+     """
+     args = build_parser().parse_args(argv)
++    _validate_external_goal_args(args)
+     if args.case == "native_nominal" and args.contact_policy != "native_v12":
+         raise SystemExit("native_nominal records contact and preserves native V12 termination")
+     from .feedback_dropout import FeedbackDropout
+@@ -322,6 +499,8 @@
+     from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper  # noqa: E402
+ 
+     __import__("robot_lab.tasks")
++    runtime_import_identity = _validate_runtime_module_origins(args.runtime)
++    write_json(args.output / "runtime_import_identity.json", runtime_import_identity)
+ 
+     # ---- identity gates before anything physical happens -------------------
+     scope = json.loads(args.scope.read_text(encoding="utf-8"))
+@@ -658,6 +837,31 @@
+         "seed": helper_args.seed,
+         "autoreset_allowed": False,
+         "duration_seconds": args.duration_seconds,
++        "external_goal_mode": bool(args.external_goal_mode),
++        "external_goal_contract": {
++            "enabled": bool(args.external_goal_mode),
++            "run_id": args.external_run_id,
++            "control_dir": (
++                str((args.external_control_dir or (args.output / "external_episode")).resolve())
++                if args.external_goal_mode else None
++            ),
++            "status_snapshot": "current_command.json, atomically replaced by this runner",
++            "finish_request": "finish_request.json, written once by the external backend",
++            "finish_schema": {
++                "schema_version": 1,
++                "run_id": "same as --external-run-id",
++                "request_id": "backend unique id",
++                "observed_run_epoch_ns": "run_epoch_ns copied from current_command.json",
++                "requested_at_monotonic_ns": "same-host monotonic_ns when backend writes the request",
++                "backend_terminal_status": "FINISHED or FAILED",
++            },
++            "finish_stillness_seconds": args.external_finish_stillness_seconds,
++            "freshness_seconds": args.external_status_freshness_seconds,
++            "route_artifact_role": (
++                "spawn and legacy metric metadata only; it is not a command target in external-goal mode"
++                if args.external_goal_mode else "legacy fixed-goal metric and terminal target"
++            ),
++        },
+         "actor_obs_shape": list(observation["policy"].shape),
+     }
+     config_sha256 = canonical_config_sha256(identity)
+@@ -686,6 +890,18 @@
+     # it sees, so a packet replayed from an earlier run can never be mistaken
+     # for current state.
+     run_epoch_ns = time.time_ns()
++    external_control_dir = None
++    external_status_path = None
++    external_finish_path = None
++    external_finish_window_start_s = None
++    external_finish_latched = None
++    external_finish_state = {"last_check": None, "last_request": None, "final_reason": None}
++    if args.external_goal_mode:
++        external_control_dir = args.external_control_dir or (args.output / "external_episode")
++        external_control_dir.mkdir(parents=True, exist_ok=True)
++        external_status_path = external_control_dir / "current_command.json"
++        external_finish_path = external_control_dir / "finish_request.json"
++        write_json(external_control_dir / "contract.json", identity["external_goal_contract"])
+     recorder = AsyncRecorder(max_pending=64) if args.async_recording else None
+     metrics_path = args.output / "metrics.jsonl"
+     sensor_path = args.output / "sensor_metrics.jsonl"
+@@ -797,6 +1013,7 @@
+                     status = "WALL_TIMEOUT"
+                     break
+                 sim_time = float(env.sim.current_time) - initial_sim_time
++                external_finish_ready_status = None
+                 snapshot = command_server.snapshot(time.monotonic_ns())
+                 command = (snapshot.command.vx, snapshot.command.vy, snapshot.command.wz)
+                 if args.case == "stand_probe":
+@@ -1051,6 +1268,56 @@
+                         complete_state_frames += 1
+                         complete_state_dropped += int(not published)
+ 
++                if args.external_goal_mode and external_status_path is not None:
++                    status_monotonic_ns = time.monotonic_ns()
++                    write_json_atomic(external_status_path, {
++                        "schema_version": 1,
++                        "run_id": args.external_run_id,
++                        "run_epoch_ns": run_epoch_ns,
++                        "source": "run_pct_scan_building.py external-goal status snapshot",
++                        "output_dir": str(args.output.resolve()),
++                        "sim_step": step,
++                        "sim_time_s": sim_time,
++                        "wall_monotonic_s": time.monotonic() - wall_start,
++                        "wall_monotonic_ns": status_monotonic_ns,
++                        "sim_time_timestamp_ns": int(float(env.sim.current_time) * 1.0e9),
++                        "applied_command": {"vx": command[0], "vy": command[1], "wz": command[2]},
++                        "admitted_command": {"vx": command[0], "vy": command[1], "wz": command[2]},
++                        "raw_command": {
++                            "vx": snapshot.command.vx,
++                            "vy": snapshot.command.vy,
++                            "wz": snapshot.command.wz,
++                        },
++                        "command_sequence": snapshot.sequence,
++                        "command_stale": snapshot.stale,
++                        "command_reason": snapshot.reason,
++                        "command_source_timestamp_ns": snapshot.source_timestamp_ns,
++                        "command_watchdog_events": snapshot.watchdog_events,
++                        "command_sequence_gaps": snapshot.sequence_gaps,
++                        "measured": {
++                            "base_xyz": [float(v) for v in position],
++                            "base_quat_wxyz": [qw, qx, qy, qz],
++                            "horizontal_speed_mps": horizontal_speed,
++                            "yaw_rate_radps": float(angular_world[2]),
++                            "command_obs_error": command_obs_error,
++                        },
++                        "state_epoch": {
++                            "state_sequence": state_sequence,
++                            "telemetry_sequence": telemetry_sequence,
++                        },
++                        "freshness": {
++                            "writer_monotonic_ns": status_monotonic_ns,
++                            "max_reader_age_s": args.external_status_freshness_seconds,
++                            "atomic_replace": True,
++                        },
++                        "clock_domains": {
++                            "sim_time_s": "Isaac simulation time relative to run_clock.simulation_origin_s",
++                            "sim_time_timestamp_ns": "Isaac absolute simulation time in ns",
++                            "wall_monotonic_ns": "same-host Python time.monotonic_ns",
++                            "command_source_timestamp_ns": "same-host monotonic_ns from command sender when present",
++                        },
++                    })
++
+                 records.append(row)
+                 metrics_file.write(json.dumps(row, sort_keys=True) + "\n")
+ 
+@@ -1074,6 +1341,41 @@
+                         terminal_window_satisfied_s = sim_time
+                 else:
+                     terminal_window_start_s = None
++
++                if args.external_goal_mode and external_finish_path is not None:
++                    if external_finish_latched is None:
++                        finish_check = _external_finish_request(
++                            external_finish_path,
++                            args.external_run_id,
++                            run_epoch_ns,
++                            time.monotonic_ns(),
++                            args.external_status_freshness_seconds,
++                        )
++                    else:
++                        finish_check = {
++                            "requested": True,
++                            "reason": "latched",
++                            "status": external_finish_latched["status"],
++                            "request": external_finish_latched.get("request"),
++                        }
++                    external_finish_state["last_check"] = finish_check
++                    zero_applied = _external_zero_command(command, args.terminal_command_norm)
++                    still = (
++                        horizontal_speed <= args.terminal_speed_mps
++                        and abs(float(angular_world[2])) <= args.terminal_yaw_rate_radps
++                    )
++                    external_finish_latched, external_finish_window_start_s, external_finish_ready_status = _external_finish_step(
++                        external_finish_latched,
++                        finish_check,
++                        zero_applied,
++                        still,
++                        sim_time,
++                        args.external_finish_stillness_seconds,
++                    )
++                    if external_finish_latched is not None:
++                        external_finish_state["last_request"] = _external_request_identity(external_finish_latched)
++                    if external_finish_ready_status is not None:
++                        external_finish_state["final_reason"] = "backend_terminal_and_measured_still"
+ 
+                 # ---- sensing and telemetry --------------------------------
+                 if step % sensor_stride == 0:
+@@ -1338,8 +1640,12 @@
+                         and robot.data.projected_gravity_b[0, 2].item() > -0.5):
+                     status = "EXCESSIVE_TILT"
+                     break
++                if external_finish_ready_status is not None:
++                    status = external_finish_ready_status
++                    break
+                 if (
+-                    terminal_window_satisfied_s is not None
++                    not args.external_goal_mode
++                    and terminal_window_satisfied_s is not None
+                     and sim_time - terminal_window_satisfied_s > 0.5
+                 ):
+                     status = "GOAL_REACHED_AND_STOPPED"
+@@ -1419,6 +1725,21 @@
+             "maximum_command_obs_error": max_command_obs_error,
+             "nonfoot_contact_events_over_threshold": nonfoot_events,
+             "contact_guard": contact_guard.as_record(),
++            "external_goal_mode": {
++                "enabled": bool(args.external_goal_mode),
++                "run_id": args.external_run_id,
++                "control_dir": str(external_control_dir) if external_control_dir is not None else None,
++                "status_snapshot": str(external_status_path) if external_status_path is not None else None,
++                "finish_request": str(external_finish_path) if external_finish_path is not None else None,
++                "finish_window_start_s": external_finish_window_start_s,
++                "finish_state": external_finish_state,
++                "legacy_fixed_goal_auto_termination_disabled": bool(args.external_goal_mode),
++                "route_artifact_role": (
++                    "spawn and legacy metric metadata only" if args.external_goal_mode else
++                    "legacy fixed-goal metric and terminal target"
++                ),
++            },
++            "runtime_import_identity": runtime_import_identity,
+             "case_failed": case_failure is not None,
+             "contact_policy": args.contact_policy,
+             "case_failure_reason": (
+@@ -1484,7 +1805,7 @@
+         events.restore()
+         raw_env.close()
+     # A latched physical failure is a failed trial, not a completed one.
+-    return trial_exit_code(status)
++    return _external_exit_code(status, trial_exit_code)
+ 
+ 
+ if __name__ == "__main__":
