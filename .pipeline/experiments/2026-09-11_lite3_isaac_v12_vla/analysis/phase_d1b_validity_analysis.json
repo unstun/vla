@@ -1,0 +1,51 @@
+{
+ "label": "post-hoc analysis; the frozen D.1b verdict (P1 FAIL, R_frames_valid_pose_B FAIL) stands",
+ "run": "phase_d1b_stage_audit_kujiale_0031_v1",
+ "probe": {
+  "rigid_body_view_drop_m": 5.812422752380371,
+  "frozen_expected_drop_m": 4.93,
+  "get_rigidbody_transformation_drop_m": 0.0,
+  "steps_before_first_read_k": 17.99995417696984,
+  "k_rounded": 18,
+  "drop_predicted_for_k_rounded_m": 5.812425,
+  "residual_m": -2.2476196290810435e-06,
+  "bodies_in_view_readout": 173,
+  "gated_bodies": 50,
+  "gated_read": 49,
+  "bodies_beyond_1mm_or_0p1deg": 0,
+  "max_displacement_m": 0.0,
+  "max_rotation_deg": 2.4148365394514667e-06
+ },
+ "pose_b": {
+  "centre_depth_vs_physx_ray": {
+   "A": {
+    "ray_ahead_distance_m": 3.7256526947021484,
+    "ray_ahead_class": "wall",
+    "camera_forward_offset_m": 0.2721,
+    "expected_centre_depth_m": 3.4535526947021484,
+    "rendered_centre_depth_m": 3.4535536766052246,
+    "difference_m": 9.819030761804015e-07
+   },
+   "B": {
+    "ray_ahead_distance_m": 0.9719155430793762,
+    "ray_ahead_class": "cabinet",
+    "camera_forward_offset_m": 0.2721,
+    "expected_centre_depth_m": 0.6998155430793762,
+    "rendered_centre_depth_m": 0.7002041339874268,
+    "difference_m": 0.00038859090805054564,
+    "readback_head_eval_m": [
+     -1.8285558223724365,
+     3.9319570064544678,
+     0.35599997639656067
+    ],
+    "readback_equals_pose_A_target_within_m": 5.088911483772422e-08
+   }
+  },
+  "mean_abs_rgb_difference_A_last_vs_B_last": {
+   "head_eval": 57.84613498263889,
+   "fusion_head": 61.38163194444444,
+   "fusion_d435": 42.329046947337964
+  }
+ },
+ "conclusion": "P1: the rigid-body view tracks free fall exactly (k = 18.000 steps before the first read, residual -2.25e-06 m); the frozen probe assumed the cube was at rest. 49 of 50 gated bodies read, 0 beyond 1 mm / 0.1 deg. Pose B: centre depth equals the PhysX ray distance minus the 0.2721 m camera offset at both poses (A +0.0000 m, B +0.0004 m), so the cameras rendered from pose B; the XformPrimView readback returned the pose-A position (5.09e-08 m from the pose-A target)."
+}

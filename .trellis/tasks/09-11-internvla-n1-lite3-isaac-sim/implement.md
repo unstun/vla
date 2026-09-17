@@ -346,6 +346,107 @@ per round, as in the camera ablation.
         21.9 of 24.6 GiB.
       - Blocker to raise: the unowned vendor `isaac-sim` container was running and holding 2.9 GiB on 2026-09-14.
       - Thresholds must be frozen here before any start.
+      - DECIDED by Dr Sun 2026-09-15:
+        - route: Kujiale / InteriorAgent, not the NVIDIA scenes (research: `research/phaseD1-furnished-scene-candidates.md`);
+        - licence: InteriorAgent Terms of Use accepted for this project ("Accept, run now"; PDF sha256 e7db1186…d1ef).
+          Non-commercial research only, no redistribution (bytes stay on the host, never in git), cite in publications,
+          indemnity to Manycore, revocable, PRC law;
+        - budget: 1 download (`kujiale_0031`) + 1 Isaac start for D.1b, no robot and no model, run beside the vendor
+          container with per-process GPU memory. D.1c and D.1d need new authorisation.
+      - FROZEN 2026-09-15T09:06Z, before the download and the start: `phase_d/stage_audit_thresholds_d1b.json`,
+        sha256 c9a99d5b…5375. AMENDED 2026-09-15T09:20Z, still before any download or start, sha256 96eefd45…8b1b.
+        No number changed; three definitions were added:
+        - unresolved paths: a static-audit dry run on real kujiale_0021 object files showed Unreal content paths
+          (`/Engine/…`, `/Game/…`) on every `info:unreal:sourceAsset` (80 values across 9 object files). They and bare
+          `*.mdl` module names are reported, not gated. Composition arcs, textures and the scene's own MDL are gated;
+        - a rigid body PhysX never created is listed, not a movement failure; at least one gated body must be found;
+        - pose A frame timing starts at the end of `sim.reset()` (collider cooking happens inside reset, recorded as
+          `reset_s`).
+        Summary of the gate:
+        - scene: `spatialverse/InteriorAgent` @ ac599fe2, `kujiale_0031` (val_unseen of InteriorAgent_Nav @ 7d8306f4,
+          33 episodes; smallest of the three val_unseen scans), 451 files, 517,730,536 bytes, every file verified against
+          the HF tree listing (LFS sha256 / git blob sha1) before the start;
+        - stage: 0 unresolved local paths and 0 non-local assets; every layer metres and Z up; 0 PhysicsScene in the
+          scene, exactly 1 in the Kit stage; no extra ground plane; floor extent 3-60 m, height 2-10 m; all 33 episodes'
+          start and goal points inside the floor bounding box;
+        - collision (effective in PhysX, not just authored): PhysX `overlap_box` over each object's AABB (+1 cm) must hit
+          a collider under that object for 100 % of floors, walls and floor-standing obstacles (bottom <= 0.10 m, top
+          >= 0.15 m; curtain/rug/carpet/cushion/pillow/blanket/towel/clothes/plant exempt, listed); a downward ray at both
+          poses hits a floor collider within ±0.02 m of z 0;
+        - physics: after 1.0 s at dt 0.005 with the one-robot PhysX buffers, no floor, wall or floor-standing body moves
+          more than 1 mm or 0.1°; doors, windows and other objects are reported;
+        - render at pose A (episode 462 start, yaw 90°) and pose B (its goal, yaw −18.4°), TORSO height 0.302 m, the D.0f
+          cameras (fusion_head, fusion_d435, head_eval gated; chase reported): 3 consecutive valid frames per pose within
+          120 render iterations, first within 600 s; RGB mean grey 15-240, std >= 8, dark fraction <= 0.5; depth valid
+          fraction >= 0.7, median 0.3-12 m;
+        - GPU memory: this run's own process peak (1 s host samples, vendor process excluded) PASS <= 5,462 MiB, MARGINAL
+          <= 6,486, else FAIL. Projection for D.1d = VLA client 17,728 + audit peak + 300 robot/LiDAR allowance
+          (assumption, D.1d measures it) + 50 overhead against 24,564 with 1 GiB free, vendor container gone;
+        - verdict: admit to D.1c only if every check passes and memory is PASS or MARGINAL; record the result either way.
+      - Host state 2026-09-15T08:51Z (read-only check): vendor `isaac-sim` (nvcr.io/nvidia/isaac-sim:5.1.0) Up 4 h, one
+        kit process at 2,859 MiB, 21 % utilisation; disk 17 GB free; image `e01-walking-isaaclab:20260905` present. So D.1d
+        stays blocked while that container holds memory.
+      - Pre-start work: fetch script, audit script (static USD inventory testable locally with usd-core; Kit part
+        reviewed), driver, summary gate with fake-run tests, an independent review, then the download and the start.
+        - Code: `scripts/phase_d1_prepare_inputs.py`, `scripts/phase_d1_fetch_scene.py`, `phase_d/stage_audit_lib.py`,
+          `phase_d/stage_audit.py`, `scripts/phase_d1_run_stage_audit.sh`, `scripts/phase_d1b_stage_audit_summary.py`;
+          inputs `setup/phase_d1_interioragent/` (HF tree listing of the scene, the 33 val_unseen episodes).
+        - Local tests: `phase_d/test_stage_audit.py` 47/47 under usd-core 0.26.8 (synthetic InteriorAgent-layout scene)
+          and 34/34 under numpy; `scripts/test_phase_d1_host_scripts.py` 15/15 (fetch against a local HTTP server,
+          summary on fake runs). Static dry run on real kujiale_0021 object files only; kujiale_0031 itself is not
+          previewed before the start, so the gate cannot be tuned to it.
+        - Host facts checked read-only: `/proc/<pid>/cgroup` maps the vendor kit pid 1240 to container 16998b63e8dd
+          (= `docker inspect isaac-sim`); `isaaclab.sim` re-exports PhysxCfg/SimulationCfg/SimulationContext and the
+          prim/stage utils; camera sensors take their environment count from the parent prim.
+      - Pre-GPU independent review 2026-09-15 (trellis-check, review only): 2 must-fix, 9 should-fix, 4 unverified.
+        Claims checked in the pinned image before fixing (kit `updateToUsd=false`, `fabricUseGPUInterop`;
+        `create_rigid_body_view` takes a list and `get_transforms()` is xyzw; env close order). All fixed on 2026-09-15:
+        - collider check: no hit cap, stop at the first own hit, octant subdivision when a query looks capped
+          (inconclusive counted as not effective); floor rays use `raycast_all`, both triangle sides, any floor-class
+          hit within tolerance (a rug cannot hide the floor), closest and front-face hits recorded;
+        - physics: poses through an omni.physics.tensors rigid-body view (per-body views if a list is refused), with a
+          free-falling 0.1 m probe cube at (200, 200, 10) that must drop 4.93 ± 0.25 m in the readout P1 uses; run before
+          rendering; float64 quaternion angles;
+        - camera world-position readback at A and after the move to B (≤ 0.05 m);
+        - pose A clock from the end of `sim.reset()`; per-section errors recorded and the run continues; atomic result
+          writes; Kit shutdown in Isaac Lab's env order; default USD predicate (inactive/over prims listed, not objects);
+          `file:` paths normalised with raw examples;
+        - driver: sampler immune to `set -e`, refuse on unlisted GPU memory > 300 MiB, wall limit read from the frozen
+          file, script path resolved before `cd`; summary: frozen sha pinned, samples must bracket all marks with no gap
+          over 5 s, crashes and missing container id exit 2.
+        - Frozen file AMENDED again before the start, validity controls only, no gate number changed:
+          `validity_controls` section, sha256 227d54ac…0466 (driver and summary pin it).
+        - Tests after the fixes: `phase_d/test_stage_audit.py` 71/71 (usd-core) and 55/55 (numpy);
+          `phase_d/test_stage_audit_fake_kit.py` 13/13 (runs `stage_audit.main()` end to end against fake Isaac Lab,
+          PhysX, carb and torch on the synthetic scene: stale second readout, refused list view, black warm-up frames,
+          rug over floor, ignored camera move); `scripts/test_phase_d1_host_scripts.py` 20/20.
+        - CPU rehearsal on the rented 4090 with fake sudo/docker/nvidia-smi (`scripts/rehearse_phase_d1_driver.sh`,
+          `checks/d1b_driver_rehearsal_20260915T102303Z`): good run exit 0, sampler survived 3 failed nvidia-smi
+          calls, hanging fake Kit stopped after the grace period, summary attributed the fake container's 4,100 MiB;
+          foreign GPU process and unlisted memory each refused (exit 75) before creating anything; no leftovers.
+      - D.1a DONE 2026-09-15T09:29:44Z on the rented 4090 (`driver_logs/phase_d1a_fetch_kujiale_0031.log` on the host):
+        live HF listing of `kujiale_0031` @ ac599fe2 equal to the manifest; 451 files, 517,730,536 bytes, every file
+        verified (450 LFS sha256, 1 git blob sha1), 137.6 s; stored at
+        `$ROOT/scenes/interioragent_ac599fe2/kujiale_0031/` with `SHA256SUMS.txt` and
+        `kujiale_0031_download_record.json`. Host only, never in git (ToU clause 2).
+      - D.1b DONE 2026-09-15 (start 1 of 1, run `phase_d1b_stage_audit_kujiale_0031_v1`, 10:25-10:29Z; `RESULT_PHASE_D.md`
+        D.1; `analysis/phase_d1b_*`). Clean run: record hashed, docker exit 0, clean shutdown, GPU back to 2,904 MiB,
+        vendor container unchanged. Label: integrated, not validated.
+        - FROZEN VERDICT: NOT ADMITTED. PASS: S1-S5, C2 (floors 7/7, walls 16/16, floor-standing obstacles 26/26 hit
+          their own Xform-level MeshMerge colliders in PhysX 5.1), C3 (floor at z 0 under A and B), pose-A frames,
+          M1 (Isaac process peak 4,742 MiB; projected D.1d device 22,820 of 24,564 MiB with the vendor container gone).
+          FAIL: P1 and pose-B frames, both on validity controls.
+        - Post-hoc (`scripts/phase_d1b_validity_analysis.py`, verdict unchanged): the probe's 5.812 m drop in the
+          rigid-body view is exact free fall that began 18.000 steps before the first read (the frozen control assumed
+          at rest; `get_rigidbody_transformation` read 0 m, stale); in that readout 0 of 49 gated bodies moved. The
+          pose-B frames were rendered from pose B (centre depth = PhysX ray - 0.2721 m camera offset to 4e-4 m at both
+          poses; visual check: goal beside the bed); the XformPrimView readback returned pose A.
+        - Scene findings for D.1c: 12 nested dynamic bodies (5 doors, 5 windows, 2 cabinets) not simulated as authored;
+          18 convex-decomposition colliders fall back to CPU collision; 5 doorsills and the curtain have no collider;
+          start and goal poses free for a standing Lite3; hydra primvar warnings in the scene meshes.
+        - OPEN for Dr Sun: accept the D.1b record with the two documented validity-control misses, or authorise a
+          corrected re-run (probe drop measured from its first-read velocity; camera moves validated by centre depth vs
+          PhysX rays). D.1c needs its own plan and authorisation either way.
 - [ ] D.2 A Lite3 reference route in that scene with no non-foot contact.
 - [ ] D.3 Author at least two evaluation episodes whose instructions name visible furniture, with goal positions and a
       success radius, so success is measurable.

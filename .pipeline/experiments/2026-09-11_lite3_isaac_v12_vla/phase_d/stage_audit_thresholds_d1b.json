@@ -1,0 +1,142 @@
+{
+  "name": "phase_d1b_stage_audit_thresholds_v1",
+  "frozen": "2026-09-15, before the D.1b Isaac start. Dr Sun: Kujiale/InteriorAgent route, Terms of Use accepted for this project, 1 download + 1 Isaac start for the stage audit without the model, run beside the vendor isaac-sim container with per-process GPU memory. A run's recorded thresholds must equal this file byte for byte (sha256 checked by the summary).",
+  "scope": "D.1b stage audit only: no robot, no VLA, no ROS. D.1c (Lite3 physical gate) and D.1d (VLA co-residence) need their own authorisation.",
+  "scene": {
+    "repo": "spatialverse/InteriorAgent",
+    "revision": "ac599fe2d2285ed0ddfafb70ba56e489462e0650",
+    "scene": "kujiale_0031",
+    "top_level_layer": "kujiale_0031/kujiale_0031.usda",
+    "files": 451,
+    "bytes": 517730536,
+    "why_this_scene": "one of the three val_unseen scans of InteriorAgent_Nav (disjoint from its train split) and the smallest of them"
+  },
+  "episodes": {
+    "repo": "spatialverse/InteriorAgent_Nav",
+    "revision": "7d8306f41f4c4dd12e9276774972c89876a3149b",
+    "file": "val_unseen/val_unseen.json.gz",
+    "bytes": 51283,
+    "sha256": "c141fb12a593502fd81648b1bd54ebad661a1206e64d6ebb083a0a4d3cc9203f",
+    "scan_episodes": 33
+  },
+  "poses": {
+    "rule": "episode frame = USD world frame (metres, Z up, quaternion w,x,y,z); the rig is a level TORSO frame at the standing V12 base height",
+    "torso_height_m": 0.302,
+    "torso_height_source": "phase_d_vla_fused_green_box_v1 isaac_steps.jsonl step 1, base z 0.3020 on the flat course",
+    "A": {"source": "start of episode_id 462 (first kujiale_0031 episode in file order)", "xy": [-1.8285558654333904, 3.6598570198086398], "yaw_deg": 90.0},
+    "B": {"source": "goal of episode_id 462 (= reference_path end)", "xy": [0.6443929718733388, 5.071136780693986], "yaw_deg": -18.413}
+  },
+  "cameras": {
+    "source": "phase_d/fusion_isaac_c8.json (fusion_head, fusion_d435, virtual as head_eval) and the Phase C episode chase camera; same spawn as phase_c/isaac_lockstep_server.py add_camera (horizontal_aperture 20.955 mm, clipping 0.05-30 m, ROS offset convention)",
+    "gated": ["fusion_head", "fusion_d435", "head_eval"],
+    "reported_only": ["chase"]
+  },
+  "stage": {
+    "max_unresolved_local_paths": 0,
+    "unresolved_reported_not_gated": [
+      "bare *.mdl module names (e.g. OmniPBR.mdl), resolved by Kit's MDL search path",
+      "values of info:unreal:sourceAsset: Unreal content paths (/Engine/..., /Game/...) left by the exporter on UnrealShader prims for the unreal render context; Kit renders the info:mdl:sourceAsset shader"
+    ],
+    "unresolved_rule_amended": "2026-09-15, before any download or start: a dry run of the static audit on real kujiale_0021 object files showed 80 info:unreal:sourceAsset Unreal paths per 9 objects that no resolver can resolve",
+    "max_non_local_asset_paths": 0,
+    "meters_per_unit": 1.0,
+    "up_axis": "Z",
+    "all_layers_must_match_units_and_axis": true,
+    "physics_scenes_in_scene_file": 0,
+    "physics_scenes_in_kit_stage": 1,
+    "max_extra_ground_planes": 0,
+    "floor_xy_extent_m": [3.0, 60.0],
+    "scene_z_extent_m": [2.0, 10.0],
+    "episode_points_inside_floor_xy_bbox_fraction": 1.0
+  },
+  "classification": {
+    "object_rule": "every direct child prim of a room Scope under <defaultPrim>/Meshes is one object; class = semantic:Semantics:params:semanticData on the object prim, else the prim name without a trailing _NNNN",
+    "structure_classes": ["floor", "wall", "ceiling"],
+    "opening_classes": ["door", "window", "doorsill"],
+    "floor_standing_max_bottom_z_m": 0.10,
+    "floor_standing_min_top_z_m": 0.15,
+    "soft_classes_exempt": ["curtain", "rug", "carpet", "cushion", "pillow", "blanket", "towel", "clothes", "plant"]
+  },
+  "collision": {
+    "method": "PhysX overlap_box against the object's world AABB grown by the padding on every side; the object's collider is effective if at least one hit's collision path lies under the object prim",
+    "overlap_box_padding_m": 0.01,
+    "effective_fraction_required": {"floor": 1.0, "wall": 1.0, "floor_standing_obstacle": 1.0},
+    "floor_ray_origin_z_m": 1.0,
+    "floor_ray_length_m": 2.0,
+    "floor_hit_z_tolerance_m": 0.02,
+    "floor_ray_must_hit_class": "floor"
+  },
+  "physics": {
+    "physics_dt_s": 0.005,
+    "settle_seconds": 1.0,
+    "max_displacement_m": 0.001,
+    "max_rotation_deg": 0.1,
+    "gated_groups": ["floor", "wall", "floor_standing_obstacle"],
+    "reported_groups": ["opening", "other"],
+    "bodies_not_created_by_physx": "listed, not a movement failure (a body PhysX never created cannot move; C2 decides whether its collider works); at least one gated body must be found",
+    "physx_buffers": "one_env preset of scripts/phase_b_camera_probe.py, as in every Phase C/D Isaac run"
+  },
+  "render": {
+    "first_valid_frame_timeout_s": 600,
+    "timing_origin": "pose A: end of sim.reset() (collider cooking and the first two renders happen inside reset and are recorded as reset_s); pose B: after the cameras are moved",
+    "max_render_iterations_per_pose": 120,
+    "consecutive_valid_required": 3,
+    "physics_steps_per_render": 4,
+    "rgb_mean_grey": [15.0, 240.0],
+    "rgb_min_std_grey": 8.0,
+    "rgb_dark_max_channel": 8,
+    "rgb_max_dark_fraction": 0.5,
+    "depth_cameras": ["fusion_d435", "head_eval"],
+    "depth_min_valid_fraction": 0.7,
+    "depth_median_m": [0.3, 12.0]
+  },
+  "gpu_memory": {
+    "measure": "peak used_memory of this run's own compute process(es), from host nvidia-smi --query-compute-apps sampled every 1 s; processes present before the start (the vendor container) are excluded",
+    "projection": "device_peak_D1d = vla_client_peak + isaac_audit_peak + robot_lidar_allowance + device_overhead, with the vendor container gone",
+    "vla_client_peak_mib": 17728,
+    "vla_client_peak_source": "phase_d_vla_fused_blue_box_v1 samples.csv, InternVLA-N1 client process peak (green/red 17,694)",
+    "device_overhead_mib": 50,
+    "device_overhead_source": "D.0f device peak 21,899 minus per-process peaks 17,728 + 4,121",
+    "robot_lidar_allowance_mib": 300,
+    "robot_lidar_allowance_source": "ASSUMPTION, not measured: the audit has no robot and no LiDAR ray-cast meshes; D.1d measures the real value",
+    "device_total_mib": 24564,
+    "required_free_mib": 1024,
+    "isaac_peak_pass_max_mib": 5462,
+    "isaac_peak_marginal_max_mib": 6486,
+    "verdicts": "PASS <= 5462 (>= 1 GiB projected free); MARGINAL <= 6486 (0-1 GiB projected free, D.1d needs Dr Sun to accept the margin); FAIL > 6486 (co-residence predicted to run out of memory as specified)"
+  },
+  "host": {
+    "allowed_foreign_compute_processes": "only processes inside the running docker container named isaac-sim (vendor, not ours; never touched)",
+    "max_foreign_memory_mib": 4000,
+    "min_free_disk_gb": 6,
+    "wall_limit_s": 1800
+  },
+  "validity_controls": {
+    "added": "2026-09-15, before the start, from the independent pre-GPU review (trellis-check); no gate number changed",
+    "physics_readout_probe": {
+      "rule": "a 0.1 m, 1 kg dynamic cube spawned at `position` (away from every scene collider) must drop expected_drop_m +- tolerance_m over the settle steps in the readout that P1 uses. P1 reads bodies through an omni.physics.tensors rigid-body view; get_rigidbody_transformation is used only if the view's probe fails and its own probe passes. If no readout's probe passes, P1 FAILS as invalid.",
+      "position": [200.0, 200.0, 10.0],
+      "size_m": 0.1,
+      "mass_kg": 1.0,
+      "expected_drop_m": 4.93,
+      "expected_drop_basis": "semi-implicit Euler g*dt^2*n(n+1)/2 with g 9.81, dt 0.005, n 200 = 4.930 m (1/2 g t^2 = 4.905 m)",
+      "tolerance_m": 0.25
+    },
+    "camera_pose_readback": {
+      "rule": "after spawning at pose A and after moving to pose B, every camera's world position from its XformPrimView must lie within max_error_m of the computed target; otherwise that pose's render check FAILS",
+      "max_error_m": 0.05,
+      "basis": "the constant readback bias seen in D.0f was at most 0.027 m"
+    },
+    "overlap_subdivision": {
+      "rule": "each object query stops at its first own hit and has no hit cap; if no own hit and the query reported at least trigger_hits hits, the box is split into 8 octants (each padded) and each is queried, down to max_depth; an object with no own hit where a deepest query still reported trigger_hits or more is listed as inconclusive and counted as not effective",
+      "trigger_hits": 64,
+      "max_depth": 2
+    },
+    "floor_ray": {
+      "rule": "raycast_all with both triangle sides: passes if any hit belongs to a floor-class object (case-insensitive) with hit z within floor_hit_z_tolerance_m; the closest hit and the closest front-face hit are recorded",
+      "both_sides": true
+    },
+    "quaternion_angle": "float64, both quaternions normalised first"
+  },
+  "verdict_rule": "D.1b ADMITS the scene to D.1c when every stage, collision, physics and render check passes and GPU memory is PASS or MARGINAL; any FAIL is recorded with the failing objects or frames, and nothing further runs without Dr Sun"
+}

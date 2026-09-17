@@ -573,3 +573,161 @@ navigation stack?
 **Provenance.** Script `94685429`; outputs in `analysis/phase_d_pixel_goal_grounding/` with `SHA256SUMS.txt`
 (`pixel_goal_grounding.json`, `fig_target_visible_answers.jpg`). Regenerate with
 `python3 scripts/phase_d_pixel_goal_grounding.py --out analysis/phase_d_pixel_goal_grounding`; it is deterministic.
+
+## D.1: furnished-scene admission check (InteriorAgent `kujiale_0031`)
+
+Stage: experiment + analysis. Decided by Dr Sun on 2026-09-15:
+- the Kujiale / InteriorAgent route (research: task `research/phaseD1-furnished-scene-candidates.md`);
+- the InteriorAgent Terms of Use accepted for this project (non-commercial research, no redistribution, citation,
+  indemnity, PRC law; PDF sha256 `e7db1186…d1ef`);
+- 1 download and 1 Isaac start for D.1b (no robot, no VLA), run beside the unowned vendor `isaac-sim` container with
+  per-process GPU memory. D.1c and D.1d need new authorisation.
+
+Machine: the rented RTX 4090 (image `e01-walking-isaaclab:20260905`, Isaac Sim 5.1, Isaac Lab 2.3.2).
+Evidence label: **integrated** for loading, colliding and rendering this scene in our stack. **Not validated**: the
+frozen admission gate did not pass.
+
+**Verdict under the frozen gate: NOT ADMITTED to D.1c.** 10 of 12 checks pass. The 2 failures (P1, pose-B render) are
+validity controls whose assumptions turned out wrong; the post-hoc analysis below shows the measurements they guard are
+consistent, but it does not change the frozen verdict. The next step is Dr Sun's.
+
+### The gate, frozen before any byte was fetched
+
+`phase_d/stage_audit_thresholds_d1b.json`, final sha256 `227d54ac…0466`. History, all before the start:
+- `c9a99d5b` frozen 09:06Z;
+- `96eefd45` 09:20Z: Unreal content paths on `info:unreal:sourceAsset` and bare `*.mdl` names reported, not gated. Found
+  on kujiale_0021 samples, not on the audited scene;
+- `227d54ac`: the `validity_controls` section added after the independent pre-GPU review (readout probe cube, camera
+  readback, overlap subdivision, floor-ray rule). No gate number changed.
+
+### D.1a: the download
+
+| item | value |
+| --- | --- |
+| source | HF `spatialverse/InteriorAgent` @ `ac599fe2d2285ed0ddfafb70ba56e489462e0650`, folder `kujiale_0031` |
+| why this scene | val_unseen scan of `spatialverse/InteriorAgent_Nav` @ `7d8306f4` (disjoint from its train split), smallest of the three |
+| listing check | live HF tree listing equal to `setup/phase_d1_interioragent/kujiale_0031_hf_tree.json` |
+| files / bytes | 451 / 517,730,536; 450 verified by LFS sha256, 1 (`rooms.json`) by git blob sha1 |
+| time | 137.6 s, finished 2026-09-15T09:29:44Z |
+| storage | host only, `$ROOT/scenes/interioragent_ac599fe2/kujiale_0031/` (ToU clause 2); tracked here: listing, `kujiale_0031_SHA256SUMS.txt`, `kujiale_0031_download_record.json`, fetch log |
+| regenerate | `python3 scripts/phase_d1_fetch_scene.py --manifest setup/phase_d1_interioragent/kujiale_0031_hf_tree.json --dest $ROOT/scenes/interioragent_ac599fe2` |
+
+Episodes: the 33 `kujiale_0031` episodes from `val_unseen.json.gz` (sha256 `c141fb12…`, CC BY-NC 4.0), unchanged, in
+`setup/phase_d1_interioragent/kujiale_0031_val_unseen_episodes.json`. Audit poses: A = episode 462 start
+(−1.829, 3.660), yaw 90°; B = its goal (0.644, 5.071), yaw −18.4° (the last path segment). The start quaternion's yaw
+(90°) equals the first path segment's heading (90°), so the episode frame is (w, x, y, z), Z up, metres.
+
+### D.1b: the run
+
+Run `phase_d1b_stage_audit_kujiale_0031_v1`, 2026-09-15T10:25:20Z–10:29Z.
+- **Bookkeeping:**
+  - Kit up in 91 s, audit record written at 213 s, `STAGE_AUDIT_COMPLETE` matching the record;
+  - clean shutdown (cameras, callbacks, instance), docker exit 0, no kill by the driver;
+  - host and local summaries identical.
+- **Host impact:**
+  - GPU 2,903 MiB before, 2,904 MiB after;
+  - vendor `isaac-sim` unchanged (Up, same id, 2,859–2,871 MiB during the run);
+  - GPU samples covered every mark, with no gap over 5 s.
+- **Pre-start:** local tests 71/71, 55/55, 13/13 (fake Kit, end to end) and 20/20, plus a CPU rehearsal of the driver
+  with fake docker/nvidia-smi on the 4090. Details in the task `implement.md` D.1.
+
+| check | verdict | measurement |
+| --- | --- | --- |
+| S1 references resolve | PASS | 180 layers, 206 assets (192 png, 6 jpeg, 7 mdl, 1 hdr); 0 local unresolved, 0 non-local. The 247 unresolved paths are all Unreal content paths on `info:unreal:sourceAsset`; built-in MDL resolved under `/isaac-sim/kit/mdl/core` |
+| S2 metres, Z up | PASS | all 180 layers `metersPerUnit` 1, `upAxis` Z; `/World/Scene` reference not rescaled (identity ops) |
+| S3 one PhysicsScene | PASS | 0 in the scene; 1 (`/physicsScene`) in the Kit stage |
+| S4 no extra ground | PASS | 0 ground planes; the scene's floors are the ground |
+| S5 scale and episode frame | PASS | floor extent 9.13 × 9.56 m, scene height 3.90 m (z −0.55…3.35); all 66 episode start/goal points inside the floor box |
+| C2 colliders effective in PhysX | PASS | overlap queries hit the object's own collider for floors 7/7, walls 16/16, floor-standing obstacles 26/26 (also ceilings 9/9, other 105/105); max 137 hits per query, no subdivision needed |
+| C3 floor under both poses | PASS | floor collider at z 0.000 (A) and −1.2e−7 m (B) |
+| P1 static scene stays put | **FAIL** | readout probe out of tolerance (see below). 49 of 50 gated bodies read, none moved (max 0.0 m, 2.4e−6°) |
+| R frames, pose A | PASS | 120/120 iterations valid, first 2.53 s after reset (which took 67 s); camera readback error 2e−7 m |
+| R frames, pose B | **FAIL** | 120/120 iterations valid, but the camera readback control put every camera 2.9–3.9 m from pose B (see below) |
+| M1 Isaac GPU peak | PASS | this run's process peak 4,742 MiB (≤ 5,462). Projected D.1d device peak 22,820 of 24,564 MiB (1,744 MiB free) with the vendor container gone |
+
+**The scene as it is in Isaac Sim 5.1.**
+- **Objects:** 179 objects; 26 are floor-standing obstacles: cabinet 11, chair 4, bed 2, bedding 2, table 2,
+  bathroom_product 1, closestool 1, storage 1, dining_table 1, sofa 1. Openings: 5 doors, 5 windows, 5 doorsills.
+  1 curtain (soft, exempt). 1,522 meshes, 920,233 triangles.
+- **Colliders (the question the survey could not answer):** all 173 colliders are authored on Xforms with
+  `PhysxMeshMergeCollisionAPI` (0 on Gprims), and Isaac Sim 5.1 honours them.
+  - Approximations: convexHull 118, none 37, convexDecomposition 18.
+  - Not colliding: the 5 doorsills and the curtain, which have no collider authored.
+- **Rigid bodies:** 185, of which 12 are dynamic, and all 12 are nested under a kinematic body (5 doors, 5 windows, 2
+  cabinets). PhysX logs "missing xformstack reset … Simulation of multiple RigidBodyAPI's in a hierarchy will cause
+  unpredicted results" for each. The tensor API does not find them as rigid bodies.
+- **Start and goal poses are free for a standing Lite3:** the leg-width footprint box (padded 0.05 m, z 0.05–0.45 m)
+  overlaps no collider except the floor at A and at B.
+- **Surroundings** (16 rays at z 0.25 m):
+  - **Pose A is tight:** 3.73 m open ahead to a wall; "bedding" 0.49–0.68 m front-left; a cabinet 1.88 m to the left;
+    a wall 0.57 m to the right and 0.70 m behind.
+  - **Pose B:** a cabinet 0.97 m ahead, cabinets 0.78–0.93 m on the left, "bedding" 0.36–0.46 m on the right, the bed
+    0.70 m front-right.
+- **Log (report-only):**
+  - 248 `ConvexDecompositionTask: failed to cook GPU-compatible mesh, collision detection will fall back to CPU`;
+  - 1,519 + 1,519 `omni.hydra` warnings about malformed `displayColor`/`displayOpacity` faceVarying primvars in the
+    scene's meshes;
+  - 2,031 USD warnings from the static audit resolving the Unreal content paths;
+  - `pxr.Semantics is deprecated` (1).
+- **Visual check** (`analysis/phase_d1b_figures/fig1_d1b_frames_contact_sheet.png`):
+  - A shows the corridor from the episode start: textured wood floor, white doorway ahead, framed picture on the
+    right, grey soft object close on the left;
+  - B shows the goal beside the bed: nightstand with drawers 0.7 m ahead, lamp and frames, bed on the right;
+  - materials and lighting are rendered (no missing-material look); the chase camera, 1.8 m behind, is inside walls
+    at both poses, as expected indoors.
+
+### Post-hoc analysis of the two failures (does not change the verdict)
+
+`scripts/phase_d1b_validity_analysis.py` → `analysis/phase_d1b_validity_analysis.json`, from recorded data only.
+
+1. **P1 readout probe.** The frozen control expected the 0.1 m cube at (200, 200, 10) to drop 4.93 ± 0.25 m over the 200
+   settle steps.
+   - **Recorded:**
+     - rigid-body view 5.812 m;
+     - `get_rigidbody_transformation` 0.000 m (stale under the GPU pipeline, as the review suspected).
+   - **Fit:** the drop of a cube already k steps into free fall is g·dt²·(200k + 20100). The recorded drop gives
+     k = 17.99995 (residual −2.2e−6 m).
+   - **What it shows:** the view readout tracks exact semi-implicit Euler motion. The at-rest assumption was wrong:
+     18 physics steps ran between the start of physics and the first read. Where they came from inside `sim.reset()`
+     is **unverified**: Isaac Sim's `play()` updates the app with simulation off, and `initialize_physics()` performs
+     one warm-up step (`isaacsim.core.api` `simulation_context.py:900-919`, `simulation_manager.py:235-242`).
+   - **Guarded measurement:** in the view readout, 0 of 49 gated bodies moved beyond 1 mm or 0.1°. The one unread gated
+     body is the nested dynamic group of `cabinet_0016`.
+2. **Pose B camera readback.** After `Camera.set_world_poses(..., convention='ros')`, each camera's
+   `_view.get_world_poses()` returned the pose-A position, within 5e−8 m of the pose-A target.
+   - **Renders:** they did come from pose B. PhysX scene-query rays from the TORSO point along the heading hit a wall at
+     3.7257 m (A) and a cabinet at 0.9719 m (B). The head_eval camera sits 0.2721 m ahead of that point on the same
+     heading line, and its centre depth is 3.4536 m (A, difference +1e−6 m) and 0.7002 m (B, +0.0004 m).
+   - **Pixels:** the pose-B frames differ from pose A by 42–62 mean grey levels, and the visual check shows the goal
+     beside the bed.
+   - **What failed:** the readback, not the move. Mechanism **unverified**: Isaac Lab 2.3.2 `XformPrimView` writes
+     Fabric world matrices, updates the Fabric hierarchy and mirrors to USD (`sim/views/xform_prim_view.py:699-770`).
+
+### Claim boundary
+
+- **Scope:** one scene and two static viewpoints, with no robot and no LiDAR.
+- **"Collider effective"** means PhysX scene-query shapes exist for the object. It does not show that a walking Lite3
+  gets correct contact from them: that is D.1c. Convex-decomposition pairs will run CPU narrowphase (performance and RTF
+  unknown).
+- **Nested dynamic bodies** (5 doors, 5 windows, 2 cabinets) are not simulated as authored. Their behaviour with a
+  robot is untested.
+- **M1** covers two static views with texture streaming. It excludes the robot and LiDAR ray-cast meshes of the scene
+  (the 300 MiB allowance is an assumption) and assumes the vendor container is gone for D.1d.
+- **Unverified mechanisms:** where the 18 pre-read physics steps come from; why the camera readback is stale.
+
+### Provenance
+
+- **Executed on the host, byte-identical to local:** `phase_d/stage_audit.py` `c06d2ea5`, `phase_d/stage_audit_lib.py`
+  `6c3595e4`, thresholds `227d54ac`, driver `scripts/phase_d1_run_stage_audit.sh` `1022d82a`, summary
+  `scripts/phase_d1b_stage_audit_summary.py` `8dfd5291` (full hashes in the run's `executed_source_sha256.txt`).
+- **Run record:** `runs/phase_d1b_stage_audit_kujiale_0031_v1/`, pulled back as a 22.6 MB tar (sha256 `161e7cb2…`;
+  `manifest.sha256` verified locally, 40 files). Frames and depth arrays are local-only.
+- **Analysis:**
+  - `analysis/phase_d1b_stage_audit_summary.json` (gate, GPU, log scan);
+  - `analysis/phase_d1b_validity_analysis.json`;
+  - `analysis/phase_d1b_figures/` (`scripts/phase_d1b_figures.py` `3b5fae52`, deterministic, `SHA256SUMS.txt`).
+- **Regenerate the summary:** `python3 scripts/phase_d1b_stage_audit_summary.py --run-dir runs/phase_d1b_stage_audit_kujiale_0031_v1 --thresholds phase_d/stage_audit_thresholds_d1b.json`.
+
+**Open for Dr Sun:** accept the D.1b record with the two documented validity-control misses, or authorise a corrected
+D.1b re-run. The correction would measure the probe drop from its own first-read velocity, and validate camera moves by
+centre depth against PhysX rays instead of the readback.
