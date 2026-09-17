@@ -34,3 +34,10 @@ call; original Claude/Codex benchmark results remain outside this preparation.
 Follow-up on 2026-09-16: after configuring the server key, Dr Sun said
 "好了，你试试". This authorized the credential check and one prepared episode-0
 trial. That trial completed; see `implement.md` and `REAL_EPISODE_RESULT.md`.
+
+## Halted (Dr Sun, 2026-09-17)
+
+All MIP experiments are halted until Dr Sun reopens them; the focus is the navigation foundation. The 2026-09-16
+approval for 5 more episodes is withdrawn. Nothing is running: no run started after episode 0, whose
+`final_inventory.json` records a full simulator shutdown. The episode-0 analysis done before the halt is kept at
+`.pipeline/experiments/2026-09-16_mip_5070ti/analysis/episode0_stop_analysis.md` (AI-only, unreviewed).
