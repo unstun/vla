@@ -5,6 +5,93 @@ reviewed: false
 
 # Literature And Upstream Index
 
+## 2026-09-16: released embodied runtime alternatives
+
+Dr Sun selected a HarnessVLN method reimplementation with Pi plus Cortex.
+The active task `.trellis/tasks/09-16-emos-harnessvln-reimplementation/` is
+in progress: Pi owns the sole model/tool loop, with Cortex/EMOS interfaces
+behind an explicit navigation-validation layer. Pinned Pi, EMOS and
+EmbodiedAgents snapshots have been acquired under
+`references/upstream/2026-09-16_pi_cortex_harnessvln/`.
+
+The first offline protocol slice passed 11 Python and 5 real-Pi-runtime tests
+on the Mac and the 5070 Ti Linux host. Source equality and all 11 returned
+artifacts were hash-verified. The deterministic case used 10 scripted provider
+turns, two fixture movements and three intended rejections. It made zero actual
+LLM calls and did not run Cortex/ROS or Habitat. See
+`../experiments/2026-09-16_pi_cortex_harnessvln/RESULT.md` for the claim boundary.
+This is not a HarnessVLN navigation reproduction or a real-robot result.
+
+Dr Sun then selected Isaac Lab and the existing machine-dog-nav Lite3 stack,
+with maximum supportable method fidelity and eventual physical deployment.
+The Habitat-first proposal is superseded. The 79-file bridge at committed
+848b4aec was exported into VLA; selected CPU checks passed 93 tests with one
+ROS-dependent skip and 15 subtests. The native PCT/SCAN port's 65 file hashes
+match its manifest. The canonical planner files, eight explicit Foxy adaptations
+and 145 global PCT/license files are now frozen from committed upstream objects.
+All eight bridge transport tests passed in the existing Foxy/rclpy container,
+including the earlier skipped ROS case. A GPT-5.5/medium executor implemented
+the separate P2A lifecycle core; after three lead correction requests, 37
+executor tests and 21 lead tests passed locally and in actual Python 3.8.10
+with source hash equality. This is bounded lifecycle acceptance, not actual
+PCT/SCAN/Isaac integration. Perception/graph memory and sensor-derived
+localization remain implementation work. A separate real
+FAST-LIVO2 candidate was located in machine-dog; current local evidence does
+not establish that it is integrated into this harness or deployment-ready.
+See the task's research/isaac_backend_mapping.md and
+research/fidelity_and_deployment.md for source mapping and acceptance gates.
+
+Following the HarnessVLN/SLAM discussion, EMOS (Automatika Robotics), its
+EMOS-pinned Cortex/Memory components and public Lite3 plugin, RAI, and HSGM
+were inspected as practical source references. EMOS/EmbodiedAgents carry MIT
+root licenses; the Lite3 plugin declares MIT in `package.xml` but has no root
+license text in the inspected tree. RAI and HSGM carry Apache-2.0 root licenses.
+The Lite3 plugin is a Motion Host/ROS interface, not a validated adapter for
+our custom locomotion stack; localization and sensor calibration remain
+integration work. RAI's ROSbot demo uses predefined room coordinates.
+Exact revisions, original entry points and inspected symbols are in the
+[runtime comparison](../survey/2026-09-16_embodied_harness_alternatives_upstream_survey.md).
+The original comparison established `surveyed` status only. The Pi/Cortex
+acquisition and offline interface results above are separate subsequent work;
+the other alternatives have no new execution evidence.
+
+## 2026-09-16: open-source work related to HarnessVLN
+
+Follow-up on AgiBot: **HarnessVLN** is the dedicated navigation-harness paper
+with AGIBOT/Nanjing/Tsinghua affiliations and A3U humanoid deployment. Its public
+repository `AgibotGeneral/harnessvln` at
+`b71bed50953c5f300ce2c5aeefbb18383514c11b` contains only a release-placeholder
+README; implementation remains unavailable in the checked snapshot. A versioned
+PDF and source checks are saved. AgiBot **Link-U OS** was separately surveyed at
+`64ac7b08dd609dfb463310945856419be470315a` (Mulan PSL v2): its Alpha release is
+robot communication/deployment/locomotion infrastructure, not verified evidence
+of the same navigation agent harness. See the AgiBot follow-up in the
+[comparison](../survey/2026-09-16_harness_vln_open_source_upstream_survey.md).
+
+Follow-up execution: Dr Sun selected MIP, authorized MP3D download and requested
+DeepSeek Harness. The pinned source is now `imported`; RTX 5070 Ti setup and a
+credential-free scripted MCP/image smoke passed. After user credential setup,
+one real DeepSeek episode completed: native STOP, success 0/1, oracle 0/1,
+distance to goal 4.7544 m. Paper metrics remain unreproduced. See
+[MIP preparation and first run](../experiments/2026-09-16_mip_5070ti/README.md).
+
+Dr Sun subsequently narrowed the query to **agent harness research for robot-dog
+navigation**. Primary-text checks identify NavMCP (Go2), Embodied Agents Take
+Control / MIP (Go2), and Harness Robotic OS / Argos (Vbot) as direct references.
+MIP has a checked implementation; canonical full code for NavMCP and HROS was not
+established. See the scope-refinement section of the comparison linked below.
+AgenticNav uses a wheeled robot and HarnessVLN uses a humanoid.
+
+Six official implementations with checked root licenses were surveyed: HSGM,
+GC-VLN, MSGNav, Embodied Agents Take Control / MIP, SG-Nav, and VLFM. See the
+[dated comparison](../survey/2026-09-16_harness_vln_open_source_upstream_survey.md)
+for primary paper/repository links, exact commit pins, source checks, dependencies,
+original execution entries and Lite3 adaptation limits. All six have status
+`surveyed` at the initial survey boundary; MIP's subsequent preparation is recorded above.
+InstructNav and CA-Nav have public code but no root license found at the checked
+revisions. AgenticNav's corresponding official implementation was not established.
+Older recommendations below remain historical, not the current project route.
+
 ## 2026-09-09: LightNav-0 official-demo preparation
 
 Dr Sun selected [LightNav-0](https://github.com/lightorigins/LightNav-0).

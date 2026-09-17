@@ -524,3 +524,46 @@ Reviewed project status, then committed the Aug 18 to Sep 14 backlog: text track
 
 - Dr Sun: D.1 furnished-scene admission (scene and start budget).
 - Dr Sun: playwright junk (track/ignore/delete) and the ~1 GB of Codex checkpoint refs in .git.
+
+
+## Session 14: Status review, Sep 16 decisions and Sep 15-16 evidence commit
+
+**Date**: 2026-09-16
+**Task**: Status review, Sep 16 decisions and Sep 15-16 evidence commit
+**Branch**: `main`
+
+### Summary
+
+Reviewed project status; Dr Sun set foundation-first priorities; committed D.1b, HarnessVLN and MIP text evidence with 322 large files local-only.
+
+### Main Changes
+
+- Status review: corrected the reading of the SCAN defect (a terminal-acceleration replan rejection, not a collision) and of C8 (camera-ablation condition 8, the two-camera software fusion).
+- Dr Sun decisions: test the SCAN fix next as a HarnessVLN child task, no 5070 Ti run before the run count is approved; Pi/Cortex waits for the navigation base; D.1b parked for discussion; MIP analyse episode 0 then 5 more episodes; older items on hold.
+- Task 09-16-commit-sep15-16-evidence: classifier adapted from the Sep 15 task; 3 manifests (322 files, 937 MB); scoped .gitignore block; Dr Sun approved keeping 17 HarnessVLN text dumps over 5 MB (617 MB) local-only.
+- Classifier bug caught on first run: it re-included local-only entries from already-committed manifests (4,767 false UNCLAIMED errors); fixed by subtracting each manifest's HEAD entries.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8df243fc` | (see git log) |
+| `c10f2976` | (see git log) |
+| `e226be6f` | (see git log) |
+| `ad9b157d` | (see git log) |
+
+### Testing
+
+- [OK] [OK] 39,352-file SHA-256 snapshot unchanged after the commits; the 3 manifests pass shasum -c with 0 failures; Isaac manifest only gained 37 lines.
+- [OK] [OK] check-ignore: every local-only path ignored, no committed path ignored, probes outside the roots not ignored; no committed file over 5 MB; each staged list equals its approved list; CLAUDE.md exact.
+- [OK] [OK] Credential scan of committed text: DEEPSEEK_API_KEY appears only as a variable name. JSON 1,346, YAML 78, Python 1,655 parse; one YAML uses DeepSeek Harness's own !!js tag (syntax valid).
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Write the SCAN fix test child task (prd/design/implement) and bring the 5070 Ti run count to Dr Sun.
+- MIP: finish the episode-0 analysis, then run 5 episodes when no Isaac test is using the 5070 Ti.
+- Discuss D.1b with Dr Sun.

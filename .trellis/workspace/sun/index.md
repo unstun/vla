@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 13
-- **Last Active**: 2026-09-15
+- **Total Sessions**: 14
+- **Last Active**: 2026-09-16
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~526 | Active |
+| `journal-1.md` | ~569 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 14 | 2026-09-16 | Status review, Sep 16 decisions and Sep 15-16 evidence commit | `8df243fc`, `c10f2976`, `e226be6f`, `ad9b157d` | `main` |
 | 13 | 2026-09-15 | Status review and backlog evidence commit | `ab7c8414`, `b472a48c`, `540abf14`, `63002f85`, `0d134e49`, `0a816433`, `3cfa2189`, `7f743cfa`, `0374716f` | `main` |
 | 12 | 2026-09-09 | Prepare LightNav-0 visual reproduction package v3 | - | `main` |
 | 11 | 2026-09-09 | LightNav-0 BF16 on 5070 Ti and Trellis 0.6.15 update | - | `main` |
