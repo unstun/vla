@@ -567,3 +567,44 @@ Reviewed project status; Dr Sun set foundation-first priorities; committed D.1b,
 - Write the SCAN fix test child task (prd/design/implement) and bring the 5070 Ti run count to Dr Sun.
 - MIP: finish the episode-0 analysis, then run 5 episodes when no Isaac test is using the 5070 Ti.
 - Discuss D.1b with Dr Sun.
+
+
+## Session 15: SCAN fix Isaac series, report and adoption
+
+**Date**: 2026-09-17
+**Task**: SCAN fix Isaac series, report and adoption
+**Branch**: `main`
+
+### Summary
+
+Ran 8 Isaac cancel/resume episodes with scan_04 (7/8 pass), replayed stop poses natively, published the report; Dr Sun adopted scan_04 and opened a sim-only stance-hold task.
+
+### Main Changes
+
+- Isaac series on gpu5070ti: 7/8 passed the 41 checks (bound 0.529); e03 failed goal-B stillness (one 0.1595 rad/s yaw sample; V12 on zero command, no PD hold per Dr Sun).
+- Native stop-pose replay: original build rejects the resume plan at 6/8 stops, fixed accepts 8/8; AC0 control reproduced.
+- Report: make_report.py, make_report_page.py, RESULT.md; private page https://claude.ai/artifact/VSTvZquqTiA4iGuwWabJ6v; check pass fixed driver fail-open probe, ledger gaps and several hand-typed numbers.
+- Dr Sun adopted scan_04 (PRD D14, AC7 not met as written); opened task 09-17-isaac-runner-stance-hold (Isaac runner only).
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `290a0ec5` | (see git log) |
+| `20f24308` | (see git log) |
+| `097304f4` | (see git log) |
+| `486cc80a` | (see git log) |
+
+### Testing
+
+- [OK] [OK] 102 scan_fix_qualification + 61 isaac_runner + 24 p2b tests pass
+- [OK] [OK] 468 local-only manifest lines verified by shasum -c and all git-ignored; no staged file over 5 MB; credential grep clean
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Stance-hold task: answer Q1-Q3 (hold pose, trigger, gains/blend source), then design.md and implement.md, then run budget.
+- Pi/Cortex, D.1b and older items remain on hold; MIP halted.

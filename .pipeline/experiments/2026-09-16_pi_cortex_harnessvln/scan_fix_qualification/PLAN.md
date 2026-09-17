@@ -1,7 +1,7 @@
 # SCAN Terminal-Acceleration Fix: Native A/B Suite Plan
 
 Date: 2026-09-17. Stage: experiment + analysis (planning of step B).
-Task: `.trellis/tasks/09-16-scan-terminal-accel-fix-qualification` (PRD R2, AC0 and AC2-AC6; design section 2).
+Task: `.trellis/tasks/archive/2026-09/09-16-scan-terminal-accel-fix-qualification` (PRD R2, AC0 and AC2-AC6; design section 2).
 
 ## Frozen thresholds
 

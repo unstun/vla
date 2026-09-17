@@ -2,7 +2,7 @@
 origin: ai_with_source_check
 reviewed: false
 date: 2026-09-17
-task: .trellis/tasks/09-16-scan-terminal-accel-fix-qualification
+task: .trellis/tasks/archive/2026-09/09-16-scan-terminal-accel-fix-qualification
 machine: gpu5070ti (native suites on CPU in the pinned Foxy image; Isaac episodes on the RTX 5070 Ti)
 ---
 
@@ -96,7 +96,7 @@ All were made by Dr Sun before the result they affect was seen, except where sta
   reset/pose-injection/contact failures. Applied: episode 3 failed, and the series continued.
 - D12 (2026-09-17): 6 episodes at the 0.40 m trigger, 1 at 0.45 m, 1 at 0.50 m.
 - D13 (2026-09-17): the 1.5 m/s^2 gate stays (2.0 was considered:
-  `.trellis/tasks/09-16-scan-terminal-accel-fix-qualification/research/goal_tolerance_and_accel_limits.md`).
+  `.trellis/tasks/archive/2026-09/09-16-scan-terminal-accel-fix-qualification/research/goal_tolerance_and_accel_limits.md`).
 - Thresholds file history: `fec16231…` (current), `4c5f7eaf…`, `3cce793f…` (`thresholds_history/`), and the first
   local freeze `52e4d26e…`, replaced before AC0 was added and before any suite result (no copy kept; `PLAN.md`).
 

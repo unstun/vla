@@ -42,7 +42,7 @@ from datetime import datetime, timezone
 HERE = Path(__file__).resolve().parent
 EXP = HERE.parent
 REPO = EXP.parents[2]
-PRD = REPO / '.trellis/tasks/09-16-scan-terminal-accel-fix-qualification/prd.md'
+PRD = REPO / '.trellis/tasks/archive/2026-09/09-16-scan-terminal-accel-fix-qualification/prd.md'
 SUITE_RUN = HERE / 'runs/native_suite_20260917T083723Z'
 LEDGER = HERE / 'isaac_series/series_ledger.jsonl'
 OUTPUT = HERE / 'report'
