@@ -299,3 +299,50 @@ __pycache__/
 
 # Local HarnessVLN evidence bundle; hashes, member inventory and regeneration are tracked beside it.
 /.pipeline/handoffs/2026-09-16_harnessvln_archive/evidence.tar.gz
+
+# 2026-09-16 evidence commit (task 09-16-commit-sep15-16-evidence). Per-file SHA-256 for every path below is in the
+# root's tracked LOCAL_ONLY_BYTES.sha256; the bytes stay on this Mac under the same path.
+# The existing 2026-09-11_lite3_isaac_v12_vla block also covers 37 new D.1b frames and depth arrays (38.3 MB);
+# their lines were appended to that root's manifest.
+
+# 2026-09-16_mip_5070ti (47 files, 11.7 MB).
+# MIP on gpu5070ti: DeepSeek episode-0 and protocol-smoke observation PNGs, the 2 fps convenience replay (its hash is
+# also in replay_manifest.json) and setup/mp3d_zip_tail.bin (66 KB tail of an MP3D archive; MP3D bytes are under its
+# Terms of Use and are not redistributed). Model run outputs are not regenerable (external API model).
+/.pipeline/experiments/2026-09-16_mip_5070ti/**/*.mp4
+/.pipeline/experiments/2026-09-16_mip_5070ti/**/*.png
+/.pipeline/experiments/2026-09-16_mip_5070ti/setup/mp3d_zip_tail.bin
+
+# 2026-09-16_pi_cortex_harnessvln (238 files, 886.8 MB).
+# HarnessVLN native PCT/SCAN/Lite3 V12 Isaac runs on gpu5070ti:
+# - per-run copies of the materialized PCT runtime, native libraries plus pinned Python source (identity:
+#   p2b_execution/pct_runtime_manifest.json and each run's source_env_hashes.json; rebuild with
+#   p2b_execution/freeze_pct_runtime.py);
+# - per-run copies of the frozen scene and map inputs (identity: p2b_execution/input_manifest.json);
+# - third-person, RViz and preview videos and review frames;
+# - 17 point-cloud, journal and metrics dumps over 5 MB (Dr Sun, 2026-09-16; 13 are also in
+#   .pipeline/handoffs/2026-09-16_harnessvln_archive/evidence.tar.gz).
+# Run outputs are not regenerable. Nested .gitignore files in this root cover pi/node_modules and the
+# p2b_execution inputs, runtime and build sources.
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/**/pct_runtime/
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/**/*.mp4
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/**/*.pickle
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/**/*.png
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/**/*.usda
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/two_goal_runs/two_goal_20260916T160655Z_p2b_actual3_retry1/returned_artifacts/runner_output/clouds.jsonl
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/two_goal_runs/two_goal_20260916T160655Z_p2b_actual3_retry1/returned_artifacts/runner_output/metrics.jsonl
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/two_goal_runs/two_goal_20260916T160655Z_p2b_actual3_retry1/returned_artifacts_manual/runner_output/clouds.jsonl
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/two_goal_runs/two_goal_20260916T160655Z_p2b_actual3_retry1/returned_artifacts_manual/runner_output/metrics.jsonl
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/two_goal_runs/two_goal_20260916T162236Z_p2b_actual4/returned_artifacts/runner_output/clouds.jsonl
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T171400Z_off/returned_artifacts/pilot_journal.json
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T171400Z_off/returned_artifacts/pilot_journal_live.json
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T171400Z_off/returned_artifacts/runner_output/clouds.jsonl
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T171400Z_off/returned_artifacts/runner_output/metrics.jsonl
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T172100Z_rviz/returned_artifacts/pilot_journal.json
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T172100Z_rviz/returned_artifacts/pilot_journal_live.json
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T172100Z_rviz/returned_artifacts/runner_output/clouds.jsonl
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T172100Z_rviz/returned_artifacts/runner_output/metrics.jsonl
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T173400Z_rviz_gpu/returned_artifacts/pilot_journal.json
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T173400Z_rviz_gpu/returned_artifacts/pilot_journal_live.json
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T173400Z_rviz_gpu/returned_artifacts/runner_output/clouds.jsonl
+/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T173400Z_rviz_gpu/returned_artifacts/runner_output/metrics.jsonl
