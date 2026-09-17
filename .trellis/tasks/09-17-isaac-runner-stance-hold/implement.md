@@ -44,6 +44,13 @@ substeps, so the entry torque can jump for up to 20 ms. Dr Sun approved the budg
 
 ## C. 5070 Ti host (needs Dr Sun's approval)
 
+- [x] C1c Scripted walk (PRD D5), local build and check done 2026-09-17: `scripted_walk` case with a command script,
+      side follow camera (heading fixed at the start yaw, 25 fps), entry-Kd variants `ramp` / `step1` /
+      `step2p5`, and analyzer `walk` (AC8, D5 selection). Thresholds re-frozen before any walk run:
+      `683a8ca6d9d26fe4c45af22fc449c1c05525fde9eb0fb3dc4125c4f2831b43b8`. Patched runner `120192be…`. Check GO;
+      isaac_runner 188 tests.
+- [ ] C1d Four walk runs (off, ramp, step1, step2p5), then `analyze_stance_hold.py walk`, then a side-by-side video.
+
 - [x] C1 Stand A/B: `qualify_stand_runner.py`, `stand_probe` 60 s, first `--stance-hold off`, then `auto`; host idle
       check before each run; `analyze_stance_hold.py` gives the AC3 verdict. If AC3 fails, stop and report; C2 does
       not run.
@@ -62,7 +69,14 @@ substeps, so the entry torque can jump for up to 20 ms. Dr Sun approved the budg
       (old file kept in `stance_hold_thresholds_history/`). Lead decision: AC7 window end tolerance 1 ms (float32
       sim times). AC7 on the C1 run fails as expected (yaw 0.302, vertical 0.210). Patched runner `1d33b43b…`;
       isaac_runner 142 tests.
-- [ ] C1b Rerun the hold-on stand (60 s); hold-off baseline reused from C1.
+- [x] C1b Rerun the hold-on stand (60 s); hold-off baseline reused from C1. Done 2026-09-17 13:23-13:26 UTC:
+      `isaac_runner/runs/stand_20260917T132323Z_hold_auto_ramp` (EXTERNAL_EPISODE_FINISHED, 25/25 hashes). AC3 pass (yaw ≤ 0.0043, drift
+      1.8 mm, min foot 23.2 N), AC5 pass, **AC7 fail**: vertical speed 0.020 m/s (pass; the hop is gone,
+      feet ≥ 20 N), but |yaw rate| 0.363 rad/s at 0.68 s (limit 0.15). The yaw now swings +0.34 / −0.36 with
+      period ~0.35 s during the low-gain part of the ramp; with the immediate step it peaked at 0.30 and damped
+      faster. The trace is identical to C1 up to entry (deterministic). Report:
+      `stance_hold_qualification/stand_ab_ramp_20260917T132323Z_hold_auto_ramp.json`; figure `stand_ab/entry_ramp_compare.png`.
+      C2 stays paused; next step needs Dr Sun (damping at entry, see the lead's report).
 - [ ] C2 Two-goal series with `scan_04` and `--stance-hold auto`: 8 episodes (6 cancel at 0.40 m, 1 at 0.45 m, 1 at
       0.50 m), reviewed like the SCAN series (41 checks, D11-style stop rule), with walk videos.
 - [ ] C3 Host state after; containers and ports clean.

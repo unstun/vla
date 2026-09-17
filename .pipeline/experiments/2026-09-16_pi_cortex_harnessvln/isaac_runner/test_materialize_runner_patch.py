@@ -1,5 +1,7 @@
 import ast
+import contextlib
 import importlib.util
+import io
 import json
 import math
 import py_compile
@@ -11,6 +13,8 @@ import types
 import unittest
 from argparse import Namespace
 from pathlib import Path
+
+import numpy as np
 
 import materialize_runner_patch as materializer
 
@@ -476,13 +480,22 @@ class StanceHoldPatchTests(unittest.TestCase):
 
     def test_stance_anchors_are_the_only_other_differences(self):
         source = self.data["source_text"]
-        external = materializer.apply_patch_text(source, include_stance_hold=False)
+        external = materializer.apply_patch_text(source, include_stance_hold=False, include_scripted_walk=False)
         module = materializer.load_stance_hold_module()
+        script_module = materializer.load_command_script_module()
         removed = self.data["patched_text"]
-        for item in reversed(materializer._stance_hold_replacements(module)):
-            self.assertEqual(removed.count(item["new"]), 1, item["name"])
-            removed = removed.replace(item["new"], item["old"], 1)
+        # Undo the scripted-walk group first (it anchors on stance-hold output), then the stance group.
+        groups = (materializer._scripted_walk_replacements(script_module),
+                  materializer._stance_hold_replacements(module))
+        for group in groups:
+            for item in reversed(group):
+                self.assertEqual(removed.count(item["new"]), 1, item["name"])
+                removed = removed.replace(item["new"], item["old"], 1)
+            if group is groups[0]:
+                self.assertEqual(removed, materializer.apply_patch_text(source, include_scripted_walk=False))
         self.assertEqual(removed, external)
+        with self.assertRaises(ValueError):
+            materializer.apply_patch_text(source, include_stance_hold=False)
 
     def test_off_branch_is_todays_statement_right_after_the_policy(self):
         text = self.data["patched_text"]
@@ -759,6 +772,48 @@ class StanceHoldPatchTests(unittest.TestCase):
         json.dumps(summary)
         json.dumps([r["row"] for r in rows + move])
 
+    def test_entry_kd_variants_in_the_runner_glue(self):
+        import numpy as np
+        for variant, entry_kd in (("ramp", 0.5), ("step1", 1.0), ("step2p5", 2.5)):
+            with self.subTest(variant=variant):
+                env, robot, wrapped, contact, term = fake_isaac()
+                out = self.tmp / variant
+                out.mkdir()
+                runtime = self.module._stance_hold_setup("auto", env, robot, wrapped, out, entry_kd=variant)
+                self.assertEqual(json.loads((out / "stance_hold_setup.json").read_text())["entry_kd"], variant)
+                hip, knee = robot.actuators["Hip"], robot.actuators["Knee"]
+                rows = []
+                while not rows or rows[-1]["row"]["stance_mode"] != "STAND_TRANSITION":
+                    self.assertLess(len(rows), 30)
+                    rows += self.drive(runtime, env, robot, contact, term, 1, start=len(rows))
+                entry = rows[-1]["row"]
+                # ramp writes nothing at entry; the step variants write a Kd-only change.
+                self.assertEqual(entry["stance_gains_written"], variant != "ramp")
+                self.assertEqual(runtime["gain_writes"], 0 if variant == "ramp" else 1)
+                self.assertEqual(entry["applied_kp_mean"], 20.0)
+                self.assertAlmostEqual(entry["applied_kd_mean"], entry_kd)
+                self.assertTrue(torch_all_equal(hip.stiffness, 20.0) and torch_all_equal(knee.stiffness, 20.0))
+                self.assertTrue(torch_all_equal(hip.damping, entry_kd) and torch_all_equal(knee.damping, entry_kd))
+                np.testing.assert_allclose(rows[-1]["target"], rows[-2]["target"], atol=2e-6)
+                start = len(rows)
+                rows += self.drive(runtime, env, robot, contact, term, 101, start=start)
+                modes = [r["row"]["stance_mode"] for r in rows[start:]]
+                self.assertEqual(modes[-1], "FIXED_STAND")
+                self.assertEqual(modes.count("STAND_TRANSITION"), 99)
+                self.assertTrue(torch_all_equal(hip.stiffness, 60.0) and torch_all_equal(knee.damping, 1.0))
+                kds = [r["row"]["applied_kd_mean"] for r in rows[start - 1:]]
+                if variant == "step1":
+                    self.assertEqual(set(kds), {1.0})
+                if variant == "step2p5":
+                    self.assertEqual(kds[:25], [2.5] * 25)
+                    self.assertEqual(kds[-1], 1.0)
+                summary = self.module._stance_hold_summary(runtime)
+                self.assertEqual((summary["entry_kd"], summary["fsm"]["entry_kd"]), (variant, variant))
+        with self.assertRaisesRegex(self.module.AdapterFailure, "stance-entry-kd"):
+            self.module._stance_hold_setup("auto", *fake_isaac()[:3], self.tmp, entry_kd="step3")
+        off = self.module._stance_hold_setup("off", *fake_isaac()[:3], self.tmp)
+        self.assertEqual(self.module._stance_hold_summary(off)["entry_kd"], "ramp")
+
     def test_auto_hold_fails_on_lost_gain_write_and_physx_drift(self):
         env, robot, wrapped, contact, term = fake_isaac(lambda ids, effort: LostWriteActuator(ids, effort))
         runtime = self.module._stance_hold_setup("auto", env, robot, wrapped, self.tmp)
@@ -794,6 +849,270 @@ class StanceHoldPatchTests(unittest.TestCase):
         self.assertIn("stand_probe_duration_cap_60s", payload["anchor_groups"]["stance_hold"])
         self.assertEqual(payload["stance_hold_default"], "off")
         self.assertEqual(materializer.sha256_file(self.tmp / "runner.py"), payload["patched_sha256"])
+        self.assertIn("scripted_walk_command", payload["anchor_groups"]["scripted_walk"])
+        self.assertEqual((payload["stance_entry_kd_default"], payload["camera_heading_mode_default"],
+                          payload["command_script_default"]), ("ramp", "body", None))
+        self.assertEqual(payload["command_script_module"]["sha256"],
+                         materializer.sha256_file(materializer.COMMAND_SCRIPT_MODULE))
+        for key in ("scripted_walk_command_branch_present", "default_camera_heading_body",
+                    "default_stance_entry_kd_ramp", "default_command_script_none"):
+            self.assertTrue(payload["verification"][key], key)
+
+
+D5_SCRIPT = Path(__file__).resolve().parent / "command_scripts/walk_stop_start_stop_v1.json"
+LEGACY_ARGV = [
+    "--scene", "building.usda", "--runtime", "runtime", "--checkpoint", "policy.pt",
+    "--route-artifact", "route.json", "--scope", "scope.json", "--execution-manifest", "manifest.json",
+    "--output", "run", "--duration-seconds", "10",
+]
+NATIVE_LIMIT_ARGV = ["--max-vx", "1.0", "--max-vy", "0.35", "--max-wz", "1.0", "--max-horizontal-norm", "1.0",
+                     "--speed-profile", "speed_1p0"]
+
+
+def extract_block(text, start, end):
+    """Dedented source from the line containing `start` up to (not including) the line containing `end`."""
+    first = text.index(start)
+    first = text.rindex("\n", 0, first) + 1
+    last = text.index(end, first)
+    last = text.rindex("\n", 0, last) + 1
+    return textwrap.dedent(text[first:last])
+
+
+class ScriptedWalkPatchTests(unittest.TestCase):
+    """PRD D5 anchors on the materialized runner, with fake inputs only."""
+
+    def setUp(self):
+        self.data = materializer.load_and_patch(materializer.REPO_ROOT / materializer.SOURCE_REL)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        runner = self.tmp / "run_pct_scan_building.py"
+        runner.write_text(self.data["patched_text"], encoding="utf-8")
+        spec = importlib.util.spec_from_file_location("patched_runner_walk", str(runner))
+        self.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.module)
+
+    def parse(self, *extra, case="scripted_walk"):
+        return self.module.build_parser().parse_args(LEGACY_ARGV + ["--case", case] + list(extra))
+
+    def walk_args(self, *extra):
+        return self.parse(*NATIVE_LIMIT_ARGV, "--command-script", str(D5_SCRIPT), *extra)
+
+    def test_defaults_keep_the_previous_configuration(self):
+        args = self.parse(case="flat_nominal")
+        self.assertEqual((args.camera_heading_mode, args.stance_entry_kd, args.command_script),
+                         ("body", "ramp", None))
+        config = self.module.execution_configuration(args)
+        self.assertNotIn("command_script", config)
+        self.assertEqual((config["camera_heading_mode"], config["stance_entry_kd"]), ("body", "ramp"))
+        self.module._scripted_walk_validate_args(args)
+        self.assertEqual(self.module.CASES[-1], "scripted_walk")
+        self.assertEqual(self.module.CASES[:4], ("stand_probe", "flat_nominal", "full_nominal", "native_nominal"))
+        self.assertIsNone(self.module._scripted_walk_setup(args, {}))
+        self.assertIsNone(self.module._scripted_walk_summary(None))
+        # The command branch still zeroes stand_probe and leaves other cases alone.
+        self.assertIn(materializer.SCRIPTED_WALK_COMMAND_BRANCH, self.data["patched_text"])
+        self.assertEqual(self.data["patched_text"].count("script_segment, command = command_script_at("), 1)
+        self.assertEqual(self.module.STANCE_ENTRY_KD_MODES, ("ramp", "step1", "step2p5"))
+        self.assertEqual(self.module.SCRIPTED_WALK_CASE, "scripted_walk")
+
+    def test_duration_caps(self):
+        validate = self.module.validate_run_duration
+        for case, cap in (("scripted_walk", 60.0), ("stand_probe", 60.0), ("flat_nominal", 45.0),
+                          ("full_nominal", 180.0), ("native_nominal", 600.0)):
+            with self.subTest(case=case):
+                validate(case, cap)
+                with self.assertRaises(ValueError):
+                    validate(case, cap + 0.5)
+        with self.assertRaises(ValueError):
+            validate("scripted_walk", 0.0)
+
+    def test_pre_isaac_validation(self):
+        args = self.walk_args("--stance-hold", "auto", "--stance-entry-kd", "step2p5",
+                              "--camera-heading-mode", "initial")
+        self.module._scripted_walk_validate_args(args)
+        self.module.validate_run_duration(args.case, 26.0)
+        self.module.validate_motion_profile(args)
+        bad = {
+            "requires --command-script": self.parse(*NATIVE_LIMIT_ARGV),
+            "only with --case scripted_walk": self.parse("--command-script", str(D5_SCRIPT), case="flat_nominal"),
+            "exceeds the runner limit": self.parse("--command-script", str(D5_SCRIPT)),
+            "applies only with --stance-hold auto": self.walk_args("--stance-entry-kd", "step1"),
+        }
+        for message, parsed in bad.items():
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                self.module._scripted_walk_validate_args(parsed)
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            self.walk_args("--camera-heading-mode", "world")
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            self.walk_args("--stance-entry-kd", "step2")
+        main_text = extract_block(self.data["patched_text"], "    args = build_parser().parse_args(argv)\n",
+                                  "    from .feedback_dropout import FeedbackDropout\n")
+        self.assertLess(main_text.index("_scripted_walk_validate_args(args)"),
+                        main_text.index("if args.case == \"native_nominal\""))
+
+    def test_setup_binds_the_script_to_the_scope_and_records_it(self):
+        args = self.walk_args("--output", str(self.tmp / "out"))
+        (self.tmp / "out").mkdir()
+        sha = materializer.sha256_file(D5_SCRIPT)
+        with self.assertRaisesRegex(self.module.AdapterFailure, "differs from the frozen scope"):
+            self.module._scripted_walk_setup(args, {"command_script_sha256": "0" * 64})
+        with self.assertRaisesRegex(self.module.AdapterFailure, "differs from the frozen scope"):
+            self.module._scripted_walk_setup(args, {})
+        loaded = self.module._scripted_walk_setup(args, {"command_script_sha256": sha})
+        self.assertEqual(loaded["sha256"], sha)
+        self.assertEqual((self.tmp / "out/command_script.json").read_bytes(), D5_SCRIPT.read_bytes())
+        record = json.loads((self.tmp / "out/scripted_walk_setup.json").read_text())
+        self.assertEqual(record["command_script"]["sha256"], sha)
+        self.assertEqual(record["module"]["sha256"], self.data["command_script_module"]["sha256"])
+        self.assertEqual([s["t_start_s"] for s in record["script"]["segments"]], [0.0, 4.0, 7.0, 12.0, 14.5])
+        self.assertEqual(self.module._scripted_walk_summary(loaded), record)
+        json.dumps(self.module._scripted_walk_summary(loaded), allow_nan=False)
+        stray = self.parse("--command-script", str(D5_SCRIPT), case="stand_probe")
+        with self.assertRaisesRegex(self.module.AdapterFailure, "only with --case scripted_walk"):
+            self.module._scripted_walk_setup(stray, {})
+        invalid = self.parse("--command-script", str(D5_SCRIPT), "--output", str(self.tmp / "out"))
+        with self.assertRaisesRegex(self.module.AdapterFailure, "command script is invalid"):
+            self.module._scripted_walk_setup(invalid, {"command_script_sha256": sha})
+
+    def run_command_block(self, args, scripted_walk, sim_times, snapshot_command=(0.25, 0.0, 0.1)):
+        """Execute the patched loop-top command block as the runner does, with fake transport."""
+        import torch
+        block = extract_block(self.data["patched_text"],
+                              "                snapshot = command_server.snapshot(time.monotonic_ns())\n",
+                              "                contact_guard.begin(step)\n")
+        self.assertIn("term.commands[:, 2] = command[2]", block)
+        term = types.SimpleNamespace(commands=torch.zeros(1, 3))
+        snapshot = types.SimpleNamespace(command=types.SimpleNamespace(
+            vx=snapshot_command[0], vy=snapshot_command[1], wz=snapshot_command[2]))
+        namespace = {
+            "args": args, "scripted_walk": scripted_walk, "math": math, "time": time,
+            "command_script_at": self.module.command_script_at, "AdapterFailure": self.module.AdapterFailure,
+            "command_server": types.SimpleNamespace(snapshot=lambda now: snapshot),
+            "env": types.SimpleNamespace(command_manager=types.SimpleNamespace(get_term=lambda name: term)),
+            "first_nonzero_command_s": None,
+        }
+        code = compile(block, "command_block", "exec")
+        results = []
+        for sim_time in sim_times:
+            namespace["sim_time"] = sim_time
+            exec(code, namespace)
+            actual = term.commands.clone()
+            # The runner's post-step parity check, with a command manager that keeps the written command.
+            expected = actual.new_tensor([namespace["command"]])
+            self.assertTrue(torch.allclose(actual, expected, atol=1e-6, rtol=0.0))
+            results.append((namespace["script_segment"], tuple(namespace["command"]),
+                            namespace["horizontal_norm"], actual[0].tolist()))
+        return results, namespace
+
+    def test_scripted_command_replaces_tcp_command_before_admission_and_term_write(self):
+        sha = materializer.sha256_file(D5_SCRIPT)
+        args = self.walk_args("--output", str(self.tmp / "out"))
+        (self.tmp / "out").mkdir()
+        loaded = self.module._scripted_walk_setup(args, {"command_script_sha256": sha})
+        times = [round(k * 0.02, 9) for k in range(1100)]
+        results, namespace = self.run_command_block(args, loaded, times)
+        segments = [r[0] for r in results]
+        self.assertEqual([k for k in range(1, len(segments)) if segments[k] != segments[k - 1]], [200, 350, 600, 725])
+        for k, (segment, command, norm, written) in enumerate(results):
+            want = (0.6, 0.0, 0.0) if segment in (1, 3) else (0.0, 0.0, 0.0)
+            self.assertEqual(command, want)
+            self.assertAlmostEqual(norm, want[0])
+            self.assertEqual(written, [float(np.float32(v)) for v in want])
+        self.assertEqual(namespace["first_nonzero_command_s"], 4.0)
+        # Other cases keep the TCP command; stand_probe keeps zeroing it.
+        flat = self.parse(*NATIVE_LIMIT_ARGV, case="flat_nominal")
+        results, _ = self.run_command_block(flat, None, [0.0, 4.0])
+        self.assertEqual([r[:2] for r in results], [(None, (0.25, 0.0, 0.1))] * 2)
+        stand = self.parse(case="stand_probe")
+        results, namespace = self.run_command_block(stand, None, [0.0, 4.0])
+        self.assertEqual([r[:2] for r in results], [(None, (0.0, 0.0, 0.0))] * 2)
+        self.assertIsNone(namespace["first_nonzero_command_s"])
+        # The unchanged admission check still guards the scripted command.
+        tight = self.walk_args("--output", str(self.tmp / "out"))
+        tight.max_horizontal_norm = 0.3
+        with self.assertRaisesRegex(self.module.AdapterFailure, "exceeds the limit"):
+            self.run_command_block(tight, loaded, [4.0])
+
+    def test_scripted_finish_dwell_sees_the_zero_command_after_the_last_start(self):
+        script = self.module.load_command_script(D5_SCRIPT, self.module._scripted_walk_limits(self.walk_args()))
+        finish = {"requested": True, "status": "EXTERNAL_EPISODE_FINISHED", "request": {"request_id": "r"}}
+        latched, status = None, None
+        for k in range(1000, 1100):
+            now = k * 0.02
+            _segment, command = self.module.command_script_at(script["script"], now)
+            zero = self.module._external_zero_command(command, 0.01)
+            self.assertTrue(zero)
+            latched, _start, status = self.module._external_finish_step(latched, finish, zero, True, now, 1.0)
+            if status:
+                break
+        self.assertEqual(status, "EXTERNAL_EPISODE_FINISHED")
+        self.assertAlmostEqual(now, 21.0)
+        self.assertFalse(self.module._external_zero_command(
+            self.module.command_script_at(script["script"], 13.0)[1], 0.01))
+
+    def test_metrics_row_and_summary_anchors(self):
+        text = self.data["patched_text"]
+        self.assertIn(
+            "                row.update(_stance_hold_row(stance_hold_runtime, robot))\n"
+            "                if scripted_walk is not None:\n"
+            "                    row[\"script_segment\"] = script_segment\n"
+            "                # ---- complete body state, every control step ---------------\n", text)
+        self.assertIn("            \"scripted_walk\": _scripted_walk_summary(scripted_walk),\n", text)
+        self.assertIn("    scripted_walk = _scripted_walk_setup(args, scope)\n", text)
+        self.assertLess(text.index("    scripted_walk = _scripted_walk_setup(args, scope)\n"),
+                        text.index("    cfg = load_cfg_from_registry(v12.DEFAULT_TASK, \"env_cfg_entry_point\")\n"))
+        self.assertIn("entry_kd=args.stance_entry_kd)", text)
+        self.assertIn('"heading_mode": args.camera_heading_mode,\n                "heading_yaw_rad": camera_heading_yaw,',
+                      text)
+        run = next(node for node in ast.parse(text).body if isinstance(node, ast.FunctionDef) and node.name == "_run")
+        assigned = {name.id for node in ast.walk(run) if isinstance(node, ast.Assign)
+                    for target in node.targets for name in ast.walk(target) if isinstance(name, ast.Name)}
+        self.assertTrue({"scripted_walk", "script_segment", "camera_heading_yaw", "view_yaw"} <= assigned)
+
+    def test_camera_view_yaw_modes(self):
+        view = self.module._camera_view_yaw
+        yaw = 0.057418473165896385
+        self.assertIs(view("body", None, yaw)[0], yaw)
+        self.assertEqual(view("body", None, yaw), (yaw, None))
+        self.assertEqual(view("initial", None, yaw), (yaw, yaw))
+        self.assertEqual(view("initial", yaw, 0.4), (yaw, yaw))
+        with self.assertRaises(self.module.AdapterFailure):
+            view("world", None, yaw)
+
+    def test_camera_block_body_mode_matches_the_frozen_vectors_and_initial_mode_is_fixed(self):
+        import numpy as np
+        old = extract_block(self.data["source_text"], "                if step % capture_stride == 0:\n",
+                            "                    camera_eye = (\n")
+        new = extract_block(self.data["patched_text"], "                if step % capture_stride == 0:\n",
+                            "                    camera_eye = (\n")
+        self.assertNotEqual(old, new)
+        yaws = [0.057418473165896385, 0.08, -0.2, 0.3, 0.3]
+
+        def run(code, mode):
+            args = types.SimpleNamespace(camera_heading_mode=mode)
+            namespace = {"np": np, "math": math, "args": args, "capture_stride": 2,
+                         "camera_heading_yaw": None, "_camera_view_yaw": self.module._camera_view_yaw}
+            vectors = []
+            for step, yaw in enumerate(yaws):
+                namespace.update(step=step * 2, yaw=yaw)
+                exec(compile(code + "    pass\n", "camera", "exec"), namespace)
+                vectors.append((namespace["heading"].tobytes(), namespace["side"].tobytes()))
+            return vectors, namespace
+
+        frozen, _ = run(old, "body")
+        body, namespace = run(new, "body")
+        self.assertEqual(body, frozen)
+        self.assertIsNone(namespace["camera_heading_yaw"])
+        initial, namespace = run(new, "initial")
+        self.assertEqual(len(set(initial)), 1)
+        self.assertEqual(initial[0], frozen[0])
+        self.assertEqual(namespace["camera_heading_yaw"], yaws[0])
+        self.assertEqual(namespace["view_yaw"], yaws[0])
+        # side = lateral -1.25 is the robot's right-hand side for the latched heading.
+        side = np.frombuffer(initial[0][1])
+        heading = np.frombuffer(initial[0][0])
+        self.assertAlmostEqual(float(np.cross(heading, -1.25 * side)[2]), -1.25)
 
 
 def torch_all_equal(tensor, value):

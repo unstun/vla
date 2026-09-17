@@ -25,6 +25,12 @@ at once, so an immediate Kp step multiplies the old target error (run
 stand_20260917T125239Z_hold_auto hopped at entry). The ramp keeps the stiffness
 torque on the entry joint positions constant at every control step.
 
+Entry damping variants (PRD D5): `entry_kd="ramp"` (default) lets Kd follow the
+Kp ramp; `"step1"` applies the hold Kd from the entry step on; `"step2p5"`
+applies Kd 2.5 from the entry step and eases it to the hold Kd between the end
+of the ramp and FIXED_STAND. Kd acts on measured joint velocity, which the
+actuator does not delay. Kp and the target follow the ramp in every variant.
+
 Task: .trellis/tasks/09-17-isaac-runner-stance-hold (design.md section 2).
 """
 
@@ -74,6 +80,20 @@ REJOIN_S = 0.25
 # ends at the torque-matched seed with the hold gains. It must end before
 # TRANSITION_S.
 ENTRY_RAMP_S = 0.5
+# Entry damping variants (PRD D5, Dr Sun 2026-09-17). Kp and the target follow
+# the entry ramp above in every variant; only Kd differs:
+#   ramp    - Kd follows the Kp ramp from Kd0 to HOLD_KD (the PRD D4 behaviour);
+#   step1   - Kd is HOLD_KD from the entry step on;
+#   step2p5 - Kd is ENTRY_LANDING_KD from the entry step until ENTRY_RAMP_S, then
+#             eases (smoothstep) to HOLD_KD at TRANSITION_S, where FIXED_STAND
+#             starts with exactly HOLD_KD.
+# Precedent for the raised damping: MJ BOOT_LANDING_KD = 2.5 over the
+# FIXED_STAND_BOOT_GRACE_S = 1.0 s touchdown window (MJ:131-140, 1803), where
+# the hold's own Kd 1 let the landing rock the stance. MJ steps back to Kd 1 at
+# the end of its grace; the step2p5 variant eases instead.
+STANCE_ENTRY_KD_MODES = ("ramp", "step1", "step2p5")
+STANCE_ENTRY_KD_DEFAULT = "ramp"
+ENTRY_LANDING_KD = 2.5
 # MJ FIXED_STAND_CONTACT_THRESHOLD (MJ:130): hold needs every foot > 1 N.
 HOLD_CONTACT_N = 1.0
 # MJ FIXED_STAND_DISTURBANCE_DWELL_S (MJ:129) and HOLD_REENTRY_LOCKOUT_S (MJ:108).
@@ -122,6 +142,17 @@ def stance_hold_constants() -> Dict[str, object]:
             "Kd = Kd0 + (HOLD_KD - Kd0) u; target = q0 + (Kp0 / Kp) (T0 - q0); "
             "q0, T0, Kp0, Kd0 = joint_pos, applied_target, applied_kp, applied_kd at entry (PRD D4)"
         ),
+        "entry_kd_modes": {
+            "ramp": "Kd follows the Kp ramp (entry_ramp_rule)",
+            "step1": "Kd = HOLD_KD from the entry step on",
+            "step2p5": (
+                "Kd = entry_landing_kd from the entry step until entry_ramp_s, then "
+                "entry_landing_kd + (HOLD_KD - entry_landing_kd) smoothstep((t - t_entry - entry_ramp_s) / "
+                "(transition_s - entry_ramp_s)); exactly HOLD_KD from FIXED_STAND on"
+            ),
+            "precedent": "MJ BOOT_LANDING_KD 2.5 over FIXED_STAND_BOOT_GRACE_S 1.0 s (PRD D5)",
+        },
+        "entry_landing_kd": ENTRY_LANDING_KD,
         "reference": (
             "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py "
             "LocalMotionFSM stand path (commit fd751b8b)"
@@ -207,9 +238,13 @@ class StanceHold:
     """Stand path of MJ LocalMotionFSM with automatic entry (MJ:1329-1821)."""
 
     def __init__(self, mode: str = "off", joint_lower=None, joint_upper=None,
-                 joint_count: int = STANCE_HOLD_JOINT_COUNT) -> None:
+                 joint_count: int = STANCE_HOLD_JOINT_COUNT,
+                 entry_kd: str = STANCE_ENTRY_KD_DEFAULT) -> None:
         if mode not in STANCE_HOLD_MODES:
             raise ValueError("stance hold mode must be one of %s, got %r" % (STANCE_HOLD_MODES, mode))
+        if entry_kd not in STANCE_ENTRY_KD_MODES:
+            raise ValueError("entry_kd must be one of %s, got %r" % (STANCE_ENTRY_KD_MODES, entry_kd))
+        self.entry_kd = entry_kd
         if (joint_lower is None) != (joint_upper is None):
             raise ValueError("joint_lower and joint_upper must be given together")
         self.setting = mode
@@ -229,6 +264,7 @@ class StanceHold:
         self._base_kd = np.full(self.joint_count, BASE_KD)
         self._hold_kp = np.full(self.joint_count, HOLD_KP)
         self._hold_kd = np.full(self.joint_count, HOLD_KD)
+        self._landing_kd = np.full(self.joint_count, ENTRY_LANDING_KD)
         self.reset()
 
     def reset(self) -> None:
@@ -291,6 +327,7 @@ class StanceHold:
             pairs[key] = pairs.get(key, 0) + 1
         return {
             "setting": self.setting,
+            "entry_kd": self.entry_kd,
             "mode": self.mode,
             "reason": self.reason,
             "progress": float(self.progress),
@@ -331,6 +368,23 @@ class StanceHold:
         # kp > 0: Kp0 >= 0 is validated, HOLD_KP > 0 and blend > 0.
         target = self._entry_q0 + (self._entry_kp0 / kp) * (self._entry_target0 - self._entry_q0)
         return target, kp, kd, blend
+
+    def _entry_damping(self, elapsed_s: float, ramp_kd):
+        """Kd during STAND_TRANSITION for the configured entry damping variant (PRD D5)."""
+        if self.entry_kd == "ramp":
+            return ramp_kd
+        if self.entry_kd == "step1":
+            return self._hold_kd
+        if self.entry_kd == "step2p5":
+            if elapsed_s + STANCE_TIME_EPS < ENTRY_RAMP_S:
+                return self._landing_kd
+            if elapsed_s + STANCE_TIME_EPS >= TRANSITION_S:
+                return self._hold_kd
+            blend = _stance_smoothstep((elapsed_s - ENTRY_RAMP_S) / (TRANSITION_S - ENTRY_RAMP_S))
+            if blend <= 0.0:
+                return self._landing_kd
+            return self._landing_kd + (self._hold_kd - self._landing_kd) * blend
+        self._fail("unhandled entry_kd variant: " + str(self.entry_kd))
 
     # -- update ----------------------------------------------------------------
     def update(self, x: HoldInput) -> HoldOutput:
@@ -449,6 +503,7 @@ class StanceHold:
                             "foot_forces_n": [float(v) for v in forces],
                             "entry_ramp_s": ENTRY_RAMP_S,
                             "entry_ramp_complete_t_s": None,
+                            "entry_kd": self.entry_kd,
                             "q0": [float(v) for v in joint_pos],
                             "applied_target_t0": [float(v) for v in applied_target],
                             "kp0_mean": float(np.mean(applied_kp)),
@@ -507,6 +562,7 @@ class StanceHold:
             elapsed = now - self._phase_start
             self.progress = _stance_progress(elapsed, TRANSITION_S)
             ramp = self._entry_ramp(elapsed)
+            ramp = (ramp[0], ramp[1], self._entry_damping(elapsed, ramp[2]), ramp[3])
             # The entry step (blend 0) keeps the transition reason; later steps
             # name the ramp so metrics rows show when the hold gains are reached.
             if ramp[3] >= 1.0:

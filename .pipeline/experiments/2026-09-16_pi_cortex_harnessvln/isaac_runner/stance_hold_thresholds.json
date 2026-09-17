@@ -49,6 +49,121 @@
     "max_abs_vertical_speed_mps": 0.05,
     "missing_field": "a window row without base_linear_velocity_world fails the check as not evaluable"
   },
+  "ac8_walk": {
+    "added": "2026-09-17 before any scripted-walk run, PRD D5",
+    "run": "case scripted_walk with the frozen command script and --camera-preset side; one --stance-hold off baseline and one or more --stance-hold auto runs (--stance-entry-kd ramp, step1, step2p5); AC5 and AC7 also apply to every run",
+    "command_script": {
+      "path": "command_scripts/walk_stop_start_stop_v1.json",
+      "sha256": "437f7ee77116d14f12921d2abec08d64bb6098fa0aa2b99bb9650bd1c2e52b76",
+      "rule": "a run whose scripted_walk_setup.json (or summary scripted_walk) names another SHA-256 fails AC8 d"
+    },
+    "phases": [
+      {
+        "label": "stand_initial",
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "start_s": 0.0,
+        "end_s": 4.0
+      },
+      {
+        "label": "walk_1",
+        "command": [
+          0.6,
+          0.0,
+          0.0
+        ],
+        "start_s": 4.0,
+        "end_s": 7.0
+      },
+      {
+        "label": "stop_1",
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "start_s": 7.0,
+        "end_s": 12.0
+      },
+      {
+        "label": "walk_2",
+        "command": [
+          0.6,
+          0.0,
+          0.0
+        ],
+        "start_s": 12.0,
+        "end_s": 14.5
+      },
+      {
+        "label": "stop_2",
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "start_s": 14.5,
+        "end_s": 20.0
+      }
+    ],
+    "finish_request_s": 20.0,
+    "phase_rule": "phases are the contiguous metrics.jsonl rows whose admitted_command is zero (max |value| <= definitions.zero_command_max_abs) or not; they must match the listed phases in order, with the listed non-zero commands (1e-6) and, when rows carry script_segment, the phase index; a phase's command step t_c is the sim_time_s of the row before its first row (0 for the first phase) and must lie within command_step_tolerance_s of start_s; the last zero phase ends at finish_request_s and the run must reach it; later rows are reported as post-finish",
+    "command_step_tolerance_s": 0.01,
+    "window_tolerance_s": 0.001,
+    "a_fixed_stand": {
+      "rule": "every zero phase has a stance_mode FIXED_STAND row among its rows, that is before the next non-zero command, or at or before finish_request_s for the last phase"
+    },
+    "b_entry_windows": {
+      "rule": "every ac7_entry window of the run passes with the ac7_entry limits, unchanged"
+    },
+    "c_start": {
+      "window_s": 1.0,
+      "window_rule": "rows with t_c < sim_time_s <= t_c + window_s + window_tolerance_s",
+      "max_nonfoot_force_exclusive_n": 5.0,
+      "nonfoot_rule": "max of nonfoot_force_max_n and nonfoot_force_substep_max_n over the window, and any summary nonfoot_contact_events_over_threshold inside the window, must stay below the limit",
+      "max_abs_roll_deg": 10.0,
+      "max_abs_pitch_deg": 10.0,
+      "max_abs_pitch_excess_over_off_deg": 3.0,
+      "pitch_excess_rule": "max |pitch| of the hold-on start window minus that of the same start of the hold-off run"
+    },
+    "d_run": {
+      "completed_statuses": [
+        "EXTERNAL_EPISODE_FINISHED",
+        "DURATION_REACHED"
+      ],
+      "case": "scripted_walk",
+      "zero_event_counters": [
+        "autoresets",
+        "pose_injection_events",
+        "reset_attempts",
+        "pose_write_attempts"
+      ],
+      "rule": "summary.json present with a completed status and case scripted_walk; the four event counters are 0; case_failed and contact_guard.failed are false; no stance hold failure; no non-finite value in metrics.jsonl; the frozen command script; planar travel within the relative bound of the hold-off run",
+      "planar_travel": "XY distance from the first to the last metrics.jsonl row (net displacement); path length is reported beside it",
+      "max_planar_travel_relative_difference": 0.2
+    },
+    "reporting": {
+      "note": "reported for every run, the hold-off baseline included, without thresholds",
+      "still_max_horizontal_speed_mps": 0.05,
+      "still_max_abs_yaw_rate_radps": 0.15,
+      "still_duration_s": 0.5,
+      "time_to_still": "start of the first run of rows, inside the zero phase, that meets both still limits continuously for still_duration_s, minus t_c",
+      "time_to_fixed_stand": "first FIXED_STAND row sim_time_s in the zero phase minus t_c (hold-on runs)",
+      "phase_tail_s": 2.0,
+      "phase_tail": "rows in the last phase_tail_s of the zero phase: max |yaw_rate_radps|, max horizontal_speed_mps and the largest XY distance from the first tail row",
+      "start_window_s": 1.0,
+      "start_window": "the c_start window: max |pitch|, max |roll|, max |base_linear_velocity_world[2]|, the lowest base_xyz[2] minus its value at t_c, and the largest non-foot force",
+      "walk_phase_distance": "XY distance from the row at t_c to the last row of the non-zero phase"
+    },
+    "selection": {
+      "rule": "among stance_hold auto runs whose AC5 and AC8 verdicts pass, select the one with the lowest max |yaw_rate_radps| over all of its ac7_entry windows; ties go to the earlier --on argument; if none passes, or the hold-off baseline is not valid, report and stop with no selection",
+      "variant_field": "summary.json stance_hold.entry_kd (stance_hold_setup.json entry_kd as fallback)",
+      "decided": "PRD D5, before the runs"
+    }
+  },
   "amendments": [
     {
       "date": "2026-09-17",
@@ -57,6 +172,14 @@
       "previous_sha256": "fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66",
       "previous_copy": "stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json",
       "frozen_before": "the C1 hold-on rerun with the entry gain ramp"
+    },
+    {
+      "date": "2026-09-17",
+      "change": "added ac8_walk; schema_version, definitions, ac3_stand, ac5_transitions and ac7_entry are unchanged",
+      "reason": "PRD D5: standing alone does not show a smooth PD <-> RL switch; the scripted walk-stop-start-stop case (AC8) tests stops and starts, and selects the entry damping variant",
+      "previous_sha256": "12373448a8aee02534b529c69189bc5155bbe13cb0d17b632d260b075e075da5",
+      "previous_copy": "stance_hold_thresholds_history/stance_hold_thresholds_12373448.json",
+      "frozen_before": "any scripted_walk run"
     }
   ]
 }

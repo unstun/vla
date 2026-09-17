@@ -5,9 +5,14 @@ The frozen reference runner is not edited in place. This helper verifies the
 known source hash, applies exact anchor replacements to a copy, and writes a
 unified diff plus source-hash record for review.
 
-Two anchor groups are applied in order: the external-episode anchors
-(`_replacements`) and the stance-hold anchors (`_stance_hold_replacements`),
-which insert `stance_hold.py` verbatim and default to `--stance-hold off`.
+Three anchor groups are applied in order: the external-episode anchors
+(`_replacements`), the stance-hold anchors (`_stance_hold_replacements`), which
+insert `stance_hold.py` verbatim and default to `--stance-hold off`, and the
+scripted-walk anchors (`_scripted_walk_replacements`, PRD D5), which insert
+`command_script.py` verbatim and add the `scripted_walk` case, the camera
+heading mode and the stance-hold entry damping variants. Every D5 default
+(`--camera-heading-mode body`, `--stance-entry-kd ramp`, no command script)
+keeps the previous control and camera path.
 """
 
 from __future__ import annotations
@@ -30,6 +35,12 @@ STANCE_HOLD_MODULE_REL = (
 )
 STANCE_BODY_BEGIN = "# >>> stance_hold runner body begin\n"
 STANCE_BODY_END = "# <<< stance_hold runner body end\n"
+COMMAND_SCRIPT_MODULE = HERE / "command_script.py"
+COMMAND_SCRIPT_MODULE_REL = (
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/command_script.py"
+)
+COMMAND_SCRIPT_BODY_BEGIN = "# >>> command_script runner body begin\n"
+COMMAND_SCRIPT_BODY_END = "# <<< command_script runner body end\n"
 # Patched runner executed by the actual4 package and the scan_04 fix series
 # (external-episode anchors only). Applying only those anchors must still give
 # exactly these bytes, so every other difference is a stance-hold anchor.
@@ -437,13 +448,16 @@ def _stance_hold_validate(info):
     return problems
 
 
-def _stance_hold_setup(mode, env, robot, wrapped, output_dir):
+def _stance_hold_setup(mode, env, robot, wrapped, output_dir, entry_kd=STANCE_ENTRY_KD_DEFAULT):
     """Record the control contract; auto mode also validates it and builds the hold."""
     if mode not in STANCE_HOLD_MODES:
         raise AdapterFailure("unsupported --stance-hold value: %r" % (mode,))
+    if entry_kd not in STANCE_ENTRY_KD_MODES:
+        raise AdapterFailure("unsupported --stance-entry-kd value: %r" % (entry_kd,))
     record = {
         "schema_version": 1,
         "mode": mode,
+        "entry_kd": entry_kd,
         "module": {
             "path": STANCE_HOLD_SOURCE_REL,
             "sha256": STANCE_HOLD_SOURCE_SHA256,
@@ -476,6 +490,7 @@ def _stance_hold_setup(mode, env, robot, wrapped, output_dir):
     }
     runtime = {
         "mode": mode,
+        "entry_kd": entry_kd,
         "active": mode == "auto",
         "hold": None,
         "record": record,
@@ -511,7 +526,7 @@ def _stance_hold_setup(mode, env, robot, wrapped, output_dir):
         limits = info["limits"]
         runtime.update({
             "hold": StanceHold("auto", joint_lower=limits[:, 0], joint_upper=limits[:, 1],
-                               joint_count=len(ids)),
+                               joint_count=len(ids), entry_kd=entry_kd),
             "action_ids": ids,
             "action_offset": info["offset"],
             "action_scale": info["scale"],
@@ -650,6 +665,7 @@ def _stance_hold_row(runtime, robot):
 def _stance_hold_summary(runtime):
     return {
         "mode": runtime["mode"],
+        "entry_kd": runtime["entry_kd"],
         "setup_record": "stance_hold_setup.json",
         "module_sha256": STANCE_HOLD_SOURCE_SHA256,
         "failure": runtime["failure"],
@@ -663,22 +679,146 @@ def _stance_hold_summary(runtime):
 '''
 
 
-def load_stance_hold_module(path: Optional[Path] = None) -> Dict[str, str]:
-    """Return the marked body of stance_hold.py and its hashes."""
-    path = Path(path or STANCE_HOLD_MODULE)
+# Runner-side glue for PRD D5: the scripted_walk case, the camera heading mode
+# and the entry damping option. It uses only names that the frozen runner or the
+# inserted modules define (AdapterFailure, sha256, write_json, shutil, Path).
+SCRIPTED_WALK_RUNNER_SOURCE = r'''
+
+# ---- scripted walk, camera heading, entry damping (materialize_runner_patch.py, PRD D5) ----
+CAMERA_HEADING_MODES = ("body", "initial")
+CAMERA_HEADING_DEFAULT = "body"
+
+
+def _scripted_walk_limits(args):
+    """The runner's own command limits; a script outside them is refused, never clamped."""
+    return {
+        "max_vx": args.max_vx,
+        "max_vy": args.max_vy,
+        "max_wz": args.max_wz,
+        "max_horizontal_norm": args.max_horizontal_norm,
+    }
+
+
+def _scripted_walk_validate_args(args):
+    """Pre-Isaac checks of the D5 flags; raises ValueError (CommandScriptError is one)."""
+    if args.stance_entry_kd not in STANCE_ENTRY_KD_MODES:
+        raise ValueError("unsupported --stance-entry-kd value: %r" % (args.stance_entry_kd,))
+    if args.stance_hold != "auto" and args.stance_entry_kd != STANCE_ENTRY_KD_DEFAULT:
+        raise ValueError("--stance-entry-kd %s applies only with --stance-hold auto" % args.stance_entry_kd)
+    if args.camera_heading_mode not in CAMERA_HEADING_MODES:
+        raise ValueError("unsupported --camera-heading-mode value: %r" % (args.camera_heading_mode,))
+    if args.case == SCRIPTED_WALK_CASE:
+        if args.command_script is None:
+            raise ValueError("--case %s requires --command-script" % SCRIPTED_WALK_CASE)
+        load_command_script(args.command_script, _scripted_walk_limits(args))
+    elif args.command_script is not None:
+        raise ValueError("--command-script is valid only with --case %s" % SCRIPTED_WALK_CASE)
+
+
+def _scripted_walk_setup(args, scope):
+    """Load the command script, bind it to the frozen scope and record it. None for other cases."""
+    if args.case != SCRIPTED_WALK_CASE:
+        if args.command_script is not None:
+            raise AdapterFailure("--command-script is valid only with --case %s" % SCRIPTED_WALK_CASE)
+        return None
+    if args.command_script is None:
+        raise AdapterFailure("--case %s requires --command-script" % SCRIPTED_WALK_CASE)
+    try:
+        loaded = load_command_script(args.command_script, _scripted_walk_limits(args))
+    except CommandScriptError as exc:
+        raise AdapterFailure("command script is invalid: %s" % exc)
+    expected = scope.get("command_script_sha256")
+    if expected != loaded["sha256"]:
+        raise AdapterFailure("command script SHA-256 %s differs from the frozen scope command_script_sha256 %r"
+                             % (loaded["sha256"], expected))
+    output = Path(args.output)
+    copy = output / "command_script.json"
+    shutil.copyfile(str(args.command_script), str(copy))
+    if sha256(copy) != loaded["sha256"]:
+        raise AdapterFailure("command script changed while it was copied into the run output")
+    record = {
+        "schema_version": 1,
+        "case": args.case,
+        "command_script": {
+            "source_path": str(Path(args.command_script).resolve()),
+            "copy": copy.name,
+            "sha256": loaded["sha256"],
+            "bytes": loaded["bytes"],
+        },
+        "scope_command_script_sha256": expected,
+        "script": loaded["script"],
+        "module": {
+            "path": COMMAND_SCRIPT_SOURCE_REL,
+            "sha256": COMMAND_SCRIPT_SOURCE_SHA256,
+            "body_sha256": COMMAND_SCRIPT_BODY_SHA256,
+        },
+        "selection_rule": (
+            "segment i applies from the first control step whose loop-top sim_time "
+            "(Isaac time minus run_clock.simulation_origin_s, before wrapped.step) is at least "
+            "t_start_s - %g s; metrics.jsonl rows record it as script_segment" % COMMAND_SCRIPT_TIME_EPS_S
+        ),
+        "command_path": (
+            "the scripted command replaces the TCP command where stand_probe zeroes it, before the unchanged "
+            "admission norm check; base_velocity term.commands, the post-step command parity and policy "
+            "observation checks, metrics admitted_command, current_command.json applied/admitted command, "
+            "the stance hold and the external finish dwell all use it; the TCP snapshot is still read and "
+            "recorded as raw_command and command_stale/reason"
+        ),
+    }
+    write_json(output / "scripted_walk_setup.json", record)
+    loaded["record"] = record
+    return loaded
+
+
+def _scripted_walk_summary(scripted_walk):
+    if scripted_walk is None:
+        return None
+    return dict(scripted_walk["record"])
+
+
+def _camera_view_yaw(mode, latched_yaw, body_yaw):
+    """Yaw for the follow camera's heading/side vectors and the latched initial yaw.
+
+    body: the current body yaw, unchanged (the previous camera path).
+    initial: the body yaw of the first captured frame, latched for the whole run,
+    so the camera translates with the robot but does not turn with its body twist.
+    """
+    if mode == "body":
+        return body_yaw, latched_yaw
+    if mode == "initial":
+        if latched_yaw is None:
+            latched_yaw = float(body_yaw)
+        return latched_yaw, latched_yaw
+    raise AdapterFailure("unsupported camera heading mode: %r" % (mode,))
+'''
+
+
+def load_marked_module(path: Path, begin: str, end: str) -> Dict[str, str]:
+    """Return the marked body of a module that the materializer inserts verbatim, and its hashes."""
+    path = Path(path)
     text = path.read_text(encoding="utf-8")
-    if text.count(STANCE_BODY_BEGIN) != 1 or text.count(STANCE_BODY_END) != 1:
-        raise RuntimeError("stance_hold.py must contain each body marker exactly once")
-    body = text.split(STANCE_BODY_BEGIN, 1)[1].split(STANCE_BODY_END, 1)[0]
+    if text.count(begin) != 1 or text.count(end) != 1:
+        raise RuntimeError("%s must contain each body marker exactly once" % path.name)
+    body = text.split(begin, 1)[1].split(end, 1)[0]
     tree = ast.parse(body, feature_version=(3, 8))
     if any(isinstance(node, ast.ImportFrom) and node.module == "__future__" for node in ast.walk(tree)):
-        raise RuntimeError("stance_hold.py body must not contain __future__ imports")
+        raise RuntimeError("%s body must not contain __future__ imports" % path.name)
     return {
         "path": str(path),
         "body": body,
         "sha256": sha256_text(text),
         "body_sha256": sha256_text(body),
     }
+
+
+def load_stance_hold_module(path: Optional[Path] = None) -> Dict[str, str]:
+    """Return the marked body of stance_hold.py and its hashes."""
+    return load_marked_module(path or STANCE_HOLD_MODULE, STANCE_BODY_BEGIN, STANCE_BODY_END)
+
+
+def load_command_script_module(path: Optional[Path] = None) -> Dict[str, str]:
+    """Return the marked body of command_script.py and its hashes."""
+    return load_marked_module(path or COMMAND_SCRIPT_MODULE, COMMAND_SCRIPT_BODY_BEGIN, COMMAND_SCRIPT_BODY_END)
 
 
 def _replacements() -> List[Dict[str, str]]:
@@ -1141,6 +1281,184 @@ def _stance_hold_replacements(module: Dict[str, str]) -> List[Dict[str, str]]:
     ]
 
 
+SCRIPTED_WALK_COMMAND_BRANCH = (
+    "                if args.case == \"stand_probe\":\n"
+    "                    # A standing qualification probe never forwards motion.\n"
+    "                    command = (0.0, 0.0, 0.0)\n"
+    "                script_segment = None\n"
+    "                if scripted_walk is not None:\n"
+    "                    # PRD D5 scripted walk: the command script replaces the TCP command here,\n"
+    "                    # before the unchanged admission norm check, the base_velocity write and\n"
+    "                    # the post-step command parity checks.\n"
+    "                    script_segment, command = command_script_at(scripted_walk[\"script\"], sim_time)\n"
+)
+
+
+def _scripted_walk_replacements(module: Dict[str, str]) -> List[Dict[str, str]]:
+    """PRD D5 anchors, applied after the stance-hold group; every default keeps the previous path."""
+    return [
+        {
+            "name": "scripted_walk_module",
+            "old": "\n\ndef _read_viewer_camera_intrinsics(stage, cam_prim_path: str, resolution) -> dict:\n",
+            "new": (
+                "\n\n# ---- command scripts, inserted verbatim from command_script.py ------------\n"
+                "COMMAND_SCRIPT_SOURCE_REL = %r\n"
+                "COMMAND_SCRIPT_SOURCE_SHA256 = %r\n"
+                "COMMAND_SCRIPT_BODY_SHA256 = %r\n"
+                % (COMMAND_SCRIPT_MODULE_REL, module["sha256"], module["body_sha256"])
+                + module["body"]
+                + SCRIPTED_WALK_RUNNER_SOURCE
+                + "\n\ndef _read_viewer_camera_intrinsics(stage, cam_prim_path: str, resolution) -> dict:\n"
+            ),
+        },
+        {
+            "name": "cases_scripted_walk",
+            "old": "CASES = (\"stand_probe\", \"flat_nominal\", \"full_nominal\", \"native_nominal\")\n",
+            "new": (
+                "CASES = (\"stand_probe\", \"flat_nominal\", \"full_nominal\", \"native_nominal\",\n"
+                "         \"scripted_walk\")\n"
+            ),
+        },
+        {
+            "name": "cli_camera_heading_mode",
+            "old": "    parser.add_argument(\"--camera-look-down-m\", type=float, default=0.25)\n",
+            "new": (
+                "    parser.add_argument(\"--camera-look-down-m\", type=float, default=0.25)\n"
+                "    parser.add_argument(\"--camera-heading-mode\", choices=CAMERA_HEADING_MODES, default=\"body\",\n"
+                "                        help=\"body: heading and side vectors follow the body yaw (previous behaviour). \"\n"
+                "                             \"initial: they keep the yaw of the first captured frame\")\n"
+            ),
+        },
+        {
+            "name": "cli_scripted_walk_entry_kd",
+            "old": (
+                "    parser.add_argument(\"--seed\", type=int, default=42)\n"
+                "    parser.add_argument(\"--device\", default=\"cuda:0\")\n"
+            ),
+            "new": (
+                "    parser.add_argument(\"--stance-entry-kd\", choices=STANCE_ENTRY_KD_MODES, default=\"ramp\",\n"
+                "                        help=\"stance hold entry damping: ramp (Kd follows the Kp ramp), step1 \"\n"
+                "                             \"(Kd 1 from entry) or step2p5 (Kd 2.5 from entry, eased to 1 by FIXED_STAND)\")\n"
+                "    parser.add_argument(\"--command-script\", type=Path, default=None,\n"
+                "                        help=\"JSON command script; required by and only valid with --case scripted_walk\")\n"
+                "    parser.add_argument(\"--seed\", type=int, default=42)\n"
+                "    parser.add_argument(\"--device\", default=\"cuda:0\")\n"
+            ),
+        },
+        {
+            # The script path is host-specific like the other inputs; its content is
+            # bound through the frozen scope's command_script_sha256 instead.
+            "name": "command_script_is_path",
+            "old": "             \"execution_manifest\", \"external_control_dir\"}\n",
+            "new": "             \"execution_manifest\", \"external_control_dir\", \"command_script\"}\n",
+        },
+        {
+            # PRD D5 scripted walk runs up to 60 s like the stand_probe cap; no other case changes.
+            "name": "scripted_walk_duration_cap_60s",
+            "old": "               \"stand_probe\": 60.0}.get(case, 45.0)\n",
+            "new": "               \"stand_probe\": 60.0, \"scripted_walk\": 60.0}.get(case, 45.0)\n",
+        },
+        {
+            "name": "main_validation_scripted_walk",
+            "old": "    _validate_external_goal_args(args)\n",
+            "new": "    _validate_external_goal_args(args)\n    _scripted_walk_validate_args(args)\n",
+        },
+        {
+            "name": "scripted_walk_setup",
+            "old": "    frozen = scope[\"frozen_assets\"]\n",
+            "new": (
+                "    frozen = scope[\"frozen_assets\"]\n"
+                "    # PRD D5: the command script is validated and bound to the frozen scope before physics.\n"
+                "    scripted_walk = _scripted_walk_setup(args, scope)\n"
+            ),
+        },
+        {
+            "name": "stance_entry_kd_setup",
+            "old": "    stance_hold_runtime = _stance_hold_setup(args.stance_hold, env, robot, wrapped, args.output)\n",
+            "new": (
+                "    stance_hold_runtime = _stance_hold_setup(args.stance_hold, env, robot, wrapped, args.output,\n"
+                "                                             entry_kd=args.stance_entry_kd)\n"
+            ),
+        },
+        {
+            "name": "camera_heading_state",
+            "old": "    camera_frame_index = 0\n    wall_start = time.monotonic()\n",
+            "new": (
+                "    camera_frame_index = 0\n"
+                "    camera_heading_yaw = None\n"
+                "    wall_start = time.monotonic()\n"
+            ),
+        },
+        {
+            "name": "scripted_walk_command",
+            "old": (
+                "                if args.case == \"stand_probe\":\n"
+                "                    # A standing qualification probe never forwards motion.\n"
+                "                    command = (0.0, 0.0, 0.0)\n"
+            ),
+            "new": SCRIPTED_WALK_COMMAND_BRANCH,
+        },
+        {
+            "name": "scripted_walk_metrics_row",
+            "old": "                row.update(_stance_hold_row(stance_hold_runtime, robot))\n",
+            "new": (
+                "                row.update(_stance_hold_row(stance_hold_runtime, robot))\n"
+                "                if scripted_walk is not None:\n"
+                "                    row[\"script_segment\"] = script_segment\n"
+            ),
+        },
+        {
+            "name": "camera_heading_view",
+            "old": (
+                "                if step % capture_stride == 0:\n"
+                "                    heading = np.array([math.cos(yaw), math.sin(yaw), 0.0])\n"
+                "                    side = np.array([-math.sin(yaw), math.cos(yaw), 0.0])\n"
+            ),
+            "new": (
+                "                if step % capture_stride == 0:\n"
+                "                    view_yaw, camera_heading_yaw = _camera_view_yaw(\n"
+                "                        args.camera_heading_mode, camera_heading_yaw, yaw)\n"
+                "                    heading = np.array([math.cos(view_yaw), math.sin(view_yaw), 0.0])\n"
+                "                    side = np.array([-math.sin(view_yaw), math.cos(view_yaw), 0.0])\n"
+            ),
+        },
+        {
+            "name": "camera_heading_frame_row",
+            "old": (
+                "                        \"yaw_rad\": float(yaw),\n"
+                "                    }) + \"\\n\")\n"
+            ),
+            "new": (
+                "                        \"yaw_rad\": float(yaw),\n"
+                "                        \"heading_mode\": args.camera_heading_mode,\n"
+                "                        \"view_yaw_rad\": float(view_yaw),\n"
+                "                    }) + \"\\n\")\n"
+            ),
+        },
+        {
+            "name": "camera_heading_summary",
+            "old": (
+                "                \"look_down_m\": args.camera_look_down_m,\n"
+                "                \"capture_stride_steps\": capture_stride,\n"
+            ),
+            "new": (
+                "                \"look_down_m\": args.camera_look_down_m,\n"
+                "                \"heading_mode\": args.camera_heading_mode,\n"
+                "                \"heading_yaw_rad\": camera_heading_yaw,\n"
+                "                \"capture_stride_steps\": capture_stride,\n"
+            ),
+        },
+        {
+            "name": "scripted_walk_summary",
+            "old": "            \"stance_hold\": _stance_hold_summary(stance_hold_runtime),\n",
+            "new": (
+                "            \"stance_hold\": _stance_hold_summary(stance_hold_runtime),\n"
+                "            \"scripted_walk\": _scripted_walk_summary(scripted_walk),\n"
+            ),
+        },
+    ]
+
+
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -1162,10 +1480,18 @@ def _apply(result: str, items: List[Dict[str, str]]) -> str:
 
 
 def apply_patch_text(source: str, include_stance_hold: bool = True,
-                     stance_module: Optional[Dict[str, str]] = None) -> str:
+                     stance_module: Optional[Dict[str, str]] = None,
+                     include_scripted_walk: bool = True,
+                     command_script_module: Optional[Dict[str, str]] = None) -> str:
+    """Apply the anchor groups in order; the scripted-walk group needs the stance-hold group."""
+    if include_scripted_walk and not include_stance_hold:
+        raise ValueError("the scripted-walk anchors apply on top of the stance-hold anchors")
     result = _apply(source, _replacements())
     if include_stance_hold:
         result = _apply(result, _stance_hold_replacements(stance_module or load_stance_hold_module()))
+    if include_scripted_walk:
+        result = _apply(result, _scripted_walk_replacements(
+            command_script_module or load_command_script_module()))
     return result
 
 
@@ -1192,10 +1518,18 @@ def verify_patch(data: Dict[str, str]) -> Dict[str, object]:
         "duplicate_top_level_definitions": duplicates,
         "stance_step_branch_present": STANCE_HOLD_STEP_BRANCH in data["patched_text"],
         "default_stance_hold_off": "choices=STANCE_HOLD_MODES, default=\"off\"" in data["patched_text"],
+        "scripted_walk_command_branch_present": SCRIPTED_WALK_COMMAND_BRANCH in data["patched_text"],
+        "default_camera_heading_body": "choices=CAMERA_HEADING_MODES, default=\"body\"" in data["patched_text"],
+        "default_stance_entry_kd_ramp": "choices=STANCE_ENTRY_KD_MODES, default=\"ramp\"" in data["patched_text"],
+        "default_command_script_none": (
+            "parser.add_argument(\"--command-script\", type=Path, default=None," in data["patched_text"]
+        ),
         "patched_text_compiles": True,
     }
     failed = [
-        key for key in ("external_only_matches_executed_runner", "stance_step_branch_present", "default_stance_hold_off")
+        key for key in ("external_only_matches_executed_runner", "stance_step_branch_present", "default_stance_hold_off",
+                        "scripted_walk_command_branch_present", "default_camera_heading_body",
+                        "default_stance_entry_kd_ramp", "default_command_script_none")
         if not checks[key]
     ]
     if duplicates:
@@ -1225,8 +1559,10 @@ def load_and_patch(source_path: Path, allow_source_sha: bool = False) -> Dict[st
             % (source_sha, EXPECTED_SOURCE_SHA256)
         )
     stance_module = load_stance_hold_module()
-    patched_text = apply_patch_text(source_text, stance_module=stance_module)
-    external_only = apply_patch_text(source_text, include_stance_hold=False)
+    script_module = load_command_script_module()
+    patched_text = apply_patch_text(source_text, stance_module=stance_module,
+                                    command_script_module=script_module)
+    external_only = apply_patch_text(source_text, include_stance_hold=False, include_scripted_walk=False)
     return {
         "source_text": source_text,
         "patched_text": patched_text,
@@ -1235,6 +1571,7 @@ def load_and_patch(source_path: Path, allow_source_sha: bool = False) -> Dict[st
         "patch_text": unified_diff(source_text, patched_text),
         "external_only_sha256": sha256_text(external_only),
         "stance_hold_module": stance_module,
+        "command_script_module": script_module,
     }
 
 
@@ -1262,6 +1599,7 @@ def write_outputs(args: argparse.Namespace) -> Dict[str, str]:
         "anchor_groups": {
             "external_episode": [item["name"] for item in _replacements()],
             "stance_hold": [item["name"] for item in _stance_hold_replacements(data["stance_hold_module"])],
+            "scripted_walk": [item["name"] for item in _scripted_walk_replacements(data["command_script_module"])],
         },
         "external_only_patched_sha256": data["external_only_sha256"],
         "external_only_expected_sha256": EXTERNAL_ONLY_PATCHED_SHA256,
@@ -1270,10 +1608,18 @@ def write_outputs(args: argparse.Namespace) -> Dict[str, str]:
             "sha256": data["stance_hold_module"]["sha256"],
             "body_sha256": data["stance_hold_module"]["body_sha256"],
         },
+        "command_script_module": {
+            "path": COMMAND_SCRIPT_MODULE_REL,
+            "sha256": data["command_script_module"]["sha256"],
+            "body_sha256": data["command_script_module"]["body_sha256"],
+        },
         "stance_hold_default": "off",
+        "stance_entry_kd_default": "ramp",
+        "camera_heading_mode_default": "body",
+        "command_script_default": None,
         "claim_boundary": (
             "Patch materialization only. Passing tests do not claim Isaac, ROS, "
-            "PCT, SCAN, V12 policy, stance hold, or simulator success."
+            "PCT, SCAN, V12 policy, stance hold, scripted walk, or simulator success."
         ),
     }
     if args.check:

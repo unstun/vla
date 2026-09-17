@@ -172,3 +172,42 @@ commands, not actions, so it is unaffected.
 
 `--stance-hold off` is the default. A run with `off` uses today's control path. The previous patch and its hashes stay
 in git history; existing run packages are untouched.
+
+## 7. Scripted walk, side camera and entry damping (PRD D5, added 2026-09-17)
+
+- **Command script:** `isaac_runner/command_script.py` is pure Python, inserted verbatim like `stance_hold.py`.
+  - The new runner case `scripted_walk` requires `--command-script`; every other case refuses it.
+  - The script is piecewise constant in loop-top sim time, with a 1e-4 s slack for float32 times. It must lie
+    within the runner's own `--max-*` limits and is refused, not clamped, when it does not.
+  - The script replaces the TCP command where `stand_probe` zeroes it, before the unchanged admission norm
+    check. Everything downstream therefore sees it: the `base_velocity` write, the post-step parity and
+    observation checks, `admitted_command`, `current_command.json`, the hold and the finish dwell.
+  - The TCP snapshot is still recorded as `raw_command`. Rows carry `script_segment`.
+  - The script path is kept out of the execution configuration. Its SHA-256 is bound through the scope's
+    `command_script_sha256`, which the runner checks before physics.
+  - The duration cap is 60 s, like `stand_probe`.
+- **D5 plan:** `command_scripts/walk_stop_start_stop_v1.json`. The launcher runs it with the native baseline
+  limits (`speed_1p0`), a 26 s duration and the finish request at 20 s. The script is zero from 14.5 s, so the
+  finish dwell (zero command plus 1 s still) can end.
+  - The worker also accepts `DURATION_REACHED` for this case, because the RL-only baseline may never hold 1 s
+    of stillness.
+- **Camera:** `--camera-heading-mode initial` latches the first captured frame's body yaw for the heading and
+  side vectors. `body` (the default) gives the same vectors as before, which a test checks byte for byte.
+  - The `side` launcher preset is trail 0, lateral -1.25, height 0.20, look-ahead 0, look-down 0.12, stride 2
+    and 25 fps.
+- **Entry damping:** `StanceHold(entry_kd=...)`.
+  - `ramp` is the D4 behaviour. `step1` uses Kd 1.0 from the entry step.
+  - `step2p5` uses Kd 2.5 from the entry step, then a smoothstep from 0.5 s to exactly 1.0 at FIXED_STAND at
+    2.0 s. The precedent is MuJoCo `BOOT_LANDING_KD` 2.5 over the 1 s boot grace (MJ:131-140, 1803).
+  - Kp and the target keep the D4 ramp in every variant. On the entry step, the step variants write a Kd-only
+    change, and REJOIN blends from the applied values.
+  - `--stance-entry-kd` other than `ramp` is refused with `--stance-hold off`.
+- **Analysis:** `analyze_stance_hold.py walk` evaluates AC8 a-d with the frozen `ac8_walk` thresholds and
+  applies the D5 selection rule. Command phases come from the recorded `admitted_command`; each phase's
+  command step time is the sim time of the row before its first row.
+- **Anchors:** the anchor group `scripted_walk` is applied after the stance-hold group. With every default
+  (`body`, `ramp`, no script), the previous control and camera paths are unchanged.
+- **Open items:**
+  - `run_two_goal_pilot.py` does not pass `--stance-entry-kd` yet. C2 needs it if the selected variant is not
+    `ramp`.
+  - The side camera is 1.25 m right of the base, next to corridor walls at 1.3-1.45 m.

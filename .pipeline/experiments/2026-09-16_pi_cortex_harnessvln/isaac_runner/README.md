@@ -34,6 +34,15 @@ ownership belongs to the external PCT/SCAN backend.
 in "Stance Hold" below. With `off`, the step path is the runner's own
 `previous_actions = actions` and no actuator gain is written.
 
+Three more flags come from PRD D5 (see "Scripted Walk" below). Their defaults
+keep the previous path:
+
+- `--case scripted_walk --command-script FILE`: the runner's own command script
+  drives V12. The script is required by this case and refused by every other.
+- `--camera-heading-mode {body,initial}` (default `body`).
+- `--stance-entry-kd {ramp,step1,step2p5}` (default `ramp`; only `ramp` is
+  accepted with `--stance-hold off`).
+
 ## Shared Files
 
 The runner atomically replaces:
@@ -176,6 +185,8 @@ If `qualify_stand_runner.py --execute` passes, the strongest claim is narrower:
 the patched runner, V12 physics/policy runtime and real Foxy bridge transport
 worked together in a stand-only, zero-command diagnostic simulator run. It is
 not navigation, PCT/SCAN execution, goal replacement, or language control.
+With `--case scripted_walk`, the zero-command part is replaced by "under the
+frozen command script". The other limits stay.
 
 ## Stance Hold
 
@@ -243,15 +254,19 @@ Task: `.trellis/tasks/09-17-isaac-runner-stance-hold` (design.md, implement.md).
 - `analyze_stance_hold.py stand --on RUN --off RUN` gives the AC3 verdict, the
   hold-off baseline over the same window, AC5 and AC7. `analyze_stance_hold.py
   run RUN...` gives AC5, AC7 and hold timing for any run. The exit code is
-  nonzero unless every applicable verdict passes.
+  nonzero unless every applicable verdict passes. `walk` is described in
+  "Scripted Walk" below.
   - Thresholds live in `stance_hold_thresholds.json`, frozen at SHA-256
-    `12373448a8aee02534b529c69189bc5155bbe13cb0d17b632d260b075e075da5`. Any
-    other file is refused, including the superseded AC3/AC5-only file.
-    - The superseded file (`fb8f9204...`) was used for the first C1 report. It
-      is kept byte-for-byte in
-      `stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json`.
-    - The live file's `amendments` list records the change. That report can
-      be reproduced only with `--allow-unfrozen-thresholds`.
+    `683a8ca6d9d26fe4c45af22fc449c1c05525fde9eb0fb3dc4125c4f2831b43b8`
+    (amended with `ac8_walk` before any scripted-walk run). Any other file is
+    refused, including the two superseded files, which are kept
+    byte-for-byte:
+    - `stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json`
+      (AC3/AC5 only; used for the first C1 report);
+    - `stance_hold_thresholds_history/stance_hold_thresholds_12373448.json`
+      (adds AC7; used for the C1b report).
+    - The live file's `amendments` list records both changes. Those reports
+      can be reproduced only with `--allow-unfrozen-thresholds`.
   - AC7 (entry smoothness): each entry window runs from the first
     STAND_TRANSITION row to 1.0 s after it, inclusive, with a 1 ms tolerance.
     Its limits are max |`yaw_rate_radps`| ≤ 0.15 rad/s and max
@@ -269,6 +284,120 @@ Task: `.trellis/tasks/09-17-isaac-runner-stance-hold` (design.md, implement.md).
 - Claim boundary: the local tests use fake Isaac objects and synthetic rows.
   An Isaac result, even a passing one, is simulation only: V12 in Isaac on one
   flat Building route. It is not a real-robot or deployment fix.
+
+## Scripted Walk (PRD D5)
+
+Standing alone does not show whether the PD <-> RL switch is smooth. The
+`scripted_walk` case walks, stops, starts again from a standstill and stops,
+and records it with a side camera.
+
+- `command_script.py`: the command script schema, validation and time
+  lookup, in pure Python. The materializer inserts the text between its body
+  markers verbatim, as it does for `stance_hold.py`.
+  - A script starts at 0.0 s and its start times increase strictly.
+  - Every command must lie within the runner's `--max-*` limits. A command
+    outside them is refused, not clamped.
+  - Segment i applies from the first control step whose loop-top sim time is
+    at least `t_start_s - 1e-4 s`.
+- `command_scripts/walk_stop_start_stop_v1.json` (SHA-256 `437f7ee7...`) is the
+  D5 plan: 0-4 s zero; 4-7 s vx 0.6; 7-12 s zero; 12-14.5 s vx 0.6; zero from
+  14.5 s.
+- Anchor group `scripted_walk`, applied after the stance-hold group:
+  - `scripted_walk_module`: `command_script.py` plus runner glue;
+  - `cases_scripted_walk` and `scripted_walk_duration_cap_60s`;
+  - CLI: `cli_camera_heading_mode` and `cli_scripted_walk_entry_kd`;
+    `command_script_is_path` keeps the path out of the execution
+    configuration;
+  - `main_validation_scripted_walk`: checks before Isaac starts;
+  - `scripted_walk_setup`: before physics, the script must match the scope's
+    `command_script_sha256`. The runner writes `command_script.json` and
+    `scripted_walk_setup.json`;
+  - `stance_entry_kd_setup`;
+  - `scripted_walk_command`: the script replaces the TCP command where
+    `stand_probe` zeroes it;
+  - `scripted_walk_metrics_row`: `script_segment` on each row;
+  - `scripted_walk_summary`;
+  - camera: `camera_heading_state`, `camera_heading_view`,
+    `camera_heading_frame_row` and `camera_heading_summary`.
+- Command path: the scripted command then goes through the unchanged
+  admission norm check and is written to `term.commands`.
+  - The post-step parity check and the policy-observation check use it, as do
+    `admitted_command`, `current_command.json`, the stance hold and the finish
+    dwell.
+  - The TCP snapshot is still read and recorded as `raw_command`. Staleness
+    only zeroes that snapshot, so it cannot override the script.
+- Camera: `--camera-heading-mode initial` latches the body yaw of the first
+  captured frame. The camera then follows the robot's position but does not
+  turn with its body. `camera_frames.jsonl` rows gain `heading_mode` and
+  `view_yaw_rad`, and the summary `camera` block gains `heading_mode` and
+  `heading_yaw_rad`.
+- Entry damping (`stance_hold.py` `entry_kd`). Kp and the target keep the
+  0.5 s entry ramp in every variant.
+  - `ramp`: Kd follows the Kp ramp (D4).
+  - `step1`: Kd 1.0 from the entry step on.
+  - `step2p5`: Kd 2.5 from the entry step to 0.5 s, then a smoothstep to
+    exactly 1.0 at FIXED_STAND. The precedent is MuJoCo `BOOT_LANDING_KD`
+    2.5 during `FIXED_STAND_BOOT_GRACE_S`.
+  - With `step1` and `step2p5`, the entry step writes a Kd-only change. The
+    summary `stance_hold.entry_kd` and the setup record name the variant.
+- Launcher options: `qualify_stand_runner.py --case scripted_walk
+  --command-script FILE --camera-preset side --stance-entry-kd ...`.
+  - The walk uses the native baseline limits (`speed_1p0`; 1.0 / 0.35 / 1.0 /
+    1.0). The stand keeps its 0.30 limits.
+  - The `side` preset is trail 0, lateral -1.25 (the robot's right),
+    height 0.20, look-ahead 0, look-down 0.12, heading `initial`, stride 2
+    and 25 fps. `rear` passes no camera flag.
+  - The script is copied to `inputs/command_script.json`. Its hash is
+    recorded in the package manifest, `source_env_hashes.json`, the scope and
+    `run_request.json`.
+  - `prepare` refuses a script whose last segment is not zero or starts after
+    `--finish-after-sim-seconds`.
+  - `--execute` refuses a case, script hash, camera preset or entry-Kd that
+    differs from the package.
+  - For this case, the worker accepts `DURATION_REACHED` as well as
+    `EXTERNAL_EPISODE_FINISHED`. It checks the summary case, entry-Kd,
+    heading mode and script hash.
+- The D5 runs (26 s; finish request at 20 s):
+
+```bash
+cd /Users/sun/tongbu/study/phdproject/vla
+Q=.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/qualify_stand_runner.py
+S=.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/command_scripts/walk_stop_start_stop_v1.json
+# Flags are spelled out: zsh does not word-split an unquoted variable.
+python3 $Q --run-id walk_YYYYMMDDTHHMMSSZ_hold_off --case scripted_walk --command-script $S \
+  --camera-preset side --duration-seconds 26 --finish-after-sim-seconds 20 --stance-hold off
+python3 $Q --run-id walk_YYYYMMDDTHHMMSSZ_hold_auto_ramp --case scripted_walk --command-script $S \
+  --camera-preset side --duration-seconds 26 --finish-after-sim-seconds 20 --stance-hold auto --stance-entry-kd ramp
+python3 $Q --run-id walk_YYYYMMDDTHHMMSSZ_hold_auto_step1 --case scripted_walk --command-script $S \
+  --camera-preset side --duration-seconds 26 --finish-after-sim-seconds 20 --stance-hold auto --stance-entry-kd step1
+python3 $Q --run-id walk_YYYYMMDDTHHMMSSZ_hold_auto_step2p5 --case scripted_walk --command-script $S \
+  --camera-preset side --duration-seconds 26 --finish-after-sim-seconds 20 --stance-hold auto --stance-entry-kd step2p5
+# Execute each package with its identical command plus --execute (needs Dr Sun's run approval).
+```
+
+- `analyze_stance_hold.py walk --off RUN --on RUN [--on RUN ...]`:
+  - AC8 a-d for each hold-on run, as the PRD states them. The limits are in
+    `ac8_walk`.
+  - AC5 and AC7 for every run.
+  - For every run, the baseline included:
+    - per stop: time to still (≤ 0.05 m/s and ≤ 0.15 rad/s for 0.5 s), time
+      to FIXED_STAND, and the last 2 s maxima and drift;
+    - per start, over 1 s: max |pitch|, |roll| and |vertical speed|, the
+      lowest base-height change, and the walk distance.
+  - The D5 selection: the lowest entry-window |yaw rate| among hold-on runs
+    that pass AC5 and AC8.
+  - Command phases come from the recorded `admitted_command` and must match
+    the frozen script: order, commands, `script_segment`, and command steps
+    within 0.01 s.
+  - The exit code is 0 only when a variant is selected. An invalid hold-off
+    baseline means no selection.
+- Risks:
+  - The side camera sits 1.25 m right of the base while the corridor walls are
+    1.3-1.45 m from the route. Lateral drift can put it behind a wall; check
+    `video_frame_contrast`.
+  - The Foxy bridge config keeps its 0.30 limits. It forwards no command here.
+- Claim boundary: simulation only (V12 in Isaac, one flat Building corridor).
+  This is not navigation and not a real-robot or deployment fix.
 
 ## Two-Goal P2B Pilot Prepared Package
 

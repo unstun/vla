@@ -212,10 +212,231 @@ class StandHoldSettingsTests(unittest.TestCase):
             (run / "run_request.json").write_text(json.dumps({"duration_seconds": 8.0}))
             args = qualify.build_parser().parse_args([])
             self.assertEqual(qualify.check_prepared_request(args, run),
-                             {"stance_hold": "off", "duration_seconds": 8.0, "finish_after_sim_seconds": 2.0})
+                             {"stance_hold": "off", "duration_seconds": 8.0, "finish_after_sim_seconds": 2.0,
+                              "case": "stand_probe", "stance_entry_kd": "ramp", "camera_preset": "rear",
+                              "command_script": None})
             args = qualify.build_parser().parse_args(["--stance-hold", "auto"])
             with self.assertRaisesRegex(RuntimeError, "stance-hold"):
                 qualify.check_prepared_request(args, run)
+
+
+D5_SCRIPT = Path(qualify.HERE) / "command_scripts/walk_stop_start_stop_v1.json"
+# build_runner_argv before PRD D5, with {run} for the remote run root; the D5 change only adds
+# --stance-entry-kd after --stance-hold for the default stand.
+LEGACY_STAND_ARGV = [
+    "--scene", "{run}/inputs/building.usda", "--runtime", qualify.DEFAULT_REMOTE_V12,
+    "--checkpoint", qualify.DEFAULT_REMOTE_CHECKPOINT, "--route-artifact", "{run}/inputs/stand_route_artifact.json",
+    "--scope", "{run}/inputs/stand_scope.json", "--execution-manifest", "{run}/inputs/execution_manifest.json",
+    "--output", "{run}/artifacts/runner_output", "--case", "stand_probe", "--duration-seconds", "8.0",
+    "--telemetry-host", "127.0.0.1", "--telemetry-port", "46240", "--command-host", "127.0.0.1",
+    "--command-port", "46241", "--max-vx", "0.30", "--max-vy", "0.30", "--max-wz", "0.8",
+    "--max-horizontal-norm", "0.30", "--speed-profile", "conservative_0p3", "--contact-policy", "native_v12",
+    "--unfiltered-planner-cloud", "--goal-tolerance-m", "0.25", "--terminal-window-seconds", "2.0",
+    "--terminal-command-norm", "0.01", "--terminal-speed-mps", "0.10", "--terminal-yaw-rate-radps", "0.15",
+    "--connection-ready-timeout-seconds", "120.0", "--max-wall-seconds", "600.0", "--video-fps", "12.5",
+    "--camera-capture-stride", "4", "--complete-body-state", "--priority-telemetry", "--async-recording",
+    "--freeze-gc", "--external-goal-mode", "--external-run-id", "{id}", "--external-control-dir",
+    "{run}/artifacts/external_episode", "--external-finish-stillness-seconds", "1.0",
+    "--external-status-freshness-seconds", "2.0", "--stance-hold", "off", "--seed", "42", "--device", "cuda:0",
+]
+WALK_FLAGS = ["--case", "scripted_walk", "--command-script", str(D5_SCRIPT), "--camera-preset", "side",
+              "--duration-seconds", "26", "--finish-after-sim-seconds", "20"]
+
+
+def runner_argv_from(commands):
+    return json.loads(commands["run"][-1].split("--runner-argv-json ")[1].split(" --ros-domain-id")[0].strip("'"))
+
+
+class ScriptedWalkPackageTests(unittest.TestCase):
+    def prepare(self, tmp, run_id, *extra):
+        args = qualify.build_parser().parse_args([
+            "--run-id", run_id, "--local-runs-root", str(Path(tmp) / "runs"), "--remote-root", "/remote/root",
+            *extra,
+        ])
+        return args, qualify.prepare(args)
+
+    def test_default_stand_argv_only_gains_the_entry_kd_flag(self):
+        args = qualify.build_parser().parse_args([])
+        argv = qualify.build_runner_argv(args, "/r/run", "run")
+        legacy = [item.replace("{run}", "/r/run").replace("{id}", "run") for item in LEGACY_STAND_ARGV]
+        position = legacy.index("--stance-hold") + 2
+        self.assertEqual(argv, legacy[:position] + ["--stance-entry-kd", "ramp"] + legacy[position:])
+        self.assertNotIn("--command-script", argv)
+        self.assertNotIn("--camera-heading-mode", argv)
+
+    def test_scripted_walk_package_binds_script_limits_camera_and_variant(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args, (local_run, commands) = self.prepare(
+                tmp, "walk_auto_step2p5", *WALK_FLAGS, "--stance-hold", "auto", "--stance-entry-kd", "step2p5")
+            sha = qualify.sha256(D5_SCRIPT)
+            argv = runner_argv_from(commands)
+            self.assertEqual(argv, qualify.build_runner_argv(args, "/remote/root/walk_auto_step2p5",
+                                                              "walk_auto_step2p5"))
+            value = lambda flag: argv[argv.index(flag) + 1]
+            self.assertEqual((value("--case"), value("--duration-seconds"), value("--stance-hold"),
+                              value("--stance-entry-kd")), ("scripted_walk", "26.0", "auto", "step2p5"))
+            self.assertEqual(value("--command-script"), "/remote/root/walk_auto_step2p5/inputs/command_script.json")
+            self.assertEqual([value(f) for f in ("--max-vx", "--max-vy", "--max-wz", "--max-horizontal-norm",
+                                                 "--speed-profile")], ["1.0", "0.35", "1.0", "1.0", "speed_1p0"])
+            self.assertEqual([value(f) for f in ("--camera-trail-m", "--camera-lateral-m", "--camera-height-m",
+                                                 "--camera-look-ahead-m", "--camera-look-down-m",
+                                                 "--camera-heading-mode", "--camera-capture-stride",
+                                                 "--video-fps")],
+                             ["0.0", "-1.25", "0.2", "0.0", "0.12", "initial", "2", "25.0"])
+            self.assertEqual((local_run / "inputs/command_script.json").read_bytes(), D5_SCRIPT.read_bytes())
+            manifest = json.loads((local_run / "inputs/package_manifest.json").read_text())
+            entry = [e for e in manifest["files"] if e["path"] == "inputs/command_script.json"]
+            self.assertEqual([e["sha256"] for e in entry], [sha])
+            self.assertEqual(json.loads((local_run / "source_env_hashes.json").read_text())["command_script_sha256"], sha)
+            route = json.loads((local_run / "inputs/stand_route_artifact.json").read_text())
+            self.assertEqual(route["route_id"], "scripted_walk_spawn_metadata")
+            scope = json.loads((local_run / "inputs/stand_scope.json").read_text())
+            self.assertEqual((scope["case"], scope["command_script_sha256"], scope["stance_entry_kd"],
+                              scope["camera_heading_mode"], scope["revision"]),
+                             ("scripted_walk", sha, "step2p5", "initial", "p2b-scripted-walk-runner-qualification-r1"))
+            self.assertIn("No SCAN", scope["claim"])
+            request = json.loads((local_run / "run_request.json").read_text())
+            self.assertEqual((request["case"], request["stance_hold"], request["stance_entry_kd"],
+                              request["camera_preset"], request["duration_seconds"], request["finish_after_sim_seconds"]),
+                             ("scripted_walk", "auto", "step2p5", "side", 26.0, 20.0))
+            self.assertEqual(request["command_script"]["sha256"], sha)
+            self.assertEqual(request["command_script"]["package_path"], "inputs/command_script.json")
+            self.assertEqual(request["camera"]["camera_heading_mode"], "initial")
+            self.assertEqual(request["command_limits"]["speed_profile"], "speed_1p0")
+            self.assertIn("not a real-robot", request["claim_boundary"])
+            self.assertIn("--finish-after-sim-seconds 20.0", commands["run"][-1])
+
+            # The packaged runner accepts this exact configuration with the packaged script.
+            runner = qualify.import_runner(local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py")
+            parsed = runner.build_parser().parse_args(argv)
+            self.assertEqual(runner.execution_configuration(parsed), scope["execution_configuration"])
+            self.assertNotIn("command_script", scope["execution_configuration"])
+            runner.validate_run_duration(parsed.case, parsed.duration_seconds)
+            runner.validate_motion_profile(parsed)
+            parsed.command_script = local_run / "inputs/command_script.json"
+            parsed.output = Path(tmp) / "runner_output"
+            parsed.output.mkdir()
+            runner._scripted_walk_validate_args(parsed)
+            runner._validate_external_goal_args(parsed)
+            loaded = runner._scripted_walk_setup(parsed, scope)
+            self.assertEqual(loaded["sha256"], sha)
+            self.assertAlmostEqual(1.0 / (0.02 * parsed.camera_capture_stride), parsed.video_fps, places=9)
+
+            worker = (local_run / "remote_worker.py").read_text()
+            for text in ('runner_arg_value(runner_argv, "--stance-entry-kd")',
+                         '["EXTERNAL_EPISODE_FINISHED", "DURATION_REACHED"] if case == "scripted_walk"',
+                         "runner summary case differs", "runner summary stance_hold entry_kd differs",
+                         "runner summary camera heading_mode differs",
+                         "packaged command script SHA-256 differs from source_env_hashes.json",
+                         "finish_request_snapshot_sim_time_s"):
+                self.assertIn(text, worker)
+            compile(worker, "remote_worker.py", "exec")
+
+    def test_hold_off_walk_package_uses_ramp_and_stand_defaults_are_unchanged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _args, (local_run, commands) = self.prepare(tmp, "walk_off", *WALK_FLAGS)
+            argv = runner_argv_from(commands)
+            self.assertEqual(argv[argv.index("--stance-hold") + 1], "off")
+            self.assertEqual(argv[argv.index("--stance-entry-kd") + 1], "ramp")
+            _args, (stand_run, _commands) = self.prepare(tmp, "stand_default")
+            request = json.loads((stand_run / "run_request.json").read_text())
+            self.assertEqual((request["case"], request["camera_preset"], request["stance_entry_kd"],
+                              request["command_script"]), ("stand_probe", "rear", "ramp", None))
+            self.assertEqual(request["camera"]["video_fps"], 12.5)
+            scope = json.loads((stand_run / "inputs/stand_scope.json").read_text())
+            self.assertNotIn("command_script_sha256", scope)
+            self.assertEqual(scope["revision"], "p2b-stand-only-runner-qualification-r1")
+            self.assertEqual(scope["execution_configuration"]["camera_heading_mode"], "body")
+            self.assertFalse((stand_run / "inputs/command_script.json").exists())
+
+    def test_invalid_walk_settings_are_refused_before_creating_the_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            nonzero_last = Path(tmp) / "nonzero_last.json"
+            nonzero_last.write_text(json.dumps({"schema_version": 1, "segments": [
+                {"t_start_s": 0.0, "vx": 0.0, "vy": 0.0, "wz": 0.0},
+                {"t_start_s": 4.0, "vx": 0.6, "vy": 0.0, "wz": 0.0}]}))
+            too_fast = Path(tmp) / "too_fast.json"
+            too_fast.write_text(json.dumps({"schema_version": 1, "segments": [
+                {"t_start_s": 0.0, "vx": 1.2, "vy": 0.0, "wz": 0.0},
+                {"t_start_s": 4.0, "vx": 0.0, "vy": 0.0, "wz": 0.0}]}))
+            base = ["--duration-seconds", "26", "--finish-after-sim-seconds", "20"]
+            cases = {
+                "requires --command-script": ["--case", "scripted_walk"] + base,
+                "only with --case scripted_walk": ["--command-script", str(D5_SCRIPT)],
+                "applies only with --stance-hold auto": WALK_FLAGS + ["--stance-entry-kd", "step1"],
+                "comes before the last": ["--case", "scripted_walk", "--command-script", str(D5_SCRIPT),
+                                          "--duration-seconds", "26", "--finish-after-sim-seconds", "14"],
+                "last segment must be a zero command": ["--case", "scripted_walk", "--command-script",
+                                                        str(nonzero_last)] + base,
+                "exceeds the runner limit": ["--case", "scripted_walk", "--command-script", str(too_fast)] + base,
+                "within": ["--case", "scripted_walk", "--command-script", str(D5_SCRIPT),
+                           "--duration-seconds", "61", "--finish-after-sim-seconds", "20"],
+                "leaves less than": ["--case", "scripted_walk", "--command-script", str(D5_SCRIPT),
+                                     "--duration-seconds", "21.5", "--finish-after-sim-seconds", "20"],
+            }
+            for index, (message, extra) in enumerate(cases.items()):
+                with self.subTest(message=message):
+                    with self.assertRaisesRegex(ValueError, message):
+                        self.prepare(tmp, "walk_bad_%d" % index, *extra)
+                    self.assertFalse((Path(tmp) / "runs" / ("walk_bad_%d" % index)).exists())
+            missing = ["--case", "scripted_walk", "--command-script", str(Path(tmp) / "missing.json")] + base
+            with self.assertRaises(FileNotFoundError):
+                self.prepare(tmp, "walk_missing", *missing)
+            for flags in (["--case", "flat_nominal"], ["--camera-preset", "top"], ["--stance-entry-kd", "step3"]):
+                with self.subTest(flags=flags), self.assertRaises(SystemExit), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    qualify.build_parser().parse_args(flags)
+
+    def test_execute_refuses_walk_settings_that_differ_from_the_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.prepare(tmp, "walk_prepared", *WALK_FLAGS, "--stance-hold", "auto", "--stance-entry-kd", "step1")
+            runs = str(Path(tmp) / "runs")
+            base = ["--run-id", "walk_prepared", "--local-runs-root", runs, "--execute"]
+            same = base + WALK_FLAGS + ["--stance-hold", "auto", "--stance-entry-kd", "step1"]
+            with mock.patch.object(qualify, "execute") as execute, contextlib.redirect_stdout(io.StringIO()):
+                qualify.main(same)
+                execute.assert_called_once()
+            changed_script = Path(tmp) / "changed.json"
+            changed_script.write_bytes(D5_SCRIPT.read_bytes() + b"\n")
+
+            def replace(flag, value):
+                result = list(same)
+                result[result.index(flag) + 1] = value
+                return result
+
+            variants = {
+                "stance-entry-kd": replace("--stance-entry-kd", "step2p5"),
+                "camera-preset": replace("--camera-preset", "rear"),
+                "command-script": replace("--command-script", str(changed_script)),
+                "case": base + ["--stance-hold", "auto", "--stance-entry-kd", "step1", "--duration-seconds", "26",
+                                "--finish-after-sim-seconds", "20"],
+            }
+            for flag, argv in variants.items():
+                with self.subTest(flag=flag), mock.patch.object(qualify, "execute") as execute:
+                    with self.assertRaisesRegex(RuntimeError, "--%s .* differs from the prepared package" % flag):
+                        qualify.main(argv)
+                    execute.assert_not_called()
+
+    def test_legacy_request_defaults_cover_the_new_settings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            (run / "run_request.json").write_text(json.dumps({"duration_seconds": 8.0, "stance_hold": "auto"}))
+            args = qualify.build_parser().parse_args(["--stance-hold", "auto"])
+            self.assertEqual(qualify.check_prepared_request(args, run), {
+                "case": "stand_probe", "stance_hold": "auto", "stance_entry_kd": "ramp", "duration_seconds": 8.0,
+                "finish_after_sim_seconds": 2.0, "camera_preset": "rear", "command_script": None})
+            for flags, name in ((["--stance-entry-kd", "step1"], "stance-entry-kd"),
+                                (["--camera-preset", "side"], "camera-preset")):
+                args = qualify.build_parser().parse_args(["--stance-hold", "auto"] + flags)
+                with self.subTest(flag=name), self.assertRaisesRegex(RuntimeError, name):
+                    qualify.check_prepared_request(args, run)
+
+    def test_launcher_entry_kd_choices_match_the_module(self):
+        import stance_hold
+        self.assertEqual(qualify.STANCE_ENTRY_KD_CHOICES, stance_hold.STANCE_ENTRY_KD_MODES)
+        self.assertEqual(qualify.DEFAULT_STANCE_ENTRY_KD, stance_hold.STANCE_ENTRY_KD_DEFAULT)
+        self.assertEqual(qualify.native_command_limits(), {
+            "max_vx": 1.0, "max_vy": 0.35, "max_wz": 1.0, "max_horizontal_norm": 1.0, "speed_profile": "speed_1p0"})
 
 
 if __name__ == "__main__":

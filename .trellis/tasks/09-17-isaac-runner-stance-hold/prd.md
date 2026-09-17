@@ -49,6 +49,19 @@ robot still without the policy's standing jitter, and resume walking without a f
   `Kp(t) * (target(t) - q0) = Kp0 * (T0 - q0)`, which ends at the same torque-matched seed. This departs from
   the MuJoCo design, which had no actuator delay. AC7 is added before the rerun. Then one hold-on stand run
   repeats C1; the hold-off baseline is reused. C2 follows only if AC3, AC5 and AC7 pass.
+- D5 (Dr Sun, 2026-09-17) Standing alone does not show whether the PD ↔ RL switch is smooth. The transitions must
+  be shown by walking a distance and stopping suddenly, then starting suddenly from a standstill and stopping
+  again, with a side view of the walking. New scripted-walk case (AC8) and side follow camera, both lead design:
+  - Command script, forward only: 0-4 s zero; 4-7 s vx 0.6 m/s; 7-12 s zero; 12-14.5 s vx 0.6 m/s; 14.5-20 s
+    zero; finish request at 20 s. About 3.3 m along the two-goal route corridor (walls ±1.3-1.45 m).
+  - Camera: follows the robot position, looks from its right side at 1.25 m and 0.2 m above the base. The heading
+    is fixed at the start yaw so body twist stays visible. 25 fps.
+  - Runs (the D3 budget, replacing the stand-only evidence as the transition test): hold off (RL-only baseline),
+    hold on with the current entry (Kd ramps with Kp), and hold on with two entry-damping variants proposed on
+    2026-09-17. A: Kd steps to 1.0 at entry. B: Kd steps to 2.5 at entry and eases to 1.0 by FIXED_STAND. Kd acts
+    on measured joint velocity, which is not delayed. Kp still ramps over 0.5 s in all hold-on runs.
+  - Selection rule, fixed before the runs: among hold-on variants passing AC5 and AC8, pick the lowest max
+    |yaw rate| over all entry windows. If none passes, report and stop. C2 then uses the selected variant.
 
 ## Constraints
 
@@ -109,6 +122,16 @@ robot still without the policy's standing jitter, and resume walking without a f
 - [ ] AC7 Entry smoothness (added 2026-09-17 before the rerun, D4). In every hold-on run, over each entry window
       (from the first STAND_TRANSITION row to 1.0 s after it): max |yaw rate| ≤ 0.15 rad/s and max |vertical body
       speed| ≤ 0.05 m/s.
+- [ ] AC8 Scripted walk (added 2026-09-17 before any walk run, D5). For each hold-on run:
+      - a) every zero-command phase (0-4, 7-12 and 14.5-20 s) reaches FIXED_STAND before the next non-zero command,
+        or before the finish request for the last phase;
+      - b) every entry window meets the AC7 limits (|yaw rate| ≤ 0.15 rad/s, |vertical speed| ≤ 0.05 m/s over 1.0 s
+        from the first STAND_TRANSITION row);
+      - c) every start (4.0 and 12.0 s), over 1.0 s after the command step: no non-foot force ≥ 5 N, |roll| and
+        |pitch| ≤ 10°, and max |pitch| at most 3° above the hold-off run in the same window;
+      - d) the run ends normally (EXTERNAL_EPISODE_FINISHED or DURATION_REACHED) with no reset, pose write,
+        non-finite value or contact-guard failure, and planar travel within ±20 % of the hold-off run.
+      The hold-off run is reported with the same per-stop and per-start numbers, without thresholds.
 - [ ] AC6 The report states the claim boundary: simulation only, V12 in Isaac, one flat route, not a real-robot or
       deployment fix.
 

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""AC3, AC5 and AC7 metrics for Isaac runner stance-hold runs.
+"""AC3, AC5, AC7 and AC8 metrics for Isaac runner stance-hold runs.
 
 Reads only returned run files (`metrics.jsonl`, `summary.json`, optional
-`stance_hold_setup.json`) and the frozen `stance_hold_thresholds.json`.
+`stance_hold_setup.json` and `scripted_walk_setup.json`) and the frozen
+`stance_hold_thresholds.json`.
 
     analyze_stance_hold.py stand --on RUN --off RUN --output OUT.json
     analyze_stance_hold.py run RUN [RUN ...] --output OUT.json
+    analyze_stance_hold.py walk --off RUN --on RUN [--on RUN ...] --output OUT.json
 
 RUN is a run package (with returned_artifacts/runner_output) or a
 runner_output directory. `stand` gives the AC3 verdict for the hold-on
@@ -14,6 +16,12 @@ AC5 and AC7 for both. `run` gives AC5, AC7 and a stance summary for any run,
 such as a two-goal episode. AC7 (entry smoothness, PRD D4) applies to hold-on
 runs only and is "not_applicable" for the others. Rows without stance fields
 are reported as "hold off / no stance fields".
+
+`walk` (PRD D5) takes scripted_walk runs: one hold-off baseline and one or
+more hold-on entry damping variants. It gives AC8 (a-d) for each hold-on run,
+AC5 and AC7 for every run, per-stop and per-start numbers for every run (the
+baseline without thresholds), and the D5 selection. Its exit code is 0 only
+when the selection rule picks a variant.
 
 Claim boundary: simulation-only metrics of recorded runs; not a real-robot or
 deployment result, and not a substitute for review_two_goal.py.
@@ -31,17 +39,21 @@ from typing import Iterable, List, Optional
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_THRESHOLDS = HERE / "stance_hold_thresholds.json"
-# SHA-256 of stance_hold_thresholds.json as amended with ac7_entry (PRD D4)
-# before the C1 hold-on rerun. A different file is refused unless
+# SHA-256 of stance_hold_thresholds.json as amended with ac8_walk (PRD D5)
+# before any scripted-walk run. A different file is refused unless
 # --allow-unfrozen-thresholds.
-FROZEN_THRESHOLDS_SHA256 = "12373448a8aee02534b529c69189bc5155bbe13cb0d17b632d260b075e075da5"
+FROZEN_THRESHOLDS_SHA256 = "683a8ca6d9d26fe4c45af22fc449c1c05525fde9eb0fb3dc4125c4f2831b43b8"
 # Superseded frozen files, kept byte-for-byte for the reports that used them.
-# They lack ac7_entry and are refused like any other file.
+# They are refused like any other file.
 SUPERSEDED_THRESHOLDS = {
     "fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66":
         "stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json (AC3/AC5 only, used by C1 "
         "stand_20260917T125239Z)",
+    "12373448a8aee02534b529c69189bc5155bbe13cb0d17b632d260b075e075da5":
+        "stance_hold_thresholds_history/stance_hold_thresholds_12373448.json (AC3/AC5/AC7, used by the C1b "
+        "report stand_20260917T132323Z_hold_auto_ramp)",
 }
+SCRIPTED_WALK_CASE = "scripted_walk"
 NO_STANCE = "hold off / no stance fields"
 # Runner statuses of a stand that ran to its end: the worker's finish request was
 # honoured, or the full --duration-seconds elapsed before the finish dwell ended.
@@ -110,12 +122,15 @@ def load_run(run: Path) -> dict:
     summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.is_file() else None
     setup_path = out / "stance_hold_setup.json"
     setup = json.loads(setup_path.read_text(encoding="utf-8")) if setup_path.is_file() else None
+    script_path = out / "scripted_walk_setup.json"
+    script_setup = json.loads(script_path.read_text(encoding="utf-8")) if script_path.is_file() else None
     inputs = {"metrics": {"path": str(metrics), "sha256": sha256_file(metrics)}}
-    for name, path in (("summary", summary_path), ("stance_hold_setup", setup_path)):
+    for name, path in (("summary", summary_path), ("stance_hold_setup", setup_path),
+                       ("scripted_walk_setup", script_path)):
         if path.is_file():
             inputs[name] = {"path": str(path), "sha256": sha256_file(path)}
     return {"run": str(run), "output_dir": str(out), "rows": rows, "summary": summary, "setup": setup,
-            "inputs": inputs}
+            "script_setup": script_setup, "inputs": inputs}
 
 
 def has_stance(rows: List[dict]) -> bool:
@@ -549,6 +564,424 @@ def analyze_runs(paths: Iterable[Path], thresholds: dict) -> dict:
     return json_safe(payload)
 
 
+# ---- AC8 scripted walk (PRD D5) ------------------------------------------------
+def xy_distance(a: dict, b: dict) -> float:
+    return math.hypot(float(b["base_xyz"][0]) - float(a["base_xyz"][0]),
+                      float(b["base_xyz"][1]) - float(a["base_xyz"][1]))
+
+
+def path_length(rows: List[dict]) -> float:
+    return sum(xy_distance(a, b) for a, b in zip(rows, rows[1:]))
+
+
+def entry_kd_variant(run: dict) -> Optional[str]:
+    stance = (run["summary"] or {}).get("stance_hold") or {}
+    for value in (stance.get("entry_kd"), (stance.get("fsm") or {}).get("entry_kd"),
+                  (run["setup"] or {}).get("entry_kd")):
+        if value is not None:
+            return str(value)
+    return None
+
+
+def run_script_sha256(run: dict) -> Optional[str]:
+    for record in (run["script_setup"], (run["summary"] or {}).get("scripted_walk")):
+        sha = ((record or {}).get("command_script") or {}).get("sha256")
+        if sha is not None:
+            return str(sha)
+    return None
+
+
+def command_phases(rows: List[dict], zero_limit: float) -> List[dict]:
+    """Contiguous zero / non-zero admitted-command row runs with their command step time."""
+    result = []
+    start = 0
+    for index in range(1, len(rows) + 1):
+        if index == len(rows) or zero_command(rows[index], zero_limit) != zero_command(rows[start], zero_limit):
+            result.append({
+                "zero": zero_command(rows[start], zero_limit),
+                "first_row": start,
+                "last_row": index - 1,
+                "command_step_s": float(rows[start - 1]["sim_time_s"]) if start > 0 else 0.0,
+                "command": [float(v) for v in rows[start]["admitted_command"]],
+                "distinct_commands": sorted({tuple(float(v) for v in row["admitted_command"])
+                                             for row in rows[start:index]}),
+                "script_segments": sorted({row["script_segment"] for row in rows[start:index]
+                                           if row.get("script_segment") is not None}),
+            })
+            start = index
+    return result
+
+
+def match_phases(run: dict, thresholds: dict) -> dict:
+    """Map recorded command phases to the frozen script phases; list every mismatch."""
+    limits = thresholds["values"]["ac8_walk"]
+    zero_limit = float(thresholds["values"]["definitions"]["zero_command_max_abs"])
+    rows = run["rows"]
+    expected = limits["phases"]
+    tolerance = float(limits["command_step_tolerance_s"])
+    window_tolerance = float(limits["window_tolerance_s"])
+    finish_s = float(limits["finish_request_s"])
+    found = command_phases(rows, zero_limit)
+    problems = []
+    pattern = [item["zero"] for item in found]
+    wanted = [max(abs(float(v)) for v in item["command"]) <= zero_limit for item in expected]
+    if pattern != wanted:
+        problems.append("recorded command phases %s (zero=True) do not match the script phases %s"
+                        % (pattern, wanted))
+    matched = []
+    for index, (item, phase) in enumerate(zip(found, expected)):
+        record = dict(item, index=index, label=phase["label"], nominal_start_s=float(phase["start_s"]),
+                      nominal_end_s=float(phase["end_s"]))
+        if index > 0 and abs(item["command_step_s"] - float(phase["start_s"])) > tolerance:
+            problems.append("phase %s command step at %.4f s is not within %.3f s of the script's %.3f s"
+                            % (phase["label"], item["command_step_s"], tolerance, phase["start_s"]))
+        if item["zero"] == wanted[index] and not item["zero"]:
+            for command in item["distinct_commands"]:
+                if any(abs(a - float(b)) > 1e-6 for a, b in zip(command, phase["command"])):
+                    problems.append("phase %s command %s differs from the script's %s"
+                                    % (phase["label"], list(command), phase["command"]))
+        if item["script_segments"] and item["script_segments"] != [index]:
+            problems.append("phase %s rows carry script_segment %s, expected [%d]"
+                            % (phase["label"], item["script_segments"], index))
+        last = item["last_row"]
+        if index == len(expected) - 1:
+            # The last zero phase ends at the finish request; later rows are post-finish.
+            last = item["first_row"] - 1
+            for row_index in range(item["first_row"], item["last_row"] + 1):
+                if float(rows[row_index]["sim_time_s"]) <= finish_s + window_tolerance:
+                    last = row_index
+            record["post_finish_rows"] = item["last_row"] - last
+            if float(rows[item["last_row"]]["sim_time_s"]) < finish_s - window_tolerance:
+                problems.append("run ended at %.3f s, before the finish request at %.1f s"
+                                % (rows[item["last_row"]]["sim_time_s"], finish_s))
+        record["phase_last_row"] = last
+        matched.append(record)
+    if len(found) < len(expected):
+        problems.append("run has %d command phases, the script has %d" % (len(found), len(expected)))
+    return {"phases": matched, "problems": problems, "recorded_phase_count": len(found)}
+
+
+def still_row(row: dict, reporting: dict) -> bool:
+    return (float(row["horizontal_speed_mps"]) <= float(reporting["still_max_horizontal_speed_mps"])
+            and abs(float(row["yaw_rate_radps"])) <= float(reporting["still_max_abs_yaw_rate_radps"]))
+
+
+def zero_phase_report(rows: List[dict], phase: dict, thresholds: dict, hold: bool) -> dict:
+    limits = thresholds["values"]["ac8_walk"]
+    reporting = limits["reporting"]
+    tolerance = float(limits["window_tolerance_s"])
+    part = rows[phase["first_row"]: phase["phase_last_row"] + 1]
+    t_c = phase["command_step_s"]
+    reference = rows[phase["first_row"] - 1] if phase["first_row"] > 0 else rows[0]
+    report = {
+        "phase": phase["label"],
+        "index": phase["index"],
+        "nominal_start_s": phase["nominal_start_s"],
+        "nominal_end_s": phase["nominal_end_s"],
+        "command_step_s": t_c,
+        "rows": len(part),
+    }
+    if not part:
+        report["note"] = "no rows in the phase"
+        return report
+    end_s = float(part[-1]["sim_time_s"])
+    duration = float(reporting["still_duration_s"])
+    still_start = None
+    still_found = None
+    for row in part:
+        if still_row(row, reporting):
+            if still_start is None:
+                still_start = float(row["sim_time_s"])
+            if float(row["sim_time_s"]) - still_start >= duration - tolerance:
+                still_found = still_start
+                break
+        else:
+            still_start = None
+    labels = modes(part)
+    fixed = [row for row in part if row.get("stance_mode") == "FIXED_STAND"]
+    transition = next((row for row, mode in zip(part, labels) if mode == "STAND_TRANSITION"), None)
+    tail = [row for row in part if float(row["sim_time_s"]) >= end_s - float(reporting["phase_tail_s"]) - tolerance]
+    exits = sum(1 for a, b in zip(labels, labels[1:]) if a == "FIXED_STAND" and b != "FIXED_STAND")
+    report.update({
+        "end_s": end_s,
+        "time_to_still_s": None if still_found is None else still_found - t_c,
+        "still_confirmed_s": None if still_found is None else still_found + duration,
+        "first_transition_s": None if transition is None else float(transition["sim_time_s"]),
+        "first_fixed_stand_s": float(fixed[0]["sim_time_s"]) if fixed else None,
+        "time_to_fixed_stand_s": (float(fixed[0]["sim_time_s"]) - t_c) if fixed else None,
+        "fixed_stand_reached": bool(fixed) if hold else None,
+        "fixed_stand_exits_in_phase": exits if hold else None,
+        "mode_at_end": labels[-1] or None,
+        "tail": {
+            "start_s": float(tail[0]["sim_time_s"]),
+            "end_s": float(tail[-1]["sim_time_s"]),
+            "rows": len(tail),
+            "max_abs_yaw_rate_radps": max(abs(float(row["yaw_rate_radps"])) for row in tail),
+            "max_horizontal_speed_mps": max(float(row["horizontal_speed_mps"]) for row in tail),
+            "planar_drift_m": max(xy_distance(tail[0], row) for row in tail),
+        },
+        "displacement_in_phase_m": xy_distance(reference, part[-1]),
+    })
+    return report
+
+
+def start_report(run: dict, phase: dict, thresholds: dict) -> dict:
+    limits = thresholds["values"]["ac8_walk"]
+    window = limits["c_start"]
+    tolerance = float(limits["window_tolerance_s"])
+    rows = run["rows"]
+    t_c = phase["command_step_s"]
+    reference = rows[phase["first_row"] - 1] if phase["first_row"] > 0 else rows[0]
+    part = [row for row in rows[phase["first_row"]:]
+            if float(row["sim_time_s"]) <= t_c + float(window["window_s"]) + tolerance]
+    report = {
+        "phase": phase["label"],
+        "index": phase["index"],
+        "nominal_start_s": phase["nominal_start_s"],
+        "command_step_s": t_c,
+        "command": phase["command"],
+        "window_rows": len(part),
+    }
+    if not part:
+        report["note"] = "no rows after the command step"
+        return report
+    velocities = [row.get("base_linear_velocity_world") for row in part]
+    vertical_known = all(isinstance(v, (list, tuple)) and len(v) >= 3 for v in velocities)
+    nonfoot = max(max(float(row.get("nonfoot_force_max_n", 0.0)), float(row.get("nonfoot_force_substep_max_n", 0.0)))
+                  for row in part)
+    end = float(part[-1]["sim_time_s"])
+    events = [event for event in ((run["summary"] or {}).get("nonfoot_contact_events_over_threshold") or [])
+              if isinstance(event, dict) and t_c < float(event.get("sim_time_s", -1.0)) <= end + tolerance]
+    walk = rows[phase["first_row"]: phase["last_row"] + 1]
+    report.update({
+        "window_start_s": float(part[0]["sim_time_s"]),
+        "window_end_s": end,
+        "window_complete": end >= t_c + float(window["window_s"]) - tolerance,
+        "modes": sorted({str(row.get("stance_mode")) for row in part}),
+        "max_abs_pitch_deg": max(abs(math.degrees(float(row["base_rpy_rad"][1]))) for row in part),
+        "max_abs_roll_deg": max(abs(math.degrees(float(row["base_rpy_rad"][0]))) for row in part),
+        "max_abs_vertical_speed_mps": (max(abs(float(v[2])) for v in velocities) if vertical_known else None),
+        "min_base_height_change_m": min(float(row["base_xyz"][2]) for row in part) - float(reference["base_xyz"][2]),
+        "max_nonfoot_force_n": nonfoot,
+        "nonfoot_events_in_window": len(events),
+        "walk_phase_end_s": float(walk[-1]["sim_time_s"]),
+        "walk_phase_distance_m": xy_distance(reference, walk[-1]),
+        "walk_phase_path_m": path_length([reference] + walk),
+    })
+    return report
+
+
+def walk_report(run: dict, thresholds: dict) -> dict:
+    """Per-stop and per-start numbers and structural problems for one scripted-walk run."""
+    matched = match_phases(run, thresholds)
+    hold = hold_on(run)
+    rows = run["rows"]
+    zero_phases = [zero_phase_report(rows, phase, thresholds, hold) for phase in matched["phases"] if phase["zero"]]
+    starts = [start_report(run, phase, thresholds) for phase in matched["phases"] if not phase["zero"]]
+    return {
+        "run": run["run"],
+        "inputs": run["inputs"],
+        "hold_on": hold,
+        "stance_fields": stance_fields(rows),
+        "entry_kd": entry_kd_variant(run) if hold else None,
+        "status": (run["summary"] or {}).get("status"),
+        "case": (run["summary"] or {}).get("case"),
+        "command_script_sha256": run_script_sha256(run),
+        "phase_problems": matched["problems"],
+        "recorded_phase_count": matched["recorded_phase_count"],
+        "zero_phases": zero_phases,
+        "starts": starts,
+        "planar_travel_m": xy_distance(rows[0], rows[-1]),
+        "path_length_m": path_length(rows),
+        "first_row_s": float(rows[0]["sim_time_s"]),
+        "last_row_s": float(rows[-1]["sim_time_s"]),
+    }
+
+
+def run_integrity_problems(run: dict, thresholds: dict) -> List[str]:
+    """AC8 d without the travel comparison; also the hold-off baseline validity."""
+    limits = thresholds["values"]["ac8_walk"]
+    rule = limits["d_run"]
+    summary = run["summary"]
+    problems = []
+    if summary is None:
+        return ["run has no summary.json"]
+    if summary.get("status") not in rule["completed_statuses"]:
+        problems.append("run status is %s, not one of %s" % (summary.get("status"), rule["completed_statuses"]))
+    if summary.get("case") != rule["case"]:
+        problems.append("run case is %s, not %s" % (summary.get("case"), rule["case"]))
+    for key in rule["zero_event_counters"]:
+        value = summary.get(key)
+        if value is None:
+            problems.append("summary %s is missing (not evaluable)" % key)
+        elif value != 0:
+            problems.append("summary %s is %s" % (key, value))
+    if summary.get("case_failed") is not False:
+        problems.append("summary case_failed is %s" % summary.get("case_failed"))
+    guard = summary.get("contact_guard")
+    if not isinstance(guard, dict) or guard.get("failed") is not False:
+        problems.append("contact guard failed or not recorded: %s"
+                        % (None if not isinstance(guard, dict) else guard.get("failure")))
+    if (summary.get("stance_hold") or {}).get("failure") is not None:
+        problems.append("stance hold failure: %s" % (summary.get("stance_hold") or {}).get("failure"))
+    nonfinite = sum(count_nonfinite(row) for row in run["rows"])
+    if nonfinite:
+        problems.append("metrics.jsonl has %d non-finite values" % nonfinite)
+    sha = run_script_sha256(run)
+    if sha != limits["command_script"]["sha256"]:
+        problems.append("command script SHA-256 %s is not the frozen %s" % (sha, limits["command_script"]["sha256"]))
+    return problems
+
+
+def ac8(on: dict, on_report: dict, off_report: dict, thresholds: dict, ac7_result: dict) -> dict:
+    limits = thresholds["values"]["ac8_walk"]
+    start_limits = limits["c_start"]
+    problems = []
+    if not on_report["hold_on"]:
+        problems.append("not a stance_hold auto run")
+    problems.extend(on_report["phase_problems"])
+
+    a_checks = []
+    for phase in on_report["zero_phases"]:
+        ok = phase.get("first_fixed_stand_s") is not None
+        a_checks.append({"phase": phase["phase"], "time_to_fixed_stand_s": phase.get("time_to_fixed_stand_s"),
+                         "deadline_s": phase.get("end_s"), "pass": ok})
+        if not ok:
+            problems.append("a: phase %s did not reach FIXED_STAND before %s s" % (phase["phase"], phase.get("end_s")))
+    if len(on_report["zero_phases"]) != sum(1 for p in limits["phases"] if not any(p["command"])):
+        problems.append("a: not every zero phase was recorded")
+
+    b = {"verdict": ac7_result["verdict"], "entry_windows": len(ac7_result["entry_windows"]),
+         "problems": ac7_result["problems"]}
+    if ac7_result["verdict"] != "pass":
+        problems.extend("b: " + item for item in (ac7_result["problems"] or ["AC7 verdict " + ac7_result["verdict"]]))
+
+    c_checks = []
+    off_starts = off_report["starts"]
+    for position, start in enumerate(on_report["starts"]):
+        off_start = off_starts[position] if position < len(off_starts) else None
+        item = {"phase": start["phase"], "problems": []}
+        if "max_abs_pitch_deg" not in start:
+            item["problems"].append("no rows after the command step")
+        else:
+            if not start["window_complete"]:
+                item["problems"].append("start window is incomplete (ends at %.3f s)" % start["window_end_s"])
+            if (start["max_nonfoot_force_n"] >= start_limits["max_nonfoot_force_exclusive_n"]
+                    or start["nonfoot_events_in_window"]):
+                item["problems"].append("non-foot force %.3f N (events %d) reaches %.1f N" % (
+                    start["max_nonfoot_force_n"], start["nonfoot_events_in_window"],
+                    start_limits["max_nonfoot_force_exclusive_n"]))
+            if start["max_abs_roll_deg"] > start_limits["max_abs_roll_deg"]:
+                item["problems"].append("|roll| %.3f deg exceeds %.1f" % (start["max_abs_roll_deg"],
+                                                                          start_limits["max_abs_roll_deg"]))
+            if start["max_abs_pitch_deg"] > start_limits["max_abs_pitch_deg"]:
+                item["problems"].append("|pitch| %.3f deg exceeds %.1f" % (start["max_abs_pitch_deg"],
+                                                                           start_limits["max_abs_pitch_deg"]))
+            if off_start is None or "max_abs_pitch_deg" not in off_start:
+                item["pitch_excess_over_off_deg"] = None
+                item["problems"].append("hold-off start %d is missing; pitch excess not evaluable" % position)
+            else:
+                excess = start["max_abs_pitch_deg"] - off_start["max_abs_pitch_deg"]
+                item["pitch_excess_over_off_deg"] = excess
+                if excess > start_limits["max_abs_pitch_excess_over_off_deg"]:
+                    item["problems"].append("|pitch| %.3f deg is %.3f deg above the hold-off %.3f deg (limit %.1f)" % (
+                        start["max_abs_pitch_deg"], excess, off_start["max_abs_pitch_deg"],
+                        start_limits["max_abs_pitch_excess_over_off_deg"]))
+        item["pass"] = not item["problems"]
+        c_checks.append(item)
+        problems.extend("c: start %s: %s" % (start["phase"], text) for text in item["problems"])
+
+    d_problems = run_integrity_problems(on, thresholds)
+    off_travel = off_report["planar_travel_m"]
+    bound = float(limits["d_run"]["max_planar_travel_relative_difference"])
+    relative = None if off_travel <= 0.0 else abs(on_report["planar_travel_m"] - off_travel) / off_travel
+    if relative is None:
+        d_problems.append("hold-off planar travel is zero; the travel comparison is not evaluable")
+    elif relative > bound:
+        d_problems.append("planar travel %.4f m differs from the hold-off %.4f m by %.1f %% (limit %.0f %%)" % (
+            on_report["planar_travel_m"], off_travel, 100.0 * relative, 100.0 * bound))
+    problems.extend("d: " + text for text in d_problems)
+    return {
+        "verdict": "pass" if not problems else "fail",
+        "problems": problems,
+        "a_fixed_stand": a_checks,
+        "b_entry_windows": b,
+        "c_starts": c_checks,
+        "d_run": {"problems": d_problems, "planar_travel_m": on_report["planar_travel_m"],
+                  "off_planar_travel_m": off_travel, "relative_difference": relative, "limit": bound},
+    }
+
+
+def max_entry_yaw(ac7_result: dict) -> Optional[float]:
+    values = [window["max_abs_yaw_rate_radps"] for window in ac7_result["entry_windows"]]
+    return max(values) if values else None
+
+
+def analyze_walk(off_path: Path, on_paths: Iterable[Path], thresholds: dict) -> dict:
+    if "ac8_walk" not in thresholds["values"]:
+        raise AnalysisError("thresholds have no ac8_walk section")
+    off = load_run(off_path)
+    if hold_on(off):
+        raise AnalysisError("--off run %s is a stance_hold auto run" % off_path)
+    off_report = walk_report(off, thresholds)
+    baseline_problems = list(off_report["phase_problems"]) + run_integrity_problems(off, thresholds)
+    off_report.update({
+        "role": "off",
+        "note": "hold-off baseline; numbers are reported without thresholds",
+        "baseline_problems": baseline_problems,
+        "ac5": ac5(off, thresholds),
+        "ac7": ac7(off, thresholds),
+    })
+    runs = [off_report]
+    candidates = []
+    for path in on_paths:
+        on = load_run(path)
+        report = walk_report(on, thresholds)
+        ac7_result = ac7(on, thresholds)
+        ac5_result = ac5(on, thresholds)
+        report.update({
+            "role": "on",
+            "ac5": ac5_result,
+            "ac7": ac7_result,
+            "ac8": ac8(on, report, off_report, thresholds, ac7_result),
+            "max_entry_window_abs_yaw_rate_radps": max_entry_yaw(ac7_result),
+        })
+        runs.append(report)
+        candidates.append({
+            "run": report["run"],
+            "entry_kd": report["entry_kd"],
+            "ac5": ac5_result["verdict"],
+            "ac8": report["ac8"]["verdict"],
+            "max_entry_window_abs_yaw_rate_radps": report["max_entry_window_abs_yaw_rate_radps"],
+            "eligible": (ac5_result["verdict"] == "pass" and report["ac8"]["verdict"] == "pass"
+                         and report["max_entry_window_abs_yaw_rate_radps"] is not None),
+        })
+    selected = None
+    note = None
+    eligible = [item for item in candidates if item["eligible"]]
+    if baseline_problems:
+        note = "no selection: the hold-off baseline is not valid (%s)" % "; ".join(baseline_problems)
+    elif not eligible:
+        note = "no selection: no hold-on run passes AC5 and AC8; report and stop (PRD D5)"
+    else:
+        best = min(item["max_entry_window_abs_yaw_rate_radps"] for item in eligible)
+        selected = next(item for item in eligible if item["max_entry_window_abs_yaw_rate_radps"] == best)
+        ties = [item["run"] for item in eligible if item["max_entry_window_abs_yaw_rate_radps"] == best]
+        note = None if len(ties) == 1 else "tie between %s; the earlier --on argument is selected" % ties
+    payload = base_payload(thresholds)
+    payload.update({
+        "kind": "walk",
+        "runs": runs,
+        "selection": {
+            "rule": thresholds["values"]["ac8_walk"]["selection"]["rule"],
+            "candidates": candidates,
+            "selected": selected,
+            "note": note,
+        },
+    })
+    return json_safe(payload)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--thresholds", type=Path, default=DEFAULT_THRESHOLDS)
@@ -561,6 +994,11 @@ def build_parser() -> argparse.ArgumentParser:
     runs = sub.add_parser("run", help="AC5, AC7 and hold timing for any run")
     runs.add_argument("runs", type=Path, nargs="+")
     runs.add_argument("--output", type=Path, default=None)
+    walk = sub.add_parser("walk", help="AC8 scripted walk (PRD D5) with AC5, AC7 and the variant selection")
+    walk.add_argument("--off", type=Path, required=True, help="--stance-hold off scripted_walk baseline run")
+    walk.add_argument("--on", type=Path, action="append", required=True,
+                      help="--stance-hold auto scripted_walk run; repeat for each entry damping variant")
+    walk.add_argument("--output", type=Path, default=None)
     return parser
 
 
@@ -572,6 +1010,9 @@ def main(argv=None) -> int:
             payload = analyze_stand(args.on, args.off, thresholds)
             ok = (payload["ac3"]["verdict"] == "pass" and payload["ac5"]["on"]["verdict"] == "pass"
                   and payload["ac7"]["on"]["verdict"] == "pass")
+        elif args.command == "walk":
+            payload = analyze_walk(args.off, args.on, thresholds)
+            ok = payload["selection"]["selected"] is not None
         else:
             payload = analyze_runs(args.runs, thresholds)
             ok = all(item["ac5"]["verdict"] == "pass" and ac7_ok(item["ac7"]) for item in payload["runs"])

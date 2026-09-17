@@ -451,6 +451,168 @@ class EntryRampTests(unittest.TestCase):
             np.testing.assert_array_equal(out.target, np.clip(out.target, lower, upper))
 
 
+class EntryDampingVariantTests(unittest.TestCase):
+    """--stance-entry-kd variants (PRD D5). Kp and the target keep the entry ramp."""
+
+    RAMP_STEPS = 25
+    TRANSITION_STEPS = 100
+
+    def setUp(self):
+        rng = np.random.default_rng(23)
+        self.q0 = Q_STAND + rng.uniform(-0.05, 0.05, 12)
+        self.policy = Q_STAND + rng.uniform(-0.2, 0.2, 12)
+        self.policy = np.where(np.abs(self.policy - self.q0) < 0.02, self.q0 + 0.05, self.policy)
+
+    def enter(self, entry_kd):
+        loop = Loop(entry_kd=entry_kd)
+        for _ in range(100):
+            prev = (loop.target.copy(), loop.kp.copy(), loop.kd.copy())
+            out = loop.step(joint_pos=self.q0, policy_target=self.policy)
+            if out.mode == "STAND_TRANSITION":
+                return loop, len(loop.outputs) - 1, prev
+        raise AssertionError("no entry")
+
+    def transition(self, entry_kd):
+        """Entry output plus every later output up to and including the first FIXED_STAND output."""
+        loop, index, prev = self.enter(entry_kd)
+        outs = [loop.outputs[index][1]]
+        while outs[-1].mode != "FIXED_STAND":
+            self.assertLess(len(outs), self.TRANSITION_STEPS + 5)
+            outs.append(loop.step(joint_pos=self.q0, policy_target=self.policy))
+        return loop, index, prev, outs
+
+    def test_constants_constructor_and_status(self):
+        self.assertEqual(sh.STANCE_ENTRY_KD_MODES, ("ramp", "step1", "step2p5"))
+        self.assertEqual(sh.STANCE_ENTRY_KD_DEFAULT, "ramp")
+        self.assertEqual(sh.ENTRY_LANDING_KD, 2.5)
+        self.assertEqual(sh.StanceHold("auto").entry_kd, "ramp")
+        for bad in ("step2", "", None, "RAMP"):
+            with self.subTest(value=bad), self.assertRaises(ValueError):
+                sh.StanceHold("auto", entry_kd=bad)
+        hold = sh.StanceHold("auto", entry_kd="step2p5")
+        self.assertEqual(hold.status()["entry_kd"], "step2p5")
+        constants = sh.stance_hold_constants()
+        self.assertEqual(constants["entry_landing_kd"], 2.5)
+        self.assertEqual(sorted(k for k in constants["entry_kd_modes"] if k != "precedent"),
+                         sorted(sh.STANCE_ENTRY_KD_MODES))
+        # Off mode ignores the variant: the policy target at V12 gains.
+        loop = Loop("off", entry_kd="step2p5")
+        out = loop.step()
+        np.testing.assert_array_equal(out.kd, np.full(12, 0.5))
+        self.assertTrue(out.policy_owns_joints)
+
+    def test_entry_step_behaviour_per_variant(self):
+        expected_kd = {"ramp": 0.5, "step1": 1.0, "step2p5": 2.5}
+        for variant, kd in expected_kd.items():
+            with self.subTest(variant=variant):
+                loop, index, (t0, kp0, kd0) = self.enter(variant)
+                out = loop.outputs[index][1]
+                np.testing.assert_array_equal(t0, self.policy)
+                np.testing.assert_array_equal(out.target, t0)
+                np.testing.assert_array_equal(out.kp, kp0)
+                np.testing.assert_array_equal(out.kd, np.full(12, kd))
+                self.assertEqual(out.reason, "quiet_four_contact_confirmed")
+                # ramp writes nothing at entry; the step variants change Kd only.
+                self.assertEqual(not np.array_equal(out.kd, kd0), variant != "ramp")
+                self.assertTrue(np.array_equal(out.kp, kp0) and np.array_equal(out.target, t0))
+                self.assertEqual(loop.hold.status()["last_entry"]["entry_kd"], variant)
+
+    def test_kp_and_target_follow_the_same_ramp_in_every_variant(self):
+        reference = None
+        for variant in sh.STANCE_ENTRY_KD_MODES:
+            with self.subTest(variant=variant):
+                _loop, _index, (t0, kp0, _kd0), outs = self.transition(variant)
+                kps = np.array([o.kp for o in outs])
+                targets = np.array([o.target for o in outs])
+                for out in outs:
+                    np.testing.assert_allclose(out.kp * (out.target - self.q0), kp0 * (t0 - self.q0), rtol=1e-9)
+                if reference is None:
+                    reference = (kps, targets)
+                else:
+                    np.testing.assert_array_equal(kps, reference[0])
+                    np.testing.assert_array_equal(targets, reference[1])
+                self.assertEqual(len(outs), self.TRANSITION_STEPS + 1)
+                self.assertEqual(outs[-1].mode, "FIXED_STAND")
+
+    def test_step1_keeps_hold_kd_from_entry_to_fixed_stand(self):
+        _loop, _index, _prev, outs = self.transition("step1")
+        for out in outs:
+            np.testing.assert_array_equal(out.kd, np.full(12, sh.HOLD_KD))
+        np.testing.assert_array_equal(outs[-1].kp, np.full(12, sh.HOLD_KP))
+
+    def test_step2p5_holds_landing_kd_then_eases_to_exactly_hold_kd(self):
+        loop, index, _prev, outs = self.transition("step2p5")
+        entry_t = loop.outputs[index][0]
+        kds = [float(o.kd[0]) for o in outs]
+        for out in outs:
+            self.assertTrue(np.all(out.kd == out.kd[0]))
+        # 0.00 .. 0.48 s after entry: landing damping.
+        self.assertEqual(kds[: self.RAMP_STEPS], [2.5] * self.RAMP_STEPS)
+        # 0.50 s: the ease starts at blend 0.
+        self.assertEqual(kds[self.RAMP_STEPS], 2.5)
+        # 1.00 s: a third of the 1.5 s ease, smoothstep(1/3) = 7/27.
+        self.assertAlmostEqual(kds[50], 2.5 - 1.5 * 7.0 / 27.0, places=9)
+        tail = kds[self.RAMP_STEPS:]
+        self.assertTrue(all(b <= a for a, b in zip(tail, tail[1:])))
+        self.assertTrue(all(b < a for a, b in zip(tail[:-1], tail[1:-1])))
+        # The last transition output is just above the hold value; FIXED_STAND has it exactly.
+        self.assertGreater(kds[-2], 1.0)
+        self.assertLess(kds[-2], 1.001)
+        self.assertEqual(outs[-1].mode, "FIXED_STAND")
+        np.testing.assert_array_equal(outs[-1].kd, np.full(12, 1.0))
+        np.testing.assert_array_equal(outs[-1].kp, np.full(12, 60.0))
+        self.assertAlmostEqual(loop.outputs[-1][0] - entry_t, sh.TRANSITION_S, places=9)
+        # FIXED_STAND keeps the hold gains afterwards.
+        out = loop.run(1.0, joint_pos=self.q0, policy_target=self.policy)
+        np.testing.assert_array_equal(out.kd, np.full(12, 1.0))
+
+    def test_step2p5_sample_times_are_exact(self):
+        loop, index, _prev = self.enter("step2p5")
+        entry_t = loop.outputs[index][0]
+        samples = {0.49: 2.5, 0.5: 2.5, 0.875: 2.5 - 1.5 * 0.15625, 1.25: 1.75, 1.99: None}
+        for offset, expected in samples.items():
+            out = loop.step(now=entry_t + offset, joint_pos=self.q0, policy_target=self.policy)
+            self.assertEqual(out.mode, "STAND_TRANSITION")
+            if expected is not None:
+                np.testing.assert_allclose(out.kd, np.full(12, expected), rtol=1e-12)
+        out = loop.step(now=entry_t + 2.0, joint_pos=self.q0, policy_target=self.policy)
+        self.assertEqual(out.mode, "FIXED_STAND")
+        np.testing.assert_array_equal(out.kd, np.full(12, 1.0))
+
+    def test_rejoin_blends_from_the_applied_landing_kd(self):
+        loop, index, _prev = self.enter("step2p5")
+        entry_t = loop.outputs[index][0]
+        last = loop.step(now=entry_t + 0.1, joint_pos=self.q0, policy_target=self.policy)
+        np.testing.assert_array_equal(last.kd, np.full(12, 2.5))
+        command = np.array([0.6, 0.0, 0.0])
+        policy = Q_STAND - 0.1
+        t_r = entry_t + 0.12
+        out0 = loop.step(now=t_r, command=command, policy_target=policy)
+        self.assertEqual(out0.mode, "REJOIN")
+        np.testing.assert_array_equal(out0.kd, last.kd)
+        np.testing.assert_array_equal(out0.kp, last.kp)
+        mid = loop.step(now=t_r + 0.125, command=command, policy_target=policy)
+        np.testing.assert_allclose(mid.kd, np.full(12, 0.5 * 2.5 + 0.5 * 0.5), atol=1e-12)
+        end = loop.step(now=t_r + 0.25, command=command, policy_target=policy)
+        self.assertEqual(end.mode, "RL")
+        np.testing.assert_array_equal(end.kd, np.full(12, 0.5))
+        # The next entry starts the variant again from the V12 gains.
+        loop.k = int(round((t_r + 0.25) / DT)) + 1
+        out = loop.run_until("STAND_TRANSITION", joint_pos=self.q0, policy_target=self.policy)
+        np.testing.assert_array_equal(out.kp, np.full(12, 20.0))
+        np.testing.assert_array_equal(out.kd, np.full(12, 2.5))
+
+    def test_rejoin_from_fixed_stand_after_step_variants_ends_at_v12_gains(self):
+        for variant in ("step1", "step2p5"):
+            with self.subTest(variant=variant):
+                loop, _index, _prev, outs = self.transition(variant)
+                command = np.array([0.6, 0.0, 0.0])
+                out = loop.run_until("RL", command=command)
+                self.assertEqual(out.reason, "rejoin_complete")
+                np.testing.assert_array_equal(out.kd, np.full(12, 0.5))
+                np.testing.assert_array_equal(out.kp, np.full(12, 20.0))
+
+
 class TransitionAndRejoinTests(unittest.TestCase):
     def enter_fixed(self, loop):
         loop.run_until("STAND_TRANSITION")
