@@ -4,6 +4,9 @@ reviewed: false
 date: 2026-08-16
 ---
 
+> [摘要] 2026-08-16 将迁移后的 agent harness、源码边界及 fresh-clone Skill 恢复机制收紧；该记录只证明当日 harness 检查，不代表后续 VLA 实验状态。
+> 2026-09-16 达到 31 天归档阈值；以下历史原文完整保留。
+
 # Agent Harness Hardening
 
 ## Task

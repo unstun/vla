@@ -4,6 +4,9 @@ reviewed: false
 date: 2026-08-16
 ---
 
+> [摘要] 2026-08-16 从固定提交迁移 agent 配置与 Trellis 到独立 VLA 仓库，未导入导航实现或原项目实验状态；版本与数量为当日快照。
+> 2026-09-16 达到 31 天归档阈值；以下历史原文完整保留。
+
 # Agent Harness Migration
 
 ## Goal

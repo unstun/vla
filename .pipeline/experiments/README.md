@@ -1,5 +1,19 @@
 # Experiment Records
 
+- [`2026-09-16_pi_cortex_harnessvln/`](2026-09-16_pi_cortex_harnessvln/README.md)
+  — Pi fixture loop and a separate native PCT/SCAN/Lite3 V12 Isaac service;
+  one continuous cancel/resubmit/two-goal pilot passed 41 checks, but three
+  later display trials failed resubmission, including display off. NVIDIA RViz
+  and NVENC display/recording passed; one 45-second simulation comparison showed
+  +2.786% physics wall time and +363 MiB sampled active GPU memory, with zero
+  telemetry drops. Native SCAN replay traced the rejection to the last-sample
+  acceleration being used as the terminal derivative. A one-line isolated
+  candidate passed 12/12 fixture calls without relaxing the 1.5 m/s^2 gate;
+  production adoption and corrected Isaac closed-loop validation remain open.
+  See the [local archival handoff](../handoffs/2026-09-16_harnessvln_local_archive.md)
+  for immutable run IDs, raw evidence, claim limits and continuation. The
+  overall task remains in progress; archive review is pending.
+
 - [`2026-09-10_x_navdp_lite3_rented4090/`](2026-09-10_x_navdp_lite3_rented4090/README.md)
   — X-NavDP posttrain FP32 on RTX 4090 with physical MuJoCo Lite3/model_149999:
   four numeric point-goal trials passed the external 0.25 m arrival criterion;

@@ -1,0 +1,305 @@
+你是归档知识库质量核查器。只判断拟入库内容的事实是否有会话摘要支撑。不要联网、不要调用工具、不要修改任何文件。明确标注待验证的下一步计划不视为已完成事实。只输出一行 PASS 或 FAIL: 一句理由。
+
+=== 会话摘要 ===
+# Archive Context
+
+Archive requested explicitly by Dr Sun: important information must be retained
+locally. Local date/time: 2026-09-16 21:32 America/Los_Angeles
+(2026-09-17 04:32 UTC). Stage: experiment + analysis.
+
+Project root and sole source of truth: /Users/sun/tongbu/study/phdproject/vla.
+Memory root: /Users/sun/tongbu/study/phdproject/vla/bigmemory.
+
+## Session summary
+
+Dr Sun first selected MIP with DeepSeek Harness on gpu5070ti, authorized the
+Matterport download, configured the key on the server and requested a real
+trial. That earlier result remains in
+.pipeline/experiments/2026-09-16_mip_5070ti/REAL_EPISODE_RESULT.md and the
+pre-archive hot snapshot; no MIP run is performed during this archive.
+
+The subsequent architecture decision was Pi plus Cortex/EMOS-compatible robot
+tools to independently reimplement the supportable HarnessVLN mechanisms,
+using Isaac Lab, Lite3 V12, native PCT/SCAN and eventually real localization.
+Official paper-score reproduction and deployment readiness are separate claims.
+Sibling machine-dog and machine-dog-nav repositories are read-only. The selected
+bridge pin is 848b4aecd01237805e0564c88d3ba09146fd2353. Pi/Cortex real-service
+integration, vision grounding, graph memory, SLAM and physical deployment remain
+open; a fixture loop is not the deployed harness. User allowed GPT-5.5 medium
+execution subagents with lead acceptance. Archive agents inherit the current
+parent model according to the archive skill.
+
+One continuous native PCT/SCAN/V12 Isaac pilot,
+two_goal_20260916T162236Z_p2b_actual4, completed cancel/stop/resubmit and two
+arrivals in 16.52 simulation seconds. Independent review passed 41 checks and
+34/34 returned hashes. This is one known-map, simulator-truth spatial pilot,
+not reliable repeated navigation or language/SLAM validation.
+
+Dr Sun then asked to test live point clouds and requested more GPU use. An OFF,
+software RViz and NVIDIA RViz+NVENC condition each ran 45 simulation seconds.
+Actual NVIDIA renderer and hardware encoder were verified. GPU display used
+approximately 2843 points per frame and showed 9-10 FPS. Physics wall time was
+56.839/58.512/58.422 seconds; sampled active GPU memory peaks were
+7082/7121/7445 MiB. GPU display+capture had +2.786% wall/sim time and +363 MiB
+relative to OFF. No telemetry frames dropped. These are one exploratory pair,
+include a protected stationary tail and do not establish dense-map/long-run
+performance. Three new navigation trials all failed on A2 resubmission, including
+OFF. GPU visualization success is separate from complete-navigation acceptance.
+Returned hashes were 38/38,46/46,47/47. A separate run-specific-window startup
+qualification passed with 10/10 hashes. A decoded 58-second local preview is
+pointcloud_display/pointcloud_gpu.mp4. GPU rendering/NVENC is now the display
+wrapper default; no physical actuation occurred.
+
+Dr Sun requested investigation. The captured chain is: cancel reached
+WAIT_TARGET, new route accepted into GEN_NEW_TRAJ, SCAN refined candidates
+exceeded the unchanged acceleration gate, no second spline reached the
+controller, initial_heartbeat_missing caused a protected fault stop. The later
+generation-cancel rejection is a consequence, not the root cause.
+
+Root and subagents built a true native C++ SCANPlannerManager::reboundReplan
+repro using pinned scan_03 and actual Foxy libraries, an empty map and fresh
+process per case. No Isaac, controller, cancellation or GPU workload was needed
+to reproduce the same failure. Four derived start/goal cases were repeated
+three times with seed zero. Original failed-resume failed 3/3; the other nine
+calls passed. Native instrumentation showed true polynomial end T=1.73070084s,
+last sample t=1.6s, sampled endpoint acceleration1.77813133m/s^2 versus true
+endpoint approximately0. Refinement retains ~1.778376817m/s^2, above1.5.
+Successful actual4 resume instead has T=1.70109638s and sampled1.47762351,
+just below1.5; the stopping positions differ by about5cm.
+
+The candidate changes only evaluateAcc(t) to evaluateAcc(time) in the isolated
+manager copy. All4cases x3repeats pass (12/12), without changing limits or
+deadlines. Failed-resume refined maximum acceleration drops to0.590244562.
+Original/candidate each match67native source files,380installed files and
+15diagnostic package files; both return16/16 artifact hashes. Independent
+read-only review supports the mechanism. comparison.json passes9 checks.
+Production materializer and scan_03 remain unchanged. No corrected Isaac
+closed-loop trial has run. Candidate endpoint offset is approximately3.5cm;
+endpoint/collision/random-init/later-replan/full-episode behavior remains to be
+validated before production adoption. Attribute the defect only to the frozen
+implementation used here, not unverified official upstream code.
+
+## Primary evidence
+
+All following paths are relative to the experiment root
+.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/:
+
+- README.md, RESULT.md, P2B_RESULT.md.
+- p2b_execution/qualification/actual4_lead_review/result.json.
+- pointcloud_display/RESULT.md, gpu_comparison.json, software_comparison.json,
+  preview_provenance.json, visual_review.json, final_cleanup.json.
+- scan_replan_diagnosis/RESULT.md, PLAN.md, comparison.json,
+  independent_review.json, inputs/cases.json, inputs/planner.yaml.
+- scan_replan_diagnosis/runs/native_original_20260916T180500Z/returned_artifacts/.
+- scan_replan_diagnosis/runs/native_true_end_20260916T180700Z/returned_artifacts/.
+
+Current Trellis task: .trellis/tasks/09-16-emos-harnessvln-reimplementation,
+status in_progress. Keep it active. No remote execution, source fix, archive of
+the overall task, or external push is authorized as an archival side effect.
+
+Pre-existing hot files were snapshotted byte-for-byte at
+bigmemory/冷区/改动记录/2026-09-16_2129_pre-harnessvln-hot-zone/.
+Keep all unrelated InternVLA, MIP, camera and historical decisions discoverable
+through that snapshot and existing source links. Do not silently close them.
+
+## Archive triage
+
+Q1 changes, Q2 nontrivial pitfall, Q4 decisions and Q5 a bounded diagnosis
+milestone: yes. Q3/Q7/Q9 new external survey/literature: no new claims required.
+Q8 experimental evidence: yes. Q10 new terminology: no. Preserve existing
+literature edits. Root owns source/evidence manifests, CLI knowledge gate,
+global memory extension, final validation and selective local Git backup.
+
+=== 拟入库条目 ===
+---
+origin: ai_only
+reviewed: false
+archive_status: draft_pending_knowledge_gate
+date: 2026-09-16
+stage: experiment_and_analysis
+---
+
+# HarnessVLN Local Archive And Continuation
+
+Archived at Dr Sun's request on 2026-09-16, 21:32 America/Los_Angeles
+(2026-09-17 04:32 UTC). This draft awaits the archive knowledge gate and lead
+review. Archival status does not change any experiment's original verdict.
+
+The local source of truth is `/Users/sun/tongbu/study/phdproject/vla`.
+The current [Trellis task](../../.trellis/tasks/09-16-emos-harnessvln-reimplementation/task.json)
+remains `in_progress`. No remote experiment or production repair was performed
+as an archival side effect.
+
+## Current conclusion
+
+The offline Pi tool loop and native PCT/SCAN/Lite3 V12 Isaac service each have
+bounded evidence. One continuous two-goal pilot completed cancellation,
+confirmed stop, resubmission and both arrivals. Three later display probes
+failed at resubmission, including the display-off condition. Reliable repeated
+navigation has therefore not been established.
+
+The captured SCAN rejection was reproduced in the actual native planner with
+a fresh manager and an empty map. A one-line diagnostic candidate removes the
+incorrect endpoint acceleration and passes the recorded fixture set. The
+production source remains unchanged, and the candidate has not completed an
+Isaac closed-loop test. This is the immediate continuation point.
+
+All experiment-relative paths below use
+[`../experiments/2026-09-16_pi_cortex_harnessvln/`](../experiments/2026-09-16_pi_cortex_harnessvln/)
+as their base.
+
+## Immutable experiment evidence
+
+| Run or evidence | Recorded outcome | Local evidence |
+| --- | --- | --- |
+| `two_goal_20260916T162236Z_p2b_actual4` | One continuous episode passed 41 independent checks in 16.52 simulation seconds; 34/34 returned hashes matched. | [`P2B_RESULT.md`](../experiments/2026-09-16_pi_cortex_harnessvln/P2B_RESULT.md), [`actual4_lead_review/result.json`](../experiments/2026-09-16_pi_cortex_harnessvln/p2b_execution/qualification/actual4_lead_review/result.json), [`run package`](../experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/two_goal_runs/two_goal_20260916T162236Z_p2b_actual4/) |
+| `pointcloud_20260916T171400Z_off` | Display off; 45 simulation seconds; A2 resubmission failed; 38/38 returned hashes matched. | [`run package`](../experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T171400Z_off/) |
+| `pointcloud_20260916T172100Z_rviz` | Software RViz plus libx264; A2 resubmission failed; 46/46 returned hashes matched. | [`run package`](../experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T172100Z_rviz/) |
+| `pointcloud_20260916T173400Z_rviz_gpu` | NVIDIA RViz plus NVENC display/recording passed; A2 resubmission failed; 47/47 returned hashes matched. | [`run package`](../experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/runs/pointcloud_20260916T173400Z_rviz_gpu/) |
+| `pointcloud_window_20260916T174100Z` | Exact run-specific RViz window selection and NVIDIA rendering passed; 10/10 returned hashes matched; no navigation episode. | [`qualification package`](../experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/qualification/pointcloud_window_20260916T174100Z/) |
+| `native_original_20260916T180500Z` | Original frozen planner failed the problematic resume fixture 3/3; the other three fixtures passed 9/9. | [`run package`](../experiments/2026-09-16_pi_cortex_harnessvln/scan_replan_diagnosis/runs/native_original_20260916T180500Z/) |
+| `native_true_end_20260916T180700Z` | Isolated candidate passed all four fixtures, three repeats each, 12/12. | [`run package`](../experiments/2026-09-16_pi_cortex_harnessvln/scan_replan_diagnosis/runs/native_true_end_20260916T180700Z/) |
+
+Both native diagnostic conditions matched 67 native source files, 380 installed
+files and 15 diagnostic package files before execution, and each returned
+16/16 matching artifact hashes. Existing run directories are immutable
+snapshots. Any new source or condition requires a new run ID.
+
+## SCAN diagnosis and candidate boundary
+
+The observed chain was: cancellation reached `WAIT_TARGET`; the new PCT route
+entered `GEN_NEW_TRAJ`; SCAN's refined candidates exceeded the unchanged
+acceleration gate; no new spline reached the controller; and
+`initial_heartbeat_missing` produced a protected fault stop. A later
+generation-cancel rejection was a consequence of this chain.
+
+Native replay reproduces the failure without Isaac, cancellation, a controller
+or GPU load. The frozen implementation samples the polynomial before its end,
+then supplies `evaluateAcc(t)` at the last sample as the terminal acceleration.
+For the failed resume fixture, the true end is 1.73070084 seconds, but the last
+sample is 1.6 seconds. Its acceleration is 1.77813133 m/s^2 instead of the true
+endpoint's approximately zero. Refinement retains approximately
+1.778376817 m/s^2, exceeding the unchanged 1.5 m/s^2 gate.
+
+The isolated candidate is exactly this behavioral change:
+
+```diff
+- start_end_derivatives.push_back(gl_traj.evaluateAcc(t));
++ start_end_derivatives.push_back(gl_traj.evaluateAcc(time));
+```
+
+The failed-resume fixture's refined sampled maximum acceleration becomes
+0.590244562 m/s^2. No safety limit, heartbeat deadline, controller setting or
+fixture command was relaxed. The earlier successful resume uses a stopping
+position about 5 cm away, yielding a sampled terminal acceleration of
+1.47762351 m/s^2, just below the gate. Its success does not disprove the defect.
+
+Read [`scan_replan_diagnosis/RESULT.md`](../experiments/2026-09-16_pi_cortex_harnessvln/scan_replan_diagnosis/RESULT.md),
+[`comparison.json`](../experiments/2026-09-16_pi_cortex_harnessvln/scan_replan_diagnosis/comparison.json)
+and [`independent_review.json`](../experiments/2026-09-16_pi_cortex_harnessvln/scan_replan_diagnosis/independent_review.json).
+The comparison passes nine checks. Attribution is limited to the frozen
+implementation used here; unmodified official upstream code was not verified.
+
+The fixtures derive from recorded PCT-request poses plus a frozen body-height
+offset. They are not exact captures of all live native arguments or occupancy.
+All repeats use seed zero. The candidate's problematic fixture still ends about
+3.5 cm from the route endpoint. Production adoption must cover endpoint
+geometry, nonempty-map collision checks, random initialization, later replans
+and the full continuous Isaac episode. The production materializer and
+`p2b_execution/builds/scan_03/` remain unchanged.
+
+To recheck the returned diagnostic evidence locally, run from the VLA root:
+
+```bash
+python3 .pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_replan_diagnosis/analyze_native.py
+```
+
+This analyzes existing artifacts; it does not launch a new remote experiment.
+The diagnostic `native_worker.py` and `container_cases.py` retain the actual
+build/replay commands and 20-second per-case ceiling. Source regeneration is
+in `instrument_manager.py`.
+
+## GPU display preference and measured limit
+
+Dr Sun requested greater GPU use. The display wrapper now defaults to actual
+NVIDIA rendering and `h264_nvenc`; renderer logs, encoder session evidence and
+decoded video confirm hardware use. Preserve this preference for future
+display runs, and verify the actual renderer rather than only an environment
+variable. Latest-only raw clouds use BEST_EFFORT depth 1 and zero decay.
+
+The GPU display showed approximately 2,843 points per frame at 9-10 FPS.
+Relative to display off, physics wall time increased from 56.839 to
+58.422 seconds for 45 simulation seconds, or 2.786%; sampled active total-GPU
+memory peak increased from 7,082 to 7,445 MiB, or 363 MiB. Telemetry drops were
+zero. This includes recording overhead and a protected stationary tail after
+navigation failed. One condition per profile establishes neither dense-map
+capacity nor long-duration performance; high GPU saturation is not claimed.
+
+Evidence: [`pointcloud_display/RESULT.md`](../experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/RESULT.md),
+[`gpu_comparison.json`](../experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/gpu_comparison.json),
+[`preview_provenance.json`](../experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/preview_provenance.json)
+and the actual [`58-second video`](../experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/pointcloud_gpu.mp4).
+The comparison's overall verdict remains false because full navigation failed;
+its display/recording/provenance checks passed.
+[`final_cleanup.json`](../experiments/2026-09-16_pi_cortex_harnessvln/pointcloud_display/final_cleanup.json)
+records owned-process/container exit, free navigation ports and zero remaining
+encoder sessions at the end of that experiment, not a new live host check.
+
+## Resume work
+
+1. Review the isolated correction and endpoint-fit residual before applying it
+   to a new local materialized SCAN build. Preserve `scan_03` and all historical
+   run packages. Keep the 1.5 m/s^2 gate and existing deadlines unchanged.
+2. Qualify endpoint geometry, collision behavior and later replans, then run a
+   new bounded continuous Isaac cancel/stop/resubmit/A/B trial under the
+   existing acceptance criteria. Record the new source identity, package hash
+   gate, raw events, controller/physics evidence, video and verified returns.
+   A native fixture pass alone is insufficient to mark this repair integrated.
+3. After the native service is sufficiently reliable, connect the actual Pi
+   loop and Cortex/EMOS-compatible tool adapter to it. Visual grounding, graph
+   memory, calibrated RGB-D/localization, real SLAM and language-driven
+   navigation remain open. The existing Pi fixture loop is separate evidence.
+4. Keep receive-only localization and eventual physical deployment separate;
+   this archive authorizes neither real-robot actuation nor a formal long run.
+
+The selected bridge pin is `848b4aecd01237805e0564c88d3ba09146fd2353`.
+Sibling `machine-dog-nav` and `machine-dog` remain read-only references. Remote
+workspaces are execution copies: final source and all acceptance evidence must
+return to the same local VLA paths. No HarnessVLN paper-score reproduction or
+deployment-readiness claim follows from the recorded tests.
+
+## Other retained work
+
+Earlier MIP evidence remains in
+[`2026-09-16_mip_5070ti/REAL_EPISODE_RESULT.md`](../experiments/2026-09-16_mip_5070ti/REAL_EPISODE_RESULT.md).
+InternVLA, camera work and other experiment entries remain in the
+[experiment index](../experiments/README.md). The pre-archive hot zone was
+preserved byte-for-byte in
+[`bigmemory/冷区/改动记录/2026-09-16_2129_pre-harnessvln-hot-zone/`](../../bigmemory/冷区/改动记录/2026-09-16_2129_pre-harnessvln-hot-zone/).
+These earlier tasks and decisions were not silently closed by this archive.
+
+=== 索引增量 ===
+diff --git a/.pipeline/experiments/README.md b/.pipeline/experiments/README.md
+index 305163cc..afec7c97 100644
+--- a/.pipeline/experiments/README.md
++++ b/.pipeline/experiments/README.md
+@@ -1,5 +1,19 @@
+ # Experiment Records
+ 
++- [`2026-09-16_pi_cortex_harnessvln/`](2026-09-16_pi_cortex_harnessvln/README.md)
++  — Pi fixture loop and a separate native PCT/SCAN/Lite3 V12 Isaac service;
++  one continuous cancel/resubmit/two-goal pilot passed 41 checks, but three
++  later display trials failed resubmission, including display off. NVIDIA RViz
++  and NVENC display/recording passed; one 45-second simulation comparison showed
++  +2.786% physics wall time and +363 MiB sampled active GPU memory, with zero
++  telemetry drops. Native SCAN replay traced the rejection to the last-sample
++  acceleration being used as the terminal derivative. A one-line isolated
++  candidate passed 12/12 fixture calls without relaxing the 1.5 m/s^2 gate;
++  production adoption and corrected Isaac closed-loop validation remain open.
++  See the [local archival handoff](../handoffs/2026-09-16_harnessvln_local_archive.md)
++  for immutable run IDs, raw evidence, claim limits and continuation. The
++  overall task remains in progress; archive review is pending.
++
+ - [`2026-09-10_x_navdp_lite3_rented4090/`](2026-09-10_x_navdp_lite3_rented4090/README.md)
+   — X-NavDP posttrain FP32 on RTX 4090 with physical MuJoCo Lite3/model_149999:
+   four numeric point-goal trials passed the external 0.25 m arrival criterion;

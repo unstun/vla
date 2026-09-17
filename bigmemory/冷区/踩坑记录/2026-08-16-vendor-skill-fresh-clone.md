@@ -4,6 +4,9 @@ reviewed: false
 date: 2026-08-16
 ---
 
+> [摘要] fresh clone 的 --no-checkout 会把未物化的工作树报告为删除，触发 dirty gate；修复保留 dirty gate，改为先建立干净工作树，再切换固定提交。
+> 2026-09-16 达到 31 天归档阈值；以下历史原文完整保留。
+
 # Vendor Skill Fresh-Clone False Dirty State
 
 ## Context
