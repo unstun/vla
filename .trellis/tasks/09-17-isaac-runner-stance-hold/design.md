@@ -37,6 +37,7 @@ Constants (MuJoCo values, V12 base gains):
 | `DISTURBANCE_DWELL_S` | 0.25 | MuJoCo |
 | `REENTRY_LOCKOUT_S` | 0.5 | MuJoCo |
 | `SETTLE_TIMEOUT_S` | 10.0 (auto mode restarts the wait window; RL keeps control) | MuJoCo |
+| `ENTRY_RAMP_S` | 0.5, smoothstep (start of STAND_TRANSITION) | Isaac only, PRD D4 (not in MuJoCo) |
 
 Modes: `RL`, `STAND_SETTLING`, `STAND_TRANSITION`, `FIXED_STAND`, `REJOIN`.
 
@@ -50,13 +51,39 @@ Modes: `RL`, `STAND_SETTLING`, `STAND_TRANSITION`, `FIXED_STAND`, `REJOIN`.
     `q_hold = q + (Kp_applied / HOLD_KP) * (target_applied - q)`.
   - A failing gate restarts the dwell and names the blocking gate in `reason`.
   - The policy keeps control throughout.
-- **STAND_TRANSITION (2 s), then FIXED_STAND:** output `q_hold` with HOLD gains.
+- **STAND_TRANSITION (2 s), then FIXED_STAND:** output `q_hold` with HOLD gains. Since PRD D4, the first 0.5 s
+  is an entry gain ramp (see below).
 - **FIXED_STAND disturbance:** linear or angular speed above the settle limit, tilt above 10°, or any foot at or
   below 1 N, lasting 0.25 s, returns to RL with a 0.5 s lockout.
 - **STAND_TRANSITION or FIXED_STAND with a non-zero command → REJOIN:** blend from the last applied target and
   gains to the current policy target and base gains, `s = smoothstep(t / 0.25)`, then RL.
 - **Non-finite input:** raise `StanceHoldError`. The runner treats it like its other adapter failures (status
   `NONFINITE`; no fallback).
+
+**Entry gain ramp (PRD D4, added 2026-09-17 after C1).**
+
+- **Why:** C1 passed AC3 but hopped at entry, with vertical speed +0.21 m/s and |yaw rate| 0.30 rad/s. The
+  immediate Kp 20 → 60 step acts at once, but `Lite3Actuator` applies position targets 3 physics substeps late.
+  The new gain therefore met the old target error.
+- **Rule:**
+  - At entry, the state machine stores `q0`, `T0`, `Kp0` and `Kd0`: the joint positions, applied target and
+    applied gains.
+  - For `u = smoothstep((t - t_entry) / ENTRY_RAMP_S)`, it outputs `Kp = Kp0 + (HOLD_KP - Kp0) u` and
+    `Kd = Kd0 + (HOLD_KD - Kd0) u`.
+  - The target is `q0 + (Kp0 / Kp) (T0 - q0)`, clipped to the joint limits.
+- **Behaviour:**
+  - The entry step (u = 0) repeats `T0` with `Kp0` / `Kd0`, so no gain is written.
+  - The stiffness torque on `q0` stays `Kp0 (T0 - q0)` at every step.
+  - At u = 1 the output is the torque-matched seed `q_hold` with the HOLD gains. FIXED_STAND and everything after
+    it are unchanged.
+- **Delay bound:** a delayed step applies `Kp_k` to `target_{k-1}`, which leaves a stiffness torque error of
+  `Kp_k / Kp_{k-1} - 1`. At 20 ms steps that is at most 7.3 %; the immediate step gave 200 %.
+- **Rejoin:** REJOIN during the ramp blends from the applied ramp values.
+- **Records:**
+  - Rows carry `stance_reason` `entry_gain_ramp`, then `entry_gain_ramp_complete`.
+  - `status()["last_entry"]` records the ramp length, completion time, `q0` and `T0`.
+  - The counters include `entry_ramps_complete`.
+- **Scope:** this is an Isaac-specific departure; the MuJoCo design has no actuator delay. AC7 checks the result.
 
 Interface:
 

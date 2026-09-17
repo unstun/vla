@@ -18,6 +18,13 @@ damping/passive/battery modes, boot-in-stand, explicit fixed_stand requests,
 and the auto-stand delay knob (its default 0 s is used). Base gains are the V12
 `Lite3ActuatorCfg` values instead of MuJoCo's KP/KD arrays.
 
+Isaac-specific departure (PRD D4): STAND_TRANSITION starts with a 0.5 s entry
+gain ramp instead of MJ's immediate switch to the hold gains. The V12
+`Lite3Actuator` applies position targets a few physics substeps late but gains
+at once, so an immediate Kp step multiplies the old target error (run
+stand_20260917T125239Z_hold_auto hopped at entry). The ramp keeps the stiffness
+torque on the entry joint positions constant at every control step.
+
 Task: .trellis/tasks/09-17-isaac-runner-stance-hold (design.md section 2).
 """
 
@@ -58,6 +65,15 @@ BALANCE_HIGH = 0.65
 # MJ FIXED_STAND_TRANSITION_S / FIXED_STAND_REJOIN_S (MJ:127-128).
 TRANSITION_S = 2.0
 REJOIN_S = 0.25
+# Not in MJ (MJ has no actuator delay). Isaac-specific, PRD D4 (Dr Sun,
+# 2026-09-17): at the start of STAND_TRANSITION, Kp/Kd move from the gains
+# applied at entry (Kp0, Kd0) to HOLD_KP/HOLD_KD along a smoothstep over this
+# time, and the target moves so that Kp(t) * (target(t) - q0) = Kp0 * (T0 - q0),
+# with q0 and T0 the joint positions and applied target at entry. The first
+# transition step therefore repeats the applied target and gains, and the ramp
+# ends at the torque-matched seed with the hold gains. It must end before
+# TRANSITION_S.
+ENTRY_RAMP_S = 0.5
 # MJ FIXED_STAND_CONTACT_THRESHOLD (MJ:130): hold needs every foot > 1 N.
 HOLD_CONTACT_N = 1.0
 # MJ FIXED_STAND_DISTURBANCE_DWELL_S (MJ:129) and HOLD_REENTRY_LOCKOUT_S (MJ:108).
@@ -99,6 +115,13 @@ def stance_hold_constants() -> Dict[str, object]:
         "settle_timeout_s": SETTLE_TIMEOUT_S,
         "foot_order": list(STANCE_HOLD_FOOT_ORDER),
         "seed": "q + (applied_kp / HOLD_KP) * (applied_target - q)",
+        "entry_ramp_s": ENTRY_RAMP_S,
+        "entry_ramp_blend": "smoothstep",
+        "entry_ramp_rule": (
+            "u = smoothstep((t - t_entry) / entry_ramp_s); Kp = Kp0 + (HOLD_KP - Kp0) u; "
+            "Kd = Kd0 + (HOLD_KD - Kd0) u; target = q0 + (Kp0 / Kp) (T0 - q0); "
+            "q0, T0, Kp0, Kd0 = joint_pos, applied_target, applied_kp, applied_kd at entry (PRD D4)"
+        ),
         "reference": (
             "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py "
             "LocalMotionFSM stand path (commit fd751b8b)"
@@ -219,6 +242,11 @@ class StanceHold:
         self._settle_split_count = 0
         self._settle_block_reason = "dwell"
         self._hold_target = None
+        self._entry_q0 = None
+        self._entry_target0 = None
+        self._entry_kp0 = None
+        self._entry_kd0 = None
+        self._entry_ramp_done = False
         self._rejoin_target = None
         self._rejoin_kp = None
         self._rejoin_kd = None
@@ -235,6 +263,7 @@ class StanceHold:
             "settle_timeouts": 0,
             "support_balance_blocks": 0,
             "entries": 0,
+            "entry_ramps_complete": 0,
             "fixed_stand": 0,
             "rejoins": 0,
             "rejoin_complete": 0,
@@ -271,7 +300,7 @@ class StanceHold:
             "transition_counts": pairs,
             "transitions": list(self.transitions),
             "transitions_dropped": self.transitions_dropped,
-            "last_entry": self.last_entry,
+            "last_entry": None if self.last_entry is None else dict(self.last_entry),
             "joint_limits_applied": self._lower is not None,
             "constants": stance_hold_constants(),
         }
@@ -285,6 +314,23 @@ class StanceHold:
         if self._lower is None:
             return target
         return np.clip(target, self._lower, self._upper)
+
+    def _entry_ramp(self, elapsed_s: float):
+        """Target, Kp, Kd and blend of the entry gain ramp (PRD D4).
+
+        The end points are returned exactly: blend 0 gives the applied target and
+        gains at entry, blend 1 gives the torque-matched seed and the hold gains.
+        """
+        if elapsed_s + STANCE_TIME_EPS >= ENTRY_RAMP_S:
+            return self._hold_target, self._hold_kp, self._hold_kd, 1.0
+        blend = _stance_smoothstep(elapsed_s / ENTRY_RAMP_S)
+        if blend <= 0.0:
+            return self._entry_target0, self._entry_kp0, self._entry_kd0, 0.0
+        kp = self._entry_kp0 + (self._hold_kp - self._entry_kp0) * blend
+        kd = self._entry_kd0 + (self._hold_kd - self._entry_kd0) * blend
+        # kp > 0: Kp0 >= 0 is validated, HOLD_KP > 0 and blend > 0.
+        target = self._entry_q0 + (self._entry_kp0 / kp) * (self._entry_target0 - self._entry_q0)
+        return target, kp, kd, blend
 
     # -- update ----------------------------------------------------------------
     def update(self, x: HoldInput) -> HoldOutput:
@@ -317,6 +363,9 @@ class StanceHold:
             forces = _stance_vector("foot_forces", x.foot_forces, len(STANCE_HOLD_FOOT_ORDER))
         except StanceHoldError as exc:
             self._fail(str(exc))
+        if bool(np.any(applied_kp < 0.0) or np.any(applied_kd < 0.0)):
+            # The entry ramp divides by a blend of Kp0 and HOLD_KP.
+            self._fail("applied_kp and applied_kd must not be negative")
         if self._last_now is not None and now < self._last_now - STANCE_TIME_EPS:
             self._fail("now_s went backwards: %.9f < %.9f" % (now, self._last_now))
         if self._last_now is not None:
@@ -382,15 +431,31 @@ class StanceHold:
                         self._hold_target = joint_pos + (applied_kp / self._hold_kp) * (
                             applied_target - joint_pos
                         )
+                        # Entry gain ramp start point (PRD D4).
+                        self._entry_q0 = joint_pos.copy()
+                        self._entry_target0 = applied_target.copy()
+                        self._entry_kp0 = applied_kp.copy()
+                        self._entry_kd0 = applied_kd.copy()
+                        self._entry_ramp_done = False
                         self._set_mode("STAND_TRANSITION", "quiet_four_contact_confirmed", now)
                         self.progress = 0.0
                         self._phase_start = now
                         self.counters["entries"] += 1
+                        stiffness_torque = applied_kp * (applied_target - joint_pos)
                         self.last_entry = {
                             "t_s": now,
                             "support_shares": [float(v) for v in splits],
                             "dwell_samples": int(self._settle_split_count),
                             "foot_forces_n": [float(v) for v in forces],
+                            "entry_ramp_s": ENTRY_RAMP_S,
+                            "entry_ramp_complete_t_s": None,
+                            "q0": [float(v) for v in joint_pos],
+                            "applied_target_t0": [float(v) for v in applied_target],
+                            "kp0_mean": float(np.mean(applied_kp)),
+                            "kd0_mean": float(np.mean(applied_kd)),
+                            "t0_minus_q0_max_abs": float(np.max(np.abs(applied_target - joint_pos))),
+                            "seed_minus_t0_max_abs": float(np.max(np.abs(self._hold_target - applied_target))),
+                            "stiffness_torque_max_abs_nm": float(np.max(np.abs(stiffness_torque))),
                         }
             else:
                 self._settle_started = None
@@ -437,9 +502,22 @@ class StanceHold:
             self._disturbance_started = None
             self._disturbance_reason = None
             self.counters["rejoins"] += 1
+        ramp = None
         if self.mode == "STAND_TRANSITION":
             elapsed = now - self._phase_start
             self.progress = _stance_progress(elapsed, TRANSITION_S)
+            ramp = self._entry_ramp(elapsed)
+            # The entry step (blend 0) keeps the transition reason; later steps
+            # name the ramp so metrics rows show when the hold gains are reached.
+            if ramp[3] >= 1.0:
+                self.reason = "entry_gain_ramp_complete"
+                if not self._entry_ramp_done:
+                    self._entry_ramp_done = True
+                    self.counters["entry_ramps_complete"] += 1
+                    if self.last_entry is not None:
+                        self.last_entry["entry_ramp_complete_t_s"] = now
+            elif ramp[3] > 0.0:
+                self.reason = "entry_gain_ramp"
             if elapsed + STANCE_TIME_EPS >= TRANSITION_S:
                 self._set_mode("FIXED_STAND", "fixed_stand_active", now)
                 self.progress = 1.0
@@ -454,7 +532,9 @@ class StanceHold:
 
         if self.mode in ("RL", "STAND_SETTLING"):
             return self._output(policy_target, self._base_kp, self._base_kd, True)
-        if self.mode in ("STAND_TRANSITION", "FIXED_STAND"):
+        if self.mode == "STAND_TRANSITION":
+            return self._output(self._clip_target(ramp[0]), ramp[1], ramp[2], False)
+        if self.mode == "FIXED_STAND":
             return self._output(self._clip_target(self._hold_target), self._hold_kp, self._hold_kd, False)
         if self.mode == "REJOIN":
             blend = _stance_smoothstep(self.progress)

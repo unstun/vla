@@ -44,9 +44,25 @@ substeps, so the entry torque can jump for up to 20 ms. Dr Sun approved the budg
 
 ## C. 5070 Ti host (needs Dr Sun's approval)
 
-- [ ] C1 Stand A/B: `qualify_stand_runner.py`, `stand_probe` 60 s, first `--stance-hold off`, then `auto`; host idle
+- [x] C1 Stand A/B: `qualify_stand_runner.py`, `stand_probe` 60 s, first `--stance-hold off`, then `auto`; host idle
       check before each run; `analyze_stance_hold.py` gives the AC3 verdict. If AC3 fails, stop and report; C2 does
       not run.
+      Done 2026-09-17 12:52-12:58 UTC on gpu5070ti: `isaac_runner/runs/stand_20260917T125239Z_hold_{off,auto}`
+      (finish request at 57 s, both EXTERNAL_EPISODE_FINISHED, 25/25 returned hashes). AC3 **pass**
+      (`stance_hold_qualification/stand_ab_20260917T125239Z.json`). FIXED_STAND 55.6 s: yaw ≤ 0.0038 rad/s,
+      drift 2.5 mm, speed ≤ 0.013 m/s, min foot force 23 N, pitch ≤ 2.8°, entry at 0.40 s. Hold-off baseline over the
+      same window: yaw 0.143, drift 3.4 cm, min foot force 0 N, pitch 6.6°. AC5 pass (no clip, no non-foot
+      contact). **Finding, not covered by AC3/AC5:** at entry the body hopped for one step (vertical speed
+      +0.21 m/s, |yaw rate| 0.30 rad/s, front feet unloaded to 2-4 N, settled in about 0.3 s). This matches the
+      predicted delay mismatch (position targets 3 substeps late, Kp jump immediate; estimated torque ratio
+      0.16 → 0.49). C2 paused for Dr Sun: fix the entry first or run as is.
+- [x] C1a Entry fix (PRD D4, Dr Sun): 0.5 s smoothstep gain ramp at the start of STAND_TRANSITION, torque-
+      preserving target; worst delay mismatch 7.3 % per step (was 200 %). AC7 added to the analyzer; thresholds
+      re-frozen before the rerun: SHA-256 `12373448a8aee02534b529c69189bc5155bbe13cb0d17b632d260b075e075da5`
+      (old file kept in `stance_hold_thresholds_history/`). Lead decision: AC7 window end tolerance 1 ms (float32
+      sim times). AC7 on the C1 run fails as expected (yaw 0.302, vertical 0.210). Patched runner `1d33b43b…`;
+      isaac_runner 142 tests.
+- [ ] C1b Rerun the hold-on stand (60 s); hold-off baseline reused from C1.
 - [ ] C2 Two-goal series with `scan_04` and `--stance-hold auto`: 8 episodes (6 cancel at 0.40 m, 1 at 0.45 m, 1 at
       0.50 m), reviewed like the SCAN series (41 checks, D11-style stop rule), with walk videos.
 - [ ] C3 Host state after; containers and ports clean.

@@ -63,6 +63,13 @@ class Loop:
                 return out
         raise AssertionError("mode %s not reached; now %s (%s)" % (mode, self.hold.mode, self.hold.reason))
 
+    def run_until_reason(self, reason, limit_s=20.0, **over):
+        for _ in range(int(round(limit_s / DT))):
+            out = self.step(**over)
+            if out.reason == reason:
+                return out
+        raise AssertionError("reason %s not reached; now %s (%s)" % (reason, self.hold.mode, self.hold.reason))
+
 
 class OffModeTests(unittest.TestCase):
     def test_off_returns_policy_target_and_v12_gains_without_state(self):
@@ -111,11 +118,17 @@ class EntryGateTests(unittest.TestCase):
         self.assertGreaterEqual(entry_t, sh.SETTLE_DWELL_S - 1e-9)
         self.assertLess(loop.outputs[-2][0], sh.SETTLE_DWELL_S - 1e-9)
         self.assertFalse(out.policy_owns_joints)
-        np.testing.assert_array_equal(out.kp, np.full(12, 60.0))
-        np.testing.assert_array_equal(out.kd, np.full(12, 1.0))
+        # Before PRD D4 the entry step already carried Kp 60 / Kd 1. The entry gain
+        # ramp starts at blend 0, so the entry step repeats the applied target and
+        # the V12 gains; EntryRampTests cover the ramp itself.
+        np.testing.assert_array_equal(out.target, Q_STAND + 0.03)
+        np.testing.assert_array_equal(out.kp, np.full(12, 20.0))
+        np.testing.assert_array_equal(out.kd, np.full(12, 0.5))
         self.assertEqual(out.reason, "quiet_four_contact_confirmed")
         entry = loop.hold.status()["last_entry"]
         self.assertEqual(entry["support_shares"], [0.5, 0.5, 0.5])
+        self.assertEqual(entry["entry_ramp_s"], 0.5)
+        self.assertIsNone(entry["entry_ramp_complete_t_s"])
 
     def test_each_gate_blocks_entry_and_names_itself(self):
         cases = [
@@ -216,12 +229,19 @@ class TorqueContinuityTests(unittest.TestCase):
         tau_after = out.kp * (out.target - q) - out.kd * qdot
         self.assertLessEqual(float(np.max(np.abs(tau_after - tau_before))), 1e-6)
         self.assertGreater(float(np.max(np.abs(tau_before))), 1.0)
+        # With the entry ramp (PRD D4) the torque-matched seed is reached at the
+        # end of the ramp instead of at the entry step; the torque stays matched.
+        out = loop.run_until_reason("entry_gain_ramp_complete", joint_pos=q, policy_target=policy)
         np.testing.assert_allclose(out.target, q + (20.0 / 60.0) * (policy - q), atol=1e-12)
+        np.testing.assert_array_equal(out.kp, np.full(12, 60.0))
+        tau_after = out.kp * (out.target - q) - out.kd * qdot
+        self.assertLessEqual(float(np.max(np.abs(tau_after - tau_before))), 1e-6)
 
     def test_damping_term_is_not_matched_like_mujoco(self):
         loop = Loop()
         qdot = np.full(12, 0.1)
-        out = loop.run_until("STAND_TRANSITION", joint_vel=qdot)
+        # Checked where the hold gains are reached (end of the entry ramp, PRD D4).
+        out = loop.run_until_reason("entry_gain_ramp_complete", joint_vel=qdot)
         q = Q_STAND + 0.01
         tau_before = 20.0 * ((Q_STAND + 0.03) - q) - 0.5 * qdot
         tau_after = out.kp * (out.target - q) - out.kd * qdot
@@ -238,11 +258,207 @@ class TorqueContinuityTests(unittest.TestCase):
         self.assertTrue(np.all(out.target <= upper))
 
 
+class EntryRampTests(unittest.TestCase):
+    """Entry gain ramp at the start of STAND_TRANSITION (PRD D4, AC7 rerun)."""
+
+    RAMP_STEPS = 25  # 0.5 s at the 20 ms control period
+
+    def setUp(self):
+        rng = np.random.default_rng(11)
+        self.q0 = Q_STAND + rng.uniform(-0.05, 0.05, 12)
+        self.policy = Q_STAND + rng.uniform(-0.2, 0.2, 12)
+        # Keep every joint's entry error away from zero so relative checks are meaningful.
+        self.policy = np.where(np.abs(self.policy - self.q0) < 0.02, self.q0 + 0.05, self.policy)
+
+    def enter(self, kp0=None, kd0=None):
+        """Settle at q0 with the policy target; return the loop, entry index and entry values."""
+        loop = Loop()
+        for _ in range(100):
+            if kp0 is not None and loop.hold.mode == "STAND_SETTLING":
+                # Non-uniform gains applied at entry, to check the per-joint rule.
+                loop.kp, loop.kd = kp0.copy(), kd0.copy()
+            prev = (loop.target.copy(), loop.kp.copy(), loop.kd.copy())
+            out = loop.step(joint_pos=self.q0, policy_target=self.policy)
+            if out.mode == "STAND_TRANSITION":
+                return loop, len(loop.outputs) - 1, prev
+        raise AssertionError("no entry")
+
+    def ramp(self, loop, steps, drift=0.0):
+        """Steps after entry; joint_pos moves so the ramp must use the frozen q0."""
+        outs = []
+        for k in range(1, steps + 1):
+            outs.append(loop.step(joint_pos=self.q0 + drift * k, policy_target=self.policy - 0.1))
+        return outs
+
+    def test_constants(self):
+        self.assertEqual(sh.ENTRY_RAMP_S, 0.5)
+        self.assertLess(sh.ENTRY_RAMP_S, sh.TRANSITION_S)
+        constants = sh.stance_hold_constants()
+        self.assertEqual(constants["entry_ramp_s"], 0.5)
+        self.assertEqual(constants["entry_ramp_blend"], "smoothstep")
+        self.assertEqual(round(sh.ENTRY_RAMP_S / DT), self.RAMP_STEPS)
+
+    def test_entry_step_repeats_previous_applied_target_and_gains(self):
+        loop, index, (t0, kp0, kd0) = self.enter()
+        out = loop.outputs[index][1]
+        np.testing.assert_array_equal(t0, self.policy)
+        np.testing.assert_array_equal(out.target, t0)
+        np.testing.assert_array_equal(out.kp, kp0)
+        np.testing.assert_array_equal(out.kd, kd0)
+        self.assertFalse(out.policy_owns_joints)
+        self.assertEqual(out.reason, "quiet_four_contact_confirmed")
+        self.assertEqual(out.progress, 0.0)
+
+    def test_stiffness_torque_on_q0_is_constant_at_every_ramp_step(self):
+        kp0 = np.linspace(18.0, 22.0, 12)
+        kd0 = np.linspace(0.4, 0.6, 12)
+        loop, index, (t0, _kp, _kd) = self.enter(kp0, kd0)
+        entry = loop.outputs[index][1]
+        np.testing.assert_array_equal(entry.kp, kp0)
+        reference = kp0 * (t0 - self.q0)
+        self.assertGreater(float(np.min(np.abs(reference))), 0.3)
+        outs = [entry] + self.ramp(loop, self.RAMP_STEPS, drift=0.002)
+        for k, out in enumerate(outs):
+            with self.subTest(step=k):
+                self.assertEqual(out.mode, "STAND_TRANSITION")
+                torque = out.kp * (out.target - self.q0)
+                np.testing.assert_allclose(torque, reference, rtol=1e-9, atol=0.0)
+                u = sh._stance_smoothstep(min(1.0, k * DT / sh.ENTRY_RAMP_S))
+                np.testing.assert_allclose(out.kp, kp0 + (60.0 - kp0) * u, rtol=1e-12)
+                np.testing.assert_allclose(out.kd, kd0 + (1.0 - kd0) * u, rtol=1e-12)
+                expected_reason = ("quiet_four_contact_confirmed" if k == 0 else
+                                   "entry_gain_ramp" if k < self.RAMP_STEPS else "entry_gain_ramp_complete")
+                self.assertEqual(out.reason, expected_reason)
+        self.assertGreater(float(np.max(np.abs(outs[-1].target - t0))), 0.01)
+
+    def test_ramp_samples_at_quarter_and_half_ramp(self):
+        loop, index, (t0, _kp, _kd) = self.enter()
+        entry_t = loop.outputs[index][0]
+        quarter = loop.step(now=entry_t + 0.125, joint_pos=self.q0, policy_target=self.policy)
+        half = loop.step(now=entry_t + 0.25, joint_pos=self.q0, policy_target=self.policy)
+        u = 0.25 * 0.25 * (3.0 - 0.5)  # smoothstep(0.25) = 0.15625
+        np.testing.assert_allclose(quarter.kp, np.full(12, 20.0 + 40.0 * u), rtol=1e-12)
+        np.testing.assert_allclose(quarter.target, self.q0 + (20.0 / (20.0 + 40.0 * u)) * (t0 - self.q0), rtol=1e-12)
+        np.testing.assert_allclose(half.kp, np.full(12, 40.0), rtol=1e-12)
+        np.testing.assert_allclose(half.kd, np.full(12, 0.75), rtol=1e-12)
+        np.testing.assert_allclose(half.target, self.q0 + 0.5 * (t0 - self.q0), rtol=1e-12)
+        self.assertAlmostEqual(half.progress, 0.25 / sh.TRANSITION_S)
+
+    def test_ramp_ends_at_the_seed_and_hold_gains_then_fixed_stand_at_two_seconds(self):
+        loop, index, (t0, kp0, _kd) = self.enter()
+        entry_t = loop.outputs[index][0]
+        outs = self.ramp(loop, self.RAMP_STEPS, drift=0.002)
+        end = outs[-1]
+        seed = self.q0 + (kp0 / np.full(12, 60.0)) * (t0 - self.q0)
+        np.testing.assert_array_equal(end.target, seed)
+        np.testing.assert_array_equal(end.kp, np.full(12, 60.0))
+        np.testing.assert_array_equal(end.kd, np.full(12, 1.0))
+        self.assertEqual(end.reason, "entry_gain_ramp_complete")
+        self.assertLess(outs[-2].kp[0], 60.0)
+        status = loop.hold.status()
+        self.assertEqual(status["counters"]["entry_ramps_complete"], 1)
+        entry = status["last_entry"]
+        self.assertAlmostEqual(entry["entry_ramp_complete_t_s"], entry_t + sh.ENTRY_RAMP_S)
+        self.assertEqual(entry["q0"], [float(v) for v in self.q0])
+        self.assertEqual(entry["applied_target_t0"], [float(v) for v in t0])
+        self.assertEqual((entry["kp0_mean"], entry["kd0_mean"]), (20.0, 0.5))
+        self.assertAlmostEqual(entry["seed_minus_t0_max_abs"], float(np.max(np.abs(seed - t0))))
+        self.assertAlmostEqual(entry["stiffness_torque_max_abs_nm"], float(np.max(np.abs(20.0 * (t0 - self.q0)))))
+        out = loop.run_until("FIXED_STAND", joint_pos=self.q0, policy_target=self.policy)
+        self.assertGreaterEqual(loop.outputs[-1][0] - entry_t, sh.TRANSITION_S - 1e-9)
+        self.assertLess(loop.outputs[-2][0] - entry_t, sh.TRANSITION_S - 1e-9)
+        np.testing.assert_array_equal(out.target, seed)
+        np.testing.assert_array_equal(out.kp, np.full(12, 60.0))
+        self.assertEqual(status["counters"]["entry_ramps_complete"], loop.hold.counters["entry_ramps_complete"])
+
+    def test_gains_are_monotonic(self):
+        loop, index, _prev = self.enter()
+        outs = [loop.outputs[index][1]] + self.ramp(loop, 40)
+        kps = np.array([o.kp for o in outs])
+        kds = np.array([o.kd for o in outs])
+        self.assertTrue(np.all(np.diff(kps, axis=0) >= 0.0))
+        self.assertTrue(np.all(np.diff(kds, axis=0) >= 0.0))
+        self.assertTrue(np.all(np.diff(kps[: self.RAMP_STEPS + 1], axis=0) > 0.0))
+        np.testing.assert_array_equal(kps[self.RAMP_STEPS:], np.full((40 - self.RAMP_STEPS + 1, 12), 60.0))
+
+    def test_delay_mismatch_is_bounded_at_control_step_resolution(self):
+        """Lite3Actuator applies the previous step's target with the new gains.
+
+        Over a delayed control step the stiffness torque on q0 is
+        Kp_k * (target_{k-1} - q0); its relative error to Kp0 * (T0 - q0) is
+        Kp_k / Kp_{k-1} - 1. The immediate step it replaces had 60 / 20 - 1 = 2.
+        """
+        loop, index, (t0, kp0, _kd) = self.enter()
+        outs = [loop.outputs[index][1]] + self.ramp(loop, 60)
+        reference = kp0 * (t0 - self.q0)
+        previous = t0
+        worst = 0.0
+        for out in outs:
+            mismatch = np.abs(out.kp * (previous - self.q0) - reference)
+            self.assertTrue(np.all(mismatch <= 0.15 * np.abs(reference) + 1e-9), mismatch / np.abs(reference))
+            worst = max(worst, float(np.max(mismatch / np.abs(reference))))
+            previous = out.target
+        # smoothstep over 25 steps: the largest step ratio is Kp_8 / Kp_7 - 1 = 0.0729.
+        self.assertAlmostEqual(worst, 0.0729, delta=0.0005)
+
+    def test_rejoin_during_the_ramp_blends_from_the_applied_ramp_values(self):
+        loop, index, (t0, _kp, _kd) = self.enter()
+        entry_t = loop.outputs[index][0]
+        last = self.ramp(loop, 5)[-1]
+        self.assertEqual(last.reason, "entry_gain_ramp")
+        self.assertTrue(20.0 < float(last.kp[0]) < 60.0)
+        ramp_target, ramp_kp, ramp_kd = last.target.copy(), last.kp.copy(), last.kd.copy()
+        command = np.array([0.3, 0.0, 0.0])
+        policy = Q_STAND - 0.1
+        t_r = entry_t + 6 * DT
+        out0 = loop.step(now=t_r, command=command, policy_target=policy)
+        self.assertEqual((out0.mode, out0.reason), ("REJOIN", "new_command_rejoin"))
+        np.testing.assert_array_equal(out0.target, ramp_target)
+        np.testing.assert_array_equal(out0.kp, ramp_kp)
+        np.testing.assert_array_equal(out0.kd, ramp_kd)
+        mid = loop.step(now=t_r + 0.125, command=command, policy_target=policy)
+        np.testing.assert_allclose(mid.target, 0.5 * ramp_target + 0.5 * policy, atol=1e-12)
+        np.testing.assert_allclose(mid.kp, 0.5 * ramp_kp + 10.0, atol=1e-12)
+        np.testing.assert_allclose(mid.kd, 0.5 * ramp_kd + 0.25, atol=1e-12)
+        end = loop.step(now=t_r + 0.25, command=command, policy_target=policy)
+        self.assertEqual((end.mode, end.reason), ("RL", "rejoin_complete"))
+        np.testing.assert_array_equal(end.kp, np.full(12, 20.0))
+        self.assertEqual(loop.hold.counters["entry_ramps_complete"], 0)
+        self.assertIsNone(loop.hold.status()["last_entry"]["entry_ramp_complete_t_s"])
+        # The next entry starts a fresh ramp from the V12 gains.
+        loop.k = int(round((t_r + 0.25) / DT)) + 1
+        out = loop.run_until("STAND_TRANSITION", joint_pos=self.q0, policy_target=self.policy)
+        np.testing.assert_array_equal(out.kp, np.full(12, 20.0))
+        np.testing.assert_array_equal(out.target, self.policy)
+        out = loop.run_until_reason("entry_gain_ramp_complete", joint_pos=self.q0, policy_target=self.policy)
+        np.testing.assert_array_equal(out.kp, np.full(12, 60.0))
+        self.assertEqual(loop.hold.counters["entries"], 2)
+        self.assertEqual(loop.hold.counters["entry_ramps_complete"], 1)
+
+    def test_joint_limits_clip_every_ramp_target(self):
+        lower = self.q0 - 0.01
+        upper = self.q0 + 0.01
+        loop = Loop(joint_lower=lower, joint_upper=upper)
+        outs = []
+        for _ in range(100):
+            out = loop.step(joint_pos=self.q0, policy_target=self.policy)
+            if out.mode == "STAND_TRANSITION" or outs:
+                outs.append(out)
+            if len(outs) > self.RAMP_STEPS:
+                break
+        self.assertEqual(len(outs), self.RAMP_STEPS + 1)
+        for out in outs:
+            np.testing.assert_array_equal(out.target, np.clip(out.target, lower, upper))
+
+
 class TransitionAndRejoinTests(unittest.TestCase):
     def enter_fixed(self, loop):
         loop.run_until("STAND_TRANSITION")
         entry_t = loop.outputs[-1][0]
-        hold_target = loop.target.copy()
+        # Torque-matched seed for the Loop defaults (q = Q_STAND + 0.01, previous
+        # target = policy = Q_STAND + 0.03, Kp0 = 20); reached at the end of the ramp.
+        q = Q_STAND + 0.01
+        hold_target = q + (np.full(12, 20.0) / np.full(12, 60.0)) * ((Q_STAND + 0.03) - q)
         out = loop.run_until("FIXED_STAND")
         return entry_t, hold_target, out
 
@@ -253,11 +469,17 @@ class TransitionAndRejoinTests(unittest.TestCase):
         self.assertGreaterEqual(fixed_t - entry_t, sh.TRANSITION_S - 1e-9)
         self.assertLess(loop.outputs[-2][0] - entry_t, sh.TRANSITION_S - 1e-9)
         self.assertEqual(out.reason, "fixed_stand_active")
-        transition = [o for t, o in loop.outputs if o.mode in ("STAND_TRANSITION", "FIXED_STAND")]
-        for item in transition:
+        transition = [(t, o) for t, o in loop.outputs if o.mode in ("STAND_TRANSITION", "FIXED_STAND")]
+        # Before PRD D4 every output here was the seed at Kp 60. Now only outputs
+        # at or after the 0.5 s entry ramp are; the ramp is checked in EntryRampTests.
+        after_ramp = [o for t, o in transition if t - entry_t >= sh.ENTRY_RAMP_S - 1e-9]
+        self.assertEqual(len(after_ramp), len(transition) - 25)
+        for _t, item in transition:
+            self.assertFalse(item.policy_owns_joints)
+        for item in after_ramp:
             np.testing.assert_array_equal(item.target, hold_target)
             np.testing.assert_array_equal(item.kp, np.full(12, 60.0))
-            self.assertFalse(item.policy_owns_joints)
+            np.testing.assert_array_equal(item.kd, np.full(12, 1.0))
         self.assertEqual(loop.hold.counters["fixed_stand"], 1)
         out = loop.run(5.0)
         self.assertEqual(out.mode, "FIXED_STAND")
@@ -419,6 +641,8 @@ class FailClosedTests(unittest.TestCase):
             dict(foot_forces=np.array([1.0, 2.0, math.nan, 3.0])),
             dict(command=np.array([0.0, 0.0])),
             dict(applied_kp=np.full(11, 20.0)),
+            dict(applied_kp=np.full(12, -1.0)),
+            dict(applied_kd=np.full(12, -0.1)),
             dict(now_s=True),
             dict(angular_speed="fast"),
         ]

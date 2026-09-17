@@ -219,12 +219,46 @@ Task: `.trellis/tasks/09-17-isaac-runner-stance-hold` (design.md, implement.md).
   substeps. The lags are recorded at setup, while gains act at once. A gain
   change therefore meets the previous target for that many substeps. The row
   field `delayed_target_torque_max_ratio_estimate` bounds that torque.
-- `analyze_stance_hold.py stand --on RUN --off RUN` gives the AC3 verdict and
-  the hold-off baseline over the same window. `analyze_stance_hold.py run
-  RUN...` gives AC5 and hold timing for any run.
+- Entry gain ramp (PRD D4; added after run `stand_20260917T125239Z_hold_auto`):
+  - The finding: that run stepped Kp 20 → 60 at entry while targets arrived 3
+    substeps late. The estimate rose from 0.16 to 0.49, and the body hopped
+    (vertical speed +0.21 m/s, |yaw rate| 0.30 rad/s).
+  - The fix: STAND_TRANSITION now opens with `ENTRY_RAMP_S = 0.5`.
+    - Kp/Kd follow a smoothstep from the gains applied at entry to 60 / 1.
+    - The target follows `q0 + (Kp0 / Kp) * (T0 - q0)`, where `q0` and `T0`
+      are the joint positions and applied target at entry.
+  - What it keeps:
+    - The entry step repeats the previous target and gains, so it writes
+      nothing.
+    - The stiffness torque on `q0` is unchanged at every step.
+    - The ramp ends at the torque-matched seed with the hold gains.
+    - FIXED_STAND still starts 2.0 s after entry.
+  - Delay bound: with a delayed step, Kp_k meets target_{k-1}, so the stiffness
+    torque is off by at most Kp_k / Kp_{k-1} - 1 = 7.3 % (the old step was
+    200 %).
+  - Records: rows show `stance_reason` `entry_gain_ramp`, then
+    `entry_gain_ramp_complete`. The summary `last_entry` records `q0`, `T0`,
+    the ramp length and the completion time. It is a departure from the
+    MuJoCo design, which has no actuator delay.
+- `analyze_stance_hold.py stand --on RUN --off RUN` gives the AC3 verdict, the
+  hold-off baseline over the same window, AC5 and AC7. `analyze_stance_hold.py
+  run RUN...` gives AC5, AC7 and hold timing for any run. The exit code is
+  nonzero unless every applicable verdict passes.
   - Thresholds live in `stance_hold_thresholds.json`, frozen at SHA-256
-    `fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66`. A
-    different file is refused.
+    `12373448a8aee02534b529c69189bc5155bbe13cb0d17b632d260b075e075da5`. Any
+    other file is refused, including the superseded AC3/AC5-only file.
+    - The superseded file (`fb8f9204...`) was used for the first C1 report. It
+      is kept byte-for-byte in
+      `stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json`.
+    - The live file's `amendments` list records the change. That report can
+      be reproduced only with `--allow-unfrozen-thresholds`.
+  - AC7 (entry smoothness): each entry window runs from the first
+    STAND_TRANSITION row to 1.0 s after it, inclusive, with a 1 ms tolerance.
+    Its limits are max |`yaw_rate_radps`| ≤ 0.15 rad/s and max
+    |`base_linear_velocity_world[2]`| ≤ 0.05 m/s. A window row without the
+    velocity field fails the check. Hold-off runs report `not_applicable`.
+    The first C1 hold-on run fails AC7 (0.302 rad/s and 0.210 m/s, both at
+    step 20).
   - Rows without stance fields are reported as "hold off / no stance fields".
   - AC3 also fails when the hold-on run has no `summary.json`, ended with a
     status other than `EXTERNAL_EPISODE_FINISHED` or `DURATION_REACHED`, or

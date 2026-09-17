@@ -11,7 +11,7 @@
  import time
  import traceback
  from contextlib import ExitStack
-@@ -42,6 +45,1066 @@
+@@ -42,6 +45,1139 @@
  
  def write_json(path: Path, payload) -> None:
      Path(path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -184,8 +184,8 @@
 +
 +# ---- stance hold state machine, inserted verbatim from stance_hold.py ------
 +STANCE_HOLD_SOURCE_REL = '.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/stance_hold.py'
-+STANCE_HOLD_SOURCE_SHA256 = '2d244efeea1708b02bc33243789464006af65bb32fc999463548d221d1bc3541'
-+STANCE_HOLD_BODY_SHA256 = '8dc51c1bfa726b8ae1316d80674912869168f08116d0f58763e2dbcd4b3831ba'
++STANCE_HOLD_SOURCE_SHA256 = '219ac0b0c4efac05ce41de31ccf00761e3234dcce58e51ccfbb1be3735ef8d1f'
++STANCE_HOLD_BODY_SHA256 = '8067e547a254cee36bb8acddc507f80a495553bf6d2a69861a18c6fecbea8766'
 +import math
 +from typing import Dict
 +
@@ -222,6 +222,15 @@
 +# MJ FIXED_STAND_TRANSITION_S / FIXED_STAND_REJOIN_S (MJ:127-128).
 +TRANSITION_S = 2.0
 +REJOIN_S = 0.25
++# Not in MJ (MJ has no actuator delay). Isaac-specific, PRD D4 (Dr Sun,
++# 2026-09-17): at the start of STAND_TRANSITION, Kp/Kd move from the gains
++# applied at entry (Kp0, Kd0) to HOLD_KP/HOLD_KD along a smoothstep over this
++# time, and the target moves so that Kp(t) * (target(t) - q0) = Kp0 * (T0 - q0),
++# with q0 and T0 the joint positions and applied target at entry. The first
++# transition step therefore repeats the applied target and gains, and the ramp
++# ends at the torque-matched seed with the hold gains. It must end before
++# TRANSITION_S.
++ENTRY_RAMP_S = 0.5
 +# MJ FIXED_STAND_CONTACT_THRESHOLD (MJ:130): hold needs every foot > 1 N.
 +HOLD_CONTACT_N = 1.0
 +# MJ FIXED_STAND_DISTURBANCE_DWELL_S (MJ:129) and HOLD_REENTRY_LOCKOUT_S (MJ:108).
@@ -263,6 +272,13 @@
 +        "settle_timeout_s": SETTLE_TIMEOUT_S,
 +        "foot_order": list(STANCE_HOLD_FOOT_ORDER),
 +        "seed": "q + (applied_kp / HOLD_KP) * (applied_target - q)",
++        "entry_ramp_s": ENTRY_RAMP_S,
++        "entry_ramp_blend": "smoothstep",
++        "entry_ramp_rule": (
++            "u = smoothstep((t - t_entry) / entry_ramp_s); Kp = Kp0 + (HOLD_KP - Kp0) u; "
++            "Kd = Kd0 + (HOLD_KD - Kd0) u; target = q0 + (Kp0 / Kp) (T0 - q0); "
++            "q0, T0, Kp0, Kd0 = joint_pos, applied_target, applied_kp, applied_kd at entry (PRD D4)"
++        ),
 +        "reference": (
 +            "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py "
 +            "LocalMotionFSM stand path (commit fd751b8b)"
@@ -383,6 +399,11 @@
 +        self._settle_split_count = 0
 +        self._settle_block_reason = "dwell"
 +        self._hold_target = None
++        self._entry_q0 = None
++        self._entry_target0 = None
++        self._entry_kp0 = None
++        self._entry_kd0 = None
++        self._entry_ramp_done = False
 +        self._rejoin_target = None
 +        self._rejoin_kp = None
 +        self._rejoin_kd = None
@@ -399,6 +420,7 @@
 +            "settle_timeouts": 0,
 +            "support_balance_blocks": 0,
 +            "entries": 0,
++            "entry_ramps_complete": 0,
 +            "fixed_stand": 0,
 +            "rejoins": 0,
 +            "rejoin_complete": 0,
@@ -435,7 +457,7 @@
 +            "transition_counts": pairs,
 +            "transitions": list(self.transitions),
 +            "transitions_dropped": self.transitions_dropped,
-+            "last_entry": self.last_entry,
++            "last_entry": None if self.last_entry is None else dict(self.last_entry),
 +            "joint_limits_applied": self._lower is not None,
 +            "constants": stance_hold_constants(),
 +        }
@@ -449,6 +471,23 @@
 +        if self._lower is None:
 +            return target
 +        return np.clip(target, self._lower, self._upper)
++
++    def _entry_ramp(self, elapsed_s: float):
++        """Target, Kp, Kd and blend of the entry gain ramp (PRD D4).
++
++        The end points are returned exactly: blend 0 gives the applied target and
++        gains at entry, blend 1 gives the torque-matched seed and the hold gains.
++        """
++        if elapsed_s + STANCE_TIME_EPS >= ENTRY_RAMP_S:
++            return self._hold_target, self._hold_kp, self._hold_kd, 1.0
++        blend = _stance_smoothstep(elapsed_s / ENTRY_RAMP_S)
++        if blend <= 0.0:
++            return self._entry_target0, self._entry_kp0, self._entry_kd0, 0.0
++        kp = self._entry_kp0 + (self._hold_kp - self._entry_kp0) * blend
++        kd = self._entry_kd0 + (self._hold_kd - self._entry_kd0) * blend
++        # kp > 0: Kp0 >= 0 is validated, HOLD_KP > 0 and blend > 0.
++        target = self._entry_q0 + (self._entry_kp0 / kp) * (self._entry_target0 - self._entry_q0)
++        return target, kp, kd, blend
 +
 +    # -- update ----------------------------------------------------------------
 +    def update(self, x: HoldInput) -> HoldOutput:
@@ -481,6 +520,9 @@
 +            forces = _stance_vector("foot_forces", x.foot_forces, len(STANCE_HOLD_FOOT_ORDER))
 +        except StanceHoldError as exc:
 +            self._fail(str(exc))
++        if bool(np.any(applied_kp < 0.0) or np.any(applied_kd < 0.0)):
++            # The entry ramp divides by a blend of Kp0 and HOLD_KP.
++            self._fail("applied_kp and applied_kd must not be negative")
 +        if self._last_now is not None and now < self._last_now - STANCE_TIME_EPS:
 +            self._fail("now_s went backwards: %.9f < %.9f" % (now, self._last_now))
 +        if self._last_now is not None:
@@ -546,15 +588,31 @@
 +                        self._hold_target = joint_pos + (applied_kp / self._hold_kp) * (
 +                            applied_target - joint_pos
 +                        )
++                        # Entry gain ramp start point (PRD D4).
++                        self._entry_q0 = joint_pos.copy()
++                        self._entry_target0 = applied_target.copy()
++                        self._entry_kp0 = applied_kp.copy()
++                        self._entry_kd0 = applied_kd.copy()
++                        self._entry_ramp_done = False
 +                        self._set_mode("STAND_TRANSITION", "quiet_four_contact_confirmed", now)
 +                        self.progress = 0.0
 +                        self._phase_start = now
 +                        self.counters["entries"] += 1
++                        stiffness_torque = applied_kp * (applied_target - joint_pos)
 +                        self.last_entry = {
 +                            "t_s": now,
 +                            "support_shares": [float(v) for v in splits],
 +                            "dwell_samples": int(self._settle_split_count),
 +                            "foot_forces_n": [float(v) for v in forces],
++                            "entry_ramp_s": ENTRY_RAMP_S,
++                            "entry_ramp_complete_t_s": None,
++                            "q0": [float(v) for v in joint_pos],
++                            "applied_target_t0": [float(v) for v in applied_target],
++                            "kp0_mean": float(np.mean(applied_kp)),
++                            "kd0_mean": float(np.mean(applied_kd)),
++                            "t0_minus_q0_max_abs": float(np.max(np.abs(applied_target - joint_pos))),
++                            "seed_minus_t0_max_abs": float(np.max(np.abs(self._hold_target - applied_target))),
++                            "stiffness_torque_max_abs_nm": float(np.max(np.abs(stiffness_torque))),
 +                        }
 +            else:
 +                self._settle_started = None
@@ -601,9 +659,22 @@
 +            self._disturbance_started = None
 +            self._disturbance_reason = None
 +            self.counters["rejoins"] += 1
++        ramp = None
 +        if self.mode == "STAND_TRANSITION":
 +            elapsed = now - self._phase_start
 +            self.progress = _stance_progress(elapsed, TRANSITION_S)
++            ramp = self._entry_ramp(elapsed)
++            # The entry step (blend 0) keeps the transition reason; later steps
++            # name the ramp so metrics rows show when the hold gains are reached.
++            if ramp[3] >= 1.0:
++                self.reason = "entry_gain_ramp_complete"
++                if not self._entry_ramp_done:
++                    self._entry_ramp_done = True
++                    self.counters["entry_ramps_complete"] += 1
++                    if self.last_entry is not None:
++                        self.last_entry["entry_ramp_complete_t_s"] = now
++            elif ramp[3] > 0.0:
++                self.reason = "entry_gain_ramp"
 +            if elapsed + STANCE_TIME_EPS >= TRANSITION_S:
 +                self._set_mode("FIXED_STAND", "fixed_stand_active", now)
 +                self.progress = 1.0
@@ -618,7 +689,9 @@
 +
 +        if self.mode in ("RL", "STAND_SETTLING"):
 +            return self._output(policy_target, self._base_kp, self._base_kd, True)
-+        if self.mode in ("STAND_TRANSITION", "FIXED_STAND"):
++        if self.mode == "STAND_TRANSITION":
++            return self._output(self._clip_target(ramp[0]), ramp[1], ramp[2], False)
++        if self.mode == "FIXED_STAND":
 +            return self._output(self._clip_target(self._hold_target), self._hold_kp, self._hold_kd, False)
 +        if self.mode == "REJOIN":
 +            blend = _stance_smoothstep(self.progress)
@@ -1078,7 +1151,7 @@
  
  
  def _read_viewer_camera_intrinsics(stage, cam_prim_path: str, resolution) -> dict:
-@@ -169,6 +1232,17 @@
+@@ -169,6 +1305,17 @@
      parser.add_argument("--no-freeze-gc", dest="freeze_gc", action="store_false")
      parser.add_argument("--feedback-dropout-start-s", type=float, default=-1.0)
      parser.add_argument("--feedback-dropout-wall-s", type=float, default=0.0)
@@ -1096,7 +1169,7 @@
      parser.add_argument("--seed", type=int, default=42)
      parser.add_argument("--device", default="cuda:0")
      return parser
-@@ -193,7 +1267,8 @@
+@@ -193,7 +1340,8 @@
  
  def validate_run_duration(case, duration):
      """Long runs require their own case; old dispatch bounds stay unchanged."""
@@ -1106,7 +1179,7 @@
      if case not in CASES or not math.isfinite(duration) or not 0 < duration <= maximum:
          raise ValueError(f"duration-seconds must be within (0, {maximum:g}] for {case}")
  
-@@ -208,7 +1283,7 @@
+@@ -208,7 +1356,7 @@
  def execution_configuration(args):
      """Freeze every runner setting independently of host/artifact paths."""
      paths = {"scene", "runtime", "checkpoint", "route_artifact", "scope", "output",
@@ -1115,7 +1188,7 @@
      # Round-trip normalizes argparse tuples and JSON lists identically.
      return json.loads(json.dumps({key: value for key, value in vars(args).items() if key not in paths}))
  
-@@ -240,6 +1315,7 @@
+@@ -240,6 +1388,7 @@
      prove which copy of this source the interpreter actually loaded.
      """
      args = build_parser().parse_args(argv)
@@ -1123,7 +1196,7 @@
      if args.case == "native_nominal" and args.contact_policy != "native_v12":
          raise SystemExit("native_nominal records contact and preserves native V12 termination")
      from .feedback_dropout import FeedbackDropout
-@@ -322,6 +1398,8 @@
+@@ -322,6 +1471,8 @@
      from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper  # noqa: E402
  
      __import__("robot_lab.tasks")
@@ -1132,7 +1205,7 @@
  
      # ---- identity gates before anything physical happens -------------------
      scope = json.loads(args.scope.read_text(encoding="utf-8"))
-@@ -480,6 +1558,8 @@
+@@ -480,6 +1631,8 @@
          raise AdapterFailure("expected four foot contact bodies")
      nonfoot_ids = [index for index in range(len(contact.body_names)) if index not in foot_ids]
      body_foot_ids, _ = robot.find_bodies(foot_names, preserve_order=True)
@@ -1141,7 +1214,7 @@
  
      # Contact data is consumed after every physics scene update below. History
      # ordering is no longer used to infer when the case should have stopped.
-@@ -658,6 +1738,31 @@
+@@ -658,6 +1811,31 @@
          "seed": helper_args.seed,
          "autoreset_allowed": False,
          "duration_seconds": args.duration_seconds,
@@ -1173,7 +1246,7 @@
          "actor_obs_shape": list(observation["policy"].shape),
      }
      config_sha256 = canonical_config_sha256(identity)
-@@ -686,6 +1791,18 @@
+@@ -686,6 +1864,18 @@
      # it sees, so a packet replayed from an earlier run can never be mistaken
      # for current state.
      run_epoch_ns = time.time_ns()
@@ -1192,7 +1265,7 @@
      recorder = AsyncRecorder(max_pending=64) if args.async_recording else None
      metrics_path = args.output / "metrics.jsonl"
      sensor_path = args.output / "sensor_metrics.jsonl"
-@@ -797,6 +1914,7 @@
+@@ -797,6 +1987,7 @@
                      status = "WALL_TIMEOUT"
                      break
                  sim_time = float(env.sim.current_time) - initial_sim_time
@@ -1200,7 +1273,7 @@
                  snapshot = command_server.snapshot(time.monotonic_ns())
                  command = (snapshot.command.vx, snapshot.command.vy, snapshot.command.wz)
                  if args.case == "stand_probe":
-@@ -936,7 +2054,22 @@
+@@ -936,7 +2127,22 @@
                  if not torch.isfinite(actions).all() or not torch.isfinite(observation["policy"]).all():
                      status = "NONFINITE"
                      break
@@ -1224,7 +1297,7 @@
  
                  sim_time = float(env.sim.current_time) - initial_sim_time
                  position = robot.data.root_pos_w[0].detach().cpu().numpy().copy()
-@@ -1011,6 +2144,7 @@
+@@ -1011,6 +2217,7 @@
                      "goal_error_xy_m": goal_error_xy,
                      "goal_layer_error_m": goal_layer_error,
                  }
@@ -1232,7 +1305,7 @@
                  # ---- complete body state, every control step ---------------
                  # Position, orientation and both twist representations all come
                  # from the physics update that has just completed, so a consumer
-@@ -1051,6 +2185,56 @@
+@@ -1051,6 +2258,56 @@
                          complete_state_frames += 1
                          complete_state_dropped += int(not published)
  
@@ -1289,7 +1362,7 @@
                  records.append(row)
                  metrics_file.write(json.dumps(row, sort_keys=True) + "\n")
  
-@@ -1074,6 +2258,41 @@
+@@ -1074,6 +2331,41 @@
                          terminal_window_satisfied_s = sim_time
                  else:
                      terminal_window_start_s = None
@@ -1331,7 +1404,7 @@
  
                  # ---- sensing and telemetry --------------------------------
                  if step % sensor_stride == 0:
-@@ -1338,8 +2557,12 @@
+@@ -1338,8 +2630,12 @@
                          and robot.data.projected_gravity_b[0, 2].item() > -0.5):
                      status = "EXCESSIVE_TILT"
                      break
@@ -1345,7 +1418,7 @@
                      and sim_time - terminal_window_satisfied_s > 0.5
                  ):
                      status = "GOAL_REACHED_AND_STOPPED"
-@@ -1419,6 +2642,22 @@
+@@ -1419,6 +2715,22 @@
              "maximum_command_obs_error": max_command_obs_error,
              "nonfoot_contact_events_over_threshold": nonfoot_events,
              "contact_guard": contact_guard.as_record(),
@@ -1368,7 +1441,7 @@
              "case_failed": case_failure is not None,
              "contact_policy": args.contact_policy,
              "case_failure_reason": (
-@@ -1484,7 +2723,7 @@
+@@ -1484,7 +2796,7 @@
          events.restore()
          raw_env.close()
      # A latched physical failure is a failed trial, not a completed one.

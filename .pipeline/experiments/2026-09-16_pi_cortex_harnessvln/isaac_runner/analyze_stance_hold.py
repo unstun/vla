@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AC3 and AC5 metrics for Isaac runner stance-hold runs.
+"""AC3, AC5 and AC7 metrics for Isaac runner stance-hold runs.
 
 Reads only returned run files (`metrics.jsonl`, `summary.json`, optional
 `stance_hold_setup.json`) and the frozen `stance_hold_thresholds.json`.
@@ -10,9 +10,10 @@ Reads only returned run files (`metrics.jsonl`, `summary.json`, optional
 RUN is a run package (with returned_artifacts/runner_output) or a
 runner_output directory. `stand` gives the AC3 verdict for the hold-on
 stand_probe run, the hold-off baseline over the same simulation window, and
-AC5 for both. `run` gives AC5 plus a stance summary for any run, such as a
-two-goal episode. Rows without stance fields are reported as
-"hold off / no stance fields".
+AC5 and AC7 for both. `run` gives AC5, AC7 and a stance summary for any run,
+such as a two-goal episode. AC7 (entry smoothness, PRD D4) applies to hold-on
+runs only and is "not_applicable" for the others. Rows without stance fields
+are reported as "hold off / no stance fields".
 
 Claim boundary: simulation-only metrics of recorded runs; not a real-robot or
 deployment result, and not a substitute for review_two_goal.py.
@@ -30,9 +31,17 @@ from typing import Iterable, List, Optional
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_THRESHOLDS = HERE / "stance_hold_thresholds.json"
-# SHA-256 of stance_hold_thresholds.json as frozen before the first stance-hold
-# Isaac run. A different file is refused unless --allow-unfrozen-thresholds.
-FROZEN_THRESHOLDS_SHA256 = "fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66"
+# SHA-256 of stance_hold_thresholds.json as amended with ac7_entry (PRD D4)
+# before the C1 hold-on rerun. A different file is refused unless
+# --allow-unfrozen-thresholds.
+FROZEN_THRESHOLDS_SHA256 = "12373448a8aee02534b529c69189bc5155bbe13cb0d17b632d260b075e075da5"
+# Superseded frozen files, kept byte-for-byte for the reports that used them.
+# They lack ac7_entry and are refused like any other file.
+SUPERSEDED_THRESHOLDS = {
+    "fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66":
+        "stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json (AC3/AC5 only, used by C1 "
+        "stand_20260917T125239Z)",
+}
 NO_STANCE = "hold off / no stance fields"
 # Runner statuses of a stand that ran to its end: the worker's finish request was
 # honoured, or the full --duration-seconds elapsed before the finish dwell ended.
@@ -56,8 +65,11 @@ def load_thresholds(path: Path, allow_unfrozen: bool = False) -> dict:
     digest = sha256_file(path)
     frozen = digest == FROZEN_THRESHOLDS_SHA256
     if not frozen and not allow_unfrozen:
+        superseded = SUPERSEDED_THRESHOLDS.get(digest)
         raise AnalysisError(
-            "thresholds %s have SHA-256 %s, not the frozen %s" % (path, digest, FROZEN_THRESHOLDS_SHA256)
+            "thresholds %s have SHA-256 %s, not the frozen %s%s" % (
+                path, digest, FROZEN_THRESHOLDS_SHA256,
+                "" if superseded is None else "; it is the superseded " + superseded)
         )
     values = json.loads(path.read_text(encoding="utf-8"))
     return {"path": str(path), "sha256": digest, "frozen": frozen, "values": values}
@@ -117,6 +129,19 @@ def stance_fields(rows: List[dict]):
 
 def modes(rows: List[dict]) -> List[str]:
     return [str(row.get("stance_mode", "")) for row in rows]
+
+
+def entry_indices(rows: List[dict]) -> List[int]:
+    """Row index of the first STAND_TRANSITION row of each hold entry."""
+    labels = modes(rows)
+    return [index for index in range(len(rows))
+            if labels[index] == "STAND_TRANSITION" and (index == 0 or labels[index - 1] != "STAND_TRANSITION")]
+
+
+def hold_on(run: dict) -> bool:
+    """A run with the stance hold in auto mode, by summary or by row."""
+    stance_summary = (run["summary"] or {}).get("stance_hold") or {}
+    return stance_summary.get("mode") == "auto" or any(row.get("stance_hold") == "auto" for row in run["rows"])
 
 
 def step_dt(rows: List[dict]) -> float:
@@ -294,7 +319,6 @@ def ac5(run: dict, thresholds: dict) -> dict:
     limits = thresholds["values"]["ac5_transitions"]
     rows = run["rows"]
     summary = run["summary"] or {}
-    labels = modes(rows)
     nonfoot_rows = max(max(float(row.get("nonfoot_force_max_n", 0.0)),
                            float(row.get("nonfoot_force_substep_max_n", 0.0))) for row in rows)
     nonfoot_summary = summary.get("max_nonfoot_force_n")
@@ -304,8 +328,7 @@ def ac5(run: dict, thresholds: dict) -> dict:
     if nonfoot >= limits["max_nonfoot_force_exclusive_n"] or events:
         problems.append("non-foot force %.3f N (events %d) reaches the %.1f N guard"
                         % (nonfoot, events, limits["max_nonfoot_force_exclusive_n"]))
-    entries = [index for index in range(len(rows))
-               if labels[index] == "STAND_TRANSITION" and (index == 0 or labels[index - 1] != "STAND_TRANSITION")]
+    entries = entry_indices(rows)
     entry_rows = sorted({i for index in entries for i in (index, index + 1) if i < len(rows)})
     rejoin_segments = [s for s in segments(rows) if s["mode"] == "REJOIN"]
     rejoin_rows = sorted({i for s in rejoin_segments for i in range(s["first_row"], s["last_row"] + 3) if i < len(rows)})
@@ -359,6 +382,81 @@ def ac5(run: dict, thresholds: dict) -> dict:
         "position_delay_time_lags": lags,
         "gain_writes": stance_summary.get("gain_writes"),
     }
+
+
+def ac7(run: dict, thresholds: dict) -> dict:
+    """Entry smoothness (PRD D4): yaw rate and vertical body speed after each hold entry."""
+    limits = thresholds["values"]["ac7_entry"]
+    rows = run["rows"]
+    window_s = float(limits["window_s"])
+    tolerance_s = float(limits["window_tolerance_s"])
+    yaw_limit = float(limits["max_abs_yaw_rate_radps"])
+    vertical_limit = float(limits["max_abs_vertical_speed_mps"])
+    base = {
+        "limits": {"window_s": window_s, "window_tolerance_s": tolerance_s, "max_abs_yaw_rate_radps": yaw_limit,
+                   "max_abs_vertical_speed_mps": vertical_limit},
+        "stance_fields": stance_fields(rows),
+    }
+    if not hold_on(run):
+        base.update({"verdict": "not_applicable", "problems": [], "entry_windows": [],
+                     "note": "not a stance_hold auto run"})
+        return base
+    problems = []
+    windows = []
+    for index in entry_indices(rows):
+        t0 = float(rows[index]["sim_time_s"])
+        part = []
+        for row in rows[index:]:
+            if float(row["sim_time_s"]) > t0 + window_s + tolerance_s:
+                break
+            part.append(row)
+        yaw = [abs(float(row["yaw_rate_radps"])) for row in part]
+        velocities = [row.get("base_linear_velocity_world") for row in part]
+        missing = [row["step"] for row, value in zip(part, velocities)
+                   if not isinstance(value, (list, tuple)) or len(value) < 3]
+        vertical = None if missing else [abs(float(value[2])) for value in velocities]
+        max_yaw = max(yaw)
+        max_vertical = None if vertical is None else max(vertical)
+        yaw_pass = max_yaw <= yaw_limit
+        vertical_pass = None if max_vertical is None else max_vertical <= vertical_limit
+        window = {
+            "entry_step": rows[index]["step"],
+            "start_s": t0,
+            "end_s": float(part[-1]["sim_time_s"]),
+            "rows": len(part),
+            "window_complete": float(rows[-1]["sim_time_s"]) >= t0 + window_s - tolerance_s,
+            "modes": sorted({str(row.get("stance_mode")) for row in part}),
+            "max_abs_yaw_rate_radps": max_yaw,
+            "max_abs_yaw_rate_step": part[yaw.index(max_yaw)]["step"],
+            "max_abs_vertical_speed_mps": max_vertical,
+            "max_abs_vertical_speed_step": None if vertical is None else part[vertical.index(max_vertical)]["step"],
+            "yaw_rate": check(max_yaw, yaw_limit, yaw_pass),
+            "vertical_speed": check(max_vertical, vertical_limit, vertical_pass),
+        }
+        windows.append(window)
+        if missing:
+            problems.append("entry at step %s: vertical speed is not evaluable (base_linear_velocity_world "
+                            "missing at steps %s)" % (window["entry_step"], missing[:10]))
+        if not yaw_pass:
+            problems.append("entry at step %s: |yaw rate| %.4f rad/s at step %s exceeds %.2f"
+                            % (window["entry_step"], max_yaw, window["max_abs_yaw_rate_step"], yaw_limit))
+        if vertical_pass is False:
+            problems.append("entry at step %s: |vertical speed| %.4f m/s at step %s exceeds %.2f"
+                            % (window["entry_step"], max_vertical, window["max_abs_vertical_speed_step"],
+                               vertical_limit))
+    base.update({
+        "verdict": "pass" if not problems else "fail",
+        "problems": problems,
+        "entry_windows": windows,
+        "note": None if windows else "hold-on run without an entry; no window to check",
+        "window_rule": "rows with sim_time_s in [t0, t0 + window_s] (window_tolerance_s at the end), "
+                       "t0 = entry row sim_time_s",
+    })
+    return base
+
+
+def ac7_ok(result: dict) -> bool:
+    return result["verdict"] in ("pass", "not_applicable")
 
 
 def zero_command_intervals(run: dict, thresholds: dict) -> List[dict]:
@@ -430,6 +528,7 @@ def analyze_stand(on_path: Path, off_path: Path, thresholds: dict) -> dict:
         "inputs": {"on": on["inputs"], "off": off["inputs"]},
         "ac3": ac3(on, off, thresholds),
         "ac5": {"on": ac5(on, thresholds), "off": ac5(off, thresholds)},
+        "ac7": {"on": ac7(on, thresholds), "off": ac7(off, thresholds)},
     })
     return json_safe(payload)
 
@@ -444,6 +543,7 @@ def analyze_runs(paths: Iterable[Path], thresholds: dict) -> dict:
             "run": run["run"],
             "inputs": run["inputs"],
             "ac5": ac5(run, thresholds),
+            "ac7": ac7(run, thresholds),
             "zero_command_intervals": zero_command_intervals(run, thresholds),
         })
     return json_safe(payload)
@@ -454,11 +554,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--thresholds", type=Path, default=DEFAULT_THRESHOLDS)
     parser.add_argument("--allow-unfrozen-thresholds", action="store_true", default=False)
     sub = parser.add_subparsers(dest="command", required=True)
-    stand = sub.add_parser("stand", help="AC3 stand A/B plus AC5")
+    stand = sub.add_parser("stand", help="AC3 stand A/B plus AC5 and AC7")
     stand.add_argument("--on", type=Path, required=True, help="--stance-hold auto stand_probe run")
     stand.add_argument("--off", type=Path, required=True, help="--stance-hold off stand_probe baseline run")
     stand.add_argument("--output", type=Path, default=None)
-    runs = sub.add_parser("run", help="AC5 and hold timing for any run")
+    runs = sub.add_parser("run", help="AC5, AC7 and hold timing for any run")
     runs.add_argument("runs", type=Path, nargs="+")
     runs.add_argument("--output", type=Path, default=None)
     return parser
@@ -470,10 +570,11 @@ def main(argv=None) -> int:
         thresholds = load_thresholds(args.thresholds, args.allow_unfrozen_thresholds)
         if args.command == "stand":
             payload = analyze_stand(args.on, args.off, thresholds)
-            ok = payload["ac3"]["verdict"] == "pass" and payload["ac5"]["on"]["verdict"] == "pass"
+            ok = (payload["ac3"]["verdict"] == "pass" and payload["ac5"]["on"]["verdict"] == "pass"
+                  and payload["ac7"]["on"]["verdict"] == "pass")
         else:
             payload = analyze_runs(args.runs, thresholds)
-            ok = all(item["ac5"]["verdict"] == "pass" for item in payload["runs"])
+            ok = all(item["ac5"]["verdict"] == "pass" and ac7_ok(item["ac7"]) for item in payload["runs"])
         write_output(args.output, payload)
     except AnalysisError as exc:
         raise SystemExit("stance hold analysis refused: %s" % exc)

@@ -11,6 +11,9 @@ import analyze_stance_hold as analyzer
 HERE = Path(__file__).resolve().parent
 OLD_STAND_RUN = HERE / "runs/stand_20260916T152235Z_p2b_fix1"
 OLD_TWO_GOAL_RUN = HERE / "two_goal_runs/two_goal_20260917T090126Z_scanfix_e03"
+C1_HOLD_AUTO_RUN = HERE / "runs/stand_20260917T125239Z_hold_auto"
+PREVIOUS_THRESHOLDS = HERE / "stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json"
+PREVIOUS_THRESHOLDS_SHA256 = "fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66"
 DT = 0.02
 
 
@@ -24,6 +27,7 @@ def stand_rows(seconds=60.0, settle_until=2.7, fixed_from=4.72, stance=True):
             "base_xyz": [1.0 + 0.0001 * min(k, 50), 2.0, 0.35],
             "base_rpy_rad": [0.01, 0.02, 0.1],
             "horizontal_speed_mps": 0.005,
+            "base_linear_velocity_world": [0.005, 0.0, 0.002 if k % 2 else -0.002],
             "yaw_rate_radps": 0.01 if k % 2 else -0.01,
             "admitted_command": [0.0, 0.0, 0.0],
             "foot_force_norms": [30.0, 30.0, 30.0, 30.0],
@@ -73,6 +77,7 @@ def move_rows():
             "base_xyz": [0.01 * k, 0.0, 0.35],
             "base_rpy_rad": [0.0, 0.03, 0.0],
             "horizontal_speed_mps": 0.3 if moving else 0.01,
+            "base_linear_velocity_world": [0.3 if moving else 0.01, 0.0, 0.003],
             "yaw_rate_radps": 0.02,
             "admitted_command": [0.3, 0.0, 0.0] if moving else [0.0, 0.0, 0.0],
             "foot_force_norms": [30.0] * 4,
@@ -102,6 +107,25 @@ class ThresholdTests(unittest.TestCase):
         self.assertEqual((ac5["max_nonfoot_force_exclusive_n"], ac5["max_abs_roll_deg_during_rejoin"],
                           ac5["max_abs_pitch_deg_during_rejoin"], ac5["max_torque_clip_steps_at_entry_or_rejoin"]),
                          (5.0, 10.0, 10.0, 0))
+        ac7 = loaded["values"]["ac7_entry"]
+        self.assertEqual((ac7["window_s"], ac7["window_tolerance_s"], ac7["max_abs_yaw_rate_radps"],
+                          ac7["max_abs_vertical_speed_mps"]), (1.0, 0.001, 0.15, 0.05))
+        self.assertEqual(ac7["added"], "2026-09-17 before the C1 rerun, PRD D4")
+        self.assertEqual(loaded["values"]["amendments"][0]["previous_sha256"], PREVIOUS_THRESHOLDS_SHA256)
+
+    def test_amendment_only_adds_ac7_to_the_previous_frozen_file(self):
+        self.assertEqual(analyzer.sha256_file(PREVIOUS_THRESHOLDS), PREVIOUS_THRESHOLDS_SHA256)
+        previous = json.loads(PREVIOUS_THRESHOLDS.read_text())
+        current = json.loads(analyzer.DEFAULT_THRESHOLDS.read_text())
+        self.assertEqual(set(current) - set(previous), {"ac7_entry", "amendments"})
+        self.assertEqual({k: v for k, v in current.items() if k in previous}, previous)
+        self.assertEqual(current["amendments"][0]["previous_copy"],
+                         str(PREVIOUS_THRESHOLDS.relative_to(HERE)))
+        # The superseded file is refused like any other file, with a pointer to its history.
+        with self.assertRaisesRegex(analyzer.AnalysisError, "superseded"):
+            analyzer.load_thresholds(PREVIOUS_THRESHOLDS)
+        self.assertIn(PREVIOUS_THRESHOLDS_SHA256, analyzer.SUPERSEDED_THRESHOLDS)
+        self.assertNotEqual(analyzer.FROZEN_THRESHOLDS_SHA256, PREVIOUS_THRESHOLDS_SHA256)
 
     def test_changed_thresholds_are_refused_unless_allowed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -142,6 +166,14 @@ class StandTests(unittest.TestCase):
         self.assertEqual(result["ac5"]["on"]["entry_or_rejoin_steps"], [135, 136])
         self.assertEqual(result["ac5"]["off"]["verdict"], "pass")
         self.assertEqual(result["ac5"]["off"]["entries"], [])
+        ac7 = result["ac7"]["on"]
+        self.assertEqual(ac7["verdict"], "pass", ac7["problems"])
+        self.assertEqual(len(ac7["entry_windows"]), 1)
+        window = ac7["entry_windows"][0]
+        self.assertEqual((window["entry_step"], window["start_s"], window["end_s"], window["rows"]),
+                         (135, 2.72, 3.72, 51))
+        self.assertAlmostEqual(window["max_abs_vertical_speed_mps"], 0.002)
+        self.assertEqual(result["ac7"]["off"]["verdict"], "not_applicable")
         json.dumps(result, allow_nan=False)
 
     def test_each_ac3_limit_fails(self):
@@ -242,6 +274,125 @@ class StandTests(unittest.TestCase):
             analyzer.main(["stand", "--on", str(self.root / "missing"), "--off", str(self.off)])
 
 
+class EntrySmoothnessTests(unittest.TestCase):
+    """AC7 (PRD D4) on synthetic rows. Entry row of stand_rows(): step 135, t0 = 2.72 s."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.thresholds = analyzer.load_thresholds(analyzer.DEFAULT_THRESHOLDS)
+
+    def ac7(self, rows, name, summary=None, case="stand_probe", mode="auto"):
+        run = analyzer.load_run(write_run(self.root, name, rows, summary=summary, case=case, mode=mode))
+        return analyzer.ac7(run, self.thresholds)
+
+    def test_window_bounds_are_inclusive_and_use_absolute_values(self):
+        cases = {
+            # name: (row index, changes, expected verdict, failing check)
+            "yaw_at_entry": (135, dict(yaw_rate_radps=0.1501), "fail", "yaw_rate"),
+            "negative_yaw_at_end": (185, dict(yaw_rate_radps=-0.16), "fail", "yaw_rate"),
+            "vertical_hop": (136, dict(base_linear_velocity_world=[0.0, 0.0, 0.21]), "fail", "vertical_speed"),
+            "negative_vertical_at_end": (185, dict(base_linear_velocity_world=[0.0, 0.0, -0.0501]), "fail",
+                                         "vertical_speed"),
+            "at_limits": (150, dict(yaw_rate_radps=0.15, base_linear_velocity_world=[0.0, 0.0, 0.05]), "pass", None),
+            "before_entry": (134, dict(yaw_rate_radps=0.5, base_linear_velocity_world=[0.0, 0.0, 0.3]), "pass", None),
+            "after_window": (186, dict(yaw_rate_radps=0.5, base_linear_velocity_world=[0.0, 0.0, 0.3]), "pass", None),
+            "horizontal_is_not_checked": (140, dict(base_linear_velocity_world=[0.4, 0.4, 0.0]), "pass", None),
+        }
+        for name, (index, changes, verdict, failing) in cases.items():
+            with self.subTest(case=name):
+                rows = stand_rows()
+                rows[index].update(changes)
+                result = self.ac7(rows, name)
+                self.assertEqual(result["verdict"], verdict, result["problems"])
+                window = result["entry_windows"][0]
+                self.assertEqual((window["start_s"], window["end_s"], window["rows"]), (2.72, 3.72, 51))
+                self.assertTrue(window["window_complete"])
+                for check_name in ("yaw_rate", "vertical_speed"):
+                    self.assertEqual(window[check_name]["pass"], check_name != failing)
+                if failing:
+                    self.assertEqual(len(result["problems"]), 1)
+                    self.assertIn("entry at step 135", result["problems"][0])
+                    self.assertIn("at step %d" % index, result["problems"][0])
+
+    def test_missing_vertical_speed_in_the_window_is_not_evaluable(self):
+        rows = stand_rows()
+        del rows[160]["base_linear_velocity_world"]
+        result = self.ac7(rows, "missing")
+        self.assertEqual(result["verdict"], "fail")
+        self.assertIsNone(result["entry_windows"][0]["vertical_speed"]["pass"])
+        self.assertIn("not evaluable", result["problems"][0])
+        rows = stand_rows()
+        del rows[1000]["base_linear_velocity_world"]
+        self.assertEqual(self.ac7(rows, "missing_outside")["verdict"], "pass")
+
+    def test_every_entry_has_its_own_window(self):
+        rows = move_rows() + [dict(row) for row in move_rows()]
+        for k, row in enumerate(rows):
+            row["step"] = k
+            row["sim_time_s"] = round((k + 1) * DT, 6)
+        # Second entry: row 273 + 70 = 343, t0 = 6.88 s; spike 0.5 s later.
+        rows[343 + 25] = dict(rows[343 + 25], base_linear_velocity_world=[0.0, 0.0, 0.08])
+        result = self.ac7(rows, "two_entries", case="flat_nominal")
+        self.assertEqual([w["entry_step"] for w in result["entry_windows"]], [70, 343])
+        self.assertEqual([w["vertical_speed"]["pass"] for w in result["entry_windows"]], [True, False])
+        self.assertEqual(result["verdict"], "fail")
+        self.assertEqual(len(result["problems"]), 1)
+        self.assertIn("entry at step 343", result["problems"][0])
+        self.assertEqual(result["entry_windows"][0]["modes"], ["STAND_TRANSITION"])
+
+    def test_short_run_hold_off_and_no_entry(self):
+        rows = stand_rows(seconds=3.0)
+        result = self.ac7(rows, "short")
+        self.assertEqual(result["verdict"], "pass")
+        self.assertFalse(result["entry_windows"][0]["window_complete"])
+        self.assertEqual(result["entry_windows"][0]["end_s"], 3.0)
+        result = self.ac7(stand_rows(settle_until=61.0), "no_entry")
+        self.assertEqual((result["verdict"], result["entry_windows"]), ("pass", []))
+        self.assertIn("without an entry", result["note"])
+        off = self.ac7(stand_rows(stance=False), "off", mode="off")
+        self.assertEqual((off["verdict"], off["entry_windows"]), ("not_applicable", []))
+        self.assertTrue(analyzer.ac7_ok(off))
+        legacy = stand_rows(stance=False)
+        for row in legacy:
+            for key in ("stance_hold", "stance_mode", "policy_owns_joints", "base_linear_velocity_world"):
+                row.pop(key)
+        legacy_result = self.ac7(legacy, "legacy", summary={"stance_hold": None})
+        self.assertEqual(legacy_result["verdict"], "not_applicable")
+        self.assertEqual(legacy_result["stance_fields"], analyzer.NO_STANCE)
+
+    def test_cli_exit_codes_include_ac7(self):
+        off = write_run(self.root, "cli_off", stand_rows(stance=False), mode="off")
+        hop = stand_rows()
+        hop[136]["base_linear_velocity_world"] = [0.0, 0.0, 0.21]
+        on = write_run(self.root, "cli_hop", hop)
+        output = self.root / "report/hop.json"
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(analyzer.main(["stand", "--on", str(on), "--off", str(off), "--output", str(output)]), 1)
+        report = json.loads(output.read_text())
+        self.assertEqual((report["ac3"]["verdict"], report["ac5"]["on"]["verdict"], report["ac7"]["on"]["verdict"]),
+                         ("pass", "pass", "fail"))
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(analyzer.main(["run", str(on)]), 1)
+            self.assertEqual(analyzer.main(["run", str(off)]), 0)
+            self.assertEqual(analyzer.main(["run", str(write_run(self.root, "cli_quiet", stand_rows()))]), 0)
+
+    def test_recorded_c1_hop_fails_ac7(self):
+        if not (C1_HOLD_AUTO_RUN / "returned_artifacts/runner_output/metrics.jsonl").is_file():
+            self.skipTest("local C1 run artifacts are absent")
+        result = analyzer.ac7(analyzer.load_run(C1_HOLD_AUTO_RUN), self.thresholds)
+        self.assertEqual(result["verdict"], "fail")
+        window = result["entry_windows"][0]
+        self.assertEqual(window["entry_step"], 19)
+        self.assertAlmostEqual(window["start_s"], 0.4, places=6)
+        self.assertEqual((window["rows"], window["modes"]), (51, ["STAND_TRANSITION"]))
+        self.assertAlmostEqual(window["max_abs_yaw_rate_radps"], 0.302, places=3)
+        self.assertAlmostEqual(window["max_abs_vertical_speed_mps"], 0.210, places=3)
+        self.assertEqual((window["max_abs_yaw_rate_step"], window["max_abs_vertical_speed_step"]), (20, 20))
+        self.assertEqual(len(result["entry_windows"]), 1)
+
+
 class TransitionTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -331,6 +482,7 @@ class OldRunTests(unittest.TestCase):
         for item in payload["runs"]:
             self.assertEqual(item["ac5"]["stance_fields"], analyzer.NO_STANCE)
             self.assertEqual(item["ac5"]["entries"], [])
+            self.assertEqual(item["ac7"]["verdict"], "not_applicable")
             self.assertTrue(item["zero_command_intervals"])
         json.dumps(payload, allow_nan=False)
 

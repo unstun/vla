@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "task": ".trellis/tasks/09-17-isaac-runner-stance-hold",
+  "source": "prd.md Acceptance Criteria AC3 and AC5, fixed before any Isaac run",
+  "definitions": {
+    "zero_command_max_abs": 0.001,
+    "zero_command_note": "stance_hold.py COMMAND_DEADBAND on max |admitted_command|; the stand_probe case admits exactly zero",
+    "fixed_stand_rows": "metrics.jsonl rows with stance_mode FIXED_STAND",
+    "planar_drift": "largest XY distance of base_xyz from the first FIXED_STAND row",
+    "yaw_rate": "metrics.jsonl yaw_rate_radps (world z angular velocity)",
+    "horizontal_speed": "metrics.jsonl horizontal_speed_mps",
+    "roll_pitch": "metrics.jsonl base_rpy_rad[0] and [1]",
+    "torque_clip_step": "a row with torque_clip_joint_count > 0 (computed vs applied torque, last physics substep)",
+    "time_to_fixed_stand": "first FIXED_STAND row sim_time_s minus the start of the zero-command interval that contains it",
+    "entry_steps": "the first STAND_TRANSITION row of each entry and the row after it (new gains act in the next step)",
+    "rejoin_steps": "every REJOIN row and the two rows after each REJOIN segment",
+    "nonfoot_violation": "any non-foot force at or above the limit (runner contact guard semantics) or any recorded over-threshold event"
+  },
+  "ac3_stand": {
+    "run": "stand_probe, 60 s, --stance-hold auto; the --stance-hold off run is a baseline without thresholds",
+    "min_foot_force_exclusive_n": 1.0,
+    "max_planar_drift_m": 0.02,
+    "max_horizontal_speed_mps": 0.02,
+    "max_abs_yaw_rate_radps": 0.05,
+    "max_abs_roll_deg": 5.0,
+    "max_abs_pitch_deg": 5.0,
+    "max_torque_clip_steps": 0,
+    "max_nonfinite_values": 0,
+    "max_time_to_fixed_stand_s": 10.0
+  },
+  "ac5_transitions": {
+    "run": "every stance-hold run",
+    "max_nonfoot_force_exclusive_n": 5.0,
+    "max_abs_roll_deg_during_rejoin": 10.0,
+    "max_abs_pitch_deg_during_rejoin": 10.0,
+    "max_torque_clip_steps_at_entry_or_rejoin": 0
+  }
+}

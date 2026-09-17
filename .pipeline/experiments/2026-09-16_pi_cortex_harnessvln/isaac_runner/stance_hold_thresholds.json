@@ -34,5 +34,29 @@
     "max_abs_roll_deg_during_rejoin": 10.0,
     "max_abs_pitch_deg_during_rejoin": 10.0,
     "max_torque_clip_steps_at_entry_or_rejoin": 0
-  }
+  },
+  "ac7_entry": {
+    "added": "2026-09-17 before the C1 rerun, PRD D4",
+    "run": "every stance-hold run (stance_hold auto), stand and two-goal",
+    "entry": "a metrics.jsonl row with stance_mode STAND_TRANSITION whose previous row is not STAND_TRANSITION",
+    "window": "for each entry, the rows whose sim_time_s lies in [t0, t0 + window_s], both ends inclusive, where t0 is the entry row's sim_time_s",
+    "window_tolerance_s": 0.001,
+    "window_tolerance_note": "5 percent of the 20 ms control period; recorded sim_time_s is float32-derived",
+    "window_s": 1.0,
+    "yaw_rate": "metrics.jsonl yaw_rate_radps",
+    "max_abs_yaw_rate_radps": 0.15,
+    "vertical_speed": "metrics.jsonl base_linear_velocity_world[2]",
+    "max_abs_vertical_speed_mps": 0.05,
+    "missing_field": "a window row without base_linear_velocity_world fails the check as not evaluable"
+  },
+  "amendments": [
+    {
+      "date": "2026-09-17",
+      "change": "added ac7_entry; schema_version, definitions, ac3_stand and ac5_transitions are unchanged",
+      "reason": "PRD D4: run stand_20260917T125239Z_hold_auto passed AC3 but hopped at hold entry (vertical speed +0.21 m/s, |yaw rate| 0.30 rad/s)",
+      "previous_sha256": "fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66",
+      "previous_copy": "stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json",
+      "frozen_before": "the C1 hold-on rerun with the entry gain ramp"
+    }
+  ]
 }

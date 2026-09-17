@@ -42,6 +42,13 @@ robot still without the policy's standing jitter, and resume walking without a f
 - D3 (Dr Sun, 2026-09-17) Run budget approved: "approved, run the stand test after the check". C1 (stand A/B,
   2 × 60 s) runs after the A6 check pass; C2 (8 two-goal episodes) follows only if AC3 passes. About 30-35 min and
   7 GB GPU in total on the 5070 Ti host.
+- D4 (Dr Sun, 2026-09-17) "yes, fix the entry and rerun the stand test". Run C1 (`stand_20260917T125239Z`)
+  passed AC3, but the hold entry hopped: vertical speed +0.21 m/s and |yaw rate| 0.30 rad/s. The cause is the
+  immediate Kp 20 → 60 step against position targets the V12 actuator applies 3 substeps late. Fix: ramp Kp
+  (and Kd) to the hold values over 0.5 s at the start of STAND_TRANSITION. Each step moves the target so that
+  `Kp(t) * (target(t) - q0) = Kp0 * (T0 - q0)`, which ends at the same torque-matched seed. This departs from
+  the MuJoCo design, which had no actuator delay. AC7 is added before the rerun. Then one hold-on stand run
+  repeats C1; the hold-off baseline is reused. C2 follows only if AC3, AC5 and AC7 pass.
 
 ## Constraints
 
@@ -99,6 +106,9 @@ robot still without the policy's standing jitter, and resume walking without a f
         |yaw rate| inside each review still window, and the rejoin transitions.
 - [ ] AC5 Transitions in every run: no non-foot contact above the 5 N guard, |roll| and |pitch| ≤ 10° during
       REJOIN, and no torque-clip step at an entry or rejoin step.
+- [ ] AC7 Entry smoothness (added 2026-09-17 before the rerun, D4). In every hold-on run, over each entry window
+      (from the first STAND_TRANSITION row to 1.0 s after it): max |yaw rate| ≤ 0.15 rad/s and max |vertical body
+      speed| ≤ 0.05 m/s.
 - [ ] AC6 The report states the claim boundary: simulation only, V12 in Isaac, one flat route, not a real-robot or
       deployment fix.
 

@@ -686,32 +686,62 @@ class StanceHoldPatchTests(unittest.TestCase):
         hip, knee = robot.actuators["Hip"], robot.actuators["Knee"]
         q = robot.data.joint_pos[0].numpy().astype(np.float64)
 
-        rows = self.drive(runtime, env, robot, contact, term, 30)
-        entry = next(i for i, r in enumerate(rows) if r["row"]["stance_mode"] == "STAND_TRANSITION")
+        # Stop at the entry step so the actuator state can be checked there.
+        rows = []
+        while not rows or rows[-1]["row"]["stance_mode"] != "STAND_TRANSITION":
+            self.assertLess(len(rows), 30)
+            rows += self.drive(runtime, env, robot, contact, term, 1, start=len(rows))
+        entry = len(rows) - 1
         for r in rows[:entry]:
             self.assertIs(r["applied"], r["actions"])
             self.assertTrue(r["row"]["policy_owns_joints"])
             self.assertFalse(r["row"]["stance_gains_written"])
         e = rows[entry]
-        self.assertIsNot(e["applied"], e["actions"])
-        self.assertTrue(e["row"]["stance_gains_written"])
-        self.assertTrue(torch_all_equal(hip.stiffness, 60.0) and torch_all_equal(knee.damping, 1.0))
-        np.testing.assert_allclose(e["target"], np.asarray(e["row"]["applied_target"]), atol=2e-6)
-        # Torque continuity in robot joint order: the previous step applied the policy target at Kp 20.
         policy_robot = rows[entry - 1]["target"]
-        np.testing.assert_allclose(60.0 * (e["target"] - q), 20.0 * (policy_robot - q), atol=1e-4)
-        self.assertGreater(float(np.max(np.abs(20.0 * (policy_robot - q)))), 0.4)
-        # The delayed-target estimate is the torque of Kp 60 on the previous (policy) target.
         effort = np.array([24.0] * 8 + [36.0] * 4)
-        self.assertAlmostEqual(e["row"]["delayed_target_torque_max_ratio_estimate"],
-                               float(np.max(np.abs(60.0 * (policy_robot - q)) / effort)), places=5)
-        self.assertEqual(runtime["gain_writes"], 1)
+        base_ratio = float(np.max(np.abs(20.0 * (policy_robot - q)) / effort))
+        # Entry step (PRD D4 gain ramp at blend 0): the hold owns the joints but
+        # repeats the previous applied target at the V12 gains, so nothing is written.
+        # Before D4 this step already wrote Kp 60 / Kd 1.
+        self.assertIsNot(e["applied"], e["actions"])
+        self.assertFalse(e["row"]["stance_gains_written"])
+        self.assertEqual(e["row"]["applied_kp_mean"], 20.0)
+        self.assertTrue(torch_all_equal(hip.stiffness, 20.0) and torch_all_equal(knee.damping, 0.5))
+        np.testing.assert_allclose(e["target"], policy_robot, atol=2e-6)
+        np.testing.assert_allclose(e["target"], np.asarray(e["row"]["applied_target"]), atol=2e-6)
+        self.assertGreater(float(np.max(np.abs(20.0 * (policy_robot - q)))), 0.4)
+        self.assertAlmostEqual(e["row"]["delayed_target_torque_max_ratio_estimate"], base_ratio, places=5)
+        self.assertEqual(runtime["gain_writes"], 0)
+        ramp_end_step = entry + 26
+        rows += self.drive(runtime, env, robot, contact, term, ramp_end_step - len(rows), start=len(rows))
+        ramp = rows[entry + 1: entry + 26]
+        self.assertEqual([r["row"]["stance_reason"] for r in ramp], ["entry_gain_ramp"] * 24 + ["entry_gain_ramp_complete"])
+        previous_kp = 20.0
+        for r in ramp:
+            # Every ramp step writes gains, and Kp * (target - q0) stays the entry stiffness
+            # torque in robot joint order (the fake joints do not move, so q0 = q).
+            self.assertTrue(r["row"]["stance_gains_written"])
+            kp = r["row"]["applied_kp_mean"]
+            self.assertGreater(kp, previous_kp)
+            np.testing.assert_allclose(kp * (r["target"] - q), 20.0 * (policy_robot - q), atol=1e-4)
+            # Kp_k on the delayed previous target: within the step-ratio bound of the ramp.
+            self.assertLessEqual(r["row"]["delayed_target_torque_max_ratio_estimate"], base_ratio * 1.0729 + 1e-6)
+            previous_kp = kp
+        self.assertEqual(runtime["gain_writes"], 25)
         self.assertEqual(runtime["physx_after_first_gain_write"]["problems"], [])
+        end = ramp[-1]
+        self.assertTrue(torch_all_equal(hip.stiffness, 60.0) and torch_all_equal(knee.damping, 1.0))
+        np.testing.assert_allclose(60.0 * (end["target"] - q), 20.0 * (policy_robot - q), atol=1e-4)
+        self.assertLessEqual(max(r["row"]["delayed_target_torque_max_ratio_estimate"] for r in rows[entry:]),
+                             base_ratio * 1.0729 + 1e-6)
         version = hip.stiffness._version
-        rows += self.drive(runtime, env, robot, contact, term, 110, start=30)
+        after = self.drive(runtime, env, robot, contact, term, 140 - ramp_end_step, start=ramp_end_step)
+        rows += after
         self.assertEqual(rows[-1]["row"]["stance_mode"], "FIXED_STAND")
+        self.assertFalse(any(r["row"]["stance_gains_written"] for r in after))
+        self.assertEqual(runtime["gain_writes"], 25)
         self.assertEqual(hip.stiffness._version, version)
-        np.testing.assert_allclose(rows[-1]["target"], e["target"], atol=2e-6)
+        np.testing.assert_allclose(rows[-1]["target"], end["target"], atol=2e-6)
 
         move = self.drive(runtime, env, robot, contact, term, 16, command=(0.3, 0.0, 0.0), action_value=-0.2, start=140)
         modes = [r["row"]["stance_mode"] for r in move]
