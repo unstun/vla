@@ -77,7 +77,9 @@ https://claude.ai/artifact/VSTvZquqTiA4iGuwWabJ6v), `RESULT.md` (AC7 not met as 
 - [x] D2 Dr Sun reviews. If he accepts: record `scan_04` as the accepted build in the HarnessVLN README, the parent
       task and the hot zone. If he rejects: record why; `scan_03` stays. Done 2026-09-17: adopted (PRD D14);
       recorded in `p2b_execution/README.md`, the parent PRD and the hot zone.
-- [ ] D3 Commit the text evidence (large bytes local-only with manifests); journal entry.
+- [x] D3 Commit the text evidence (large bytes local-only with manifests); journal entry. Done 2026-09-17:
+      `20f24308` (230 local-only lines added to `LOCAL_ONLY_BYTES.sha256`, all 468 verified and ignored), spec
+      lessons in `.trellis/spec/backend/simulator-inference-evidence.md`.
 
 ## Validation commands
 

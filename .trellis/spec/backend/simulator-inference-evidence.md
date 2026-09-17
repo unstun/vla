@@ -206,3 +206,41 @@ lead-owned files edited after dispatch (round 5 lost a threshold change and a pa
   exceeds one, record the measurement beside the new bound rather than editing the number silently.
 - A per-frame preprocessing plugin (task sensor) must be proven in the executor preflight by a bit-identical offline recompute and
   by a "differs from the raw sensor" check before any run is accepted; the two checks together show the override is in effect.
+
+## Repeated fix series and stop evidence (added 2026-09-17, SCAN fix qualification)
+
+Learned from `.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_fix_qualification/` (`RESULT.md`,
+`isaac_series/e03_failure_analysis.md`).
+
+- **Show that the series reached the failure condition.** A passing repeated series says nothing about a
+  position-dependent fix unless its episodes hit the failing region. Replay every recorded stop pose offline with the
+  original and the fixed build (`make_fixtures.py from-journals` → `suite_worker.py --fixtures ...` →
+  `analyze_suite.py`). Each replay carries its own validity control (AC0: the original build must reproduce the
+  recorded rejection). Report "original rejects at k of N stops" beside the pass count.
+- **Judge dwell from full-rate records, not a polled snapshot.** The backend's `StopEvidenceWindow` reads a single
+  overwritten `current_command.json` in a 0.02 s loop and can miss samples. `review_two_goal.py` walks every 0.02 s
+  `metrics.jsonl` row and is the acceptance authority. A single out-of-limit sample (0.1595 against 0.15 rad/s)
+  failed the check that the backend had passed.
+- **Stillness failures after a stop belong to the locomotion layer first.** The V12 runner keeps the RL policy
+  running on a zero command, with no PD stance hold. Its zero-command yaw noise is already close to the 0.15 rad/s
+  limit (see the `machine-dog` flat stand-still diagnosis). Check that before blaming the planner, and never relax the
+  threshold to hide it.
+- **Remote-only bulk needs a returned record and a narrow rule.** Bulk files left on the execution host
+  (`clouds.jsonl`, `third_person_master.mp4`) come back as `remote_only_artifacts.json`: path, bytes, remote SHA-256,
+  manifest SHA-256 and `all_match`. The review accepts exactly those paths as absent, and only when all three hashes
+  agree. Any other missing, changed or unexpected file still fails `returned_hashes_match`
+  (`p2b_execution/test_review_two_goal_remote_only.py`).
+- **Keep the executed copy of an untracked driver before editing it.** If a series driver changes after it ran, save
+  the executed bytes with their hash (`isaac_series/run_isaac_series.executed_6fca2efd.py`) and name them in the
+  result.
+- **A series driver writes a ledger line for every outcome.** Pass, review failure, launcher error or timeout,
+  review error and host-not-idle all get a line, and a non-passing line records the host state after the failure. The
+  idle probe fails closed (`set -e`; no GPU row means not idle). The driver pauses on any non-pass; applying the stop
+  rule is the lead's job.
+
+| Condition | Required outcome |
+|---|---|
+| Series passes, but no stop pose was replayed natively | No claim that the series exercised the fix |
+| Backend reports arrival, full-rate dwell < required | Count the episode as failed; report the sampling gap |
+| Remote-only record hash ≠ manifest hash, or an extra path is missing | `returned_hashes_match` false |
+| Host probe command fails or reports no GPU | Host not idle; do not launch |
