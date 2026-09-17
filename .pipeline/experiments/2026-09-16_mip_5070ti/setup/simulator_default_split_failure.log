@@ -1,0 +1,43 @@
+2026-09-16 04:22:53,551 INFO app.server.auto_server_app: AutoServerApp: hosting env panel env_habitat for nodeset env_habitat
+2026-09-16 04:22:53,562 INFO app.server.auto_server_app: AutoServerApp: generated 9 functions from nodeset env_habitat
+2026-09-16 04:22:53,566 INFO app.server.server_app: Starting env_habitat server on 127.0.0.1:19200
+INFO:     Started server process [94649]
+INFO:     Waiting for application startup.
+2026-09-16 04:22:53,573 INFO agentcanvas.habitat: Changing cwd to VLN-CE root: /home/sun/vla_exec/2026-09-16_mip_5070ti/source/AgentCanvas/third_party/VLN-CE
+2026-09-16 04:22:54.162295: I tensorflow/core/util/util.cc:169] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-09-16 04:22:54,637 INFO agentcanvas.habitat: Creating Habitat env (ENV_NAME=VLNCEDaggerEnv) ...
+2026-09-16 04:22:54,637 Initializing dataset VLN-CE-v1
+ERROR:    Traceback (most recent call last):
+  File "/home/sun/miniconda3/envs/ac-vlnce/lib/python3.8/site-packages/starlette/routing.py", line 693, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+  File "/home/sun/miniconda3/envs/ac-vlnce/lib/python3.8/site-packages/starlette/routing.py", line 569, in __aenter__
+    await self._router.startup()
+  File "/home/sun/miniconda3/envs/ac-vlnce/lib/python3.8/site-packages/starlette/routing.py", line 670, in startup
+    await handler()
+  File "/home/sun/vla_exec/2026-09-16_mip_5070ti/source/AgentCanvas/agentcanvas/backend/app/server/server_app.py", line 183, in _startup
+    await server.on_startup()
+  File "/home/sun/vla_exec/2026-09-16_mip_5070ti/source/AgentCanvas/agentcanvas/backend/app/server/auto_server_app.py", line 256, in on_startup
+    await self._nodeset.initialize()
+  File "../../workspace/nodesets/env/env_habitat.py", line 2444, in initialize
+    await loop.run_in_executor(
+  File "/home/sun/miniconda3/envs/ac-vlnce/lib/python3.8/concurrent/futures/thread.py", line 57, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "../../workspace/nodesets/env/env_habitat.py", line 352, in initialize
+    self._env = env_cls(config=config)
+  File "/home/sun/vla_exec/2026-09-16_mip_5070ti/source/AgentCanvas/third_party/VLN-CE/vlnce_baselines/common/environments.py", line 18, in __init__
+    super().__init__(config.TASK_CONFIG, dataset)
+  File "/home/sun/vla_exec/2026-09-16_mip_5070ti/source/AgentCanvas/third_party/habitat-lab/habitat/core/env.py", line 336, in __init__
+    self._env = Env(config, dataset)
+  File "/home/sun/vla_exec/2026-09-16_mip_5070ti/source/AgentCanvas/third_party/habitat-lab/habitat/core/env.py", line 78, in __init__
+    self._dataset = make_dataset(
+  File "/home/sun/vla_exec/2026-09-16_mip_5070ti/source/AgentCanvas/third_party/habitat-lab/habitat/datasets/registration.py", line 20, in make_dataset
+    return _dataset(**kwargs)  # type: ignore
+  File "/home/sun/vla_exec/2026-09-16_mip_5070ti/source/AgentCanvas/third_party/VLN-CE/habitat_extensions/task.py", line 59, in __init__
+    with gzip.open(dataset_filename, "rt") as f:
+  File "/home/sun/miniconda3/envs/ac-vlnce/lib/python3.8/gzip.py", line 58, in open
+    binary_file = GzipFile(filename, gz_mode, compresslevel)
+  File "/home/sun/miniconda3/envs/ac-vlnce/lib/python3.8/gzip.py", line 173, in __init__
+    fileobj = self.myfileobj = builtins.open(filename, mode or 'rb')
+FileNotFoundError: [Errno 2] No such file or directory: 'data/datasets/R2R_VLNCE_v1-3_preprocessed/val_unseen/val_unseen.json.gz'
+
+ERROR:    Application startup failed. Exiting.

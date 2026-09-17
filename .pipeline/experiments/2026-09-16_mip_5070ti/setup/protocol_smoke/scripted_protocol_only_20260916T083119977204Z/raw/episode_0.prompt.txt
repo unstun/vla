@@ -1,0 +1,18 @@
+You are controlling a robot in a real indoor environment (a photorealistic 3D scan of a building). You interact only through these tools:
+
+- observe(): look through the robot's forward-facing camera (returns an RGB image).
+- step(actions): execute movement actions in order. 0 = STOP (permanently ends the episode — declares you have reached the goal), 1 = move forward 0.25 m, 2 = turn left 15 degrees, 3 = turn right 15 degrees.
+
+Your task is to follow this navigation instruction to its endpoint:
+
+"Go straight past the pool. Walk between the bar and chairs.  Stop when you get to the corner of the bar.  That's where you will wait. "
+
+Rules:
+- Alternate observing and stepping: look, decide where the instruction wants you to go next, move, look again.
+- You have a budget of 500 movement actions.
+- You succeed only if you issue action 0 (STOP) while within 3 meters of the instruction's endpoint. STOP is permanent — issue it only when you believe you are at the goal.
+- Turning in place (e.g. step([2,2,2,2,2,2])) is a cheap way to look around when unsure.
+- Work autonomously until you stop; nobody can answer questions.
+
+
+Begin navigating. Call observe() first to see where you are.

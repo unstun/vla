@@ -1,0 +1,86 @@
+{
+  "run_name": "scripted_protocol_only_20260916T091821738581Z",
+  "cell": "scripted_protocol_only",
+  "harness": "deepseek-harness",
+  "harness_inherent": {
+    "extension": "nonstandard user-selected MIP bare / DeepSeek Harness",
+    "auth": "DEEPSEEK_API_KEY supplied on execution host",
+    "tools": [
+      "mcp__env__observe",
+      "mcp__env__step"
+    ],
+    "turn_cap": "no DSH hard turn cap; original 500-step and 2400s limits",
+    "max_output_tokens_per_request": 8192,
+    "reasoning_effort": "high",
+    "vision_context": "DSH provider-managed image retention",
+    "event_capture": "pinned session/event API; replay after CLI exits",
+    "dsh_version": "0.1.5-rc.1"
+  },
+  "config": {
+    "dataset": "R2R-CE",
+    "split": "rand100",
+    "episodes": "0-99",
+    "max_turns": 200,
+    "rgb_resolution": 512,
+    "step_budget": 500,
+    "episode_timeout": 180,
+    "auto_observe": false,
+    "wp_server": null,
+    "model": "deepseek-flash",
+    "bare": true,
+    "extra": {}
+  },
+  "servers": [
+    "http://127.0.0.1:19200"
+  ],
+  "run_stats": {
+    "vram_peak_mib": 352,
+    "extension": "MIP DeepSeek Harness; not a published-paper result"
+  },
+  "aggregate": {
+    "episode_count": 1,
+    "distance_to_goal": 10.4523,
+    "success": 0.0,
+    "spl": 0.0,
+    "ndtw": 0.1832,
+    "path_length": 0.0,
+    "oracle_success": 0.0,
+    "steps_taken": 2.0,
+    "env_steps": 2.0,
+    "stop_rate": 1.0
+  },
+  "episodes": [
+    {
+      "index": 0,
+      "episode_id": "7",
+      "scene_id": "data/scene_datasets/mp3d/x8F5xyUWy9e/x8F5xyUWy9e.glb",
+      "instruction": "Go straight past the pool. Walk between the bar and chairs.  Stop when you get to the corner of the bar.  That's where you will wait. ",
+      "metrics": {
+        "distance_to_goal": 10.452263832092285,
+        "success": 0.0,
+        "spl": 0.0,
+        "ndtw": 0.18318889609231287,
+        "path_length": 0.0,
+        "oracle_success": 0.0,
+        "steps_taken": 2.0
+      },
+      "agent": {
+        "tool_calls": {
+          "observe": 2,
+          "step": 2
+        },
+        "env_steps": 2,
+        "end_reason": "stop_called",
+        "called_stop": true,
+        "num_turns": 5,
+        "usage": {},
+        "total_cost_usd": null,
+        "dsh_exit_code": 0,
+        "turn_end": {
+          "kind": "completed"
+        }
+      },
+      "wall_sec": 1.1
+    }
+  ]
+}

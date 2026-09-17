@@ -1,0 +1,126 @@
+curl: (7) Failed to connect to 127.0.0.1 port 19200 after 0 ms: Couldn't connect to server
+/home/sun/miniconda3/envs/agentcanvas/lib/python3.10/site-packages/pydantic_settings/sources/utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[09/16/26 07:04:26] INFO     Using categorical units to plot a   category.py:224
+                             list of strings that are all                       
+                             parsable as floats or dates. If                    
+                             these strings should be plotted as                 
+                             numbers, cast to the appropriate                   
+                             data type before plotting.                         
+                    INFO     Using categorical units to plot a   category.py:224
+                             list of strings that are all                       
+                             parsable as floats or dates. If                    
+                             these strings should be plotted as                 
+                             numbers, cast to the appropriate                   
+                             data type before plotting.                         
+[std] http://127.0.0.1:19200 healthy: env_habitat
+[std] cell=nonstd_deepseek_flash_bare model=deepseek-flash eps=0-0 workers=1 -> /home/sun/vla_exec/2026-09-16_mip_5070ti/runs/nonstd_deepseek_flash_bare_20260916T105741013685Z
+[std] episode 0 starting on http://127.0.0.1:19200
+[std] episode 0 done: success=0.0 spl=0.0 steps=156 stop=True
+[std] cell complete -> /home/sun/vla_exec/2026-09-16_mip_5070ti/runs/nonstd_deepseek_flash_bare_20260916T105741013685Z/summary.json
+[std] run stats: {"vram_peak_mib": 386, "extension": "MIP DeepSeek Harness; not a published-paper result"}
+{
+  "episode_count": 1,
+  "distance_to_goal": 4.7544,
+  "success": 0.0,
+  "spl": 0.0,
+  "ndtw": 0.6554,
+  "path_length": 6.8723,
+  "oracle_success": 0.0,
+  "steps_taken": 156.0,
+  "env_steps": 156.0,
+  "stop_rate": 1.0
+}
+[std] stats report -> /home/sun/vla_exec/2026-09-16_mip_5070ti/runs/nonstd_deepseek_flash_bare_20260916T105741013685Z/stats.html
+{
+  "run_name": "nonstd_deepseek_flash_bare_20260916T105741013685Z",
+  "cell": "nonstd_deepseek_flash_bare",
+  "harness": "deepseek-harness",
+  "harness_inherent": {
+    "extension": "nonstandard user-selected MIP bare / DeepSeek Harness",
+    "auth": "DEEPSEEK_API_KEY supplied on execution host",
+    "tools": [
+      "mcp__env__observe",
+      "mcp__env__step"
+    ],
+    "turn_cap": "no DSH hard turn cap; original 500-step and 2400s limits",
+    "max_output_tokens_per_request": 8192,
+    "reasoning_effort": "high",
+    "vision_context": "DSH provider-managed image retention",
+    "event_capture": "pinned session/event API; replay after CLI exits",
+    "dsh_version": "0.1.5-rc.1"
+  },
+  "config": {
+    "dataset": "R2R-CE",
+    "split": "rand100",
+    "episodes": "0-99",
+    "max_turns": 200,
+    "rgb_resolution": 512,
+    "step_budget": 500,
+    "episode_timeout": 2400,
+    "auto_observe": false,
+    "wp_server": null,
+    "model": "deepseek-flash",
+    "bare": true,
+    "extra": {}
+  },
+  "servers": [
+    "http://127.0.0.1:19200"
+  ],
+  "run_stats": {
+    "vram_peak_mib": 386,
+    "extension": "MIP DeepSeek Harness; not a published-paper result"
+  },
+  "aggregate": {
+    "episode_count": 1,
+    "distance_to_goal": 4.7544,
+    "success": 0.0,
+    "spl": 0.0,
+    "ndtw": 0.6554,
+    "path_length": 6.8723,
+    "oracle_success": 0.0,
+    "steps_taken": 156.0,
+    "env_steps": 156.0,
+    "stop_rate": 1.0
+  },
+  "episodes": [
+    {
+      "index": 0,
+      "episode_id": "7",
+      "scene_id": "data/scene_datasets/mp3d/x8F5xyUWy9e/x8F5xyUWy9e.glb",
+      "instruction": "Go straight past the pool. Walk between the bar and chairs.  Stop when you get to the corner of the bar.  That's where you will wait. ",
+      "metrics": {
+        "distance_to_goal": 4.754430770874023,
+        "success": 0.0,
+        "spl": 0.0,
+        "ndtw": 0.6554336540113419,
+        "path_length": 6.872277140617371,
+        "oracle_success": 0.0,
+        "steps_taken": 156.0
+      },
+      "agent": {
+        "tool_calls": {
+          "observe": 35,
+          "step": 35
+        },
+        "env_steps": 156,
+        "end_reason": "stop_called",
+        "called_stop": true,
+        "num_turns": 71,
+        "usage": {
+          "inputTokens": 24094,
+          "outputTokens": 28136,
+          "totalTokens": 1560326,
+          "cacheReadTokens": 1508096,
+          "reasoningTokens": 24208
+        },
+        "total_cost_usd": null,
+        "dsh_exit_code": 0,
+        "turn_end": {
+          "kind": "completed"
+        }
+      },
+      "wall_sec": 404.5
+    }
+  ]
+}

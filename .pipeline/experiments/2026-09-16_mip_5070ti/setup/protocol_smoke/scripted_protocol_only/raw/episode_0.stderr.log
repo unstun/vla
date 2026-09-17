@@ -1,0 +1,56 @@
+Traceback (most recent call last):
+  File "/home/sun/vla_exec/2026-09-16_mip_5070ti/source/AgentCanvas/coding-agent/bridges/mcp_bridge.py", line 57, in <module>
+    from mcp.server.fastmcp import FastMCP, Image
+  File "/home/sun/miniconda3/envs/agentcanvas/lib/python3.10/site-packages/mcp/server/fastmcp.py", line 16, in <module>
+    raise ModuleNotFoundError(_MESSAGE, name=__name__)
+ModuleNotFoundError: No module named 'mcp.server.fastmcp'. This is mcp 2.x, where FastMCP was renamed to MCPServer (from mcp.server.mcpserver import MCPServer) and other APIs changed; see the migration guide at https://py.sdk.modelcontextprotocol.io/v2/migration/#fastmcp-renamed-to-mcpserver or pin 'mcp<2' to keep running v1 code.
+file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545
+		throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause });
+		      ^
+
+Error: dsh: plugin tree failed to load: failed to apply loader entry include (cordis:include): failed to apply loader entry mip-mcp (@deepseek-ai/dsh-mcp-client): mcp-client(env): initial connection or tool synchronization failed
+McpError: MCP error -32000: Connection closed
+    at McpError.fromError (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@modelcontextprotocol/sdk/dist/esm/types.js:2048:16)
+    at Client._onclose (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js:263:32)
+    at _transport.onclose (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js:223:18)
+    at ChildProcess.<anonymous> (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@modelcontextprotocol/sdk/dist/esm/client/stdio.js:85:31)
+    at ChildProcess.emit (node:events:514:28)
+    at maybeClose (node:internal/child_process:1141:16)
+    at ChildProcess._handle.onexit (node:internal/child_process:306:5)
+    at boot (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1545:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async runProfile (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/dsh/lib/profile-boot-Dk-7KqJc.js:311:14)
+    at async runCli (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/dsh/lib/bin.js:146:4)
+    at async file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/dsh/lib/bin.js:168:23 {
+  [cause]: Error: failed to apply loader entry include (cordis:include): failed to apply loader entry mip-mcp (@deepseek-ai/dsh-mcp-client): mcp-client(env): initial connection or tool synchronization failed
+      at updateError (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+      at Entry._init (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:529:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    [cause]: Error: failed to apply loader entry mip-mcp (@deepseek-ai/dsh-mcp-client): mcp-client(env): initial connection or tool synchronization failed
+        at updateError (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:309:9)
+        at Entry._init (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:529:10)
+        at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+      [cause]: Error: mcp-client(env): initial connection or tool synchronization failed
+          at Object.apply [as callback] (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/dsh-mcp-client/lib/index.js:788:67)
+          at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+          at async Fiber._reload (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/cordis/lib/index.js:1355:5)
+          at async Fiber.await (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/cordis/lib/index.js:1399:24)
+          at async Entry._start (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:538:4)
+          at async Entry._init (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js:527:4) {
+        [cause]: McpError: MCP error -32000: Connection closed
+            at McpError.fromError (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@modelcontextprotocol/sdk/dist/esm/types.js:2048:16)
+            at Client._onclose (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js:263:32)
+            at _transport.onclose (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js:223:18)
+            at ChildProcess.<anonymous> (file:///home/sun/vla_exec/2026-09-16_mip_5070ti/tools/deepseek_harness/node_modules/@modelcontextprotocol/sdk/dist/esm/client/stdio.js:85:31)
+            at ChildProcess.emit (node:events:514:28)
+            at maybeClose (node:internal/child_process:1141:16)
+            at ChildProcess._handle.onexit (node:internal/child_process:306:5) {
+          code: -32000,
+          data: undefined
+        }
+      }
+    }
+  }
+}
+
+Node.js v24.21.0
