@@ -1,0 +1,439 @@
+{
+  "constants": {
+    "balance_band": [
+      0.35,
+      0.65
+    ],
+    "balance_shares": [
+      "FL+FR",
+      "FL+HL",
+      "FL+HR"
+    ],
+    "base_kd": 0.5,
+    "base_kp": 20.0,
+    "command_deadband": 0.001,
+    "disturbance_dwell_s": 0.25,
+    "entry_foot_force_n": 10.0,
+    "foot_order": [
+      "FL",
+      "FR",
+      "HL",
+      "HR"
+    ],
+    "hold_contact_n": 1.0,
+    "hold_kd": 1.0,
+    "hold_kp": 60.0,
+    "reentry_lockout_s": 0.5,
+    "reference": "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py LocalMotionFSM stand path (commit fd751b8b)",
+    "rejoin_blend": "smoothstep",
+    "rejoin_s": 0.25,
+    "seed": "q + (applied_kp / HOLD_KP) * (applied_target - q)",
+    "settle_angular_speed_max_radps": 0.5,
+    "settle_dwell_s": 0.25,
+    "settle_linear_speed_max_mps": 0.15,
+    "settle_timeout_s": 10.0,
+    "tilt_max_deg": 10.0,
+    "transition_s": 2.0
+  },
+  "control_path": "auto: the applied joint target goes to wrapped.step as (target - offset) / scale, so the policy's last_action observation is the applied action; actuator Kp/Kd are written before the next step only when they change; the policy is evaluated every step",
+  "delayed_target_note": "Lite3Actuator delays position targets by the recorded time lags (physics substeps) while stiffness and damping apply at once, so a gain change meets the previous step's target for that many substeps; metrics delayed_target_torque_max_ratio_estimate bounds that torque",
+  "inspection": {
+    "action_term": {
+      "class": "JointPositionAction",
+      "clip": [
+        [
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ]
+        ]
+      ],
+      "joint_ids": [
+        0,
+        4,
+        8,
+        1,
+        5,
+        9,
+        2,
+        6,
+        10,
+        3,
+        7,
+        11
+      ],
+      "joint_names": [
+        "FL_HipX_joint",
+        "FL_HipY_joint",
+        "FL_Knee_joint",
+        "FR_HipX_joint",
+        "FR_HipY_joint",
+        "FR_Knee_joint",
+        "HL_HipX_joint",
+        "HL_HipY_joint",
+        "HL_Knee_joint",
+        "HR_HipX_joint",
+        "HR_HipY_joint",
+        "HR_Knee_joint"
+      ],
+      "name": "joint_pos",
+      "offset": [
+        0.0,
+        -0.800000011920929,
+        1.600000023841858,
+        0.0,
+        -0.800000011920929,
+        1.600000023841858,
+        0.0,
+        -0.800000011920929,
+        1.600000023841858,
+        0.0,
+        -0.800000011920929,
+        1.600000023841858
+      ],
+      "scale": [
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ]
+    },
+    "actuators": {
+      "Hip": {
+        "class": "Lite3Actuator",
+        "damping": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "effort_limit": [
+          24.0,
+          24.0,
+          24.0,
+          24.0,
+          24.0,
+          24.0,
+          24.0,
+          24.0
+        ],
+        "gain_tensor_shape": [
+          1,
+          8
+        ],
+        "joint_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "joint_names": [
+          "FL_HipX_joint",
+          "FR_HipX_joint",
+          "HL_HipX_joint",
+          "HR_HipX_joint",
+          "FL_HipY_joint",
+          "FR_HipY_joint",
+          "HL_HipY_joint",
+          "HR_HipY_joint"
+        ],
+        "max_delay": 4,
+        "min_delay": 0,
+        "mro": [
+          "Lite3Actuator",
+          "DelayedPDActuator",
+          "IdealPDActuator",
+          "ActuatorBase",
+          "ABC",
+          "object"
+        ],
+        "position_delay_time_lags": [
+          3
+        ],
+        "stiffness": [
+          20.0,
+          20.0,
+          20.0,
+          20.0,
+          20.0,
+          20.0,
+          20.0,
+          20.0
+        ]
+      },
+      "Knee": {
+        "class": "Lite3Actuator",
+        "damping": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "effort_limit": [
+          36.0,
+          36.0,
+          36.0,
+          36.0
+        ],
+        "gain_tensor_shape": [
+          1,
+          4
+        ],
+        "joint_indices": [
+          8,
+          9,
+          10,
+          11
+        ],
+        "joint_names": [
+          "FL_Knee_joint",
+          "FR_Knee_joint",
+          "HL_Knee_joint",
+          "HR_Knee_joint"
+        ],
+        "max_delay": 4,
+        "min_delay": 0,
+        "mro": [
+          "Lite3Actuator",
+          "DelayedPDActuator",
+          "IdealPDActuator",
+          "ActuatorBase",
+          "ABC",
+          "object"
+        ],
+        "position_delay_time_lags": [
+          3
+        ],
+        "stiffness": [
+          20.0,
+          20.0,
+          20.0,
+          20.0
+        ]
+      }
+    },
+    "default_joint_pos": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      -0.800000011920929,
+      -0.800000011920929,
+      -0.800000011920929,
+      -0.800000011920929,
+      1.600000023841858,
+      1.600000023841858,
+      1.600000023841858,
+      1.600000023841858
+    ],
+    "joint_coverage": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "joint_names": [
+      "FL_HipX_joint",
+      "FR_HipX_joint",
+      "HL_HipX_joint",
+      "HR_HipX_joint",
+      "FL_HipY_joint",
+      "FR_HipY_joint",
+      "HL_HipY_joint",
+      "HR_HipY_joint",
+      "FL_Knee_joint",
+      "FR_Knee_joint",
+      "HL_Knee_joint",
+      "HR_Knee_joint"
+    ],
+    "joint_pos_limits": [
+      [
+        -0.5229999423027039,
+        0.5229999423027039
+      ],
+      [
+        -0.5229999423027039,
+        0.5229999423027039
+      ],
+      [
+        -0.5229999423027039,
+        0.5229999423027039
+      ],
+      [
+        -0.5229999423027039,
+        0.5229999423027039
+      ],
+      [
+        -2.669999837875366,
+        0.3140000104904175
+      ],
+      [
+        -2.669999837875366,
+        0.3140000104904175
+      ],
+      [
+        -2.669999837875366,
+        0.3140000104904175
+      ],
+      [
+        -2.669999837875366,
+        0.3140000104904175
+      ],
+      [
+        0.5239999294281006,
+        2.7920000553131104
+      ],
+      [
+        0.5239999294281006,
+        2.7920000553131104
+      ],
+      [
+        0.5239999294281006,
+        2.7920000553131104
+      ],
+      [
+        0.5239999294281006,
+        2.7920000553131104
+      ]
+    ],
+    "joint_pos_limits_source": "robot.data.joint_pos_limits",
+    "physx_gains_at_setup": {
+      "data_joint_damping": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "data_joint_stiffness": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "view_dof_dampings": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "view_dof_stiffnesses": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "wrapper_clip_actions": null
+  },
+  "inspection_error": null,
+  "joint_order": "robot.joint_names (articulation order); the V12 action term order is mapped through its _joint_ids",
+  "mode": "auto",
+  "module": {
+    "body_sha256": "8dc51c1bfa726b8ae1316d80674912869168f08116d0f58763e2dbcd4b3831ba",
+    "path": ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/stance_hold.py",
+    "sha256": "2d244efeea1708b02bc33243789464006af65bb32fc999463548d221d1bc3541"
+  },
+  "schema_version": 1,
+  "torque_clip_basis": "robot.data.computed_torque vs robot.data.applied_torque read after the control step: the last physics substep only",
+  "validation_problems": []
+}

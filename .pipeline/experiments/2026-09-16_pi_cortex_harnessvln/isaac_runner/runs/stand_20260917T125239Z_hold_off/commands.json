@@ -1,0 +1,47 @@
+{
+  "collect": [
+    "rsync",
+    "-a",
+    "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off/artifacts/",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/runs/stand_20260917T125239Z_hold_off/returned_artifacts/"
+  ],
+  "mkdir": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "python3 - <<'PY'\nfrom pathlib import Path\np=Path('/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off')\nassert not p.exists(), p\np.mkdir(parents=True)\nPY"
+  ],
+  "remote_run": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off",
+  "run": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "python3 /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off/remote_worker.py --run-root /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off --foxy-image-id e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 --remote-v12-runtime /home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/v12 --remote-checkpoint /home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/checkpoint/model_149999.pt --runner-argv-json '[\"--scene\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off/inputs/building.usda\",\"--runtime\",\"/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/v12\",\"--checkpoint\",\"/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/checkpoint/model_149999.pt\",\"--route-artifact\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off/inputs/stand_route_artifact.json\",\"--scope\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off/inputs/stand_scope.json\",\"--execution-manifest\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off/inputs/execution_manifest.json\",\"--output\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off/artifacts/runner_output\",\"--case\",\"stand_probe\",\"--duration-seconds\",\"60.0\",\"--telemetry-host\",\"127.0.0.1\",\"--telemetry-port\",\"46240\",\"--command-host\",\"127.0.0.1\",\"--command-port\",\"46241\",\"--max-vx\",\"0.30\",\"--max-vy\",\"0.30\",\"--max-wz\",\"0.8\",\"--max-horizontal-norm\",\"0.30\",\"--speed-profile\",\"conservative_0p3\",\"--contact-policy\",\"native_v12\",\"--unfiltered-planner-cloud\",\"--goal-tolerance-m\",\"0.25\",\"--terminal-window-seconds\",\"2.0\",\"--terminal-command-norm\",\"0.01\",\"--terminal-speed-mps\",\"0.10\",\"--terminal-yaw-rate-radps\",\"0.15\",\"--connection-ready-timeout-seconds\",\"120.0\",\"--max-wall-seconds\",\"600.0\",\"--video-fps\",\"12.5\",\"--camera-capture-stride\",\"4\",\"--complete-body-state\",\"--priority-telemetry\",\"--async-recording\",\"--freeze-gc\",\"--external-goal-mode\",\"--external-run-id\",\"stand_20260917T125239Z_hold_off\",\"--external-control-dir\",\"/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off/artifacts/external_episode\",\"--external-finish-stillness-seconds\",\"1.0\",\"--external-status-freshness-seconds\",\"2.0\",\"--stance-hold\",\"off\",\"--seed\",\"42\",\"--device\",\"cuda:0\"]' --ros-domain-id 94 --finish-after-sim-seconds 57.0"
+  ],
+  "sync": [
+    "rsync",
+    "-a",
+    "--delete",
+    "--include=/bridge/***",
+    "--include=/inputs/***",
+    "--include=/config/***",
+    "--include=/remote_worker.py",
+    "--include=/source_env_hashes.json",
+    "--exclude=*",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/runs/stand_20260917T125239Z_hold_off/",
+    "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260917T125239Z_hold_off/"
+  ],
+  "sync_whitelist": [
+    "bridge/",
+    "inputs/",
+    "config/",
+    "remote_worker.py",
+    "source_env_hashes.json"
+  ]
+}

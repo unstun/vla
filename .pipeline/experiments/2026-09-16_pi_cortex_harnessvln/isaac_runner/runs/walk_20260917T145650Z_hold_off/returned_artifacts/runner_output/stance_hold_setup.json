@@ -1,0 +1,450 @@
+{
+  "constants": {
+    "balance_band": [
+      0.35,
+      0.65
+    ],
+    "balance_shares": [
+      "FL+FR",
+      "FL+HL",
+      "FL+HR"
+    ],
+    "base_kd": 0.5,
+    "base_kp": 20.0,
+    "command_deadband": 0.001,
+    "disturbance_dwell_s": 0.25,
+    "entry_foot_force_n": 10.0,
+    "entry_kd_modes": {
+      "precedent": "MJ BOOT_LANDING_KD 2.5 over FIXED_STAND_BOOT_GRACE_S 1.0 s (PRD D5)",
+      "ramp": "Kd follows the Kp ramp (entry_ramp_rule)",
+      "step1": "Kd = HOLD_KD from the entry step on",
+      "step2p5": "Kd = entry_landing_kd from the entry step until entry_ramp_s, then entry_landing_kd + (HOLD_KD - entry_landing_kd) smoothstep((t - t_entry - entry_ramp_s) / (transition_s - entry_ramp_s)); exactly HOLD_KD from FIXED_STAND on"
+    },
+    "entry_landing_kd": 2.5,
+    "entry_ramp_blend": "smoothstep",
+    "entry_ramp_rule": "u = smoothstep((t - t_entry) / entry_ramp_s); Kp = Kp0 + (HOLD_KP - Kp0) u; Kd = Kd0 + (HOLD_KD - Kd0) u; target = q0 + (Kp0 / Kp) (T0 - q0); q0, T0, Kp0, Kd0 = joint_pos, applied_target, applied_kp, applied_kd at entry (PRD D4)",
+    "entry_ramp_s": 0.5,
+    "foot_order": [
+      "FL",
+      "FR",
+      "HL",
+      "HR"
+    ],
+    "hold_contact_n": 1.0,
+    "hold_kd": 1.0,
+    "hold_kp": 60.0,
+    "reentry_lockout_s": 0.5,
+    "reference": "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py LocalMotionFSM stand path (commit fd751b8b)",
+    "rejoin_blend": "smoothstep",
+    "rejoin_s": 0.25,
+    "seed": "q + (applied_kp / HOLD_KP) * (applied_target - q)",
+    "settle_angular_speed_max_radps": 0.5,
+    "settle_dwell_s": 0.25,
+    "settle_linear_speed_max_mps": 0.15,
+    "settle_timeout_s": 10.0,
+    "tilt_max_deg": 10.0,
+    "transition_s": 2.0
+  },
+  "control_path": "off: the V12 policy action goes to previous_actions unchanged and no gain is written",
+  "delayed_target_note": "Lite3Actuator delays position targets by the recorded time lags (physics substeps) while stiffness and damping apply at once, so a gain change meets the previous step's target for that many substeps; metrics delayed_target_torque_max_ratio_estimate bounds that torque",
+  "entry_kd": "ramp",
+  "inspection": {
+    "action_term": {
+      "class": "JointPositionAction",
+      "clip": [
+        [
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ],
+          [
+            -100.0,
+            100.0
+          ]
+        ]
+      ],
+      "joint_ids": [
+        0,
+        4,
+        8,
+        1,
+        5,
+        9,
+        2,
+        6,
+        10,
+        3,
+        7,
+        11
+      ],
+      "joint_names": [
+        "FL_HipX_joint",
+        "FL_HipY_joint",
+        "FL_Knee_joint",
+        "FR_HipX_joint",
+        "FR_HipY_joint",
+        "FR_Knee_joint",
+        "HL_HipX_joint",
+        "HL_HipY_joint",
+        "HL_Knee_joint",
+        "HR_HipX_joint",
+        "HR_HipY_joint",
+        "HR_Knee_joint"
+      ],
+      "name": "joint_pos",
+      "offset": [
+        0.0,
+        -0.800000011920929,
+        1.600000023841858,
+        0.0,
+        -0.800000011920929,
+        1.600000023841858,
+        0.0,
+        -0.800000011920929,
+        1.600000023841858,
+        0.0,
+        -0.800000011920929,
+        1.600000023841858
+      ],
+      "scale": [
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ]
+    },
+    "actuators": {
+      "Hip": {
+        "class": "Lite3Actuator",
+        "damping": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "effort_limit": [
+          24.0,
+          24.0,
+          24.0,
+          24.0,
+          24.0,
+          24.0,
+          24.0,
+          24.0
+        ],
+        "gain_tensor_shape": [
+          1,
+          8
+        ],
+        "joint_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "joint_names": [
+          "FL_HipX_joint",
+          "FR_HipX_joint",
+          "HL_HipX_joint",
+          "HR_HipX_joint",
+          "FL_HipY_joint",
+          "FR_HipY_joint",
+          "HL_HipY_joint",
+          "HR_HipY_joint"
+        ],
+        "max_delay": 4,
+        "min_delay": 0,
+        "mro": [
+          "Lite3Actuator",
+          "DelayedPDActuator",
+          "IdealPDActuator",
+          "ActuatorBase",
+          "ABC",
+          "object"
+        ],
+        "position_delay_time_lags": [
+          3
+        ],
+        "stiffness": [
+          20.0,
+          20.0,
+          20.0,
+          20.0,
+          20.0,
+          20.0,
+          20.0,
+          20.0
+        ]
+      },
+      "Knee": {
+        "class": "Lite3Actuator",
+        "damping": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "effort_limit": [
+          36.0,
+          36.0,
+          36.0,
+          36.0
+        ],
+        "gain_tensor_shape": [
+          1,
+          4
+        ],
+        "joint_indices": [
+          8,
+          9,
+          10,
+          11
+        ],
+        "joint_names": [
+          "FL_Knee_joint",
+          "FR_Knee_joint",
+          "HL_Knee_joint",
+          "HR_Knee_joint"
+        ],
+        "max_delay": 4,
+        "min_delay": 0,
+        "mro": [
+          "Lite3Actuator",
+          "DelayedPDActuator",
+          "IdealPDActuator",
+          "ActuatorBase",
+          "ABC",
+          "object"
+        ],
+        "position_delay_time_lags": [
+          3
+        ],
+        "stiffness": [
+          20.0,
+          20.0,
+          20.0,
+          20.0
+        ]
+      }
+    },
+    "default_joint_pos": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      -0.800000011920929,
+      -0.800000011920929,
+      -0.800000011920929,
+      -0.800000011920929,
+      1.600000023841858,
+      1.600000023841858,
+      1.600000023841858,
+      1.600000023841858
+    ],
+    "joint_coverage": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "joint_names": [
+      "FL_HipX_joint",
+      "FR_HipX_joint",
+      "HL_HipX_joint",
+      "HR_HipX_joint",
+      "FL_HipY_joint",
+      "FR_HipY_joint",
+      "HL_HipY_joint",
+      "HR_HipY_joint",
+      "FL_Knee_joint",
+      "FR_Knee_joint",
+      "HL_Knee_joint",
+      "HR_Knee_joint"
+    ],
+    "joint_pos_limits": [
+      [
+        -0.5229999423027039,
+        0.5229999423027039
+      ],
+      [
+        -0.5229999423027039,
+        0.5229999423027039
+      ],
+      [
+        -0.5229999423027039,
+        0.5229999423027039
+      ],
+      [
+        -0.5229999423027039,
+        0.5229999423027039
+      ],
+      [
+        -2.669999837875366,
+        0.3140000104904175
+      ],
+      [
+        -2.669999837875366,
+        0.3140000104904175
+      ],
+      [
+        -2.669999837875366,
+        0.3140000104904175
+      ],
+      [
+        -2.669999837875366,
+        0.3140000104904175
+      ],
+      [
+        0.5239999294281006,
+        2.7920000553131104
+      ],
+      [
+        0.5239999294281006,
+        2.7920000553131104
+      ],
+      [
+        0.5239999294281006,
+        2.7920000553131104
+      ],
+      [
+        0.5239999294281006,
+        2.7920000553131104
+      ]
+    ],
+    "joint_pos_limits_source": "robot.data.joint_pos_limits",
+    "physx_gains_at_setup": {
+      "data_joint_damping": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "data_joint_stiffness": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "view_dof_dampings": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "view_dof_stiffnesses": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "wrapper_clip_actions": null
+  },
+  "inspection_error": null,
+  "joint_order": "robot.joint_names (articulation order); the V12 action term order is mapped through its _joint_ids",
+  "mode": "off",
+  "module": {
+    "body_sha256": "7621644a401868e65fe2046c46c43ec181a18b2844194351e3c0fe94db1716e2",
+    "path": ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/stance_hold.py",
+    "sha256": "e2c91cee6cae788f7092014a12449060d94fcaefbc869055ae57cc623e30ec2e"
+  },
+  "schema_version": 1,
+  "torque_clip_basis": "robot.data.computed_torque vs robot.data.applied_torque read after the control step: the last physics substep only",
+  "validation_problems": []
+}

@@ -1,0 +1,346 @@
+{
+  "accepted_summary_statuses": [
+    "EXTERNAL_EPISODE_FINISHED",
+    "DURATION_REACHED"
+  ],
+  "camera_heading_mode": "initial",
+  "case": "scripted_walk",
+  "claim": "scripted-walk patched runner plus real Foxy bridge; frozen command script; no navigation",
+  "command_script_sha256": "437f7ee77116d14f12921d2abec08d64bb6098fa0aa2b99bb9650bd1c2e52b76",
+  "finish_after_sim_seconds": 20.0,
+  "finish_request": {
+    "backend_terminal_status": "FINISHED",
+    "note": "stand-only qualification finish after >=20 sim seconds",
+    "observed_run_epoch_ns": 1789669139474118568,
+    "request_id": "stand-finish-walk_20260917T181650Z_hold_auto_xfade2s",
+    "requested_at_monotonic_ns": 182572104751481,
+    "run_id": "walk_20260917T181650Z_hold_auto_xfade2s",
+    "schema_version": 1
+  },
+  "finish_request_snapshot_sim_time_s": 20.01999955251813,
+  "foxy_bridge": true,
+  "isaac_run": true,
+  "motion_publisher_started": false,
+  "passed": true,
+  "physical_actuation": false,
+  "runner_exit_code": 0,
+  "scan_started": false,
+  "stance_entry_kd": "xfade2s",
+  "stance_hold": "auto",
+  "summary": {
+    "camera_heading_mode": "initial",
+    "case": "scripted_walk",
+    "case_failed": false,
+    "max_admitted_command_norm_mps": 0.6,
+    "max_horizontal_speed_mps": 0.6435937940102929,
+    "record_count": 1053,
+    "scripted_walk_sha256": "437f7ee77116d14f12921d2abec08d64bb6098fa0aa2b99bb9650bd1c2e52b76",
+    "sim_seconds": 21.059999529272318,
+    "stance_hold": {
+      "entry_kd": "xfade2s",
+      "failure": null,
+      "fsm": {
+        "constants": {
+          "balance_band": [
+            0.35,
+            0.65
+          ],
+          "balance_shares": [
+            "FL+FR",
+            "FL+HL",
+            "FL+HR"
+          ],
+          "base_kd": 0.5,
+          "base_kp": 20.0,
+          "command_deadband": 0.001,
+          "disturbance_dwell_s": 0.25,
+          "entry_crossfade_blend": "smoothstep",
+          "entry_crossfade_rule": "w = smoothstep((t - t_entry) / T_x); Kp = (1 - w) Kp0 + w HOLD_KP; target = ((1 - w) Kp0 P + w HOLD_KP H) / Kp; Kd = HOLD_KD from the entry step on; P = this step's policy target, H = the torque-matched seed at entry, Kp0 = applied_kp at entry; w = 0 gives P with Kp0; t - t_entry >= T_x gives exactly H with HOLD_KP and HOLD_KD (PRD D6)",
+          "entry_crossfade_s": {
+            "xfade1s": 1.0,
+            "xfade2s": 2.0
+          },
+          "entry_foot_force_n": 10.0,
+          "entry_grace_rule": "automatic arming (RL -> STAND_SETTLING) needs now_s >= entry_grace_s (episode sim time) for the listed variants; before that the mode stays RL with reason entry_grace (PRD D6; precedent MJ FIXED_STAND_BOOT_GRACE_S 1.0 s)",
+          "entry_grace_s": 1.0,
+          "entry_grace_variants": [
+            "xfade1s",
+            "xfade2s"
+          ],
+          "entry_kd_modes": {
+            "precedent": "MJ BOOT_LANDING_KD 2.5 over FIXED_STAND_BOOT_GRACE_S 1.0 s (PRD D5)",
+            "ramp": "Kd follows the Kp ramp (entry_ramp_rule)",
+            "step1": "Kd = HOLD_KD from the entry step on",
+            "step2p5": "Kd = entry_landing_kd from the entry step until entry_ramp_s, then entry_landing_kd + (HOLD_KD - entry_landing_kd) smoothstep((t - t_entry - entry_ramp_s) / (transition_s - entry_ramp_s)); exactly HOLD_KD from FIXED_STAND on",
+            "xfade1s": "crossfade entry over 1.0 s (entry_crossfade_rule); Kd = HOLD_KD from the entry step on",
+            "xfade2s": "crossfade entry over 2.0 s (entry_crossfade_rule); Kd = HOLD_KD from the entry step on"
+          },
+          "entry_landing_kd": 2.5,
+          "entry_ramp_blend": "smoothstep",
+          "entry_ramp_rule": "u = smoothstep((t - t_entry) / entry_ramp_s); Kp = Kp0 + (HOLD_KP - Kp0) u; Kd = Kd0 + (HOLD_KD - Kd0) u; target = q0 + (Kp0 / Kp) (T0 - q0); q0, T0, Kp0, Kd0 = joint_pos, applied_target, applied_kp, applied_kd at entry (PRD D4)",
+          "entry_ramp_s": 0.5,
+          "entry_ramp_variants": [
+            "ramp",
+            "step1",
+            "step2p5"
+          ],
+          "foot_order": [
+            "FL",
+            "FR",
+            "HL",
+            "HR"
+          ],
+          "hold_contact_n": 1.0,
+          "hold_kd": 1.0,
+          "hold_kp": 60.0,
+          "reentry_lockout_s": 0.5,
+          "reference": "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py LocalMotionFSM stand path (commit fd751b8b)",
+          "rejoin_blend": "smoothstep",
+          "rejoin_s": 0.25,
+          "seed": "q + (applied_kp / HOLD_KP) * (applied_target - q)",
+          "settle_angular_speed_max_radps": 0.5,
+          "settle_dwell_s": 0.25,
+          "settle_linear_speed_max_mps": 0.15,
+          "settle_timeout_s": 10.0,
+          "tilt_max_deg": 10.0,
+          "transition_s": 2.0
+        },
+        "counters": {
+          "disturbance_exits": 0,
+          "entries": 3,
+          "entry_ramps_complete": 3,
+          "fixed_stand": 3,
+          "rejoin_complete": 2,
+          "rejoins": 2,
+          "settle_cancels": 0,
+          "settle_starts": 3,
+          "settle_timeouts": 0,
+          "support_balance_blocks": 1,
+          "updates": 1053
+        },
+        "entry_kd": "xfade2s",
+        "failure": null,
+        "joint_limits_applied": true,
+        "last_entry": {
+          "applied_target_t0": [
+            0.04981132596731186,
+            -0.07711528986692429,
+            0.26524627208709717,
+            -0.1382215917110443,
+            -0.8790248557925224,
+            -0.8378930501639843,
+            -0.9116707518696785,
+            -1.1376155614852905,
+            1.5271794870495796,
+            1.4234535247087479,
+            1.436936765909195,
+            1.5142990127205849
+          ],
+          "dwell_samples": 14,
+          "entry_kd": "xfade2s",
+          "entry_ramp_complete_t_s": 17.319999612867832,
+          "entry_ramp_s": 2.0,
+          "foot_forces_n": [
+            25.084218978881882,
+            28.68508911132813,
+            33.60854721069357,
+            32.64871597290058
+          ],
+          "kd0_mean": 0.5,
+          "kp0_mean": 20.0,
+          "q0": [
+            0.1372375786304474,
+            -0.021206995472311974,
+            0.15034553408622742,
+            -0.12238986790180206,
+            -0.9849950671195984,
+            -0.7823017835617065,
+            -0.8505021929740906,
+            -1.1869088411331177,
+            1.6203393936157227,
+            1.646978497505188,
+            1.7125234603881836,
+            1.7156246900558472
+          ],
+          "seed_minus_t0_max_abs": 0.18372446298599243,
+          "stiffness_torque_max_abs_nm": 5.511733889579773,
+          "support_shares": [
+            0.5062029223155935,
+            0.5060910596346073,
+            0.5410113087919761
+          ],
+          "t0_minus_q0_max_abs": 0.27558669447898865,
+          "t_s": 15.29999965801835
+        },
+        "mode": "FIXED_STAND",
+        "mode_time_s": {
+          "FIXED_STAND": 6.939999844878912,
+          "REJOIN": 0.5199999883770943,
+          "RL": 5.979999866336584,
+          "STAND_SETTLING": 1.5399999655783176,
+          "STAND_TRANSITION": 6.059999864548445
+        },
+        "progress": 1.0,
+        "reason": "fixed_stand_active",
+        "setting": "auto",
+        "transition_counts": {
+          "FIXED_STAND->REJOIN": 2,
+          "REJOIN->RL": 2,
+          "RL->STAND_SETTLING": 3,
+          "STAND_SETTLING->STAND_TRANSITION": 3,
+          "STAND_TRANSITION->FIXED_STAND": 3
+        },
+        "transitions": [
+          {
+            "from": "RL",
+            "reason": "waiting_for_quiet_four_contact",
+            "t_s": 1.0199999772012234,
+            "to": "STAND_SETTLING"
+          },
+          {
+            "from": "STAND_SETTLING",
+            "reason": "quiet_four_contact_confirmed",
+            "t_s": 1.2799999713897705,
+            "to": "STAND_TRANSITION"
+          },
+          {
+            "from": "STAND_TRANSITION",
+            "reason": "fixed_stand_active",
+            "t_s": 3.299999926239252,
+            "to": "FIXED_STAND"
+          },
+          {
+            "from": "FIXED_STAND",
+            "reason": "new_command_rejoin",
+            "t_s": 4.019999910145998,
+            "to": "REJOIN"
+          },
+          {
+            "from": "REJOIN",
+            "reason": "rejoin_complete",
+            "t_s": 4.279999904334545,
+            "to": "RL"
+          },
+          {
+            "from": "RL",
+            "reason": "waiting_for_quiet_four_contact",
+            "t_s": 7.019999843090773,
+            "to": "STAND_SETTLING"
+          },
+          {
+            "from": "STAND_SETTLING",
+            "reason": "quiet_four_contact_confirmed",
+            "t_s": 7.519999831914902,
+            "to": "STAND_TRANSITION"
+          },
+          {
+            "from": "STAND_TRANSITION",
+            "reason": "fixed_stand_active",
+            "t_s": 9.539999786764383,
+            "to": "FIXED_STAND"
+          },
+          {
+            "from": "FIXED_STAND",
+            "reason": "new_command_rejoin",
+            "t_s": 12.019999731332064,
+            "to": "REJOIN"
+          },
+          {
+            "from": "REJOIN",
+            "reason": "rejoin_complete",
+            "t_s": 12.27999972552061,
+            "to": "RL"
+          },
+          {
+            "from": "RL",
+            "reason": "waiting_for_quiet_four_contact",
+            "t_s": 14.51999967545271,
+            "to": "STAND_SETTLING"
+          },
+          {
+            "from": "STAND_SETTLING",
+            "reason": "quiet_four_contact_confirmed",
+            "t_s": 15.29999965801835,
+            "to": "STAND_TRANSITION"
+          },
+          {
+            "from": "STAND_TRANSITION",
+            "reason": "fixed_stand_active",
+            "t_s": 17.319999612867832,
+            "to": "FIXED_STAND"
+          }
+        ],
+        "transitions_dropped": 0
+      },
+      "gain_readback_max_abs_error": 1.9020444170791961e-06,
+      "gain_writes": 332,
+      "mode": "auto",
+      "module_sha256": "9a97879a5d5ed2f7c9c3e327c1193b1c42cf079eaaf073a855afad53a7dbc306",
+      "physx_after_first_gain_write": {
+        "data_joint_damping": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "data_joint_stiffness": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "problems": [],
+        "view_dof_dampings": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "view_dof_stiffnesses": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "row_error_count": 0,
+      "row_last_error": null,
+      "setup_record": "stance_hold_setup.json"
+    },
+    "status": "EXTERNAL_EPISODE_FINISHED",
+    "travel_xy_m": 3.1251625660380404
+  },
+  "summary_status": "EXTERNAL_EPISODE_FINISHED"
+}

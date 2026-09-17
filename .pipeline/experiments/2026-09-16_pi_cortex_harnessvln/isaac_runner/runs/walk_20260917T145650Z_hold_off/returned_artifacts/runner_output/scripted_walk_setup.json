@@ -1,0 +1,72 @@
+{
+  "case": "scripted_walk",
+  "command_path": "the scripted command replaces the TCP command where stand_probe zeroes it, before the unchanged admission norm check; base_velocity term.commands, the post-step command parity and policy observation checks, metrics admitted_command, current_command.json applied/admitted command, the stance hold and the external finish dwell all use it; the TCP snapshot is still read and recorded as raw_command and command_stale/reason",
+  "command_script": {
+    "bytes": 724,
+    "copy": "command_script.json",
+    "sha256": "437f7ee77116d14f12921d2abec08d64bb6098fa0aa2b99bb9650bd1c2e52b76",
+    "source_path": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/walk_20260917T145650Z_hold_off/inputs/command_script.json"
+  },
+  "module": {
+    "body_sha256": "ff7c9b108539e1a012deca0fd817aac1749350e55fc55256596a1a223f9b7a30",
+    "path": ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/command_script.py",
+    "sha256": "e95e61002732e7463f1e7ba1687c6dba50b557690e37b5fd7de79049f3cfecdd"
+  },
+  "schema_version": 1,
+  "scope_command_script_sha256": "437f7ee77116d14f12921d2abec08d64bb6098fa0aa2b99bb9650bd1c2e52b76",
+  "script": {
+    "limits": {
+      "max_horizontal_norm": 1.0,
+      "max_vx": 1.0,
+      "max_vy": 0.35,
+      "max_wz": 1.0
+    },
+    "name": "walk_stop_start_stop_v1",
+    "note": "PRD D5 (Dr Sun, 2026-09-17), forward only: 0-4 s zero; 4-7 s vx 0.6 m/s; 7-12 s zero; 12-14.5 s vx 0.6 m/s; 14.5 s onward zero. The stand launcher writes the finish request at 20 s. About 3.3 m commanded along the two-goal route corridor.",
+    "schema_version": 1,
+    "segments": [
+      {
+        "index": 0,
+        "label": "stand_initial",
+        "t_start_s": 0.0,
+        "vx": 0.0,
+        "vy": 0.0,
+        "wz": 0.0
+      },
+      {
+        "index": 1,
+        "label": "walk_1",
+        "t_start_s": 4.0,
+        "vx": 0.6,
+        "vy": 0.0,
+        "wz": 0.0
+      },
+      {
+        "index": 2,
+        "label": "stop_1",
+        "t_start_s": 7.0,
+        "vx": 0.0,
+        "vy": 0.0,
+        "wz": 0.0
+      },
+      {
+        "index": 3,
+        "label": "walk_2",
+        "t_start_s": 12.0,
+        "vx": 0.6,
+        "vy": 0.0,
+        "wz": 0.0
+      },
+      {
+        "index": 4,
+        "label": "stop_2",
+        "t_start_s": 14.5,
+        "vx": 0.0,
+        "vy": 0.0,
+        "wz": 0.0
+      }
+    ],
+    "time_eps_s": 0.0001
+  },
+  "selection_rule": "segment i applies from the first control step whose loop-top sim_time (Isaac time minus run_clock.simulation_origin_s, before wrapped.step) is at least t_start_s - 0.0001 s; metrics.jsonl rows record it as script_segment"
+}

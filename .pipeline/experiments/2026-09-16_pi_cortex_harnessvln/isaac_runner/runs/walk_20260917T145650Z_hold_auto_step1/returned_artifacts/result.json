@@ -1,0 +1,327 @@
+{
+  "accepted_summary_statuses": [
+    "EXTERNAL_EPISODE_FINISHED",
+    "DURATION_REACHED"
+  ],
+  "camera_heading_mode": "initial",
+  "case": "scripted_walk",
+  "claim": "scripted-walk patched runner plus real Foxy bridge; frozen command script; no navigation",
+  "command_script_sha256": "437f7ee77116d14f12921d2abec08d64bb6098fa0aa2b99bb9650bd1c2e52b76",
+  "finish_after_sim_seconds": 20.0,
+  "finish_request": {
+    "backend_terminal_status": "FINISHED",
+    "note": "stand-only qualification finish after >=20 sim seconds",
+    "observed_run_epoch_ns": 1789657238443926811,
+    "request_id": "stand-finish-walk_20260917T145650Z_hold_auto_step1",
+    "requested_at_monotonic_ns": 170671018688441,
+    "run_id": "walk_20260917T145650Z_hold_auto_step1",
+    "schema_version": 1
+  },
+  "finish_request_snapshot_sim_time_s": 20.01999955251813,
+  "foxy_bridge": true,
+  "isaac_run": true,
+  "motion_publisher_started": false,
+  "passed": true,
+  "physical_actuation": false,
+  "runner_exit_code": 0,
+  "scan_started": false,
+  "stance_entry_kd": "step1",
+  "stance_hold": "auto",
+  "summary": {
+    "camera_heading_mode": "initial",
+    "case": "scripted_walk",
+    "case_failed": false,
+    "max_admitted_command_norm_mps": 0.6,
+    "max_horizontal_speed_mps": 0.628900340049948,
+    "record_count": 1053,
+    "scripted_walk_sha256": "437f7ee77116d14f12921d2abec08d64bb6098fa0aa2b99bb9650bd1c2e52b76",
+    "sim_seconds": 21.059999529272318,
+    "stance_hold": {
+      "entry_kd": "step1",
+      "failure": null,
+      "fsm": {
+        "constants": {
+          "balance_band": [
+            0.35,
+            0.65
+          ],
+          "balance_shares": [
+            "FL+FR",
+            "FL+HL",
+            "FL+HR"
+          ],
+          "base_kd": 0.5,
+          "base_kp": 20.0,
+          "command_deadband": 0.001,
+          "disturbance_dwell_s": 0.25,
+          "entry_foot_force_n": 10.0,
+          "entry_kd_modes": {
+            "precedent": "MJ BOOT_LANDING_KD 2.5 over FIXED_STAND_BOOT_GRACE_S 1.0 s (PRD D5)",
+            "ramp": "Kd follows the Kp ramp (entry_ramp_rule)",
+            "step1": "Kd = HOLD_KD from the entry step on",
+            "step2p5": "Kd = entry_landing_kd from the entry step until entry_ramp_s, then entry_landing_kd + (HOLD_KD - entry_landing_kd) smoothstep((t - t_entry - entry_ramp_s) / (transition_s - entry_ramp_s)); exactly HOLD_KD from FIXED_STAND on"
+          },
+          "entry_landing_kd": 2.5,
+          "entry_ramp_blend": "smoothstep",
+          "entry_ramp_rule": "u = smoothstep((t - t_entry) / entry_ramp_s); Kp = Kp0 + (HOLD_KP - Kp0) u; Kd = Kd0 + (HOLD_KD - Kd0) u; target = q0 + (Kp0 / Kp) (T0 - q0); q0, T0, Kp0, Kd0 = joint_pos, applied_target, applied_kp, applied_kd at entry (PRD D4)",
+          "entry_ramp_s": 0.5,
+          "foot_order": [
+            "FL",
+            "FR",
+            "HL",
+            "HR"
+          ],
+          "hold_contact_n": 1.0,
+          "hold_kd": 1.0,
+          "hold_kp": 60.0,
+          "reentry_lockout_s": 0.5,
+          "reference": "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py LocalMotionFSM stand path (commit fd751b8b)",
+          "rejoin_blend": "smoothstep",
+          "rejoin_s": 0.25,
+          "seed": "q + (applied_kp / HOLD_KP) * (applied_target - q)",
+          "settle_angular_speed_max_radps": 0.5,
+          "settle_dwell_s": 0.25,
+          "settle_linear_speed_max_mps": 0.15,
+          "settle_timeout_s": 10.0,
+          "tilt_max_deg": 10.0,
+          "transition_s": 2.0
+        },
+        "counters": {
+          "disturbance_exits": 0,
+          "entries": 3,
+          "entry_ramps_complete": 3,
+          "fixed_stand": 3,
+          "rejoin_complete": 2,
+          "rejoins": 2,
+          "settle_cancels": 0,
+          "settle_starts": 3,
+          "settle_timeouts": 0,
+          "support_balance_blocks": 1,
+          "updates": 1053
+        },
+        "entry_kd": "step1",
+        "failure": null,
+        "joint_limits_applied": true,
+        "last_entry": {
+          "applied_target_t0": [
+            0.0851782038807869,
+            -0.05403496325016022,
+            0.25751087069511414,
+            -0.15393002331256866,
+            -0.8762429431080818,
+            -0.853349331766367,
+            -0.8918398916721344,
+            -1.188472032546997,
+            1.507345624268055,
+            1.4118421226739883,
+            1.419703170657158,
+            1.5287365168333054
+          ],
+          "dwell_samples": 14,
+          "entry_kd": "step1",
+          "entry_ramp_complete_t_s": 15.79999964684248,
+          "entry_ramp_s": 0.5,
+          "foot_forces_n": [
+            25.208219528198327,
+            29.023319244384833,
+            36.59932708740245,
+            25.275615692138693
+          ],
+          "kd0_mean": 0.5,
+          "kp0_mean": 20.0,
+          "q0": [
+            0.13395491242408752,
+            -0.016888456419110298,
+            0.14963434636592865,
+            -0.13032346963882446,
+            -0.9558451771736145,
+            -0.8010794520378113,
+            -0.837841808795929,
+            -1.1688655614852905,
+            1.6187262535095215,
+            1.6379142999649048,
+            1.709567666053772,
+            1.7245187759399414
+          ],
+          "seed_minus_t0_max_abs": 0.19324299693107605,
+          "stiffness_torque_max_abs_nm": 5.7972899079322815,
+          "support_shares": [
+            0.5005695620915263,
+            0.506960084628854,
+            0.54917902095538
+          ],
+          "t0_minus_q0_max_abs": 0.2898644953966141,
+          "t_s": 15.279999658465385
+        },
+        "mode": "FIXED_STAND",
+        "mode_time_s": {
+          "FIXED_STAND": 7.879999823868275,
+          "REJOIN": 0.5199999883770943,
+          "RL": 4.979999888688326,
+          "STAND_SETTLING": 1.5999999642372131,
+          "STAND_TRANSITION": 6.059999864548445
+        },
+        "progress": 1.0,
+        "reason": "fixed_stand_active",
+        "setting": "auto",
+        "transition_counts": {
+          "FIXED_STAND->REJOIN": 2,
+          "REJOIN->RL": 2,
+          "RL->STAND_SETTLING": 3,
+          "STAND_SETTLING->STAND_TRANSITION": 3,
+          "STAND_TRANSITION->FIXED_STAND": 3
+        },
+        "transitions": [
+          {
+            "from": "RL",
+            "reason": "waiting_for_quiet_four_contact",
+            "t_s": 0.019999999552965164,
+            "to": "STAND_SETTLING"
+          },
+          {
+            "from": "STAND_SETTLING",
+            "reason": "quiet_four_contact_confirmed",
+            "t_s": 0.3999999910593033,
+            "to": "STAND_TRANSITION"
+          },
+          {
+            "from": "STAND_TRANSITION",
+            "reason": "fixed_stand_active",
+            "t_s": 2.419999945908785,
+            "to": "FIXED_STAND"
+          },
+          {
+            "from": "FIXED_STAND",
+            "reason": "new_command_rejoin",
+            "t_s": 4.019999910145998,
+            "to": "REJOIN"
+          },
+          {
+            "from": "REJOIN",
+            "reason": "rejoin_complete",
+            "t_s": 4.279999904334545,
+            "to": "RL"
+          },
+          {
+            "from": "RL",
+            "reason": "waiting_for_quiet_four_contact",
+            "t_s": 7.019999843090773,
+            "to": "STAND_SETTLING"
+          },
+          {
+            "from": "STAND_SETTLING",
+            "reason": "quiet_four_contact_confirmed",
+            "t_s": 7.479999832808971,
+            "to": "STAND_TRANSITION"
+          },
+          {
+            "from": "STAND_TRANSITION",
+            "reason": "fixed_stand_active",
+            "t_s": 9.499999787658453,
+            "to": "FIXED_STAND"
+          },
+          {
+            "from": "FIXED_STAND",
+            "reason": "new_command_rejoin",
+            "t_s": 12.019999731332064,
+            "to": "REJOIN"
+          },
+          {
+            "from": "REJOIN",
+            "reason": "rejoin_complete",
+            "t_s": 12.27999972552061,
+            "to": "RL"
+          },
+          {
+            "from": "RL",
+            "reason": "waiting_for_quiet_four_contact",
+            "t_s": 14.51999967545271,
+            "to": "STAND_SETTLING"
+          },
+          {
+            "from": "STAND_SETTLING",
+            "reason": "quiet_four_contact_confirmed",
+            "t_s": 15.279999658465385,
+            "to": "STAND_TRANSITION"
+          },
+          {
+            "from": "STAND_TRANSITION",
+            "reason": "fixed_stand_active",
+            "t_s": 17.299999613314867,
+            "to": "FIXED_STAND"
+          }
+        ],
+        "transitions_dropped": 0
+      },
+      "gain_readback_max_abs_error": 1.8212890111612978e-06,
+      "gain_writes": 107,
+      "mode": "auto",
+      "module_sha256": "e2c91cee6cae788f7092014a12449060d94fcaefbc869055ae57cc623e30ec2e",
+      "physx_after_first_gain_write": {
+        "data_joint_damping": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "data_joint_stiffness": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "problems": [],
+        "view_dof_dampings": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "view_dof_stiffnesses": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "row_error_count": 0,
+      "row_last_error": null,
+      "setup_record": "stance_hold_setup.json"
+    },
+    "status": "EXTERNAL_EPISODE_FINISHED",
+    "travel_xy_m": 3.1643771545644515
+  },
+  "summary_status": "EXTERNAL_EPISODE_FINISHED"
+}
