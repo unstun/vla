@@ -814,6 +814,95 @@ class StanceHoldPatchTests(unittest.TestCase):
         off = self.module._stance_hold_setup("off", *fake_isaac()[:3], self.tmp)
         self.assertEqual(self.module._stance_hold_summary(off)["entry_kd"], "ramp")
 
+    def test_crossfade_variants_in_the_runner_glue(self):
+        """PRD D6: landing grace, Kd-only entry write, live policy blend, exact hold at T_x."""
+        import numpy as np
+
+        def action(step):
+            return 0.1 + 0.08 * math.sin(0.5 * step)
+
+        for variant, duration in (("xfade1s", 1.0), ("xfade2s", 2.0)):
+            with self.subTest(variant=variant):
+                env, robot, wrapped, contact, term = fake_isaac()
+                out = self.tmp / variant
+                out.mkdir()
+                runtime = self.module._stance_hold_setup("auto", env, robot, wrapped, out, entry_kd=variant)
+                record = json.loads((out / "stance_hold_setup.json").read_text())
+                self.assertEqual(record["entry_kd"], variant)
+                self.assertEqual(record["constants"]["entry_crossfade_s"][variant], duration)
+                self.assertEqual((record["constants"]["entry_grace_s"], record["constants"]["entry_grace_variants"]),
+                                 (1.0, ["xfade1s", "xfade2s"]))
+                hip, knee = robot.actuators["Hip"], robot.actuators["Knee"]
+                q = robot.data.joint_pos[0].numpy().astype(np.float64)
+                rows = []
+                while not rows or rows[-1]["row"]["stance_mode"] != "STAND_TRANSITION":
+                    self.assertLess(len(rows), 90)
+                    rows += self.drive(runtime, env, robot, contact, term, 1, action_value=action(len(rows)),
+                                       start=len(rows))
+                entry = len(rows) - 1
+                # Landing grace: RL with reason entry_grace below 1.0 s of episode sim time
+                # (drive() passes 0.02 * (step + 1)); then a 0.25 s settle dwell.
+                grace = [r for r in rows if r["now"] < 1.0 - 1e-9]
+                self.assertEqual(len(grace), 49)
+                self.assertEqual({(r["row"]["stance_mode"], r["row"]["stance_reason"]) for r in grace},
+                                 {("RL", "entry_grace")})
+                self.assertAlmostEqual(rows[entry]["now"], 1.26)
+                for r in rows[:entry]:
+                    self.assertIs(r["applied"], r["actions"])
+                    self.assertFalse(r["row"]["stance_gains_written"])
+                # Entry step: this step's policy target at Kp 20 with Kd 1, a Kd-only write.
+                e = rows[entry]
+                self.assertIsNot(e["applied"], e["actions"])
+                policy_now = processed_robot_target(term, e["actions"])
+                np.testing.assert_allclose(e["target"], policy_now, atol=2e-6)
+                self.assertGreater(float(np.max(np.abs(policy_now - rows[entry - 1]["target"]))), 1e-3)
+                self.assertEqual(e["row"]["stance_reason"], "quiet_four_contact_confirmed")
+                self.assertTrue(e["row"]["stance_gains_written"])
+                self.assertEqual(runtime["gain_writes"], 1)
+                self.assertEqual((e["row"]["applied_kp_mean"], e["row"]["applied_kd_mean"]), (20.0, 1.0))
+                self.assertTrue(torch_all_equal(hip.stiffness, 20.0) and torch_all_equal(knee.stiffness, 20.0))
+                self.assertTrue(torch_all_equal(hip.damping, 1.0) and torch_all_equal(knee.damping, 1.0))
+                # Torque-matched seed from the entry values, in robot joint order.
+                seed = q + (20.0 / 60.0) * (np.asarray(rows[entry - 1]["row"]["applied_target"]) - q)
+                for _ in range(101):
+                    rows += self.drive(runtime, env, robot, contact, term, 1, action_value=action(len(rows)),
+                                       start=len(rows))
+                steps = int(round(duration / 0.02))
+                for r in rows[entry + 1: entry + steps]:
+                    row = r["row"]
+                    self.assertEqual(row["stance_reason"], "entry_crossfade")
+                    self.assertTrue(row["stance_gains_written"])
+                    self.assertEqual(row["applied_kd_mean"], 1.0)
+                    kp = row["applied_kp_mean"]
+                    w = (kp - 20.0) / 40.0
+                    self.assertTrue(0.0 < w < 1.0)
+                    policy = processed_robot_target(term, r["actions"])
+                    applied = np.asarray(row["applied_target"])
+                    np.testing.assert_allclose(r["target"], applied, atol=2e-6)
+                    # One PD law equal to the weighted sum of the policy and hold laws.
+                    np.testing.assert_allclose(kp * (applied - q),
+                                               (1.0 - w) * 20.0 * (policy - q) + w * 60.0 * (seed - q), atol=1e-4)
+                done = rows[entry + steps]["row"]
+                self.assertEqual((done["stance_mode"], done["stance_reason"]),
+                                 ("STAND_TRANSITION", "entry_crossfade_complete") if variant == "xfade1s"
+                                 else ("FIXED_STAND", "fixed_stand_active"))
+                np.testing.assert_allclose(done["applied_target"], seed, rtol=0.0, atol=1e-12)
+                np.testing.assert_allclose(rows[entry + steps]["target"], seed, atol=2e-6)
+                modes = [r["row"]["stance_mode"] for r in rows[entry:]]
+                self.assertEqual(modes.count("STAND_TRANSITION"), 100)
+                self.assertEqual(modes[100:], ["FIXED_STAND", "FIXED_STAND"])
+                # Kd at entry, then Kp at every blend step up to and including completion.
+                self.assertEqual(runtime["gain_writes"], steps + 1)
+                self.assertFalse(any(r["row"]["stance_gains_written"] for r in rows[entry + steps + 1:]))
+                self.assertTrue(torch_all_equal(hip.stiffness, 60.0) and torch_all_equal(knee.stiffness, 60.0))
+                self.assertTrue(torch_all_equal(hip.damping, 1.0) and torch_all_equal(knee.damping, 1.0))
+                self.assertEqual(runtime["physx_after_first_gain_write"]["problems"], [])
+                summary = self.module._stance_hold_summary(runtime)
+                self.assertEqual((summary["entry_kd"], summary["fsm"]["entry_kd"]), (variant, variant))
+                self.assertEqual(summary["fsm"]["last_entry"]["entry_ramp_s"], duration)
+                self.assertEqual(summary["fsm"]["counters"]["entry_ramps_complete"], 1)
+                json.dumps(summary)
+
     def test_auto_hold_fails_on_lost_gain_write_and_physx_drift(self):
         env, robot, wrapped, contact, term = fake_isaac(lambda ids, effort: LostWriteActuator(ids, effort))
         runtime = self.module._stance_hold_setup("auto", env, robot, wrapped, self.tmp)
@@ -913,7 +1002,7 @@ class ScriptedWalkPatchTests(unittest.TestCase):
         # The command branch still zeroes stand_probe and leaves other cases alone.
         self.assertIn(materializer.SCRIPTED_WALK_COMMAND_BRANCH, self.data["patched_text"])
         self.assertEqual(self.data["patched_text"].count("script_segment, command = command_script_at("), 1)
-        self.assertEqual(self.module.STANCE_ENTRY_KD_MODES, ("ramp", "step1", "step2p5"))
+        self.assertEqual(self.module.STANCE_ENTRY_KD_MODES, ("ramp", "step1", "step2p5", "xfade1s", "xfade2s"))
         self.assertEqual(self.module.SCRIPTED_WALK_CASE, "scripted_walk")
 
     def test_duration_caps(self):
@@ -933,15 +1022,26 @@ class ScriptedWalkPatchTests(unittest.TestCase):
         self.module._scripted_walk_validate_args(args)
         self.module.validate_run_duration(args.case, 26.0)
         self.module.validate_motion_profile(args)
+        for variant in ("xfade1s", "xfade2s"):
+            parsed = self.walk_args("--stance-hold", "auto", "--stance-entry-kd", variant)
+            self.assertEqual(parsed.stance_entry_kd, variant)
+            self.module._scripted_walk_validate_args(parsed)
+            self.assertEqual(self.module.execution_configuration(parsed)["stance_entry_kd"], variant)
         bad = {
             "requires --command-script": self.parse(*NATIVE_LIMIT_ARGV),
             "only with --case scripted_walk": self.parse("--command-script", str(D5_SCRIPT), case="flat_nominal"),
             "exceeds the runner limit": self.parse("--command-script", str(D5_SCRIPT)),
             "applies only with --stance-hold auto": self.walk_args("--stance-entry-kd", "step1"),
+            "xfade1s applies only with --stance-hold auto": self.walk_args("--stance-entry-kd", "xfade1s"),
+            "xfade2s applies only with --stance-hold auto": self.walk_args("--stance-hold", "off",
+                                                                           "--stance-entry-kd", "xfade2s"),
         }
         for message, parsed in bad.items():
             with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
                 self.module._scripted_walk_validate_args(parsed)
+        help_text = self.module.build_parser().format_help()
+        self.assertIn("xfade1s", help_text)
+        self.assertIn("xfade2s", help_text)
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
             self.walk_args("--camera-heading-mode", "world")
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):

@@ -1,5 +1,7 @@
+import contextlib
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import shlex
@@ -19,7 +21,8 @@ ACTUAL4 = HERE / "two_goal_runs/two_goal_20260916T162236Z_p2b_actual4"
 SCAN_03 = HERE.parent / "p2b_execution/builds/scan_03"
 SCAN_03_REMOTE = "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03"
 NEW_RUN_REQUEST_FIELDS = {"cancel_displacement_m", "cancel_trigger_check", "allow_missing_install_identity", "scan_workspace_gate", "resource_recording",
-                          "remote_only_bulk", "remote_only_bulk_detail", "package_storage", "stance_hold"}
+                          "remote_only_bulk", "remote_only_bulk_detail", "package_storage", "stance_hold",
+                          "stance_entry_kd"}
 # Runner bytes executed by actual4 (external-episode anchors only); see materialize_runner_patch.py.
 ACTUAL4_RUNNER_SHA256 = "e215a6014bf15dc22a3261cb97c3435252b83ce2bde2f042375ae313493470f3"
 RUNNER_REL = "lite3_sim_bridge/run_pct_scan_building.py"
@@ -506,6 +509,7 @@ class ScanGateCancelAndResourceTests(unittest.TestCase):
         self.assertIs(new_request["remote_only_bulk"], False)
         self.assertIsNone(new_request["remote_only_bulk_detail"])
         self.assertEqual(new_request["stance_hold"], "off")
+        self.assertEqual(new_request["stance_entry_kd"], "ramp")
         storage = new_request["package_storage"]
         self.assertEqual(storage["linked_count"] + storage["copied_count"], storage["linked_files_hash_checked"])
         self.assertFalse((local_run / "make_walk_review.py").exists())
@@ -969,6 +973,74 @@ class PackageStorageAndRemoteOnlyTests(unittest.TestCase):
         ])
         with self.assertRaisesRegex(RuntimeError, "--stance-hold 'auto' differs from the prepared package .*'off'"):
             self.m.execute(args, local_run, commands)
+
+    def test_stance_entry_kd_reaches_runner_scope_request_and_runbook(self):
+        import stance_hold
+        self.assertEqual(self.m.STANCE_ENTRY_KD_CHOICES, stance_hold.STANCE_ENTRY_KD_MODES)
+        self.assertEqual(self.m.DEFAULT_STANCE_ENTRY_KD, stance_hold.STANCE_ENTRY_KD_DEFAULT)
+        runner = None
+        for run_id, extra, expected_argv, expected in (
+            ("entry_xfade1s", ["--stance-hold", "auto", "--stance-entry-kd", "xfade1s"],
+             ["--stance-hold", "auto", "--stance-entry-kd", "xfade1s"], "xfade1s"),
+            ("entry_xfade2s", ["--stance-hold", "auto", "--stance-entry-kd", "xfade2s"],
+             ["--stance-hold", "auto", "--stance-entry-kd", "xfade2s"], "xfade2s"),
+            ("entry_auto_default", ["--stance-hold", "auto"], ["--stance-hold", "auto", "--stance-entry-kd", "ramp"],
+             "ramp"),
+            # With the hold off the runner default applies and the argv keeps its previous form.
+            ("entry_off_default", [], ["--stance-hold", "off", "--seed"], "ramp"),
+        ):
+            with self.subTest(run=run_id):
+                _, local_run, commands = self.prepare(run_id, *extra)
+                tokens = shlex.split(commands["run"][-1])
+                argv = json.loads(tokens[tokens.index("--runner-argv-json") + 1])
+                at = argv.index("--stance-hold")
+                self.assertEqual(argv[at:at + len(expected_argv)], expected_argv)
+                self.assertEqual(argv.count("--stance-entry-kd"), 0 if run_id == "entry_off_default" else 1)
+                scope = json.loads((local_run / "inputs/two_goal_scope.json").read_text(encoding="utf-8"))
+                self.assertEqual(scope["execution_configuration"]["stance_entry_kd"], expected)
+                runner = self.m.import_runner(local_run / "bridge" / RUNNER_REL)
+                self.assertEqual(runner.execution_configuration(runner.build_parser().parse_args(argv)),
+                                 scope["execution_configuration"])
+                request = json.loads((local_run / "run_request.json").read_text(encoding="utf-8"))
+                self.assertEqual(request["stance_entry_kd"], expected)
+                runbook = (local_run / "RUNBOOK.md").read_text(encoding="utf-8")
+                if run_id == "entry_off_default":
+                    self.assertNotIn("--stance-entry-kd", runbook)
+                else:
+                    self.assertIn("Entry variant: `--stance-entry-kd %s`" % expected, runbook)
+        self.assertEqual(runner.STANCE_ENTRY_KD_MODES, self.m.STANCE_ENTRY_KD_CHOICES)
+        for extra, message in ((["--stance-entry-kd", "xfade2s"], "xfade2s applies only with --stance-hold auto"),
+                               (["--stance-hold", "off", "--stance-entry-kd", "step1"],
+                                "step1 applies only with --stance-hold auto")):
+            with self.subTest(extra=extra), self.assertRaisesRegex(ValueError, message):
+                self.prepare("entry_refused", *extra)
+            self.assertFalse((self.root / "runs" / "entry_refused").exists())
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            self.m.build_parser().parse_args(["--run-id", "x", "--stance-entry-kd", "xfade3s"])
+        with self.assertRaisesRegex(ValueError, "must be one of"):
+            self.m.stance_entry_kd_flags(types.SimpleNamespace(stance_hold="auto", stance_entry_kd="xfade"))
+        self.assertEqual(self.m.stance_entry_kd_flags(types.SimpleNamespace(stance_hold="off")), [])
+
+    def test_execute_refuses_stance_entry_kd_that_differs_from_package(self):
+        _, local_run, commands = self.prepare("entry_mismatch", "--stance-hold", "auto", "--stance-entry-kd", "xfade1s")
+        base = ["--run-id", "entry_mismatch", "--local-runs-root", str(self.root / "runs"), "--execute",
+                "--lead-authorized-execute", "--remote-scan-workspace", self.remote, "--stance-hold", "auto"]
+        for extra, requested in (([], "ramp"), (["--stance-entry-kd", "xfade2s"], "xfade2s"),
+                                 (["--stance-entry-kd", "step1"], "step1")):
+            args = self.m.build_parser().parse_args(base + extra)
+            with self.subTest(requested=requested), self.assertRaisesRegex(
+                    RuntimeError, "--stance-entry-kd '%s' differs from the prepared package .*'xfade1s'" % requested):
+                self.m.execute(args, local_run, commands)
+        self.assertFalse((local_run / "host_logs").exists())
+        # A package prepared before the flag existed ran the runner default entry (ramp).
+        request_path = local_run / "run_request.json"
+        request = json.loads(request_path.read_text(encoding="utf-8"))
+        del request["stance_entry_kd"]
+        request_path.write_text(json.dumps(request), encoding="utf-8")
+        args = self.m.build_parser().parse_args(base + ["--stance-entry-kd", "xfade1s"])
+        with self.assertRaisesRegex(RuntimeError, "--stance-entry-kd 'xfade1s' differs from the prepared package .*'ramp'"):
+            self.m.execute(args, local_run, commands)
+        self.assertFalse((local_run / "host_logs").exists())
 
     def test_execute_refuses_flag_that_differs_from_package(self):
         args, local_run, commands = self.prepare("flag_mismatch")

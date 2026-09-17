@@ -62,6 +62,40 @@ robot still without the policy's standing jitter, and resume walking without a f
     on measured joint velocity, which is not delayed. Kp still ramps over 0.5 s in all hold-on runs.
   - Selection rule, fixed before the runs: among hold-on variants passing AC5 and AC8, pick the lowest max
     |yaw rate| over all entry windows. If none passes, report and stop. C2 then uses the selected variant.
+- D6 (Dr Sun, 2026-09-17) "yes, go with option 1 and run the walk test". Context:
+  - The C1d walk runs selected no variant: every entry-damping variant failed AC8 b at one or more entries.
+  - Dr Sun asked for published practice before another home-made entry. The survey is
+    `.pipeline/survey/2026-09-17_rl_pd_stance_hold_switch_survey.md`.
+  - No surveyed source changes PD gains at an RL → PD switch. Code keeps the gains and moves the target over 1–2 s
+    (rl_sar Lite3, LimX), switches at a suitable moment (Disney biped, Safe-Stop), or blends controllers.
+  - The body was already quiet before every C1d entry, so a stricter body gate is not the fix.
+
+  Option 1, lead design (details in design.md section 8):
+  - **Entry step.** Only damping changes: Kd goes to 1.0 at once, as in `step1`. Kp stays at the applied value
+    (V12's 20), and the target is V12's live policy target.
+  - **Crossfade.** Over T_x, the applied PD command blends V12's live PD command into the hold's PD command. The
+    weight is w = smoothstep(t / T_x):
+    - Kp = (1 − w)·Kp0 + w·60;
+    - target = ((1 − w)·Kp0·P(t) + w·60·H) / Kp, with P(t) the current policy target and H the torque-matched
+      seed at entry (unchanged).
+    - From T_x on, the hold target and gains are those of FIXED_STAND. Kp therefore rises smoothly as the weight
+      moves, and no torque-preserving target trick is needed at the switch.
+  - **Variants.** Two new values of `--stance-entry-kd`; the flag name is kept from D5. `xfade1s` uses T_x = 1.0 s,
+    the lower end of the 1–2 s moves found in code. `xfade2s` uses T_x = 2.0 s, the whole STAND_TRANSITION.
+  - **Landing grace.** In both new variants, automatic arming (RL → STAND_SETTLING) is allowed only from 1.0 s of
+    episode sim time. The earliest entry is therefore about 1.25 s after spawn. Precedent: MuJoCo
+    `FIXED_STAND_BOOT_GRACE_S` 1.0 s. This is a design choice fixed before the runs. It is not an exclusion of the
+    landing entry: AC8 a still requires FIXED_STAND before 4.0 s, and AC7/AC8 b apply to every entry.
+  - **Unchanged.** The old variants (`ramp`, `step1`, `step2p5`), the thresholds, the command script, the camera
+    and `--stance-hold off`.
+
+  Runs (D3 budget, 5070 Ti host):
+  - Two hold-on scripted-walk runs, `xfade1s` and `xfade2s`, about 3–4 min each.
+  - The hold-off baseline is reused from C1d (`walk_20260917T145650Z_hold_off`). Isaac is deterministic up to the
+    first entry; the report checks this row by row, as a reported item without a threshold.
+  - The D5 selection rule applies unchanged to the two new runs. If neither passes AC5 and AC8, report and stop.
+  - `run_two_goal_pilot.py` gains the `--stance-entry-kd` passthrough, so C2 can use a selected variant. C2 still
+    runs only after the walk verdict is reported.
 
 ## Constraints
 

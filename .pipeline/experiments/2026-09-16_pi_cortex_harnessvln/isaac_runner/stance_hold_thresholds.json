@@ -51,7 +51,7 @@
   },
   "ac8_walk": {
     "added": "2026-09-17 before any scripted-walk run, PRD D5",
-    "run": "case scripted_walk with the frozen command script and --camera-preset side; one --stance-hold off baseline and one or more --stance-hold auto runs (--stance-entry-kd ramp, step1, step2p5); AC5 and AC7 also apply to every run",
+    "run": "case scripted_walk with the frozen command script and --camera-preset side; one --stance-hold off baseline and one or more --stance-hold auto runs (--stance-entry-kd ramp, step1, step2p5, or xfade1s, xfade2s (PRD D6)); AC5 and AC7 also apply to every run",
     "command_script": {
       "path": "command_scripts/walk_stop_start_stop_v1.json",
       "sha256": "437f7ee77116d14f12921d2abec08d64bb6098fa0aa2b99bb9650bd1c2e52b76",
@@ -180,6 +180,14 @@
       "previous_sha256": "12373448a8aee02534b529c69189bc5155bbe13cb0d17b632d260b075e075da5",
       "previous_copy": "stance_hold_thresholds_history/stance_hold_thresholds_12373448.json",
       "frozen_before": "any scripted_walk run"
+    },
+    {
+      "date": "2026-09-17",
+      "change": "ac8_walk.run names the D6 crossfade variants; no limit, window, definition or selection rule changed",
+      "reason": "PRD D6: the C1d walk runs selected no variant, so the entry becomes a 1 s or 2 s crossfade from the policy PD law to the hold with a 1 s landing grace (xfade1s, xfade2s)",
+      "previous_sha256": "683a8ca6d9d26fe4c45af22fc449c1c05525fde9eb0fb3dc4125c4f2831b43b8",
+      "previous_copy": "stance_hold_thresholds_history/stance_hold_thresholds_683a8ca6.json",
+      "frozen_before": "the D6 scripted-walk runs"
     }
   ]
 }

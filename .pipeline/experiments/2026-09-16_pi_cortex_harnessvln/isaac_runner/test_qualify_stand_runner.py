@@ -332,6 +332,39 @@ class ScriptedWalkPackageTests(unittest.TestCase):
                 self.assertIn(text, worker)
             compile(worker, "remote_worker.py", "exec")
 
+    def test_crossfade_walk_packages_carry_the_variant(self):
+        """PRD D6: the xfade variants reach the runner argv, scope and request."""
+        with tempfile.TemporaryDirectory() as tmp:
+            for variant in ("xfade1s", "xfade2s"):
+                with self.subTest(variant=variant):
+                    args, (local_run, commands) = self.prepare(
+                        tmp, "walk_auto_" + variant, *WALK_FLAGS, "--stance-hold", "auto",
+                        "--stance-entry-kd", variant)
+                    argv = runner_argv_from(commands)
+                    self.assertEqual(argv[argv.index("--stance-entry-kd") + 1], variant)
+                    scope = json.loads((local_run / "inputs/stand_scope.json").read_text())
+                    self.assertEqual(scope["stance_entry_kd"], variant)
+                    request = json.loads((local_run / "run_request.json").read_text())
+                    self.assertEqual((request["stance_hold"], request["stance_entry_kd"]), ("auto", variant))
+                    runner = qualify.import_runner(local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py")
+                    parsed = runner.build_parser().parse_args(argv)
+                    self.assertEqual(runner.execution_configuration(parsed), scope["execution_configuration"])
+                    # The packaged script is validated from its local copy; the argv names the remote path.
+                    parsed.command_script = local_run / "inputs/command_script.json"
+                    runner._scripted_walk_validate_args(parsed)
+                    self.assertEqual(runner.stance_hold_constants()["entry_crossfade_s"][variant],
+                                     1.0 if variant == "xfade1s" else 2.0)
+                    # --execute refuses another variant on the same package.
+                    other = qualify.build_parser().parse_args([
+                        "--run-id", "walk_auto_" + variant, "--local-runs-root", str(Path(tmp) / "runs"),
+                        *WALK_FLAGS, "--stance-hold", "auto", "--stance-entry-kd", "step1"])
+                    with self.assertRaisesRegex(RuntimeError, "stance-entry-kd"):
+                        qualify.check_prepared_request(other, local_run)
+            with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                qualify.build_parser().parse_args(["--run-id", "x", "--stance-entry-kd", "xfade3s"])
+            with self.assertRaisesRegex(ValueError, "applies only with --stance-hold auto"):
+                self.prepare(tmp, "walk_refused", *WALK_FLAGS, "--stance-entry-kd", "xfade1s")
+
     def test_hold_off_walk_package_uses_ramp_and_stand_defaults_are_unchanged(self):
         with tempfile.TemporaryDirectory() as tmp:
             _args, (local_run, commands) = self.prepare(tmp, "walk_off", *WALK_FLAGS)

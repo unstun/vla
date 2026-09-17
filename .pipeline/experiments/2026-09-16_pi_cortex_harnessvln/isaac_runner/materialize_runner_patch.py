@@ -13,6 +13,11 @@ scripted-walk anchors (`_scripted_walk_replacements`, PRD D5), which insert
 heading mode and the stance-hold entry damping variants. Every D5 default
 (`--camera-heading-mode body`, `--stance-entry-kd ramp`, no command script)
 keeps the previous control and camera path.
+
+The PRD D6 crossfade variants (`--stance-entry-kd xfade1s|xfade2s`) and their
+landing grace live in `stance_hold.py`; the CLI choices come from its
+`STANCE_ENTRY_KD_MODES`. The runner passes episode sim time as the hold's
+`now_s`, which is the time base of the grace.
 """
 
 from __future__ import annotations
@@ -1337,8 +1342,10 @@ def _scripted_walk_replacements(module: Dict[str, str]) -> List[Dict[str, str]]:
             ),
             "new": (
                 "    parser.add_argument(\"--stance-entry-kd\", choices=STANCE_ENTRY_KD_MODES, default=\"ramp\",\n"
-                "                        help=\"stance hold entry damping: ramp (Kd follows the Kp ramp), step1 \"\n"
-                "                             \"(Kd 1 from entry) or step2p5 (Kd 2.5 from entry, eased to 1 by FIXED_STAND)\")\n"
+                "                        help=\"stance hold entry: ramp (Kd follows the Kp ramp), step1 \"\n"
+                "                             \"(Kd 1 from entry), step2p5 (Kd 2.5 from entry, eased to 1 by FIXED_STAND), \"\n"
+                "                             \"xfade1s or xfade2s (Kd 1 from entry, 1 s or 2 s crossfade from the policy PD \"\n"
+                "                             \"law to the hold, arming after 1 s of sim time; PRD D6)\")\n"
                 "    parser.add_argument(\"--command-script\", type=Path, default=None,\n"
                 "                        help=\"JSON command script; required by and only valid with --case scripted_walk\")\n"
                 "    parser.add_argument(\"--seed\", type=int, default=42)\n"

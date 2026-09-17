@@ -54,6 +54,9 @@ DEFAULT_REMOTE_CHECKPOINT = (
 # The review check p2b_execution/review_two_goal.py requires an absolute 0.4 m.
 CANCEL_DISPLACEMENT_MIN_M = 0.40
 STANCE_HOLD_CHOICES = ("off", "auto")
+# stance_hold.py STANCE_ENTRY_KD_MODES / STANCE_ENTRY_KD_DEFAULT; the launcher tests check the two agree.
+STANCE_ENTRY_KD_CHOICES = ("ramp", "step1", "step2p5", "xfade1s", "xfade2s")
+DEFAULT_STANCE_ENTRY_KD = "ramp"
 CANCEL_GOAL_A_CLEARANCE_MIN_M = 0.30
 GPU_SAMPLE_INTERVAL_S = 1.0
 # --remote-only-bulk leaves exactly these runner outputs (paths relative to
@@ -609,6 +612,7 @@ def build_runner_argv(args, remote_run: str, run_id: str, pilot: dict) -> List[s
         "--external-finish-stillness-seconds", str(pilot["stop_dwell_sim_seconds"]),
         "--external-status-freshness-seconds", "2.0",
         "--stance-hold", stance_hold_setting(args),
+        *stance_entry_kd_flags(args),
         "--seed", "42",
         "--device", "cuda:0",
     ]
@@ -619,6 +623,28 @@ def stance_hold_setting(args) -> str:
     if value not in STANCE_HOLD_CHOICES:
         raise ValueError("--stance-hold must be one of %s" % (STANCE_HOLD_CHOICES,))
     return value
+
+
+def stance_entry_kd_setting(args) -> str:
+    """Validated --stance-entry-kd; a non-default entry needs --stance-hold auto (as the runner requires)."""
+    value = getattr(args, "stance_entry_kd", DEFAULT_STANCE_ENTRY_KD)
+    if value not in STANCE_ENTRY_KD_CHOICES:
+        raise ValueError("--stance-entry-kd must be one of %s" % (STANCE_ENTRY_KD_CHOICES,))
+    if stance_hold_setting(args) != "auto" and value != DEFAULT_STANCE_ENTRY_KD:
+        raise ValueError("--stance-entry-kd %s applies only with --stance-hold auto" % value)
+    return value
+
+
+def stance_entry_kd_flags(args) -> List[str]:
+    """Runner argv for the entry variant: passed only with --stance-hold auto.
+
+    With --stance-hold off the runner default (ramp) applies and the argv stays as
+    before the flag existed; the scope records the parsed value either way.
+    """
+    value = stance_entry_kd_setting(args)
+    if stance_hold_setting(args) != "auto":
+        return []
+    return ["--stance-entry-kd", value]
 
 
 def make_scope(runner_module, runner_argv: List[str], execution_manifest_sha: str, patched_runner_sha: str, pilot: dict, baseline_scope: dict) -> dict:
@@ -1670,11 +1696,15 @@ def walk_review_remote_script(remote_run: str) -> str:
 
 
 def runbook_text(run_id: str, remote_run: str, cancel_displacement_m: float = CANCEL_DISPLACEMENT_MIN_M,
-                 remote_only_bulk: bool = False, stance_hold: str = "off") -> str:
+                 remote_only_bulk: bool = False, stance_hold: str = "off",
+                 stance_entry_kd: str = DEFAULT_STANCE_ENTRY_KD) -> str:
     text = runbook_base_text(run_id, remote_run, cancel_displacement_m)
     if stance_hold == "auto":
         text += """
 Stance hold (`--stance-hold auto`): the patched runner hands the joints from the V12 policy to a PD stand hold (Kp 60 / Kd 1) after an exactly zero command with a quiet, loaded and balanced four-foot stance, and blends back over 0.25 s when a command arrives (`isaac_runner/stance_hold.py`). The runner writes `runner_output/stance_hold_setup.json`, per-step `stance_*` fields in `metrics.jsonl` and a `stance_hold` summary block. `isaac_runner/analyze_stance_hold.py` reports the AC5 transition checks; the 41 review checks are unchanged.
+"""
+        text += f"""
+Entry variant: `--stance-entry-kd {stance_entry_kd}` (`stance_hold.py` `STANCE_ENTRY_KD_MODES`; recorded in `run_request.json` and the runner summary `stance_hold.entry_kd`).
 """
     if remote_only_bulk:
         text += f"""
@@ -1739,6 +1769,7 @@ def prepare(args) -> Tuple[Path, dict]:
     validate_pilot(pilot)
     cancel_check = cancel_trigger_check(args.cancel_displacement_m, pilot)
     stance_hold = stance_hold_setting(args)
+    stance_entry_kd = stance_entry_kd_setting(args)
     scan_gate = None
     if args.accepted_scan_build_dir:
         scan_gate = build_scan_workspace_gate(
@@ -1791,7 +1822,7 @@ def prepare(args) -> Tuple[Path, dict]:
     write_file(local_run / "pilot_driver.py", pilot_driver_source(), executable=True)
     write_file(local_run / "remote_worker.py", remote_worker_source(), executable=True)
     write_file(local_run / "RUNBOOK.md", runbook_text(run_id, remote_run, cancel_check["cancel_displacement_m"], remote_only_bulk,
-                                                    stance_hold))
+                                                    stance_hold, stance_entry_kd))
 
     v12_runtime_expected = {
         rel.removeprefix("source/v12_runtime/"): digest
@@ -1947,6 +1978,7 @@ def prepare(args) -> Tuple[Path, dict]:
         },
         "package_storage": package_storage,
         "stance_hold": stance_hold,
+        "stance_entry_kd": stance_entry_kd,
     })
     return local_run, commands
 
@@ -2092,6 +2124,14 @@ def execute(args, local_run: Path, commands: dict) -> None:
                 "--stance-hold %r differs from the prepared package (package stance_hold=%r)"
                 % (requested_stance, prepared_stance)
             )
+        # Packages prepared before the flag ran the runner default entry (ramp).
+        prepared_entry_kd = prepared_request.get("stance_entry_kd", DEFAULT_STANCE_ENTRY_KD)
+        requested_entry_kd = getattr(args, "stance_entry_kd", DEFAULT_STANCE_ENTRY_KD)
+        if prepared_entry_kd != requested_entry_kd:
+            raise RuntimeError(
+                "--stance-entry-kd %r differs from the prepared package (package stance_entry_kd=%r)"
+                % (requested_entry_kd, prepared_entry_kd)
+            )
     logs = local_run / "host_logs"
     logs.mkdir(exist_ok=True)
     remote_started = False
@@ -2193,6 +2233,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--stance-hold", choices=STANCE_HOLD_CHOICES, default="off",
         help="Runner stance hold mode passed to the patched runner; auto enables the PD stand hold (stance_hold.py).",
+    )
+    parser.add_argument(
+        "--stance-entry-kd", choices=STANCE_ENTRY_KD_CHOICES, default=DEFAULT_STANCE_ENTRY_KD,
+        help=(
+            "Stance hold entry variant (--stance-hold auto only; passed to the runner then): ramp, step1 or step2p5 "
+            "(PRD D5), or the xfade1s / xfade2s crossfade with a 1 s landing grace (PRD D6)."
+        ),
     )
     parser.add_argument(
         "--allow-missing-install-identity", action="store_true", default=False,

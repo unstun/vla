@@ -31,7 +31,14 @@ applies Kd 2.5 from the entry step and eases it to the hold Kd between the end
 of the ramp and FIXED_STAND. Kd acts on measured joint velocity, which the
 actuator does not delay. Kp and the target follow the ramp in every variant.
 
-Task: .trellis/tasks/09-17-isaac-runner-stance-hold (design.md section 2).
+Crossfade entry variants (PRD D6): `entry_kd="xfade1s"` and `"xfade2s"` replace
+the ramp. Kd is the hold Kd from the entry step on. Over 1 s or 2 s, the applied
+PD law blends V12's live PD law (applied Kp, this step's policy target) into the
+hold's PD law (hold Kp, torque-matched seed). These two variants also arm only
+after a 1.0 s landing grace in episode sim time. The older variants keep their
+behaviour exactly.
+
+Task: .trellis/tasks/09-17-isaac-runner-stance-hold (design.md sections 2, 7 and 8).
 """
 
 # >>> stance_hold runner body begin
@@ -91,7 +98,28 @@ ENTRY_RAMP_S = 0.5
 # FIXED_STAND_BOOT_GRACE_S = 1.0 s touchdown window (MJ:131-140, 1803), where
 # the hold's own Kd 1 let the landing rock the stance. MJ steps back to Kd 1 at
 # the end of its grace; the step2p5 variant eases instead.
-STANCE_ENTRY_KD_MODES = ("ramp", "step1", "step2p5")
+#
+# Crossfade variants (PRD D6, Dr Sun 2026-09-17; lead design, design.md section 8).
+# They do not use the entry ramp. Kd is HOLD_KD from the entry step on. With
+# e = t - t_entry, T_x = ENTRY_CROSSFADE_S[variant] and w = smoothstep(e / T_x):
+#   Kp     = (1 - w) Kp0 + w HOLD_KP
+#   target = ((1 - w) Kp0 P + w HOLD_KP H) / Kp
+# P is this step's policy target and H the torque-matched seed captured at entry.
+# The applied stiffness torque is therefore the weighted sum of the two PD laws,
+# Kp (target - q) = (1 - w) Kp0 (P - q) + w HOLD_KP (H - q), for any q. The entry
+# step (w = 0) outputs P with Kp0; from T_x on the output is exactly H with the
+# hold gains. Precedent: 1-2 s stand moves and controller blends in the survey
+# .pipeline/survey/2026-09-17_rl_pd_stance_hold_switch_survey.md. Each T_x must
+# not exceed TRANSITION_S.
+ENTRY_CROSSFADE_S = {"xfade1s": 1.0, "xfade2s": 2.0}
+# Landing grace (PRD D6): the crossfade variants arm automatically (RL ->
+# STAND_SETTLING) only once the episode sim time reaches ENTRY_GRACE_S; before
+# that the mode stays RL with reason "entry_grace". Precedent: MJ
+# FIXED_STAND_BOOT_GRACE_S = 1.0 s (MJ:131-140). The older variants arm as before.
+ENTRY_GRACE_S = 1.0
+ENTRY_GRACE_VARIANTS = ("xfade1s", "xfade2s")
+STANCE_ENTRY_RAMP_VARIANTS = ("ramp", "step1", "step2p5")
+STANCE_ENTRY_KD_MODES = STANCE_ENTRY_RAMP_VARIANTS + ("xfade1s", "xfade2s")
 STANCE_ENTRY_KD_DEFAULT = "ramp"
 ENTRY_LANDING_KD = 2.5
 # MJ FIXED_STAND_CONTACT_THRESHOLD (MJ:130): hold needs every foot > 1 N.
@@ -150,9 +178,27 @@ def stance_hold_constants() -> Dict[str, object]:
                 "entry_landing_kd + (HOLD_KD - entry_landing_kd) smoothstep((t - t_entry - entry_ramp_s) / "
                 "(transition_s - entry_ramp_s)); exactly HOLD_KD from FIXED_STAND on"
             ),
+            "xfade1s": "crossfade entry over 1.0 s (entry_crossfade_rule); Kd = HOLD_KD from the entry step on",
+            "xfade2s": "crossfade entry over 2.0 s (entry_crossfade_rule); Kd = HOLD_KD from the entry step on",
             "precedent": "MJ BOOT_LANDING_KD 2.5 over FIXED_STAND_BOOT_GRACE_S 1.0 s (PRD D5)",
         },
+        "entry_ramp_variants": list(STANCE_ENTRY_RAMP_VARIANTS),
         "entry_landing_kd": ENTRY_LANDING_KD,
+        "entry_crossfade_s": dict(ENTRY_CROSSFADE_S),
+        "entry_crossfade_blend": "smoothstep",
+        "entry_crossfade_rule": (
+            "w = smoothstep((t - t_entry) / T_x); Kp = (1 - w) Kp0 + w HOLD_KP; "
+            "target = ((1 - w) Kp0 P + w HOLD_KP H) / Kp; Kd = HOLD_KD from the entry step on; "
+            "P = this step's policy target, H = the torque-matched seed at entry, Kp0 = applied_kp at entry; "
+            "w = 0 gives P with Kp0; t - t_entry >= T_x gives exactly H with HOLD_KP and HOLD_KD (PRD D6)"
+        ),
+        "entry_grace_s": ENTRY_GRACE_S,
+        "entry_grace_variants": list(ENTRY_GRACE_VARIANTS),
+        "entry_grace_rule": (
+            "automatic arming (RL -> STAND_SETTLING) needs now_s >= entry_grace_s (episode sim time) for the "
+            "listed variants; before that the mode stays RL with reason entry_grace (PRD D6; precedent MJ "
+            "FIXED_STAND_BOOT_GRACE_S 1.0 s)"
+        ),
         "reference": (
             "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py "
             "LocalMotionFSM stand path (commit fd751b8b)"
@@ -245,6 +291,9 @@ class StanceHold:
         if entry_kd not in STANCE_ENTRY_KD_MODES:
             raise ValueError("entry_kd must be one of %s, got %r" % (STANCE_ENTRY_KD_MODES, entry_kd))
         self.entry_kd = entry_kd
+        # None for the entry-ramp variants; T_x for the crossfade variants (PRD D6).
+        self._crossfade_s = ENTRY_CROSSFADE_S.get(entry_kd)
+        self._entry_grace = entry_kd in ENTRY_GRACE_VARIANTS
         if (joint_lower is None) != (joint_upper is None):
             raise ValueError("joint_lower and joint_upper must be given together")
         self.setting = mode
@@ -386,6 +435,25 @@ class StanceHold:
             return self._landing_kd + (self._hold_kd - self._landing_kd) * blend
         self._fail("unhandled entry_kd variant: " + str(self.entry_kd))
 
+    def _entry_crossfade(self, elapsed_s: float, policy_target):
+        """Target, Kp, Kd and weight of the crossfade entry (PRD D6).
+
+        The end points are exact: weight 0 gives this step's policy target at the
+        applied Kp with the hold Kd, and weight 1 gives the torque-matched seed
+        with the hold gains, which is also the FIXED_STAND output.
+        """
+        duration = self._crossfade_s
+        if elapsed_s + STANCE_TIME_EPS >= duration:
+            return self._hold_target, self._hold_kp, self._hold_kd, 1.0
+        weight = _stance_smoothstep(elapsed_s / duration)
+        if weight <= 0.0:
+            return policy_target, self._entry_kp0, self._hold_kd, 0.0
+        kp = (1.0 - weight) * self._entry_kp0 + weight * self._hold_kp
+        # kp > 0: Kp0 >= 0 is validated, HOLD_KP > 0 and weight > 0.
+        target = ((1.0 - weight) * self._entry_kp0 * policy_target
+                  + weight * self._hold_kp * self._hold_target) / kp
+        return target, kp, self._hold_kd, weight
+
     # -- update ----------------------------------------------------------------
     def update(self, x: HoldInput) -> HoldOutput:
         if self.setting == "off":
@@ -418,7 +486,7 @@ class StanceHold:
         except StanceHoldError as exc:
             self._fail(str(exc))
         if bool(np.any(applied_kp < 0.0) or np.any(applied_kd < 0.0)):
-            # The entry ramp divides by a blend of Kp0 and HOLD_KP.
+            # The entry ramp and the crossfade divide by a blend of Kp0 and HOLD_KP.
             self._fail("applied_kp and applied_kd must not be negative")
         if self._last_now is not None and now < self._last_now - STANCE_TIME_EPS:
             self._fail("now_s went backwards: %.9f < %.9f" % (now, self._last_now))
@@ -428,13 +496,17 @@ class StanceHold:
         self.counters["updates"] += 1
         zero_command = float(np.max(np.abs(command))) <= COMMAND_DEADBAND
 
-        # Automatic arming with zero delay (MJ:1557-1581).
+        # Automatic arming with zero delay (MJ:1557-1581). The crossfade variants
+        # also wait for the landing grace (PRD D6); RL keeps control meanwhile.
         if self.mode == "RL" and zero_command and now >= self._reentry_until:
-            self._set_mode("STAND_SETTLING", "waiting_for_quiet_four_contact", now)
-            self.progress = 0.0
-            self._phase_start = now
-            self._settle_started = None
-            self.counters["settle_starts"] += 1
+            if self._entry_grace and now + STANCE_TIME_EPS < ENTRY_GRACE_S:
+                self.reason = "entry_grace"
+            else:
+                self._set_mode("STAND_SETTLING", "waiting_for_quiet_four_contact", now)
+                self.progress = 0.0
+                self._phase_start = now
+                self._settle_started = None
+                self.counters["settle_starts"] += 1
 
         if self.mode == "STAND_SETTLING":
             # Whole-body settle gate (MJ:1583-1708, per-leg latch path omitted).
@@ -485,7 +557,8 @@ class StanceHold:
                         self._hold_target = joint_pos + (applied_kp / self._hold_kp) * (
                             applied_target - joint_pos
                         )
-                        # Entry gain ramp start point (PRD D4).
+                        # Entry gain ramp start point (PRD D4); Kp0 also weights the
+                        # policy law in the PRD D6 crossfade.
                         self._entry_q0 = joint_pos.copy()
                         self._entry_target0 = applied_target.copy()
                         self._entry_kp0 = applied_kp.copy()
@@ -501,7 +574,7 @@ class StanceHold:
                             "support_shares": [float(v) for v in splits],
                             "dwell_samples": int(self._settle_split_count),
                             "foot_forces_n": [float(v) for v in forces],
-                            "entry_ramp_s": ENTRY_RAMP_S,
+                            "entry_ramp_s": ENTRY_RAMP_S if self._crossfade_s is None else self._crossfade_s,
                             "entry_ramp_complete_t_s": None,
                             "entry_kd": self.entry_kd,
                             "q0": [float(v) for v in joint_pos],
@@ -561,19 +634,25 @@ class StanceHold:
         if self.mode == "STAND_TRANSITION":
             elapsed = now - self._phase_start
             self.progress = _stance_progress(elapsed, TRANSITION_S)
-            ramp = self._entry_ramp(elapsed)
-            ramp = (ramp[0], ramp[1], self._entry_damping(elapsed, ramp[2]), ramp[3])
+            if self._crossfade_s is None:
+                ramp = self._entry_ramp(elapsed)
+                ramp = (ramp[0], ramp[1], self._entry_damping(elapsed, ramp[2]), ramp[3])
+                ramp_reason = "entry_gain_ramp"
+            else:
+                ramp = self._entry_crossfade(elapsed, policy_target)
+                ramp_reason = "entry_crossfade"
             # The entry step (blend 0) keeps the transition reason; later steps
-            # name the ramp so metrics rows show when the hold gains are reached.
+            # name the ramp or crossfade so metrics rows show when the hold gains
+            # are reached.
             if ramp[3] >= 1.0:
-                self.reason = "entry_gain_ramp_complete"
+                self.reason = ramp_reason + "_complete"
                 if not self._entry_ramp_done:
                     self._entry_ramp_done = True
                     self.counters["entry_ramps_complete"] += 1
                     if self.last_entry is not None:
                         self.last_entry["entry_ramp_complete_t_s"] = now
             elif ramp[3] > 0.0:
-                self.reason = "entry_gain_ramp"
+                self.reason = ramp_reason
             if elapsed + STANCE_TIME_EPS >= TRANSITION_S:
                 self._set_mode("FIXED_STAND", "fixed_stand_active", now)
                 self.progress = 1.0

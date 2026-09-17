@@ -49,7 +49,54 @@ substeps, so the entry torque can jump for up to 20 ms. Dr Sun approved the budg
       `step2p5`, and analyzer `walk` (AC8, D5 selection). Thresholds re-frozen before any walk run:
       `683a8ca6d9d26fe4c45af22fc449c1c05525fde9eb0fb3dc4125c4f2831b43b8`. Patched runner `120192be…`. Check GO;
       isaac_runner 188 tests.
-- [ ] C1d Four walk runs (off, ramp, step1, step2p5), then `analyze_stance_hold.py walk`, then a side-by-side video.
+- [x] C1d Four walk runs (off, ramp, step1, step2p5), then `analyze_stance_hold.py walk`, then a side-by-side video.
+      Done 2026-09-17 14:56-15:03 UTC, `isaac_runner/runs/walk_20260917T145650Z_*`: all EXTERNAL_EPISODE_FINISHED, hashes
+      match, no contact, reset or pose write. Report `stance_hold_qualification/walk_ab_20260917T145650Z.json`; video
+      `stance_hold_qualification/walk_ab/walk_ab_side_view.mp4`. **No variant selected** (D5 rule): AC5 passes and
+      AC8 a/c/d pass for all, but AC8 b / AC7 fails. Entry-window max |yaw rate| (landing, stop 1, stop 2):
+      ramp 0.363 / 0.221 / 0.179; step1 0.280 / 0.063 / 0.117; step2p5 0.178 / 0.153 / 0.073 (limit 0.15).
+      While held, the last 2 s of each stop show yaw ≤ 0.005 rad/s (hold off 0.065-0.117). Starts: max pitch in
+      the 1 s after the command 2.7-3.7° (hold off 3.7-5.6°). Travel 2.98-2.99 m (hold off 3.12 m, -4 %).
+      Stopped for Dr Sun.
+- [x] C1e Survey before the next entry change (Dr Sun: look at recent papers and repositories first).
+      `.pipeline/survey/2026-09-17_rl_pd_stance_hold_switch_survey.md` plus three notes in `research/rl_pd_switch_*`.
+      Run-data check: the body was quiet before every entry (angular speed <= 0.17 rad/s), so a stricter body gate
+      is withdrawn as the lead proposal. The next variant waits for Dr Sun's choice.
+- [x] C1f Crossfade entry and landing grace (PRD D6, design.md section 8), local build only:
+      - `stance_hold.py` gets the `xfade1s` / `xfade2s` variants and the grace, with unit tests:
+        - entry step output (P(t), Kp0, Kd 1);
+        - the mid-blend formula and its torque-sum identity;
+        - exact end values at T_x;
+        - FIXED_STAND at 2 s;
+        - grace blocks arming before 1.0 s for the new variants only;
+        - rejoin during the crossfade;
+        - the old variants unchanged.
+      - The materializer, launchers (`qualify_stand_runner.py`, and the `run_two_goal_pilot.py` passthrough),
+        thresholds amendment plus re-freeze, then the check agent.
+- [x] C1g Two walk runs (`xfade1s`, `xfade2s`), host idle check before each. Then:
+      - `analyze_stance_hold.py walk` with the C1d hold-off baseline;
+      - the pre-entry determinism comparison;
+      - the side-by-side video (hold off, step1, xfade1s, xfade2s).
+      Report to Dr Sun; C2 does not start before that.
+      Done 2026-09-17 18:16-18:20 UTC, `isaac_runner/runs/walk_20260917T181650Z_hold_auto_{xfade1s,xfade2s}`:
+      both EXTERNAL_EPISODE_FINISHED, 27/27 returned hashes, no contact, reset, pose write or torque clip.
+      C1f: isaac_runner 202 tests, materializer --check clean, patched runner `0649747e…`, thresholds re-frozen
+      `0be59927…` (descriptive amendment only; `683a8ca6…` archived). Implement and check agents both GO.
+      **Both variants pass AC5, AC7 and AC8; the D5 rule selects `xfade1s`** (tie on the entry maximum 0.087,
+      earlier `--on` argument wins). Report `stance_hold_qualification/walk_d6_20260917T181650Z.json`.
+      Entry-window max |yaw rate| (limit 0.15): xfade1s 0.087 / 0.076 / 0.070; xfade2s 0.087 / 0.080 / 0.074.
+      In both runs every entry-window maximum is the yaw rate already present on the entry row itself (the peak
+      is one to a few steps later but no higher than 0.087), so the switch adds no visible kick. Over the whole
+      2 s transition the numbers are the same, and max |vertical speed| is 0.013-0.022 (limit 0.05).
+      Holds: tail yaw 0.0011-0.0017 rad/s and drift 0.12-0.31 mm at the two walking stops (hold off 0.065-0.117
+      and 1.9-4.3 mm). Starts: max |pitch| 4.27 / 2.28 deg (hold off 5.61 / 3.70); the walk-start yaw peak at
+      4.18 s is 0.196 with the hold and 0.241 without. Travel 3.018 m vs 3.116 m (-3.2 %, limit 20 %).
+      Landing grace: first entry 1.28 s, FIXED_STAND 3.30 s, 0.70 s before the 4.0 s command.
+      Pre-entry determinism: 63 rows identical to the C1d hold-off baseline in both runs
+      (`stance_hold_qualification/pre_entry_d6_20260917T181650Z.json`).
+      Claim-boundary note: with the crossfade the entry step applies V12's own PD law with Kd stepped to 1.0, so
+      AC1's literal torque-continuity clause does not describe the entry step; the torque-matched seed is the
+      exact end point of the blend.
 
 - [x] C1 Stand A/B: `qualify_stand_runner.py`, `stand_probe` 60 s, first `--stance-hold off`, then `auto`; host idle
       check before each run; `analyze_stance_hold.py` gives the AC3 verdict. If AC3 fails, stop and report; C2 does

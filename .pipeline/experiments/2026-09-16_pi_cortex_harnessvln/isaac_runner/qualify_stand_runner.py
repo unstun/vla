@@ -52,7 +52,7 @@ STANCE_HOLD_CHOICES = ("off", "auto")
 CASE_CHOICES = ("stand_probe", "scripted_walk")
 DEFAULT_CASE = "stand_probe"
 # stance_hold.py STANCE_ENTRY_KD_MODES; the materializer tests check the two agree.
-STANCE_ENTRY_KD_CHOICES = ("ramp", "step1", "step2p5")
+STANCE_ENTRY_KD_CHOICES = ("ramp", "step1", "step2p5", "xfade1s", "xfade2s")
 DEFAULT_STANCE_ENTRY_KD = "ramp"
 DEFAULT_DURATION_SECONDS = 8.0
 DEFAULT_FINISH_AFTER_SIM_SECONDS = 2.0
@@ -1229,7 +1229,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--stance-hold", choices=STANCE_HOLD_CHOICES, default="off",
                         help="runner stance hold mode; auto enables the PD stand hold (stance_hold.py)")
     parser.add_argument("--stance-entry-kd", choices=STANCE_ENTRY_KD_CHOICES, default=DEFAULT_STANCE_ENTRY_KD,
-                        help="stance hold entry damping (auto only): ramp, step1 or step2p5 (PRD D5)")
+                        help="stance hold entry (auto only): ramp, step1 or step2p5 (PRD D5), or the "
+                             "xfade1s / xfade2s crossfade with a 1 s landing grace (PRD D6)")
     parser.add_argument("--duration-seconds", type=float, default=DEFAULT_DURATION_SECONDS,
                         help="run duration, at most 60 s (AC3 stand uses 60, the D5 walk 26)")
     parser.add_argument("--finish-after-sim-seconds", type=float, default=DEFAULT_FINISH_AFTER_SIM_SECONDS,

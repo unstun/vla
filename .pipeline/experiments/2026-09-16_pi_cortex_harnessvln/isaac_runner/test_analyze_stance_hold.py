@@ -16,6 +16,8 @@ PREVIOUS_THRESHOLDS = HERE / "stance_hold_thresholds_history/stance_hold_thresho
 PREVIOUS_THRESHOLDS_SHA256 = "fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66"
 AC7_THRESHOLDS = HERE / "stance_hold_thresholds_history/stance_hold_thresholds_12373448.json"
 AC7_THRESHOLDS_SHA256 = "12373448a8aee02534b529c69189bc5155bbe13cb0d17b632d260b075e075da5"
+AC8_THRESHOLDS = HERE / "stance_hold_thresholds_history/stance_hold_thresholds_683a8ca6.json"
+AC8_THRESHOLDS_SHA256 = "683a8ca6d9d26fe4c45af22fc449c1c05525fde9eb0fb3dc4125c4f2831b43b8"
 D5_SCRIPT = HERE / "command_scripts/walk_stop_start_stop_v1.json"
 DT = 0.02
 
@@ -132,6 +134,8 @@ class ThresholdTests(unittest.TestCase):
                           r["still_duration_s"], r["phase_tail_s"], r["start_window_s"]), (0.05, 0.15, 0.5, 2.0, 1.0))
         self.assertIn("lowest max |yaw_rate_radps|", ac8["selection"]["rule"])
         self.assertEqual(loaded["values"]["amendments"][1]["previous_sha256"], AC7_THRESHOLDS_SHA256)
+        self.assertEqual(loaded["values"]["amendments"][2]["previous_sha256"], AC8_THRESHOLDS_SHA256)
+        self.assertIn("xfade1s, xfade2s (PRD D6)", ac8["run"])
 
     def test_amendment_only_adds_ac7_to_the_previous_frozen_file(self):
         self.assertEqual(analyzer.sha256_file(PREVIOUS_THRESHOLDS), PREVIOUS_THRESHOLDS_SHA256)
@@ -150,7 +154,7 @@ class ThresholdTests(unittest.TestCase):
     def test_amendment_only_adds_ac8_to_the_ac7_file(self):
         self.assertEqual(analyzer.sha256_file(AC7_THRESHOLDS), AC7_THRESHOLDS_SHA256)
         previous = json.loads(AC7_THRESHOLDS.read_text())
-        current = json.loads(analyzer.DEFAULT_THRESHOLDS.read_text())
+        current = json.loads(AC8_THRESHOLDS.read_text())
         self.assertEqual(set(current) - set(previous), {"ac8_walk"})
         self.assertEqual({k: v for k, v in current.items() if k not in ("amendments", "ac8_walk")},
                          {k: v for k, v in previous.items() if k != "amendments"})
@@ -162,6 +166,31 @@ class ThresholdTests(unittest.TestCase):
         with self.assertRaisesRegex(analyzer.AnalysisError, "superseded .*12373448"):
             analyzer.load_thresholds(AC7_THRESHOLDS)
         self.assertNotEqual(analyzer.FROZEN_THRESHOLDS_SHA256, AC7_THRESHOLDS_SHA256)
+
+    def test_d6_amendment_only_renames_the_ac8_run_text(self):
+        """PRD D6: the crossfade variants are named; no limit, window or rule changes."""
+        self.assertEqual(analyzer.sha256_file(AC8_THRESHOLDS), AC8_THRESHOLDS_SHA256)
+        previous = json.loads(AC8_THRESHOLDS.read_text())
+        current = json.loads(analyzer.DEFAULT_THRESHOLDS.read_text())
+        self.assertEqual(set(current), set(previous))
+        self.assertEqual({k: v for k, v in current.items() if k not in ("amendments", "ac8_walk")},
+                         {k: v for k, v in previous.items() if k not in ("amendments", "ac8_walk")})
+        self.assertEqual({k: v for k, v in current["ac8_walk"].items() if k != "run"},
+                         {k: v for k, v in previous["ac8_walk"].items() if k != "run"})
+        self.assertEqual(current["ac8_walk"]["run"],
+                         previous["ac8_walk"]["run"].replace(
+                             "(--stance-entry-kd ramp, step1, step2p5)",
+                             "(--stance-entry-kd ramp, step1, step2p5, or xfade1s, xfade2s (PRD D6))"))
+        self.assertEqual(current["amendments"][:-1], previous["amendments"])
+        last = current["amendments"][-1]
+        self.assertEqual((last["date"], last["previous_sha256"], last["previous_copy"], last["frozen_before"]),
+                         ("2026-09-17", AC8_THRESHOLDS_SHA256, str(AC8_THRESHOLDS.relative_to(HERE)),
+                          "the D6 scripted-walk runs"))
+        self.assertIn("no limit, window, definition or selection rule changed", last["change"])
+        self.assertEqual(len(current["amendments"]), 3)
+        with self.assertRaisesRegex(analyzer.AnalysisError, "superseded .*683a8ca6"):
+            analyzer.load_thresholds(AC8_THRESHOLDS)
+        self.assertNotEqual(analyzer.FROZEN_THRESHOLDS_SHA256, AC8_THRESHOLDS_SHA256)
         self.assertEqual(analyzer.sha256_file(analyzer.DEFAULT_THRESHOLDS), analyzer.FROZEN_THRESHOLDS_SHA256)
 
     def test_changed_thresholds_are_refused_unless_allowed(self):
@@ -725,6 +754,34 @@ class WalkTests(unittest.TestCase):
         self.assertTrue(any("status is TERMINATED" in p for p in problems), problems)
         with self.assertRaisesRegex(analyzer.AnalysisError, "is a stance_hold auto run"):
             self.analyze(self.on("fine2"), off=self.on("on_as_off"))
+
+    def test_crossfade_variants_and_the_landing_grace_need_no_analyzer_change(self):
+        """PRD D6: the xfade names pass through, and the grace still leaves AC8 a margin."""
+        # Landing grace 1.0 s + settle dwell 0.25 s on a 0.02 s grid: entry 1.28 s,
+        # FIXED_STAND 3.28 s, before the 4.0 s start of the first walk phase.
+        one = self.on("xfade1s", entry_kd="xfade1s", entry_delay=(1.28, 0.8, 0.8), entry_yaw=0.09)
+        two = self.on("xfade2s", entry_kd="xfade2s", entry_delay=(1.28, 0.8, 0.8), entry_yaw=0.04)
+        result = self.analyze(one, two)
+        for report in result["runs"][1:]:
+            self.assertEqual(report["ac8"]["verdict"], "pass", report["ac8"]["problems"])
+            self.assertEqual((report["ac5"]["verdict"], report["ac7"]["verdict"]), ("pass", "pass"))
+            self.assertEqual([c["pass"] for c in report["ac8"]["a_fixed_stand"]], [True, True, True])
+            self.assertAlmostEqual(report["zero_phases"][0]["first_transition_s"], 1.28, places=6)
+            self.assertAlmostEqual(report["zero_phases"][0]["time_to_fixed_stand_s"], 3.28, places=6)
+            self.assertEqual(report["ac8"]["b_entry_windows"]["entry_windows"], 3)
+        candidates = result["selection"]["candidates"]
+        self.assertEqual([c["entry_kd"] for c in candidates], ["xfade1s", "xfade2s"])
+        self.assertEqual([c["eligible"] for c in candidates], [True, True])
+        self.assertEqual([c["max_entry_window_abs_yaw_rate_radps"] for c in candidates], [0.09, 0.04])
+        self.assertEqual(result["selection"]["selected"]["entry_kd"], "xfade2s")
+        self.assertIsNone(result["selection"]["note"])
+        # A settle that keeps blocking past ~1.7 s pushes FIXED_STAND beyond the
+        # 4.0 s deadline and AC8 a fails; the margin after the grace is about 0.7 s.
+        blocked = self.on("blocked", entry_kd="xfade1s", entry_delay=(2.1, 0.8, 0.8))
+        ac8 = self.analyze(blocked)["runs"][1]["ac8"]
+        self.assertEqual([c["pass"] for c in ac8["a_fixed_stand"]], [False, True, True])
+        self.assertTrue(any("a: phase stand_initial did not reach FIXED_STAND" in p for p in ac8["problems"]),
+                        ac8["problems"])
 
     def test_a_requires_fixed_stand_in_every_zero_phase(self):
         # Entry 3.1 s after the 7 s stop: FIXED_STAND would start at 12.1 s, after the 12 s start.

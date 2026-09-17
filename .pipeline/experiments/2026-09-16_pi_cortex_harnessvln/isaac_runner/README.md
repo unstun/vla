@@ -40,8 +40,9 @@ keep the previous path:
 - `--case scripted_walk --command-script FILE`: the runner's own command script
   drives V12. The script is required by this case and refused by every other.
 - `--camera-heading-mode {body,initial}` (default `body`).
-- `--stance-entry-kd {ramp,step1,step2p5}` (default `ramp`; only `ramp` is
-  accepted with `--stance-hold off`).
+- `--stance-entry-kd {ramp,step1,step2p5,xfade1s,xfade2s}` (default `ramp`;
+  only `ramp` is accepted with `--stance-hold off`). The two crossfade
+  variants come from PRD D6; see "Crossfade Entry" below.
 
 ## Shared Files
 
@@ -257,16 +258,18 @@ Task: `.trellis/tasks/09-17-isaac-runner-stance-hold` (design.md, implement.md).
   nonzero unless every applicable verdict passes. `walk` is described in
   "Scripted Walk" below.
   - Thresholds live in `stance_hold_thresholds.json`, frozen at SHA-256
-    `683a8ca6d9d26fe4c45af22fc449c1c05525fde9eb0fb3dc4125c4f2831b43b8`
-    (amended with `ac8_walk` before any scripted-walk run). Any other file is
-    refused, including the two superseded files, which are kept
-    byte-for-byte:
+    `0be59927aa18ad97cc6dfc01a3179867ce84e71e712286ee971a485a5238a29d`
+    (the `ac8_walk.run` text names the D6 crossfade variants; no limit,
+    window, definition or selection rule changed). Any other file is refused,
+    including the three superseded files, which are kept byte-for-byte:
     - `stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json`
       (AC3/AC5 only; used for the first C1 report);
     - `stance_hold_thresholds_history/stance_hold_thresholds_12373448.json`
-      (adds AC7; used for the C1b report).
-    - The live file's `amendments` list records both changes. Those reports
-      can be reproduced only with `--allow-unfrozen-thresholds`.
+      (adds AC7; used for the C1b report);
+    - `stance_hold_thresholds_history/stance_hold_thresholds_683a8ca6.json`
+      (adds AC8; used for the C1d walk report).
+    - The live file's `amendments` list records all three changes. Those
+      reports can be reproduced only with `--allow-unfrozen-thresholds`.
   - AC7 (entry smoothness): each entry window runs from the first
     STAND_TRANSITION row to 1.0 s after it, inclusive, with a 1 ms tolerance.
     Its limits are max |`yaw_rate_radps`| ≤ 0.15 rad/s and max
@@ -332,7 +335,8 @@ and records it with a side camera.
   `view_yaw_rad`, and the summary `camera` block gains `heading_mode` and
   `heading_yaw_rad`.
 - Entry damping (`stance_hold.py` `entry_kd`). Kp and the target keep the
-  0.5 s entry ramp in every variant.
+  0.5 s entry ramp in these three variants (the D6 crossfade variants below
+  replace the ramp).
   - `ramp`: Kd follows the Kp ramp (D4).
   - `step1`: Kd 1.0 from the entry step on.
   - `step2p5`: Kd 2.5 from the entry step to 0.5 s, then a smoothstep to
@@ -352,8 +356,8 @@ and records it with a side camera.
     `run_request.json`.
   - `prepare` refuses a script whose last segment is not zero or starts after
     `--finish-after-sim-seconds`.
-  - `--execute` refuses a case, script hash, camera preset or entry-Kd that
-    differs from the package.
+  - `--execute` refuses a case, script hash, camera preset or entry variant
+    that differs from the package.
   - For this case, the worker accepts `DURATION_REACHED` as well as
     `EXTERNAL_EPISODE_FINISHED`. It checks the summary case, entry-Kd,
     heading mode and script hash.
@@ -398,6 +402,77 @@ python3 $Q --run-id walk_YYYYMMDDTHHMMSSZ_hold_auto_step2p5 --case scripted_walk
   - The Foxy bridge config keeps its 0.30 limits. It forwards no command here.
 - Claim boundary: simulation only (V12 in Isaac, one flat Building corridor).
   This is not navigation and not a real-robot or deployment fix.
+
+## Crossfade Entry (PRD D6)
+
+The C1d walk runs selected no variant: every entry-damping variant failed
+AC8 b at one or more entries. The survey
+`.pipeline/survey/2026-09-17_rl_pd_stance_hold_switch_survey.md` found no
+source that changes PD gains at an RL to PD switch; code keeps the gains and
+moves the target over 1-2 s, or blends controllers. Dr Sun chose option 1
+(design.md section 8). It is a local change in `stance_hold.py`; the
+thresholds, the command script, the camera and `--stance-hold off` are
+unchanged.
+
+- Variants: `--stance-entry-kd xfade1s` (T_x = 1.0 s) and `xfade2s`
+  (T_x = 2.0 s, the whole STAND_TRANSITION). `ramp`, `step1` and `step2p5`
+  keep their behaviour exactly.
+- Entry capture is unchanged: q0, T0, Kp0, Kd0 and the torque-matched seed
+  `H = q0 + (Kp0 / 60) (T0 - q0)`.
+- Output during STAND_TRANSITION, with `e = t - t_entry` and
+  `w = smoothstep(e / T_x)`:
+  - `w == 0` (the entry step): this step's policy target `P`, Kp = Kp0,
+    Kd = 1.0 (a Kd-only gain write);
+  - `0 < w < 1`: Kp = `(1 - w) Kp0 + w 60`, target =
+    `((1 - w) Kp0 P + w 60 H) / Kp`, Kd = 1.0. That is the torque sum of the
+    two PD laws, `(1 - w) Kp0 (P - q) + w 60 (H - q)`, written as one PD law;
+  - `e >= T_x`: exactly `H` at Kp 60 / Kd 1, the FIXED_STAND output.
+  - Rows show `stance_reason` `entry_crossfade`, then
+    `entry_crossfade_complete`; `last_entry.entry_ramp_s` is T_x and
+    `entry_ramp_complete_t_s` records when w reached 1. FIXED_STAND still
+    starts 2.0 s after entry, so `xfade2s` completes on that step.
+- Rate: the largest Kp change per 20 ms step is `40 * 1.5 * 0.02 / T_x`, so
+  1.2 (`xfade1s`) or 0.6 (`xfade2s`), at most 6 % of Kp. The D4 ramp allowed
+  7.3 %.
+- Landing grace: these two variants arm (RL to STAND_SETTLING) only from
+  `ENTRY_GRACE_S = 1.0` s of episode sim time; before that the mode stays RL
+  with reason `entry_grace`. The earliest entry is therefore about 1.25 s
+  after spawn. Precedent: MuJoCo `FIXED_STAND_BOOT_GRACE_S` 1.0 s. It is a
+  design choice fixed before the runs, not an exclusion: AC8 a still requires
+  FIXED_STAND before 4.0 s, and AC7 / AC8 b apply to every entry.
+- Unchanged: the settle gate, FIXED_STAND, the disturbance exit, the lockout,
+  REJOIN (a new command during the crossfade rejoins from the applied target
+  and gains) and the applied-action feedback.
+- Records: `stance_hold_constants()` adds `entry_crossfade_s`,
+  `entry_crossfade_rule`, `entry_grace_s` and `entry_grace_variants`, so
+  `stance_hold_setup.json` and `summary.json` describe the executed variant.
+- Launchers: `qualify_stand_runner.py` accepts the new values.
+  `run_two_goal_pilot.py` gained `--stance-entry-kd` (default `ramp`, refused
+  with `--stance-hold off`, passed to the runner only with `--stance-hold
+  auto`, recorded in `run_request.json` and in the RUNBOOK, and checked
+  against the prepared package at `--execute`).
+- The D6 runs (26 s; finish request at 20 s; the C1d hold-off run is the
+  reused baseline):
+
+```bash
+cd /Users/sun/tongbu/study/phdproject/vla
+Q=.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/qualify_stand_runner.py
+S=.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/command_scripts/walk_stop_start_stop_v1.json
+python3 $Q --run-id walk_YYYYMMDDTHHMMSSZ_hold_auto_xfade1s --case scripted_walk --command-script $S \
+  --camera-preset side --duration-seconds 26 --finish-after-sim-seconds 20 --stance-hold auto --stance-entry-kd xfade1s
+python3 $Q --run-id walk_YYYYMMDDTHHMMSSZ_hold_auto_xfade2s --case scripted_walk --command-script $S \
+  --camera-preset side --duration-seconds 26 --finish-after-sim-seconds 20 --stance-hold auto --stance-entry-kd xfade2s
+# Execute each package with its identical command plus --execute (needs Dr Sun's run approval).
+```
+
+- Analysis: `analyze_stance_hold.py walk --off <C1d hold-off run> --on <xfade1s
+  run> --on <xfade2s run>`, with the unchanged D5 selection rule. The
+  row-by-row pre-entry comparison with the hold-off run (design.md section 8)
+  is not implemented in the analyzer; it is a reported item without a
+  threshold.
+- Claim boundary: simulation only (V12 in Isaac, one flat Building corridor).
+  Local tests use synthetic inputs and fake Isaac objects; they are not run
+  evidence.
 
 ## Two-Goal P2B Pilot Prepared Package
 
@@ -487,9 +562,13 @@ records, so AC7 also needs `returned_artifacts/scan_workspace_gate.json` and
 when the post-run recheck fails.
 
 `--execute` on an existing package refuses a `--remote-only-bulk`,
-`--cancel-displacement-m` or `--stance-hold` value that differs from the
-prepared package. `--stance-hold` (default `off`) is passed to the runner and
-recorded in `run_request.json`. A package without the key counts as `off`.
+`--cancel-displacement-m`, `--stance-hold` or `--stance-entry-kd` value that
+differs from the prepared package. `--stance-hold` (default `off`) is passed to
+the runner and recorded in `run_request.json`. A package without the key counts
+as `off`. `--stance-entry-kd` (default `ramp`, PRD D6) is recorded the same way,
+is refused with `--stance-hold off`, and is passed to the runner only with
+`--stance-hold auto`, so a hold-off package keeps its previous runner argv. A
+package without that key counts as `ramp`.
 
 ## Walk Review Video
 

@@ -39,10 +39,10 @@ from typing import Iterable, List, Optional
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_THRESHOLDS = HERE / "stance_hold_thresholds.json"
-# SHA-256 of stance_hold_thresholds.json as amended with ac8_walk (PRD D5)
-# before any scripted-walk run. A different file is refused unless
-# --allow-unfrozen-thresholds.
-FROZEN_THRESHOLDS_SHA256 = "683a8ca6d9d26fe4c45af22fc449c1c05525fde9eb0fb3dc4125c4f2831b43b8"
+# SHA-256 of stance_hold_thresholds.json as amended for the PRD D6 crossfade
+# variants (a descriptive ac8_walk.run change only), before the D6 scripted-walk
+# runs. A different file is refused unless --allow-unfrozen-thresholds.
+FROZEN_THRESHOLDS_SHA256 = "0be59927aa18ad97cc6dfc01a3179867ce84e71e712286ee971a485a5238a29d"
 # Superseded frozen files, kept byte-for-byte for the reports that used them.
 # They are refused like any other file.
 SUPERSEDED_THRESHOLDS = {
@@ -52,6 +52,9 @@ SUPERSEDED_THRESHOLDS = {
     "12373448a8aee02534b529c69189bc5155bbe13cb0d17b632d260b075e075da5":
         "stance_hold_thresholds_history/stance_hold_thresholds_12373448.json (AC3/AC5/AC7, used by the C1b "
         "report stand_20260917T132323Z_hold_auto_ramp)",
+    "683a8ca6d9d26fe4c45af22fc449c1c05525fde9eb0fb3dc4125c4f2831b43b8":
+        "stance_hold_thresholds_history/stance_hold_thresholds_683a8ca6.json (AC3/AC5/AC7/AC8 before the "
+        "PRD D6 wording, used by the C1d walk report walk_ab_20260917T145650Z)",
 }
 SCRIPTED_WALK_CASE = "scripted_walk"
 NO_STANCE = "hold off / no stance fields"

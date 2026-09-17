@@ -208,6 +208,51 @@ in git history; existing run packages are untouched.
 - **Anchors:** the anchor group `scripted_walk` is applied after the stance-hold group. With every default
   (`body`, `ramp`, no script), the previous control and camera paths are unchanged.
 - **Open items:**
-  - `run_two_goal_pilot.py` does not pass `--stance-entry-kd` yet. C2 needs it if the selected variant is not
-    `ramp`.
+  - ~~`run_two_goal_pilot.py` does not pass `--stance-entry-kd` yet.~~ Closed by PRD D6 (section 8): the launcher
+    has the flag, records it in `run_request.json` and refuses a mismatch at `--execute`. It does not yet check
+    the returned runner summary's `stance_hold.entry_kd`, which `qualify_stand_runner.py` does; C2 should add
+    that check.
   - The side camera is 1.25 m right of the base, next to corridor walls at 1.3-1.45 m.
+
+## 8. Crossfade entry and landing grace (PRD D6, added 2026-09-17)
+
+- **Variants.** `STANCE_ENTRY_KD_MODES` gains `xfade1s` and `xfade2s`, with blend time `T_x` of 1.0 s and 2.0 s.
+  Any other value keeps its D4/D5 behaviour exactly.
+- **Entry capture.** On the settle-confirmation step, the code keeps the existing capture unchanged: q0, T0, Kp0,
+  Kd0 and the torque-matched seed `H = q0 + (Kp0/60)(T0 − q0)`. What differs is the output of the first
+  STAND_TRANSITION step.
+- **Output during STAND_TRANSITION.** With `e = t − t_entry` and `w = smoothstep(e / T_x)`:
+  - `w == 0` (the entry step): target = `P(t)` (this step's policy target), Kp = Kp0, Kd = HOLD_KD.
+  - `0 < w < 1`: Kp = `(1 − w)·Kp0 + w·HOLD_KP`; target = `((1 − w)·Kp0·P(t) + w·HOLD_KP·H) / Kp`; Kd = HOLD_KD.
+    This is the torque sum of the two PD laws, `(1 − w)·Kp0·(P − q) + w·HOLD_KP·(H − q)`, written as one PD law.
+    Kp > 0 because Kp0 ≥ 0, HOLD_KP > 0 and w > 0.
+  - `e ≥ T_x` (compared with `STANCE_TIME_EPS`): exactly H, HOLD_KP and HOLD_KD.
+  - Reason labels: `entry_crossfade`, then `entry_crossfade_complete`. The counter `entry_ramps_complete` and
+    `last_entry.entry_ramp_complete_t_s` record when w reaches 1. `last_entry.entry_ramp_s` records T_x.
+  - The target is clipped to the joint limits as in every other supervisor mode.
+- **Rate check (our arithmetic).** The largest Kp change per 20 ms step is 40·1.5·0.02/T_x: 1.2 for `xfade1s` and
+  0.6 for `xfade2s`, i.e. at most 6 % of Kp. The D4 ramp allowed 7.3 %.
+- **Landing grace.** For the two new variants, automatic arming (RL → STAND_SETTLING) needs
+  `now ≥ ENTRY_GRACE_S = 1.0`. The runner passes `now` as sim time since the episode start. Before that, the
+  mode stays RL with reason `entry_grace`. The old variants arm as before.
+- **Unchanged.**
+  - The settle gate, FIXED_STAND, the disturbance exit and the lockout.
+  - REJOIN: a new command during the crossfade rejoins from the applied target and gains, as today.
+  - The applied-action feedback to the policy.
+  - `--stance-hold off`.
+- **Records.** `stance_hold_constants()` adds the crossfade rule, `T_x` per variant and `ENTRY_GRACE_S`, so
+  `stance_hold_setup.json` and `summary.json` describe the executed variant.
+- **Launchers.**
+  - `qualify_stand_runner.py` accepts the new values.
+  - `run_two_goal_pilot.py` adds `--stance-entry-kd`: default `ramp`, refused with `--stance-hold off`, recorded
+    in `run_request.json` and checked against the prepared package, as `--stance-hold` is.
+- **Thresholds.** `stance_hold_thresholds.json` gets a descriptive amendment only: the `ac8_walk.run` text names
+  the new variants, and an amendments entry records D6. It is re-frozen before the runs. No limit changes.
+- **Analysis.**
+  - `analyze_stance_hold.py walk --off <C1d hold-off run> --on <xfade1s run> --on <xfade2s run>`.
+  - A row-by-row comparison with the hold-off run up to the first STAND_TRANSITION row is reported (max absolute
+    difference of `base_xyz`, `yaw_rate_radps` and `joint_pos`). It has no threshold. The analyzer does not
+    compute it; the C1g report produces it from the two `metrics.jsonl` files.
+  - Predicted first entry (replay of the C1d hold-off rows through the new state machine, 2026-09-17): the settle
+    gate passes at once at the end of the grace, so the entry is at 1.28 s and FIXED_STAND at 3.30 s, 0.70 s
+    before the 4.0 s command step. The same replay reproduces the C1d `ramp` entry (0.40 s) as its control.

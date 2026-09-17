@@ -5,6 +5,15 @@ reviewed: false
 
 # Literature And Upstream Index
 
+## 2026-09-17: RL policy to PD stance-hold switching
+
+Dr Sun asked for published and open-source practice before another home-made stance-hold entry.
+Survey: `../survey/2026-09-17_rl_pd_stance_hold_switch_survey.md` (surveyed only). No surveyed source
+switches automatically from an RL policy to a joint-PD hold while changing gains. Code keeps the policy
+gains and moves the target over 1-2 s (rl_sar Lite3, LimX), switches at a suitable moment (Disney biped
+2501.05204, Safe-Stop 2609.02358), or keeps standing inside RL (GR00T WBC balance policy). Isaac Lab applies
+gain changes before the delayed targets, unlike the Lite3 command packet.
+
 ## 2026-09-16: released embodied runtime alternatives
 
 Dr Sun selected a HarnessVLN method reimplementation with Pi plus Cortex.

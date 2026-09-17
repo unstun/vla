@@ -1,4 +1,5 @@
 import ast
+import json
 import math
 import unittest
 from pathlib import Path
@@ -482,7 +483,9 @@ class EntryDampingVariantTests(unittest.TestCase):
         return loop, index, prev, outs
 
     def test_constants_constructor_and_status(self):
-        self.assertEqual(sh.STANCE_ENTRY_KD_MODES, ("ramp", "step1", "step2p5"))
+        # PRD D6 appended the crossfade variants; EntryCrossfadeTests cover them.
+        self.assertEqual(sh.STANCE_ENTRY_KD_MODES, ("ramp", "step1", "step2p5", "xfade1s", "xfade2s"))
+        self.assertEqual(sh.STANCE_ENTRY_RAMP_VARIANTS, ("ramp", "step1", "step2p5"))
         self.assertEqual(sh.STANCE_ENTRY_KD_DEFAULT, "ramp")
         self.assertEqual(sh.ENTRY_LANDING_KD, 2.5)
         self.assertEqual(sh.StanceHold("auto").entry_kd, "ramp")
@@ -519,7 +522,8 @@ class EntryDampingVariantTests(unittest.TestCase):
 
     def test_kp_and_target_follow_the_same_ramp_in_every_variant(self):
         reference = None
-        for variant in sh.STANCE_ENTRY_KD_MODES:
+        # The ramp variants only; the PRD D6 crossfade variants replace the ramp.
+        for variant in sh.STANCE_ENTRY_RAMP_VARIANTS:
             with self.subTest(variant=variant):
                 _loop, _index, (t0, kp0, _kd0), outs = self.transition(variant)
                 kps = np.array([o.kp for o in outs])
@@ -611,6 +615,303 @@ class EntryDampingVariantTests(unittest.TestCase):
                 self.assertEqual(out.reason, "rejoin_complete")
                 np.testing.assert_array_equal(out.kd, np.full(12, 0.5))
                 np.testing.assert_array_equal(out.kp, np.full(12, 20.0))
+
+
+class EntryCrossfadeTests(unittest.TestCase):
+    """--stance-entry-kd xfade1s / xfade2s: crossfade entry and landing grace (PRD D6)."""
+
+    VARIANTS = {"xfade1s": 1.0, "xfade2s": 2.0}
+    GRACE_STEPS = 50  # 1.0 s at the 20 ms control period
+    TRANSITION_STEPS = 100
+
+    def setUp(self):
+        self.rng = np.random.default_rng(31)
+        self.q0 = Q_STAND + self.rng.uniform(-0.05, 0.05, 12)
+        self.policy = Q_STAND + self.rng.uniform(-0.2, 0.2, 12)
+        self.policy = np.where(np.abs(self.policy - self.q0) < 0.02, self.q0 + 0.05, self.policy)
+
+    def policy_at(self, k):
+        """A policy target that changes at every step, like V12's live output."""
+        return self.policy + 0.01 * np.sin(0.7 * k + np.arange(12))
+
+    def enter(self, variant, **kwargs):
+        """Settle at q0 under a live policy target; return the loop, entry index and last applied values."""
+        loop = Loop(entry_kd=variant, **kwargs)
+        for _ in range(200):
+            prev = (loop.target.copy(), loop.kp.copy(), loop.kd.copy())
+            out = loop.step(joint_pos=self.q0, policy_target=self.policy_at(loop.k))
+            if out.mode == "STAND_TRANSITION":
+                return loop, len(loop.outputs) - 1, prev
+        raise AssertionError("no entry")
+
+    def seed(self, t0, kp0):
+        """Torque-matched seed H for the entry values (applied target t0, applied Kp kp0, q0)."""
+        return self.q0 + (kp0 / 60.0) * (t0 - self.q0)
+
+    def test_constants_and_constructor(self):
+        self.assertEqual(sh.ENTRY_CROSSFADE_S, self.VARIANTS)
+        for variant, duration in sh.ENTRY_CROSSFADE_S.items():
+            self.assertIn(variant, sh.STANCE_ENTRY_KD_MODES)
+            self.assertGreater(duration, 0.0)
+            self.assertLessEqual(duration, sh.TRANSITION_S)
+        self.assertEqual(sh.ENTRY_GRACE_S, 1.0)
+        self.assertEqual(sh.ENTRY_GRACE_VARIANTS, tuple(sh.ENTRY_CROSSFADE_S))
+        self.assertEqual(set(sh.STANCE_ENTRY_KD_MODES),
+                         set(sh.STANCE_ENTRY_RAMP_VARIANTS) | set(sh.ENTRY_CROSSFADE_S))
+        self.assertEqual(len(sh.STANCE_ENTRY_KD_MODES), len(set(sh.STANCE_ENTRY_KD_MODES)))
+        constants = sh.stance_hold_constants()
+        json.dumps(constants)
+        self.assertEqual(constants["entry_crossfade_s"], {"xfade1s": 1.0, "xfade2s": 2.0})
+        self.assertEqual(constants["entry_crossfade_blend"], "smoothstep")
+        self.assertIn("Kp = (1 - w) Kp0 + w HOLD_KP", constants["entry_crossfade_rule"])
+        self.assertIn("target = ((1 - w) Kp0 P + w HOLD_KP H) / Kp", constants["entry_crossfade_rule"])
+        self.assertIn("PRD D6", constants["entry_crossfade_rule"])
+        self.assertEqual((constants["entry_grace_s"], constants["entry_grace_variants"]),
+                         (1.0, ["xfade1s", "xfade2s"]))
+        self.assertIn("entry_grace", constants["entry_grace_rule"])
+        self.assertEqual(constants["entry_ramp_variants"], ["ramp", "step1", "step2p5"])
+        for variant in self.VARIANTS:
+            self.assertIn(variant, constants["entry_kd_modes"])
+            self.assertEqual(sh.StanceHold("auto", entry_kd=variant).status()["entry_kd"], variant)
+        for bad in ("xfade", "xfade3s", "XFADE1S", "xfade1", "xfade2"):
+            with self.subTest(value=bad), self.assertRaises(ValueError):
+                sh.StanceHold("auto", entry_kd=bad)
+        # Off mode ignores the variant and the grace.
+        out = Loop("off", entry_kd="xfade2s").step()
+        self.assertEqual((out.mode, out.policy_owns_joints), ("OFF", True))
+        np.testing.assert_array_equal(out.kd, np.full(12, 0.5))
+
+    def test_landing_grace_blocks_arming_for_crossfade_variants_only(self):
+        for variant in self.VARIANTS:
+            with self.subTest(variant=variant):
+                loop = Loop(entry_kd=variant)
+                for _ in range(self.GRACE_STEPS):
+                    out = loop.step()
+                    self.assertEqual((out.mode, out.reason), ("RL", "entry_grace"))
+                    self.assertTrue(out.policy_owns_joints)
+                    np.testing.assert_array_equal(out.target, Q_STAND + 0.03)
+                    np.testing.assert_array_equal(out.kp, np.full(12, 20.0))
+                    np.testing.assert_array_equal(out.kd, np.full(12, 0.5))
+                self.assertLess(loop.outputs[-1][0], sh.ENTRY_GRACE_S)
+                self.assertEqual(loop.hold.counters["settle_starts"], 0)
+                self.assertEqual(loop.hold.transitions, [])
+                self.assertAlmostEqual(loop.hold.mode_time_s["RL"], 0.98)
+                out = loop.step()
+                self.assertAlmostEqual(loop.outputs[-1][0], sh.ENTRY_GRACE_S)
+                self.assertEqual((out.mode, out.reason), ("STAND_SETTLING", "waiting_for_quiet_four_contact"))
+                self.assertEqual(loop.hold.counters["settle_starts"], 1)
+                self.assertEqual([(t["from"], t["to"]) for t in loop.hold.transitions], [("RL", "STAND_SETTLING")])
+                self.assertAlmostEqual(loop.hold.transitions[0]["t_s"], sh.ENTRY_GRACE_S)
+                loop.run_until("STAND_TRANSITION")
+                self.assertGreaterEqual(loop.outputs[-1][0], sh.ENTRY_GRACE_S + sh.SETTLE_DWELL_S - 1e-9)
+                self.assertLess(loop.outputs[-2][0], sh.ENTRY_GRACE_S + sh.SETTLE_DWELL_S - 1e-9)
+            with self.subTest(variant=variant, edge="time slack"):
+                loop = Loop(entry_kd=variant)
+                self.assertEqual(loop.step(now=0.999999).reason, "entry_grace")
+                self.assertEqual(loop.step(now=1.0 - 1e-10).mode, "STAND_SETTLING")
+            with self.subTest(variant=variant, edge="command during the grace"):
+                loop = Loop(entry_kd=variant)
+                loop.step(now=0.5)
+                out = loop.step(now=0.52, command=np.array([0.6, 0.0, 0.0]))
+                self.assertEqual(out.mode, "RL")
+                out = loop.step(now=1.02)
+                self.assertEqual(out.mode, "STAND_SETTLING")
+                self.assertEqual(loop.hold.counters["settle_starts"], 1)
+        for variant in sh.STANCE_ENTRY_RAMP_VARIANTS:
+            with self.subTest(variant=variant):
+                loop = Loop(entry_kd=variant)
+                self.assertEqual(loop.step().mode, "STAND_SETTLING")
+                loop.run_until("STAND_TRANSITION")
+                self.assertLess(loop.outputs[-1][0], sh.ENTRY_GRACE_S)
+                self.assertNotIn("entry_grace", [o.reason for _t, o in loop.outputs])
+
+    def test_entry_step_outputs_this_steps_policy_target_with_applied_kp_and_hold_kd(self):
+        for variant, duration in self.VARIANTS.items():
+            with self.subTest(variant=variant):
+                loop, index, (t0, kp0, kd0) = self.enter(variant)
+                now, out = loop.outputs[index]
+                self.assertGreaterEqual(now, sh.ENTRY_GRACE_S + sh.SETTLE_DWELL_S - 1e-9)
+                # The previous applied target is the previous policy target; the entry
+                # step outputs the current one, not a frozen sample.
+                np.testing.assert_array_equal(t0, self.policy_at(index - 1))
+                np.testing.assert_array_equal(out.target, self.policy_at(index))
+                self.assertGreater(float(np.max(np.abs(out.target - t0))), 1e-3)
+                np.testing.assert_array_equal(out.kp, kp0)
+                np.testing.assert_array_equal(out.kp, np.full(12, 20.0))
+                np.testing.assert_array_equal(out.kd, np.full(12, 1.0))
+                np.testing.assert_array_equal(kd0, np.full(12, 0.5))
+                self.assertFalse(out.policy_owns_joints)
+                self.assertEqual((out.mode, out.reason, out.progress),
+                                 ("STAND_TRANSITION", "quiet_four_contact_confirmed", 0.0))
+                entry = loop.hold.status()["last_entry"]
+                self.assertEqual((entry["entry_ramp_s"], entry["entry_kd"], entry["t_s"]), (duration, variant, now))
+                self.assertIsNone(entry["entry_ramp_complete_t_s"])
+                self.assertEqual(entry["applied_target_t0"], [float(v) for v in t0])
+                self.assertAlmostEqual(entry["seed_minus_t0_max_abs"],
+                                       float(np.max(np.abs(self.seed(t0, kp0) - t0))))
+
+    def test_mid_blend_matches_the_formula_and_the_torque_sum(self):
+        for variant, duration in self.VARIANTS.items():
+            with self.subTest(variant=variant):
+                loop, index, (t0, kp0, _kd0) = self.enter(variant)
+                entry_t = loop.outputs[index][0]
+                seed = self.seed(t0, kp0)
+                previous_kp = 20.0
+                for fraction in (0.1, 0.25, 0.5, 0.75, 0.9):
+                    e = fraction * duration
+                    policy = self.policy + self.rng.uniform(-0.1, 0.1, 12)
+                    joint_pos = self.q0 + self.rng.uniform(-0.02, 0.02, 12)
+                    out = loop.step(now=entry_t + e, joint_pos=joint_pos, policy_target=policy)
+                    w = sh._stance_smoothstep(e / duration)
+                    self.assertTrue(0.0 < w < 1.0)
+                    kp = (1.0 - w) * 20.0 + w * 60.0
+                    self.assertEqual((out.mode, out.reason), ("STAND_TRANSITION", "entry_crossfade"))
+                    self.assertFalse(out.policy_owns_joints)
+                    self.assertAlmostEqual(out.progress, e / sh.TRANSITION_S)
+                    np.testing.assert_allclose(out.kp, np.full(12, kp), rtol=1e-12, atol=0.0)
+                    np.testing.assert_allclose(out.target, ((1.0 - w) * 20.0 * policy + w * 60.0 * seed) / kp,
+                                               rtol=1e-12, atol=0.0)
+                    np.testing.assert_array_equal(out.kd, np.full(12, 1.0))
+                    for _ in range(5):
+                        q = Q_STAND + self.rng.uniform(-0.5, 0.5, 12)
+                        np.testing.assert_allclose(
+                            out.kp * (out.target - q),
+                            (1.0 - w) * kp0 * (policy - q) + w * 60.0 * (seed - q),
+                            rtol=0.0, atol=1e-9)
+                    self.assertGreater(float(out.kp[0]), previous_kp)
+                    previous_kp = float(out.kp[0])
+                    if fraction == 0.5:
+                        np.testing.assert_allclose(out.kp, np.full(12, 40.0), rtol=1e-12)
+
+    def test_crossfade_ends_exactly_at_the_hold_then_fixed_stand_at_two_seconds(self):
+        for variant, duration in self.VARIANTS.items():
+            with self.subTest(variant=variant):
+                loop, index, (t0, kp0, _kd0) = self.enter(variant)
+                entry_t = loop.outputs[index][0]
+                seed = self.seed(t0, kp0)
+                outs = [loop.outputs[index][1]]
+                while outs[-1].mode != "FIXED_STAND":
+                    self.assertLess(len(outs), self.TRANSITION_STEPS + 5)
+                    outs.append(loop.step(joint_pos=self.q0, policy_target=self.policy_at(loop.k)))
+                self.assertEqual(len(outs), self.TRANSITION_STEPS + 1)
+                self.assertAlmostEqual(loop.outputs[-1][0] - entry_t, sh.TRANSITION_S, places=9)
+                steps = int(round(duration / DT))
+                self.assertEqual([o.reason for o in outs],
+                                 ["quiet_four_contact_confirmed"] + ["entry_crossfade"] * (steps - 1)
+                                 + ["entry_crossfade_complete"] * (self.TRANSITION_STEPS - steps)
+                                 + ["fixed_stand_active"])
+                for out in outs[1:steps]:
+                    self.assertTrue(20.0 < float(out.kp[0]) < 60.0)
+                    self.assertFalse(np.array_equal(out.target, seed))
+                    np.testing.assert_array_equal(out.kd, np.full(12, 1.0))
+                for out in outs[steps:]:
+                    np.testing.assert_array_equal(out.target, seed)
+                    np.testing.assert_array_equal(out.kp, np.full(12, 60.0))
+                    np.testing.assert_array_equal(out.kd, np.full(12, 1.0))
+                for out in outs:
+                    self.assertFalse(out.policy_owns_joints)
+                kps = np.array([float(o.kp[0]) for o in outs])
+                self.assertTrue(np.all(np.diff(kps[: steps + 1]) > 0.0))
+                self.assertTrue(np.all(np.diff(kps) >= 0.0))
+                # Largest Kp change per 20 ms step: 40 * 1.5 * DT / T_x (1.2 and 0.6).
+                self.assertLessEqual(float(np.max(np.diff(kps))), 40.0 * 1.5 * DT / duration + 1e-9)
+                self.assertGreater(float(np.max(np.diff(kps))), 0.95 * 40.0 * 1.5 * DT / duration)
+                status = loop.hold.status()
+                self.assertEqual((status["counters"]["entry_ramps_complete"], status["counters"]["fixed_stand"]),
+                                 (1, 1))
+                self.assertAlmostEqual(status["last_entry"]["entry_ramp_complete_t_s"], entry_t + duration, places=9)
+                if variant == "xfade2s":
+                    # The crossfade completes on the FIXED_STAND step.
+                    self.assertEqual(status["last_entry"]["entry_ramp_complete_t_s"], loop.outputs[-1][0])
+                    self.assertEqual(status["transitions"][-1]["to"], "FIXED_STAND")
+                out = loop.run(1.0, joint_pos=self.q0, policy_target=self.policy)
+                self.assertEqual(out.mode, "FIXED_STAND")
+                np.testing.assert_array_equal(out.target, seed)
+                self.assertEqual(loop.hold.counters["entry_ramps_complete"], 1)
+
+    def test_each_step_follows_the_live_policy_target_with_weight_one_minus_w(self):
+        delta = np.linspace(-0.05, 0.05, 12)
+        for variant, duration in self.VARIANTS.items():
+            with self.subTest(variant=variant):
+                loop_a, index, _prev = self.enter(variant)
+                loop_b, index_b, _prev_b = self.enter(variant)
+                self.assertEqual(index, index_b)
+                steps = int(round(duration / DT))
+                for m in range(1, steps + 3):
+                    policy = self.policy_at(loop_a.k)
+                    bump = delta if m % 3 == 1 else np.zeros(12)
+                    a = loop_a.step(joint_pos=self.q0, policy_target=policy)
+                    b = loop_b.step(joint_pos=self.q0, policy_target=policy + bump)
+                    np.testing.assert_array_equal(a.kp, b.kp)
+                    np.testing.assert_array_equal(a.kd, b.kd)
+                    w = (float(a.kp[0]) - 20.0) / 40.0
+                    np.testing.assert_allclose(b.target - a.target, (1.0 - w) * 20.0 / a.kp * bump,
+                                               rtol=0.0, atol=1e-12)
+                    if m % 3 == 1 and m < steps:
+                        # (1 - w) Kp0 / Kp shrinks towards 0 at the end of the blend.
+                        gap = float(np.max(np.abs(b.target - a.target)))
+                        self.assertGreater(gap, 0.0)
+                        if w <= 0.5:
+                            self.assertGreater(gap, 0.25 * 0.05)
+
+    def test_rejoin_during_the_crossfade_blends_from_the_applied_values(self):
+        loop, index, _prev = self.enter("xfade1s")
+        entry_t = loop.outputs[index][0]
+        for _ in range(10):
+            last = loop.step(joint_pos=self.q0, policy_target=self.policy_at(loop.k))
+        self.assertEqual(last.reason, "entry_crossfade")
+        self.assertTrue(20.0 < float(last.kp[0]) < 60.0)
+        applied_target, applied_kp, applied_kd = last.target.copy(), last.kp.copy(), last.kd.copy()
+        command = np.array([0.6, 0.0, 0.0])
+        policy = Q_STAND - 0.1
+        t_r = loop.outputs[-1][0] + DT
+        out0 = loop.step(now=t_r, command=command, policy_target=policy)
+        self.assertEqual((out0.mode, out0.reason), ("REJOIN", "new_command_rejoin"))
+        np.testing.assert_array_equal(out0.target, applied_target)
+        np.testing.assert_array_equal(out0.kp, applied_kp)
+        np.testing.assert_array_equal(out0.kd, np.full(12, 1.0))
+        mid = loop.step(now=t_r + 0.125, command=command, policy_target=policy)
+        np.testing.assert_allclose(mid.target, 0.5 * applied_target + 0.5 * policy, atol=1e-12)
+        np.testing.assert_allclose(mid.kp, 0.5 * applied_kp + 10.0, atol=1e-12)
+        np.testing.assert_allclose(mid.kd, 0.5 * applied_kd + 0.25, atol=1e-12)
+        end = loop.step(now=t_r + 0.25, command=command, policy_target=policy)
+        self.assertEqual((end.mode, end.reason, end.policy_owns_joints), ("RL", "rejoin_complete", True))
+        np.testing.assert_array_equal(end.target, policy)
+        np.testing.assert_array_equal(end.kp, np.full(12, 20.0))
+        np.testing.assert_array_equal(end.kd, np.full(12, 0.5))
+        status = loop.hold.status()
+        self.assertEqual((status["counters"]["entry_ramps_complete"], status["counters"]["rejoins"]), (0, 1))
+        self.assertIsNone(status["last_entry"]["entry_ramp_complete_t_s"])
+        # After the grace, the next zero command arms at once and crossfades again from the V12 gains.
+        loop.k = int(round((t_r + 0.25) / DT)) + 1
+        out = loop.run_until("STAND_TRANSITION", joint_pos=self.q0, policy_target=self.policy)
+        np.testing.assert_array_equal(out.kp, np.full(12, 20.0))
+        np.testing.assert_array_equal(out.kd, np.full(12, 1.0))
+        np.testing.assert_array_equal(out.target, self.policy)
+        self.assertNotIn("entry_grace", [o.reason for t, o in loop.outputs if t > entry_t])
+        out = loop.run_until_reason("entry_crossfade_complete", joint_pos=self.q0, policy_target=self.policy)
+        np.testing.assert_array_equal(out.kp, np.full(12, 60.0))
+        self.assertEqual((loop.hold.counters["entries"], loop.hold.counters["entry_ramps_complete"]), (2, 1))
+
+    def test_joint_limits_clip_every_crossfade_target(self):
+        lower = self.q0 - 0.01
+        upper = self.q0 + 0.01
+        for variant in self.VARIANTS:
+            with self.subTest(variant=variant):
+                loop = Loop(entry_kd=variant, joint_lower=lower, joint_upper=upper)
+                outs = []
+                for _ in range(300):
+                    out = loop.step(joint_pos=self.q0, policy_target=self.policy_at(loop.k))
+                    if out.mode == "STAND_TRANSITION" or outs:
+                        outs.append(out)
+                    if out.mode == "FIXED_STAND":
+                        break
+                self.assertEqual(len(outs), self.TRANSITION_STEPS + 1)
+                for out in outs:
+                    np.testing.assert_array_equal(out.target, np.clip(out.target, lower, upper))
+                entry_index = len(loop.outputs) - len(outs)
+                np.testing.assert_array_equal(outs[0].target, np.clip(self.policy_at(entry_index), lower, upper))
+                self.assertTrue(any(np.any(o.target == upper) or np.any(o.target == lower) for o in outs))
 
 
 class TransitionAndRejoinTests(unittest.TestCase):
