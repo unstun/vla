@@ -1,0 +1,78 @@
+test_backend_unavailable_exception_after_dispatch_does_not_release_owner (__main__.Acceptance.test_backend_unavailable_exception_after_dispatch_does_not_release_owner) ... FAIL
+test_concurrent_submits_cannot_create_two_command_owners (__main__.Acceptance.test_concurrent_submits_cannot_create_two_command_owners) ... ok
+test_configuration_cannot_disable_freshness_with_nan (__main__.Acceptance.test_configuration_cannot_disable_freshness_with_nan) ... ok
+test_evidence_is_rechecked_after_route_planning (__main__.Acceptance.test_evidence_is_rechecked_after_route_planning) ... ok
+test_failure_without_stop_receipt_keeps_motion_owner (__main__.Acceptance.test_failure_without_stop_receipt_keeps_motion_owner) ... ok
+test_invalid_feedback_does_not_poison_sequence_state (__main__.Acceptance.test_invalid_feedback_does_not_poison_sequence_state) ... ok
+test_late_accept_progress_arrival_cannot_override_pending_stop (__main__.Acceptance.test_late_accept_progress_arrival_cannot_override_pending_stop) ... ok
+test_late_rejection_ack_cannot_clear_pending_stop (__main__.Acceptance.test_late_rejection_ack_cannot_clear_pending_stop) ... ok
+test_malformed_submit_reply_is_structured_and_retains_owner (__main__.Acceptance.test_malformed_submit_reply_is_structured_and_retains_owner) ... ok
+test_map_change_cancellation_uses_original_command_identity (__main__.Acceptance.test_map_change_cancellation_uses_original_command_identity) ... ok
+test_nonfinite_and_future_evidence_is_rejected (__main__.Acceptance.test_nonfinite_and_future_evidence_is_rejected) ... ok
+test_reentrant_admission_during_planning_cannot_dispatch_twice (__main__.Acceptance.test_reentrant_admission_during_planning_cannot_dispatch_twice) ... ok
+test_rejection_after_acceptance_or_motion_cannot_release_owner (__main__.Acceptance.test_rejection_after_acceptance_or_motion_cannot_release_owner) ... 
+  test_rejection_after_acceptance_or_motion_cannot_release_owner (__main__.Acceptance.test_rejection_after_acceptance_or_motion_cannot_release_owner) (progress=False) ... FAIL
+  test_rejection_after_acceptance_or_motion_cannot_release_owner (__main__.Acceptance.test_rejection_after_acceptance_or_motion_cannot_release_owner) (progress=True) ... FAIL
+test_reply_for_different_route_is_not_acceptance (__main__.Acceptance.test_reply_for_different_route_is_not_acceptance) ... ok
+test_stop_callback_cannot_erase_a_new_command_owner (__main__.Acceptance.test_stop_callback_cannot_erase_a_new_command_owner) ... ok
+test_stop_receipt_with_original_map_is_valid_after_map_change (__main__.Acceptance.test_stop_receipt_with_original_map_is_valid_after_map_change) ... ok
+test_stop_reply_for_other_route_cannot_release_owner (__main__.Acceptance.test_stop_reply_for_other_route_cannot_release_owner) ... FAIL
+test_successful_synchronous_callback_is_not_reported_as_failure (__main__.Acceptance.test_successful_synchronous_callback_is_not_reported_as_failure) ... 
+  test_successful_synchronous_callback_is_not_reported_as_failure (__main__.Acceptance.test_successful_synchronous_callback_is_not_reported_as_failure) (status='accepted') ... FAIL
+  test_successful_synchronous_callback_is_not_reported_as_failure (__main__.Acceptance.test_successful_synchronous_callback_is_not_reported_as_failure) (status='progress') ... FAIL
+test_synchronous_failure_is_not_reported_as_success (__main__.Acceptance.test_synchronous_failure_is_not_reported_as_success) ... ok
+test_timeout_requests_stop_not_only_a_status_change (__main__.Acceptance.test_timeout_requests_stop_not_only_a_status_change) ... ok
+test_unknown_submit_reply_does_not_release_uncertain_motion (__main__.Acceptance.test_unknown_submit_reply_does_not_release_uncertain_motion) ... ok
+
+======================================================================
+FAIL: test_backend_unavailable_exception_after_dispatch_does_not_release_owner (__main__.Acceptance.test_backend_unavailable_exception_after_dispatch_does_not_release_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 254, in test_backend_unavailable_exception_after_dispatch_does_not_release_owner
+    self.assertEqual(len(self.backend.commands), 1,
+AssertionError: 2 != 1 : An exception type alone cannot prove that dispatch had no side effect
+
+======================================================================
+FAIL: test_rejection_after_acceptance_or_motion_cannot_release_owner (__main__.Acceptance.test_rejection_after_acceptance_or_motion_cannot_release_owner) (progress=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 236, in test_rejection_after_acceptance_or_motion_cannot_release_owner
+    self.assertEqual(len(self.backend.commands), 1,
+AssertionError: 2 != 1 : Contradictory rejection released an acknowledged command without stop proof
+
+======================================================================
+FAIL: test_rejection_after_acceptance_or_motion_cannot_release_owner (__main__.Acceptance.test_rejection_after_acceptance_or_motion_cannot_release_owner) (progress=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 236, in test_rejection_after_acceptance_or_motion_cannot_release_owner
+    self.assertEqual(len(self.backend.commands), 1,
+AssertionError: 2 != 1 : Contradictory rejection released an acknowledged command without stop proof
+
+======================================================================
+FAIL: test_stop_reply_for_other_route_cannot_release_owner (__main__.Acceptance.test_stop_reply_for_other_route_cannot_release_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 243, in test_stop_reply_for_other_route_cannot_release_owner
+    self.assertFalse(result['ok'], result)
+AssertionError: True is not false : {'ok': True, 'status': 'ok', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': None, 'event_seq': 4}, 'data': {'terminal_cause': 'cancelled'}}
+
+======================================================================
+FAIL: test_successful_synchronous_callback_is_not_reported_as_failure (__main__.Acceptance.test_successful_synchronous_callback_is_not_reported_as_failure) (status='accepted')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 266, in test_successful_synchronous_callback_is_not_reported_as_failure
+    self.assertTrue(result['ok'], result)
+AssertionError: False is not true : {'ok': False, 'status': 'failed', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': {'request_id': 'request-1', 'command_run_id': 'run', 'command_epoch': 1, 'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35', 'status': 'accepted', 'last_feedback_seq': 1, 'terminal_cause': None, 'unresolved_reason': None}, 'event_seq': 3}, 'error': 'accepted'}
+
+======================================================================
+FAIL: test_successful_synchronous_callback_is_not_reported_as_failure (__main__.Acceptance.test_successful_synchronous_callback_is_not_reported_as_failure) (status='progress')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 266, in test_successful_synchronous_callback_is_not_reported_as_failure
+    self.assertTrue(result['ok'], result)
+AssertionError: False is not true : {'ok': False, 'status': 'failed', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': {'request_id': 'request-1', 'command_run_id': 'run', 'command_epoch': 1, 'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35', 'status': 'executing', 'last_feedback_seq': 1, 'terminal_cause': None, 'unresolved_reason': None}, 'event_seq': 3}, 'error': 'executing'}
+
+----------------------------------------------------------------------
+Ran 21 tests in 0.107s
+
+FAILED (failures=6)

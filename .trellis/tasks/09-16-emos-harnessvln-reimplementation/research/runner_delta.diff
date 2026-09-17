@@ -1,0 +1,181 @@
+--- native_full02_executed_runner
++++ committed_848b4aec_runner
+@@ -42,6 +42,45 @@
+ 
+ def write_json(path: Path, payload) -> None:
+     Path(path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
++
++
++def _read_viewer_camera_intrinsics(stage, cam_prim_path: str, resolution) -> dict:
++    """Read the recording camera's aperture so an overlay can be projected offline.
++
++    Display-only. The horizontal aperture is authored on the prim; Omniverse fits
++    the render product to the horizontal extent, so the vertical half-angle is
++    derived from the render aspect rather than from the authored vertical
++    aperture, which does not follow the requested resolution.
++    """
++    from pxr import UsdGeom
++
++    prim = stage.GetPrimAtPath(cam_prim_path)
++    if not prim or not prim.IsValid():
++        raise AdapterFailure(f"recording camera prim is missing: {cam_prim_path}")
++    camera = UsdGeom.Camera(prim)
++    focal_length = camera.GetFocalLengthAttr().Get()
++    horizontal_aperture = camera.GetHorizontalApertureAttr().Get()
++    vertical_aperture = camera.GetVerticalApertureAttr().Get()
++    if not focal_length or not horizontal_aperture:
++        raise AdapterFailure(
++            "recording camera has no usable focal length or horizontal aperture; "
++            "refusing to guess a field of view for the overlay"
++        )
++    width, height = int(resolution[0]), int(resolution[1])
++    half_horizontal = math.atan(float(horizontal_aperture) / (2.0 * float(focal_length)))
++    return {
++        "cam_prim_path": cam_prim_path,
++        "render_width": width,
++        "render_height": height,
++        "focal_length": float(focal_length),
++        "horizontal_aperture": float(horizontal_aperture),
++        "authored_vertical_aperture": (
++            None if vertical_aperture is None else float(vertical_aperture)
++        ),
++        "horizontal_fov_rad": 2.0 * half_horizontal,
++        "aperture_fit": "horizontal",
++        "source": "usd_camera_prim",
++    }
+ 
+ 
+ def build_parser() -> argparse.ArgumentParser:
+@@ -94,7 +133,12 @@
+     parser.add_argument("--terminal-yaw-rate-radps", type=float, default=0.15)
+     parser.add_argument("--connection-ready-timeout-seconds", type=float, default=120.0)
+     parser.add_argument("--max-wall-seconds", type=float, default=900.0)
+-    parser.add_argument("--video-fps", type=int, default=25)
++    parser.add_argument("--video-fps", type=float, default=12.5)
++    # Capture stride in control steps. Offline three-view composition spends the
++    # fixed delivery byte ceiling on fewer, sharper frames, so the default
++    # halves the previous 25 fps capture. Recording rate only: nothing in
++    # planning, control or termination reads this.
++    parser.add_argument("--camera-capture-stride", type=int, default=4)
+     # World-side follow camera. It only observes: no robot state is changed.
+     # A lateral offset large enough to cross a corridor wall renders a
+     # featureless view, so the default keeps the camera on the route centre.
+@@ -418,6 +462,15 @@
+     from .robot_visual import apply_robot_visual
+     robot_visual = apply_robot_visual(env.sim.stage, args.robot_visual_style)
+     write_json(args.output / "robot_visual_identity.json", robot_visual)
++    # Display-only: the render product is built from cfg.viewer.cam_prim_path at
++    # cfg.viewer.resolution, so an offline overlay must project with that exact
++    # camera's aperture. Reading it here keeps the value measured rather than
++    # assumed; a wrong field of view produces a plausible but false overlay, so
++    # a missing attribute stops the run instead of falling back to a guess.
++    camera_intrinsics = _read_viewer_camera_intrinsics(
++        env.sim.stage, cfg.viewer.cam_prim_path, cfg.viewer.resolution
++    )
++    write_json(args.output / "camera_intrinsics.json", camera_intrinsics)
+     contact = env.scene.sensors["contact_forces"]
+     lidar = env.scene.sensors["navigation_lidar"]
+     foot_ids, foot_names = contact.find_bodies(
+@@ -615,6 +668,17 @@
+     events.install(env, robot)
+ 
+     video_path = args.output / "third_person_master.mp4"
++    capture_stride = max(1, int(args.camera_capture_stride))
++    # Real-time playback requires the container rate to match the capture rate.
++    # A silent mismatch would make the delivered video a different length from
++    # the episode it claims to show.
++    capture_fps = 1.0 / (float(env.step_dt) * capture_stride)
++    if abs(capture_fps - float(args.video_fps)) > 1e-6:
++        raise AdapterFailure(
++            f"--video-fps {args.video_fps} does not match the capture rate "
++            f"{capture_fps} implied by step_dt {float(env.step_dt)} and stride "
++            f"{capture_stride}"
++        )
+     writer = imageio.get_writer(
+         str(video_path), fps=args.video_fps, codec="libx264", quality=8, macro_block_size=None
+     )
+@@ -626,6 +690,7 @@
+     metrics_path = args.output / "metrics.jsonl"
+     sensor_path = args.output / "sensor_metrics.jsonl"
+     cloud_path = args.output / "clouds.jsonl"
++    camera_frames_path = args.output / "camera_frames.jsonl"
+ 
+     status = "DURATION_REACHED"
+     records: list[dict] = []
+@@ -643,6 +708,7 @@
+     max_command_obs_error = 0.0
+     nonfoot_events: list[dict] = []
+     frame_luminance_std: list[float] = []
++    camera_frame_index = 0
+     wall_start = time.monotonic()
+ 
+     command_server.start()
+@@ -718,6 +784,7 @@
+         with metrics_path.open("w", encoding="utf-8") as metrics_file, \
+                 sensor_path.open("w", encoding="utf-8") as sensor_file, \
+                 cloud_path.open("w", encoding="utf-8") as cloud_file, \
++                camera_frames_path.open("w", encoding="utf-8") as camera_frames_file, \
+                 ExitStack() as recording_cleanup:
+             if recorder is not None:
+                 # This context exits before the files, including on a physics
+@@ -1205,23 +1272,42 @@
+                     )))
+ 
+                 # ---- third-person capture, world-side camera only ---------
+-                if step % 2 == 0:
++                if step % capture_stride == 0:
+                     heading = np.array([math.cos(yaw), math.sin(yaw), 0.0])
+                     side = np.array([-math.sin(yaw), math.cos(yaw), 0.0])
+-                    env.sim.set_camera_view(
+-                        eye=position
++                    camera_eye = (
++                        position
+                         - args.camera_trail_m * heading
+                         + args.camera_lateral_m * side
+-                        + np.array([0.0, 0.0, args.camera_height_m]),
+-                        target=position
++                        + np.array([0.0, 0.0, args.camera_height_m])
++                    )
++                    camera_target = (
++                        position
+                         + args.camera_look_ahead_m * heading
+-                        - np.array([0.0, 0.0, args.camera_look_down_m]),
++                        - np.array([0.0, 0.0, args.camera_look_down_m])
+                     )
++                    env.sim.set_camera_view(eye=camera_eye, target=camera_target)
+                     # Isaac owns the rendering API, so render() stays on this
+                     # thread. Only the H.264 encode and the contrast statistic
+                     # are queued; frames therefore still reach the writer in
+                     # capture order because the recorder is a single worker.
+                     frame = raw_env.render()
++                    # Display-only pose log, written on this thread in capture
++                    # order so row N describes master frame N. Offline
++                    # composition pairs each frame to telemetry by this
++                    # simulation stamp instead of by wall time, and projects the
++                    # overlay with this exact eye/target pair.
++                    camera_frames_file.write(json.dumps({
++                        "frame_index": camera_frame_index,
++                        "step": step,
++                        "sim_time_s": sim_time,
++                        "eye_xyz": [float(v) for v in camera_eye],
++                        "target_xyz": [float(v) for v in camera_target],
++                        "up_axis": [0.0, 0.0, 1.0],
++                        "base_xyz": [float(v) for v in position],
++                        "yaw_rad": float(yaw),
++                    }) + "\n")
++                    camera_frame_index += 1
+ 
+                     def _encode_frame(captured=frame):
+                         writer.append_data(captured)
+@@ -1352,6 +1438,11 @@
+                 "height_m": args.camera_height_m,
+                 "look_ahead_m": args.camera_look_ahead_m,
+                 "look_down_m": args.camera_look_down_m,
++                "capture_stride_steps": capture_stride,
++                "capture_fps": capture_fps,
++                "pose_log": str(camera_frames_path),
++                "pose_rows": camera_frame_index,
++                "intrinsics": camera_intrinsics,
+                 "note": "world-side follow camera; observes only, changes no robot state",
+             },
+             "video_frame_contrast": {

@@ -1,0 +1,1431 @@
+[
+  {
+    "repo": "Teacher-Tom/HSGM_public",
+    "path": "src/agent/agent.py",
+    "commit": "e2df6e70df869af57d77a32ba658fba04e6814eb",
+    "url": "https://raw.githubusercontent.com/Teacher-Tom/HSGM_public/e2df6e70df869af57d77a32ba658fba04e6814eb/src/agent/agent.py",
+    "sha256": "ee8dc78600a7e11d3aff5ce0bf02902e77ab7906be69da0c12fd66317eec7148",
+    "bytes": 118720,
+    "line_count": 2569,
+    "symbols": [
+      {
+        "line": 18,
+        "text": "def _setup_proxy(preferred_url: str = \"http://127.0.0.1:7897\") -> None:"
+      },
+      {
+        "line": 35,
+        "text": "def draw_direction_markers(img: np.ndarray) -> np.ndarray:"
+      },
+      {
+        "line": 48,
+        "text": "def draw_triangle_with_label(bg, center, direction, label):"
+      },
+      {
+        "line": 91,
+        "text": "def create_top_down_map_centered("
+      },
+      {
+        "line": 131,
+        "text": "def transform_and_to_pixel(world_coords):"
+      },
+      {
+        "line": 469,
+        "text": "def create_top_down_map_global("
+      },
+      {
+        "line": 544,
+        "text": "def world_to_pixel(world_coords):"
+      },
+      {
+        "line": 804,
+        "text": "class Instruction:"
+      },
+      {
+        "line": 809,
+        "text": "def __init__(self, full_instruction: str, sub_instructions: list = None):"
+      },
+      {
+        "line": 835,
+        "text": "def get_current_subtask_key(self):"
+      },
+      {
+        "line": 841,
+        "text": "def is_last_subtask(self):"
+      },
+      {
+        "line": 845,
+        "text": "def get_current_subtask(self):"
+      },
+      {
+        "line": 852,
+        "text": "def update_plan_for_current_subtask(self, plan: str):"
+      },
+      {
+        "line": 858,
+        "text": "def add_record_to_current_subtask(self, record: dict):"
+      },
+      {
+        "line": 864,
+        "text": "def reset_subtask(self, key: str):"
+      },
+      {
+        "line": 876,
+        "text": "def get_subtask_by_key(self, key: str):"
+      },
+      {
+        "line": 881,
+        "text": "def get_all_subtasks_str(self):"
+      },
+      {
+        "line": 917,
+        "text": "def mark_current_subtask_completed(self, coord=None, rotation=None):"
+      },
+      {
+        "line": 943,
+        "text": "def is_all_completed(self):"
+      },
+      {
+        "line": 947,
+        "text": "def roll_back_to_specific_subtask(self, key: str):"
+      },
+      {
+        "line": 958,
+        "text": "def get_subtasks_key_coord(self):"
+      },
+      {
+        "line": 967,
+        "text": "def get_subtask_pos_rot_by_key(self, key: str):"
+      },
+      {
+        "line": 980,
+        "text": "def robust_json_parse(json_str: str):"
+      },
+      {
+        "line": 1000,
+        "text": "class PathPlannerAgent(ABC):"
+      },
+      {
+        "line": 1009,
+        "text": "def __init__(self, sim_wrapper: SimWrapper, config: dict, instruction: str, init_position=None, init_rotation=None, mode='objnav'):"
+      },
+      {
+        "line": 1082,
+        "text": "def _stop(self):"
+      },
+      {
+        "line": 1096,
+        "text": "def update_map(self, obs: dict):"
+      },
+      {
+        "line": 1143,
+        "text": "def _world_to_pixel_coords(self, waypoints_world, agent_position, agent_rotation, camera_intrinsic):"
+      },
+      {
+        "line": 1183,
+        "text": "def _preprocessing_module(self, obs, use_far_waypoints: bool = False):"
+      },
+      {
+        "line": 1477,
+        "text": "def decide_waypoint(self, is_stuck=False, is_first_step=False):"
+      },
+      {
+        "line": 1586,
+        "text": "def plan_rollback_path(self, subtask_key: str = None):"
+      },
+      {
+        "line": 1627,
+        "text": "def _get_agent_yaw(self):"
+      },
+      {
+        "line": 1634,
+        "text": "def _rot_to_yaw(self, rotation):"
+      },
+      {
+        "line": 1643,
+        "text": "def _normalize_angle(self, a):"
+      },
+      {
+        "line": 1646,
+        "text": "def step(self, step, rollback_step_threshold=70):"
+      },
+      {
+        "line": 1886,
+        "text": "def _action_to_text(self, action: PolarAction) -> str:"
+      },
+      {
+        "line": 1918,
+        "text": "def _get_action_for_next_waypoint(self) -> Optional[PolarAction]:"
+      },
+      {
+        "line": 1963,
+        "text": "def execute_action(self, action: PolarAction):"
+      },
+      {
+        "line": 1975,
+        "text": "def create_action(self, world_point_1, world_point_2):"
+      },
+      {
+        "line": 1989,
+        "text": "def _get_vlm_response(self, front_rgb_image: PIL.Image.Image, map_image: PIL.Image.Image, prompt: str, img_buffer: list) -> str:"
+      },
+      {
+        "line": 2003,
+        "text": "def _get_vlm_response_multiview(self, front_rgb_image: PIL.Image.Image, left_rgb_image: PIL.Image.Image, right_rgb_image: PIL.Image.Image, back_rgb_image: PIL.Image.Image, map_image: PIL.Image.Image, prompt: str, img_buffer: list) -> str:"
+      },
+      {
+        "line": 2020,
+        "text": "def _get_llm_response(self, prompt: str) -> str:"
+      },
+      {
+        "line": 2030,
+        "text": "def generate_prompt(self, instruction: str = None, is_stuck: bool = False, is_first_step=False) -> str:"
+      },
+      {
+        "line": 2213,
+        "text": "def decompose_instruction(self, instruction: str) -> List[str]:"
+      },
+      {
+        "line": 2278,
+        "text": "def close(self):"
+      },
+      {
+        "line": 2319,
+        "text": "def __del__(self):"
+      },
+      {
+        "line": 2329,
+        "text": "class GPTAgent(PathPlannerAgent):"
+      },
+      {
+        "line": 2340,
+        "text": "def __init__(self, sim_wrapper, config, instruction, initial_position=None, initial_rotation=None, model_name=None, mode='vln'):"
+      },
+      {
+        "line": 2362,
+        "text": "def _pil_to_base64(self, pil_img):"
+      },
+      {
+        "line": 2368,
+        "text": "def _get_vlm_response(self, rgb_image: Image.Image, map_image: Image.Image, prompt: str, img_buffer=None) -> str:"
+      },
+      {
+        "line": 2439,
+        "text": "def _get_vlm_response_multiview(self, front_rgb_image: PIL.Image.Image, left_rgb_image: PIL.Image.Image,"
+      },
+      {
+        "line": 2547,
+        "text": "def _get_llm_response(self, prompt: str) -> str:"
+      }
+    ],
+    "navigation_excerpts": [
+      {
+        "line": 106,
+        "text": "\"waypoint 1\": {"
+      },
+      {
+        "line": 107,
+        "text": "\"type\": \"waypoint\","
+      },
+      {
+        "line": 275,
+        "text": "# waypoints = mapper.get_candidate_waypoints(min_distance=0.2, max_distance=1.0, waypoint_grid_resolution=1.0)"
+      },
+      {
+        "line": 277,
+        "text": "# if waypoints.shape[0] > 0:"
+      },
+      {
+        "line": 278,
+        "text": "#     waypoint_pixels = transform_and_to_pixel(waypoints)"
+      },
+      {
+        "line": 279,
+        "text": "#     waypoint_pixels_scaled = (waypoint_pixels * label_upscale_factor).astype(int)"
+      },
+      {
+        "line": 280,
+        "text": "#     for pixel in waypoint_pixels_scaled:"
+      },
+      {
+        "line": 302,
+        "text": "if cand.get('type') != 'waypoint':"
+      },
+      {
+        "line": 303,
+        "text": "continue  # only handle waypoint type for now"
+      },
+      {
+        "line": 487,
+        "text": "- enable_navigation: whether to render target / candidate waypoints / subtask nodes."
+      },
+      {
+        "line": 567,
+        "text": "wps = mapper.get_candidate_waypoints(min_distance=0.3, max_distance=1.5, waypoint_grid_resolution=0.5)"
+      },
+      {
+        "line": 696,
+        "text": "if cand.get(\"type\") != \"waypoint\":"
+      },
+      {
+        "line": 1003,
+        "text": "1. Generate waypoints in current view plus basic actions (L, R, 0)."
+      },
+      {
+        "line": 1004,
+        "text": "2. Let the VLM choose a target waypoint or action."
+      },
+      {
+        "line": 1070,
+        "text": "self.first_stop = False"
+      },
+      {
+        "line": 1071,
+        "text": "self.second_stop = False"
+      },
+      {
+        "line": 1082,
+        "text": "def _stop(self):"
+      },
+      {
+        "line": 1083,
+        "text": "\"\"\"Execute stop action and update sub-goal state.\"\"\""
+      },
+      {
+        "line": 1084,
+        "text": "if not self.first_stop:"
+      },
+      {
+        "line": 1086,
+        "text": "self.first_stop = True"
+      },
+      {
+        "line": 1087,
+        "text": "return PolarAction.stop"
+      },
+      {
+        "line": 1088,
+        "text": "elif not self.second_stop:"
+      },
+      {
+        "line": 1090,
+        "text": "self.second_stop = True"
+      },
+      {
+        "line": 1091,
+        "text": "return PolarAction.stop"
+      },
+      {
+        "line": 1143,
+        "text": "def _world_to_pixel_coords(self, waypoints_world, agent_position, agent_rotation, camera_intrinsic):"
+      },
+      {
+        "line": 1145,
+        "text": "Convert world-coordinate waypoints to image pixel coordinates."
+      },
+      {
+        "line": 1146,
+        "text": ":param waypoints_world:"
+      },
+      {
+        "line": 1149,
+        "text": "if waypoints_world.shape[0] == 0:"
+      },
+      {
+        "line": 1152,
+        "text": "relative_points = waypoints_world - agent_position"
+      },
+      {
+        "line": 1166,
+        "text": "original_indices = np.arange(waypoints_world.shape[0])"
+      }
+    ]
+  },
+  {
+    "repo": "Teacher-Tom/HSGM_public",
+    "path": "src/mapping_utils/path_planning.py",
+    "commit": "e2df6e70df869af57d77a32ba658fba04e6814eb",
+    "url": "https://raw.githubusercontent.com/Teacher-Tom/HSGM_public/e2df6e70df869af57d77a32ba658fba04e6814eb/src/mapping_utils/path_planning.py",
+    "sha256": "fa48209e769fd1740281026672315921ee63b0c81bf4ded7003297be8b199ac2",
+    "bytes": 1369,
+    "line_count": 39,
+    "symbols": [
+      {
+        "line": 8,
+        "text": "def path_planning(costmap,start_index,goal_index):"
+      },
+      {
+        "line": 22,
+        "text": "def visualize_path(costmap,path):"
+      }
+    ],
+    "navigation_excerpts": [
+      {
+        "line": 5,
+        "text": "from pathfinding.finder.a_star import AStarFinder"
+      },
+      {
+        "line": 12,
+        "text": "finder = AStarFinder(diagonal_movement=DiagonalMovement.always)"
+      },
+      {
+        "line": 24,
+        "text": "for waypoint in path:"
+      },
+      {
+        "line": 25,
+        "text": "x = waypoint.y"
+      },
+      {
+        "line": 26,
+        "text": "y = waypoint.x"
+      }
+    ]
+  },
+  {
+    "repo": "Teacher-Tom/HSGM_public",
+    "path": "config/vlnce_test.yaml",
+    "commit": "e2df6e70df869af57d77a32ba658fba04e6814eb",
+    "url": "https://raw.githubusercontent.com/Teacher-Tom/HSGM_public/e2df6e70df869af57d77a32ba658fba04e6814eb/config/vlnce_test.yaml",
+    "sha256": "9aaacf0674b27c9105b4b37da8a0a5c1d58fc7ec0b70e4b7774619cd9fd57957",
+    "bytes": 277,
+    "line_count": 15,
+    "symbols": [],
+    "navigation_excerpts": []
+  },
+  {
+    "repo": "ylwhxht/MSGNav",
+    "path": "src/query_vlm.py",
+    "commit": "03681a178d6993265e838e1fbbaf2338c54e1c62",
+    "url": "https://raw.githubusercontent.com/ylwhxht/MSGNav/03681a178d6993265e838e1fbbaf2338c54e1c62/src/query_vlm.py",
+    "sha256": "f53a53157f6b1f066fcb4ba6b1d91e25c34e318902780e09e8ffdb9656857792",
+    "bytes": 14742,
+    "line_count": 349,
+    "symbols": [
+      {
+        "line": 15,
+        "text": "def random_frontier_choice(tsdf_planner: TSDFPlanner, n_filtered_snapshots):"
+      },
+      {
+        "line": 28,
+        "text": "def get_aabb_corner_points(aabb):"
+      },
+      {
+        "line": 39,
+        "text": "def select_navigation_corner(aabb, selection_strategy=\"closest_to_robot\", robot_position=None):"
+      },
+      {
+        "line": 108,
+        "text": "def query_vlm_for_response("
+      },
+      {
+        "line": 324,
+        "text": "def query_vlm_for_response_end("
+      }
+    ],
+    "navigation_excerpts": []
+  },
+  {
+    "repo": "ylwhxht/MSGNav",
+    "path": "src/multimodal_3d_scene_graph.py",
+    "commit": "03681a178d6993265e838e1fbbaf2338c54e1c62",
+    "url": "https://raw.githubusercontent.com/ylwhxht/MSGNav/03681a178d6993265e838e1fbbaf2338c54e1c62/src/multimodal_3d_scene_graph.py",
+    "sha256": "5c2b6fbccf5ba87bc4d525bb3bd7939b4d24b603342da64cc74852cc5186cb0b",
+    "bytes": 41081,
+    "line_count": 978,
+    "symbols": [
+      {
+        "line": 56,
+        "text": "class Scene:"
+      },
+      {
+        "line": 57,
+        "text": "def __init__("
+      },
+      {
+        "line": 168,
+        "text": "def __del__(self):"
+      },
+      {
+        "line": 174,
+        "text": "def clear_up_detections(self):"
+      },
+      {
+        "line": 188,
+        "text": "def get_observation(self, pts, angle=None, rotation=None):"
+      },
+      {
+        "line": 215,
+        "text": "def get_frontier_observation(self, pts, view_dir, camera_tilt=0.0):"
+      },
+      {
+        "line": 246,
+        "text": "def get_frontier_observation_and_detect_target("
+      },
+      {
+        "line": 292,
+        "text": "def get_navigable_point_to("
+      },
+      {
+        "line": 310,
+        "text": "def update_scene_graph("
+      },
+      {
+        "line": 620,
+        "text": "def update_scene_graph_edges(self, frame_obj_ids, img_path: str):"
+      },
+      {
+        "line": 659,
+        "text": "def update_scene_graph_edges_concept(self, frame_obj_ids, img_path: str):"
+      },
+      {
+        "line": 776,
+        "text": "def del_unused_scene_graph_edges(self):"
+      },
+      {
+        "line": 790,
+        "text": "def filter_gobs_with_distance(self, pts, gobs):"
+      },
+      {
+        "line": 822,
+        "text": "def merge_obj_matches("
+      },
+      {
+        "line": 877,
+        "text": "def make_detection_list_from_pcd_and_gobs("
+      },
+      {
+        "line": 912,
+        "text": "def periodic_cleanup_objects(self, frame_idx, pts, goal_obj_ids_mapping=None):"
+      },
+      {
+        "line": 976,
+        "text": "def sanity_check(self, cfg):"
+      }
+    ],
+    "navigation_excerpts": []
+  },
+  {
+    "repo": "ylwhxht/MSGNav",
+    "path": "src/explore_utils.py",
+    "commit": "03681a178d6993265e838e1fbbaf2338c54e1c62",
+    "url": "https://raw.githubusercontent.com/ylwhxht/MSGNav/03681a178d6993265e838e1fbbaf2338c54e1c62/src/explore_utils.py",
+    "sha256": "f19d285c27c15d40662cb5eba4913ebcba261b84f55b86f53ca13fa3c36ddcac",
+    "bytes": 40470,
+    "line_count": 1003,
+    "symbols": [
+      {
+        "line": 31,
+        "text": "def format_content(contents):"
+      },
+      {
+        "line": 48,
+        "text": "def _sanitize_policy_text(text: str) -> str:"
+      },
+      {
+        "line": 63,
+        "text": "def _build_policy_safe_contents(contents):"
+      },
+      {
+        "line": 75,
+        "text": "def call_openai_api(sys_prompt, contents) -> Optional[str]:"
+      },
+      {
+        "line": 127,
+        "text": "def save_image(image, save_path):"
+      },
+      {
+        "line": 133,
+        "text": "def encode_tensor2base64(img, min_size=16):"
+      },
+      {
+        "line": 149,
+        "text": "def format_question(step):"
+      },
+      {
+        "line": 157,
+        "text": "def Key_Subgraph_Selection(step, verbose=False, use_ollama = False, use_room_filter = False):"
+      },
+      {
+        "line": 207,
+        "text": "def Prompt_with_AVU_and_CLR("
+      },
+      {
+        "line": 354,
+        "text": "def Prompt_without_AVU("
+      },
+      {
+        "line": 495,
+        "text": "def format_exploreonly_prompt("
+      },
+      {
+        "line": 528,
+        "text": "def format_end_prompt("
+      },
+      {
+        "line": 588,
+        "text": "def format_prefiltering_prompt(question, scene_graph, top_k=10, image_goal=None, room_label = False):"
+      },
+      {
+        "line": 666,
+        "text": "def get_prefiltering_objs(question, obj_infos, top_k=10, image_goal=None, use_room_filter = False):"
+      },
+      {
+        "line": 693,
+        "text": "def related_object_KSS("
+      },
+      {
+        "line": 724,
+        "text": "def edge_pruning_KSS(edges, objs, images, selected_obj_id, image_to_edges, prompt_h, prompt_w):"
+      },
+      {
+        "line": 783,
+        "text": "def explore_two_step(step, cfg, verbose=False):"
+      },
+      {
+        "line": 790,
+        "text": "def parse_response(raw_response):"
+      },
+      {
+        "line": 945,
+        "text": "def task_check(step, verbose=False):"
+      }
+    ],
+    "navigation_excerpts": []
+  },
+  {
+    "repo": "bagh2178/GC-VLN",
+    "path": "src/solver/navigation_tree.py",
+    "commit": "1beddca8d90d79855c110c5a433f7b8856ca263a",
+    "url": "https://raw.githubusercontent.com/bagh2178/GC-VLN/1beddca8d90d79855c110c5a433f7b8856ca263a/src/solver/navigation_tree.py",
+    "sha256": "0ed43d1c39a8f94b869534c050c9addfbb7f84c6324ea12091c66288cfd422c1",
+    "bytes": 4650,
+    "line_count": 121,
+    "symbols": [
+      {
+        "line": 7,
+        "text": "class NavigationTree(NT_Utils):"
+      },
+      {
+        "line": 10,
+        "text": "def __init__("
+      },
+      {
+        "line": 21,
+        "text": "def reset(self, instruction_graph, end_stage):"
+      },
+      {
+        "line": 34,
+        "text": "def update_begin_point(self, start_point, bev_shape, thin_type):"
+      },
+      {
+        "line": 54,
+        "text": "def initialize_navigation_tree(self):"
+      },
+      {
+        "line": 76,
+        "text": "def topological_sort(self, graph: nx.DiGraph):"
+      },
+      {
+        "line": 94,
+        "text": "def get_sequence_tree(self, instruction_graph):"
+      }
+    ],
+    "navigation_excerpts": [
+      {
+        "line": 28,
+        "text": "self.waypoints_tree = nx.DiGraph()"
+      },
+      {
+        "line": 58,
+        "text": "type='waypoint',"
+      },
+      {
+        "line": 65,
+        "text": "self.waypoints_tree.add_node("
+      },
+      {
+        "line": 68,
+        "text": "type='waypoint',"
+      }
+    ]
+  },
+  {
+    "repo": "bagh2178/GC-VLN",
+    "path": "src/solver/constraint.py",
+    "commit": "1beddca8d90d79855c110c5a433f7b8856ca263a",
+    "url": "https://raw.githubusercontent.com/bagh2178/GC-VLN/1beddca8d90d79855c110c5a433f7b8856ca263a/src/solver/constraint.py",
+    "sha256": "ecf395598231eef789dbaaa8309c4763d4b7db42d45c5185e28fb93953c55f4b",
+    "bytes": 8456,
+    "line_count": 197,
+    "symbols": [
+      {
+        "line": 8,
+        "text": "class Constraint():"
+      },
+      {
+        "line": 11,
+        "text": "def __init__(self, type, device='cuda', dataset='rxr'):"
+      },
+      {
+        "line": 62,
+        "text": "def draw_mask(self, shape, angle_agent, bev):"
+      },
+      {
+        "line": 118,
+        "text": "def set_constraint(cls, key, value, angle_direction, args, device='cuda', dataset='rxr'):"
+      }
+    ],
+    "navigation_excerpts": []
+  },
+  {
+    "repo": "bagh2178/GC-VLN",
+    "path": "src/agent/navigation_planner.py",
+    "commit": "1beddca8d90d79855c110c5a433f7b8856ca263a",
+    "url": "https://raw.githubusercontent.com/bagh2178/GC-VLN/1beddca8d90d79855c110c5a433f7b8856ca263a/src/agent/navigation_planner.py",
+    "sha256": "7989a9f54a047bcdf8ab99908b9e31d298ed42819d1151a51f1df768c3eedbe9",
+    "bytes": 11124,
+    "line_count": 290,
+    "symbols": [
+      {
+        "line": 8,
+        "text": "class FMMPlanner:"
+      },
+      {
+        "line": 9,
+        "text": "def __init__("
+      },
+      {
+        "line": 53,
+        "text": "def _resize_map(self, traversible:np.ndarray):"
+      },
+      {
+        "line": 60,
+        "text": "def _inflate_obstacles(self, traversible, robot_radius):"
+      },
+      {
+        "line": 79,
+        "text": "def set_goal(self, goal):"
+      },
+      {
+        "line": 98,
+        "text": "def _find_nearest_goal(self, goal_y, goal_x):"
+      },
+      {
+        "line": 124,
+        "text": "def _compute_fmm_gradient(self):"
+      },
+      {
+        "line": 138,
+        "text": "def _compute_fmm_gradient_v2(self, point):"
+      },
+      {
+        "line": 173,
+        "text": "def generate_path(self, start_state, initial_heading, act, observation_map):"
+      },
+      {
+        "line": 236,
+        "text": "def _smooth_path(self, path):"
+      },
+      {
+        "line": 249,
+        "text": "def generate_actions(self, start_state, next_state, initial_heading):"
+      }
+    ],
+    "navigation_excerpts": []
+  },
+  {
+    "repo": "bagh2178/SG-Nav",
+    "path": "SG_Nav.py",
+    "commit": "d56863c96dea311aaa67fb0d39a1a8ccc3f0487f",
+    "url": "https://raw.githubusercontent.com/bagh2178/SG-Nav/d56863c96dea311aaa67fb0d39a1a8ccc3f0487f/SG_Nav.py",
+    "sha256": "9db781b892b6a4ffdc9482ba93488233dd1dcb9ca61cf7dc4b9562b1acaf0949",
+    "bytes": 43225,
+    "line_count": 887,
+    "symbols": [
+      {
+        "line": 40,
+        "text": "class SG_Nav_Agent():"
+      },
+      {
+        "line": 41,
+        "text": "def __init__(self, task_config, args=None):"
+      },
+      {
+        "line": 142,
+        "text": "def add_predicates(self, model):"
+      },
+      {
+        "line": 156,
+        "text": "def add_rules(self, model):"
+      },
+      {
+        "line": 164,
+        "text": "def reset(self):"
+      },
+      {
+        "line": 224,
+        "text": "def detect_objects(self, observations):"
+      },
+      {
+        "line": 356,
+        "text": "def act(self, observations):"
+      },
+      {
+        "line": 508,
+        "text": "def not_use_random_goal(self):"
+      },
+      {
+        "line": 512,
+        "text": "def get_glip_real_label(self, prediction):"
+      },
+      {
+        "line": 525,
+        "text": "def fbe(self, traversible, start):"
+      },
+      {
+        "line": 572,
+        "text": "def get_goal_gps(self, observations, angle, distance):"
+      },
+      {
+        "line": 582,
+        "text": "def get_relative_goal_gps(self, observations, goal_gps=None):"
+      },
+      {
+        "line": 592,
+        "text": "def init_map(self):"
+      },
+      {
+        "line": 604,
+        "text": "def init_map_and_pose():"
+      },
+      {
+        "line": 611,
+        "text": "def update_map(self, observations):"
+      },
+      {
+        "line": 617,
+        "text": "def update_free_map(self, observations):"
+      },
+      {
+        "line": 624,
+        "text": "def update_room_map(self, observations, room_prediction_result):"
+      },
+      {
+        "line": 636,
+        "text": "def get_traversible(self, map_pred, pose_pred):"
+      },
+      {
+        "line": 647,
+        "text": "def add_boundary(mat, value=1):"
+      },
+      {
+        "line": 680,
+        "text": "def _plan(self, traversible, goal_map, agent_pose, start, start_o, goal_found):"
+      },
+      {
+        "line": 746,
+        "text": "def _get_stg(self, traversible, start, goal, goal_found):"
+      },
+      {
+        "line": 747,
+        "text": "def add_boundary(mat, value=1):"
+      },
+      {
+        "line": 781,
+        "text": "def set_random_goal(self):"
+      },
+      {
+        "line": 796,
+        "text": "def update_metrics(self, metrics):"
+      },
+      {
+        "line": 804,
+        "text": "def visualize(self, traversible, observations, number_action):"
+      },
+      {
+        "line": 840,
+        "text": "def save_video(self):"
+      },
+      {
+        "line": 852,
+        "text": "def visualize_agent_and_goal(self, map):"
+      },
+      {
+        "line": 864,
+        "text": "def main():"
+      }
+    ],
+    "navigation_excerpts": [
+      {
+        "line": 216,
+        "text": "self.current_stuck_steps = 0"
+      },
+      {
+        "line": 217,
+        "text": "self.total_stuck_steps = 0"
+      },
+      {
+        "line": 456,
+        "text": "stg_y, stg_x, replan, number_action = self._plan(traversible, self.goal_map, self.full_pose, cur_start, cur_start_o, self.found_goal)"
+      },
+      {
+        "line": 480,
+        "text": "stg_y, stg_x, replan, number_action = self._plan(traversible, self.goal_map, self.full_pose, cur_start, cur_start_o, self.found_goal)"
+      },
+      {
+        "line": 494,
+        "text": "stg_y, stg_x, replan, number_action = self._plan(traversible, self.goal_map, self.full_pose, cur_start, cur_start_o, self.found_goal)"
+      },
+      {
+        "line": 707,
+        "text": "stg, replan, stop, = self._get_stg(traversible, start, np.copy(goal_map), goal_found)"
+      },
+      {
+        "line": 710,
+        "text": "if stop:"
+      },
+      {
+        "line": 744,
+        "text": "return stg_y, stg_x, replan, action"
+      },
+      {
+        "line": 773,
+        "text": "decrease_stop_cond =0"
+      },
+      {
+        "line": 775,
+        "text": "decrease_stop_cond = 0.2 #decrease to 0.2 (7 grids until closest goal)"
+      },
+      {
+        "line": 776,
+        "text": "stg_y, stg_x, replan, stop = self.planner.get_short_term_goal(state, found_goal = goal_found, decrease_stop_cond=decrease_stop_cond)"
+      },
+      {
+        "line": 779,
+        "text": "return (stg_y, stg_x), replan, stop"
+      }
+    ]
+  },
+  {
+    "repo": "bagh2178/SG-Nav",
+    "path": "scenegraph.py",
+    "commit": "d56863c96dea311aaa67fb0d39a1a8ccc3f0487f",
+    "url": "https://raw.githubusercontent.com/bagh2178/SG-Nav/d56863c96dea311aaa67fb0d39a1a8ccc3f0487f/scenegraph.py",
+    "sha256": "9e9b4a93379b256018de6145584703043b101b7a3875358a6a6e0d8c032c844e",
+    "bytes": 39136,
+    "line_count": 892,
+    "symbols": [
+      {
+        "line": 35,
+        "text": "class RoomNode():"
+      },
+      {
+        "line": 36,
+        "text": "def __init__(self, caption):"
+      },
+      {
+        "line": 43,
+        "text": "class GroupNode():"
+      },
+      {
+        "line": 44,
+        "text": "def __init__(self, caption=''):"
+      },
+      {
+        "line": 53,
+        "text": "def __lt__(self, other):"
+      },
+      {
+        "line": 56,
+        "text": "def get_graph(self):"
+      },
+      {
+        "line": 67,
+        "text": "def graph_to_text(self, nodes, edges):"
+      },
+      {
+        "line": 73,
+        "text": "class ObjectNode():"
+      },
+      {
+        "line": 74,
+        "text": "def __init__(self):"
+      },
+      {
+        "line": 87,
+        "text": "def __lt__(self, other):"
+      },
+      {
+        "line": 90,
+        "text": "def add_edge(self, edge):"
+      },
+      {
+        "line": 93,
+        "text": "def remove_edge(self, edge):"
+      },
+      {
+        "line": 96,
+        "text": "def set_caption(self, new_caption):"
+      },
+      {
+        "line": 107,
+        "text": "def set_object(self, object):"
+      },
+      {
+        "line": 111,
+        "text": "def set_center(self, center):"
+      },
+      {
+        "line": 115,
+        "text": "class Edge():"
+      },
+      {
+        "line": 116,
+        "text": "def __init__(self, node1, node2):"
+      },
+      {
+        "line": 123,
+        "text": "def set_relation(self, relation):"
+      },
+      {
+        "line": 126,
+        "text": "def delete(self):"
+      },
+      {
+        "line": 130,
+        "text": "def text(self):"
+      },
+      {
+        "line": 135,
+        "text": "class SceneGraph():"
+      },
+      {
+        "line": 136,
+        "text": "def __init__(self, map_resolution, map_size_cm, map_size, camera_matrix, is_navigation=True, agent=None) -> None:"
+      },
+      {
+        "line": 209,
+        "text": "def reset(self):"
+      },
+      {
+        "line": 226,
+        "text": "def set_cfg(self):"
+      },
+      {
+        "line": 234,
+        "text": "def set_agent(self, agent):"
+      },
+      {
+        "line": 237,
+        "text": "def set_obj_goal(self, obj_goal, obj_goal_sg):"
+      },
+      {
+        "line": 243,
+        "text": "def set_navigate_steps(self, navigate_steps):"
+      },
+      {
+        "line": 246,
+        "text": "def set_room_map(self, room_map):"
+      },
+      {
+        "line": 249,
+        "text": "def set_fbe_free_map(self, fbe_free_map):"
+      },
+      {
+        "line": 252,
+        "text": "def set_observations(self, observations):"
+      },
+      {
+        "line": 258,
+        "text": "def set_frontier_map(self, frontier_map):"
+      },
+      {
+        "line": 261,
+        "text": "def set_full_map(self, full_map):"
+      },
+      {
+        "line": 264,
+        "text": "def set_fbe_free_map(self, fbe_free_map):"
+      },
+      {
+        "line": 267,
+        "text": "def set_full_pose(self, full_pose):"
+      },
+      {
+        "line": 270,
+        "text": "def get_nodes(self):"
+      },
+      {
+        "line": 273,
+        "text": "def get_edges(self):"
+      },
+      {
+        "line": 280,
+        "text": "def get_seg_xyxy(self):"
+      },
+      {
+        "line": 283,
+        "text": "def get_seg_caption(self):"
+      },
+      {
+        "line": 286,
+        "text": "def init_room_nodes(self):"
+      },
+      {
+        "line": 293,
+        "text": "def get_sam_mask_generator(self, variant:str, device) -> SamAutomaticMaskGenerator:"
+      },
+      {
+        "line": 321,
+        "text": "def get_sam_segmentation_dense("
+      },
+      {
+        "line": 402,
+        "text": "def compute_clip_features(self, image, detections, clip_model, clip_preprocess, clip_tokenizer, classes, device):"
+      },
+      {
+        "line": 458,
+        "text": "def process_cfg(self, cfg: DictConfig):"
+      },
+      {
+        "line": 478,
+        "text": "def crop_image_and_mask(self, image: Image, mask: np.ndarray, x1: int, y1: int, x2: int, y2: int, padding: int = 0):"
+      },
+      {
+        "line": 509,
+        "text": "def get_pose_matrix(self):"
+      },
+      {
+        "line": 521,
+        "text": "def segment2d(self):"
+      },
+      {
+        "line": 553,
+        "text": "def mapping3d(self):"
+      },
+      {
+        "line": 599,
+        "text": "def get_caption(self):"
+      },
+      {
+        "line": 609,
+        "text": "def update_node(self):"
+      },
+      {
+        "line": 647,
+        "text": "def update_edge(self):"
+      },
+      {
+        "line": 706,
+        "text": "def update_group(self):"
+      },
+      {
+        "line": 723,
+        "text": "def insert_goal(self, goal=None):"
+      },
+      {
+        "line": 750,
+        "text": "def update_scenegraph(self):"
+      },
+      {
+        "line": 759,
+        "text": "def get_llm_response(self, prompt):"
+      },
+      {
+        "line": 769,
+        "text": "def get_vlm_response(self, prompt, image):"
+      },
+      {
+        "line": 784,
+        "text": "def find_modes(self, lst):"
+      },
+      {
+        "line": 793,
+        "text": "def get_joint_image(self, node1, node2):"
+      },
+      {
+        "line": 812,
+        "text": "def score(self, frontier_locations_16, num_16_frontiers):"
+      },
+      {
+        "line": 847,
+        "text": "def discriminate_relation(self, edge):"
+      },
+      {
+        "line": 875,
+        "text": "def perception(self):"
+      },
+      {
+        "line": 882,
+        "text": "def graph_corr(self, goal, graph):"
+      }
+    ],
+    "navigation_excerpts": []
+  },
+  {
+    "repo": "rai-opensource/vlfm",
+    "path": "vlfm/policy/base_objectnav_policy.py",
+    "commit": "584ed56008754fde7997d904983607def8328322",
+    "url": "https://raw.githubusercontent.com/rai-opensource/vlfm/584ed56008754fde7997d904983607def8328322/vlfm/policy/base_objectnav_policy.py",
+    "sha256": "548f9b31f0a84c8a041f298dbefd7af4c227ec751e85a45bbc1d2ea477dea500",
+    "bytes": 16780,
+    "line_count": 402,
+    "symbols": [
+      {
+        "line": 30,
+        "text": "class BasePolicy:  # type: ignore"
+      },
+      {
+        "line": 34,
+        "text": "class BaseObjectNavPolicy(BasePolicy):"
+      },
+      {
+        "line": 43,
+        "text": "def __init__("
+      },
+      {
+        "line": 94,
+        "text": "def _reset(self) -> None:"
+      },
+      {
+        "line": 106,
+        "text": "def act("
+      },
+      {
+        "line": 152,
+        "text": "def _pre_step(self, observations: \"TensorDict\", masks: Tensor) -> None:"
+      },
+      {
+        "line": 165,
+        "text": "def _initialize(self) -> Tensor:"
+      },
+      {
+        "line": 168,
+        "text": "def _explore(self, observations: \"TensorDict\") -> Tensor:"
+      },
+      {
+        "line": 171,
+        "text": "def _get_target_object_location(self, position: np.ndarray) -> Union[None, np.ndarray]:"
+      },
+      {
+        "line": 177,
+        "text": "def _get_policy_info(self, detections: ObjectDetections) -> Dict[str, Any]:"
+      },
+      {
+        "line": 221,
+        "text": "def _get_object_detections(self, img: np.ndarray) -> ObjectDetections:"
+      },
+      {
+        "line": 243,
+        "text": "def _pointnav(self, goal: np.ndarray, stop: bool = False) -> Tensor:"
+      },
+      {
+        "line": 281,
+        "text": "def _update_object_map("
+      },
+      {
+        "line": 354,
+        "text": "def _cache_observations(self, observations: \"TensorDict\") -> None:"
+      },
+      {
+        "line": 362,
+        "text": "def _infer_depth(self, rgb: np.ndarray, min_depth: float, max_depth: float) -> np.ndarray:"
+      },
+      {
+        "line": 375,
+        "text": "class VLFMConfig:"
+      },
+      {
+        "line": 396,
+        "text": "def kwaarg_names(cls) -> List[str]:"
+      }
+    ],
+    "navigation_excerpts": [
+      {
+        "line": 38,
+        "text": "_stop_action: Union[Tensor, Any] = None  # MUST BE SET BY SUBCLASS"
+      },
+      {
+        "line": 47,
+        "text": "pointnav_stop_radius: float,"
+      },
+      {
+        "line": 73,
+        "text": "self._pointnav_stop_radius = pointnav_stop_radius"
+      },
+      {
+        "line": 83,
+        "text": "self._called_stop = False"
+      },
+      {
+        "line": 101,
+        "text": "self._called_stop = False"
+      },
+      {
+        "line": 138,
+        "text": "pointnav_action = self._pointnav(goal[:2], stop=True)"
+      },
+      {
+        "line": 161,
+        "text": "print(\"Reached edge of map, stopping.\")"
+      },
+      {
+        "line": 162,
+        "text": "raise StopIteration"
+      },
+      {
+        "line": 189,
+        "text": "\"stop_called\": self._called_stop,"
+      },
+      {
+        "line": 243,
+        "text": "def _pointnav(self, goal: np.ndarray, stop: bool = False) -> Tensor:"
+      },
+      {
+        "line": 252,
+        "text": "stop (bool): Whether to stop if we are close enough to the goal."
+      },
+      {
+        "line": 275,
+        "text": "if rho < self._pointnav_stop_radius and stop:"
+      },
+      {
+        "line": 276,
+        "text": "self._called_stop = True"
+      },
+      {
+        "line": 277,
+        "text": "return self._stop_action"
+      },
+      {
+        "line": 380,
+        "text": "pointnav_stop_radius: float = 0.9"
+      }
+    ]
+  },
+  {
+    "repo": "rai-opensource/vlfm",
+    "path": "vlfm/policy/itm_policy.py",
+    "commit": "584ed56008754fde7997d904983607def8328322",
+    "url": "https://raw.githubusercontent.com/rai-opensource/vlfm/584ed56008754fde7997d904983607def8328322/vlfm/policy/itm_policy.py",
+    "sha256": "a910ecb6ff7282c62116de9a33f7a73434833ed06c0cbd47f8e0cb8384e794ea",
+    "bytes": 12425,
+    "line_count": 316,
+    "symbols": [
+      {
+        "line": 26,
+        "text": "class BaseITMPolicy(BaseObjectNavPolicy):"
+      },
+      {
+        "line": 36,
+        "text": "def _vis_reduce_fn(i: np.ndarray) -> np.ndarray:"
+      },
+      {
+        "line": 39,
+        "text": "def __init__("
+      },
+      {
+        "line": 57,
+        "text": "def _reset(self) -> None:"
+      },
+      {
+        "line": 64,
+        "text": "def _explore(self, observations: Union[Dict[str, Tensor], \"TensorDict\"]) -> Tensor:"
+      },
+      {
+        "line": 76,
+        "text": "def _get_best_frontier("
+      },
+      {
+        "line": 154,
+        "text": "def _get_policy_info(self, detections: ObjectDetections) -> Dict[str, Any]:"
+      },
+      {
+        "line": 191,
+        "text": "def _update_value_map(self) -> None:"
+      },
+      {
+        "line": 213,
+        "text": "def _sort_frontiers_by_value("
+      },
+      {
+        "line": 219,
+        "text": "class ITMPolicy(BaseITMPolicy):"
+      },
+      {
+        "line": 220,
+        "text": "def __init__(self, *args: Any, **kwargs: Any) -> None:"
+      },
+      {
+        "line": 224,
+        "text": "def act("
+      },
+      {
+        "line": 237,
+        "text": "def _reset(self) -> None:"
+      },
+      {
+        "line": 241,
+        "text": "def _sort_frontiers_by_value("
+      },
+      {
+        "line": 250,
+        "text": "class ITMPolicyV2(BaseITMPolicy):"
+      },
+      {
+        "line": 251,
+        "text": "def act("
+      },
+      {
+        "line": 263,
+        "text": "def _sort_frontiers_by_value("
+      },
+      {
+        "line": 270,
+        "text": "class ITMPolicyV3(ITMPolicyV2):"
+      },
+      {
+        "line": 271,
+        "text": "def __init__(self, exploration_thresh: float, *args: Any, **kwargs: Any) -> None:"
+      },
+      {
+        "line": 275,
+        "text": "def visualize_value_map(arr: np.ndarray) -> np.ndarray:"
+      },
+      {
+        "line": 289,
+        "text": "def _sort_frontiers_by_value("
+      },
+      {
+        "line": 296,
+        "text": "def _reduce_values(self, values: List[Tuple[float, float]]) -> List[float]:"
+      }
+    ],
+    "navigation_excerpts": [
+      {
+        "line": 67,
+        "text": "print(\"No frontiers found during exploration, stopping.\")"
+      },
+      {
+        "line": 68,
+        "text": "return self._stop_action"
+      },
+      {
+        "line": 72,
+        "text": "pointnav_action = self._pointnav(best_frontier, stop=False)"
+      },
+      {
+        "line": 247,
+        "text": "return self._frontier_map.sort_waypoints()"
+      },
+      {
+        "line": 266,
+        "text": "sorted_frontiers, sorted_values = self._value_map.sort_waypoints(frontiers, 0.5)"
+      },
+      {
+        "line": 292,
+        "text": "sorted_frontiers, sorted_values = self._value_map.sort_waypoints(frontiers, 0.5, reduce_fn=self._reduce_values)"
+      }
+    ]
+  }
+]

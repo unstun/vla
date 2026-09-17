@@ -1,0 +1,105 @@
+test_concurrent_submits_cannot_create_two_command_owners (__main__.Acceptance.test_concurrent_submits_cannot_create_two_command_owners) ... FAIL
+test_evidence_is_rechecked_after_route_planning (__main__.Acceptance.test_evidence_is_rechecked_after_route_planning) ... FAIL
+test_failure_without_stop_receipt_keeps_motion_owner (__main__.Acceptance.test_failure_without_stop_receipt_keeps_motion_owner) ... FAIL
+test_late_accept_progress_arrival_cannot_override_pending_stop (__main__.Acceptance.test_late_accept_progress_arrival_cannot_override_pending_stop) ... FAIL
+test_map_change_cancellation_uses_original_command_identity (__main__.Acceptance.test_map_change_cancellation_uses_original_command_identity) ... FAIL
+test_nonfinite_and_future_evidence_is_rejected (__main__.Acceptance.test_nonfinite_and_future_evidence_is_rejected) ... 
+  test_nonfinite_and_future_evidence_is_rejected (__main__.Acceptance.test_nonfinite_and_future_evidence_is_rejected) (timestamp=nan) ... FAIL
+  test_nonfinite_and_future_evidence_is_rejected (__main__.Acceptance.test_nonfinite_and_future_evidence_is_rejected) (timestamp=inf) ... FAIL
+  test_nonfinite_and_future_evidence_is_rejected (__main__.Acceptance.test_nonfinite_and_future_evidence_is_rejected) (timestamp=1000.0) ... FAIL
+test_synchronous_failure_is_not_reported_as_success (__main__.Acceptance.test_synchronous_failure_is_not_reported_as_success) ... FAIL
+test_timeout_requests_stop_not_only_a_status_change (__main__.Acceptance.test_timeout_requests_stop_not_only_a_status_change) ... FAIL
+test_unknown_submit_reply_does_not_release_uncertain_motion (__main__.Acceptance.test_unknown_submit_reply_does_not_release_uncertain_motion) ... FAIL
+
+======================================================================
+FAIL: test_concurrent_submits_cannot_create_two_command_owners (__main__.Acceptance.test_concurrent_submits_cannot_create_two_command_owners)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 152, in test_concurrent_submits_cannot_create_two_command_owners
+    self.assertLessEqual(len(self.backend.commands), 1, results)
+AssertionError: 2 not less than or equal to 1 : [{'ok': True, 'status': 'accepted', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': {'request_id': 'request-2', 'goal_id': 'goal-2', 'route_id': 'route-goal-2', 'command_id': '9f0c1dfd0f3a3628', 'status': 'accepted', 'last_feedback_seq': 0, 'terminal_cause': None, 'unresolved_reason': None}, 'event_seq': 2}, 'data': {'goal_id': 'goal-2', 'route_id': 'route-goal-2', 'command_id': '9f0c1dfd0f3a3628'}}, {'ok': True, 'status': 'accepted', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': {'request_id': 'request-1', 'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35', 'status': 'accepted', 'last_feedback_seq': 0, 'terminal_cause': None, 'unresolved_reason': None}, 'event_seq': 4}, 'data': {'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35'}}]
+
+======================================================================
+FAIL: test_evidence_is_rechecked_after_route_planning (__main__.Acceptance.test_evidence_is_rechecked_after_route_planning)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 96, in test_evidence_is_rechecked_after_route_planning
+    self.assertFalse(result['ok'], result)
+AssertionError: True is not false : {'ok': True, 'status': 'accepted', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': {'request_id': 'request-1', 'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35', 'status': 'accepted', 'last_feedback_seq': 0, 'terminal_cause': None, 'unresolved_reason': None}, 'event_seq': 2}, 'data': {'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35'}}
+
+======================================================================
+FAIL: test_failure_without_stop_receipt_keeps_motion_owner (__main__.Acceptance.test_failure_without_stop_receipt_keeps_motion_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 74, in test_failure_without_stop_receipt_keeps_motion_owner
+    self.assertIsNotNone(self.service.active_owner, 'Failure is not proof of stopped execution')
+AssertionError: unexpectedly None : Failure is not proof of stopped execution
+
+======================================================================
+FAIL: test_late_accept_progress_arrival_cannot_override_pending_stop (__main__.Acceptance.test_late_accept_progress_arrival_cannot_override_pending_stop)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 68, in test_late_accept_progress_arrival_cannot_override_pending_stop
+    self.assertFalse(second['ok'], 'A delayed old arrival released unresolved stop ownership')
+AssertionError: True is not false : A delayed old arrival released unresolved stop ownership
+
+======================================================================
+FAIL: test_map_change_cancellation_uses_original_command_identity (__main__.Acceptance.test_map_change_cancellation_uses_original_command_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 89, in test_map_change_cancellation_uses_original_command_identity
+    self.assertTrue(all(stop == original for stop in self.backend.stops), 'Epoch changed before old command could be stopped')
+AssertionError: False is not true : Epoch changed before old command could be stopped
+
+======================================================================
+FAIL: test_nonfinite_and_future_evidence_is_rejected (__main__.Acceptance.test_nonfinite_and_future_evidence_is_rejected) (timestamp=nan)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 106, in test_nonfinite_and_future_evidence_is_rejected
+    self.assertFalse(result['ok'], result)
+AssertionError: True is not false : {'ok': True, 'status': 'accepted', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': {'request_id': 'request-1', 'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35', 'status': 'accepted', 'last_feedback_seq': 0, 'terminal_cause': None, 'unresolved_reason': None}, 'event_seq': 2}, 'data': {'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35'}}
+
+======================================================================
+FAIL: test_nonfinite_and_future_evidence_is_rejected (__main__.Acceptance.test_nonfinite_and_future_evidence_is_rejected) (timestamp=inf)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 106, in test_nonfinite_and_future_evidence_is_rejected
+    self.assertFalse(result['ok'], result)
+AssertionError: True is not false : {'ok': True, 'status': 'accepted', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': {'request_id': 'request-1', 'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35', 'status': 'accepted', 'last_feedback_seq': 0, 'terminal_cause': None, 'unresolved_reason': None}, 'event_seq': 2}, 'data': {'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35'}}
+
+======================================================================
+FAIL: test_nonfinite_and_future_evidence_is_rejected (__main__.Acceptance.test_nonfinite_and_future_evidence_is_rejected) (timestamp=1000.0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 106, in test_nonfinite_and_future_evidence_is_rejected
+    self.assertFalse(result['ok'], result)
+AssertionError: True is not false : {'ok': True, 'status': 'accepted', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': {'request_id': 'request-1', 'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35', 'status': 'accepted', 'last_feedback_seq': 0, 'terminal_cause': None, 'unresolved_reason': None}, 'event_seq': 2}, 'data': {'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35'}}
+
+======================================================================
+FAIL: test_synchronous_failure_is_not_reported_as_success (__main__.Acceptance.test_synchronous_failure_is_not_reported_as_success)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 81, in test_synchronous_failure_is_not_reported_as_success
+    self.assertFalse(result['ok'], result)
+AssertionError: True is not false : {'ok': True, 'status': 'completed', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': None, 'event_seq': 3}, 'data': {'terminal_cause': 'completed_during_submit'}}
+
+======================================================================
+FAIL: test_timeout_requests_stop_not_only_a_status_change (__main__.Acceptance.test_timeout_requests_stop_not_only_a_status_change)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 120, in test_timeout_requests_stop_not_only_a_status_change
+    self.assertTrue(self.backend.stops, 'Timeout did not request any hold/stop from the backend')
+AssertionError: [] is not true : Timeout did not request any hold/stop from the backend
+
+======================================================================
+FAIL: test_unknown_submit_reply_does_not_release_uncertain_motion (__main__.Acceptance.test_unknown_submit_reply_does_not_release_uncertain_motion)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 112, in test_unknown_submit_reply_does_not_release_uncertain_motion
+    self.assertIsNotNone(self.service.active_owner)
+AssertionError: unexpectedly None
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.001s
+
+FAILED (failures=11)

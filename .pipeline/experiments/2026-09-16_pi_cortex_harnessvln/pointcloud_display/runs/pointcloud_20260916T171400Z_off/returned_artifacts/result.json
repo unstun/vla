@@ -1,0 +1,134 @@
+{
+  "artifact_finalization": [
+    {
+      "artifact_count": 38,
+      "monotonic_ns": 92618172017647,
+      "ok": true,
+      "phase": "after_process_cleanup"
+    },
+    {
+      "artifact_count": 39,
+      "monotonic_ns": 92648468408918,
+      "ok": true,
+      "phase": "after_container_cleanup"
+    }
+  ],
+  "claim": "known-map truth-pose diagnostic two-goal pilot; no LLM/Cortex/SLAM/physical robot",
+  "cleanup_errors": [],
+  "container_cleanup": [
+    {
+      "container": "vla-p2b-backend-pointcloud-20260916t171400z-off",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "time=\"2026-09-16T13:20:25-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-p2b-backend-pointcloud-20260916t171400z-off in 10 seconds, resorting to SIGKILL\"\n",
+      "stdout": "vla-p2b-backend-pointcloud-20260916t171400z-off\n",
+      "timeout_s": 20.0
+    },
+    {
+      "container": "vla-p2b-pct-pointcloud-20260916t171400z-off",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "time=\"2026-09-16T13:20:35-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-p2b-pct-pointcloud-20260916t171400z-off in 10 seconds, resorting to SIGKILL\"\n",
+      "stdout": "vla-p2b-pct-pointcloud-20260916t171400z-off\n",
+      "timeout_s": 20.0
+    },
+    {
+      "container": "vla-p2b-bridge-pointcloud-20260916t171400z-off",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "time=\"2026-09-16T13:20:45-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-p2b-bridge-pointcloud-20260916t171400z-off in 10 seconds, resorting to SIGKILL\"\n",
+      "stdout": "vla-p2b-bridge-pointcloud-20260916t171400z-off\n",
+      "timeout_s": 20.0
+    }
+  ],
+  "error": "pilot driver failed with exit 2",
+  "error_type": "RuntimeError",
+  "last_result_write_phase": "final",
+  "observer": {
+    "commands": [
+      [
+        "/usr/bin/python3",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T171400Z_off/observer/resource_monitor.py",
+        "--output",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T171400Z_off/artifacts/pointcloud_observer/resource_samples.jsonl",
+        "--pids",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T171400Z_off/artifacts/pointcloud_observer/pids.json",
+        "--snapshot",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T171400Z_off/artifacts/external_episode/current_command.json"
+      ]
+    ],
+    "config": {
+      "capture_in_display_condition_only": true,
+      "capture_scope": "own RViz window only",
+      "capture_time_basis": "wall time",
+      "decay_seconds": 0,
+      "display": ":0",
+      "draw_rate_hz": 10,
+      "mode": "off",
+      "pointcloud_qos": "BEST_EFFORT KEEP_LAST depth 1",
+      "pointcloud_topic": "/quad_0/cloud_raw",
+      "renderer_requested": "Mesa software, LIBGL_ALWAYS_SOFTWARE=1; verify Ogre.log",
+      "run_id": "pointcloud_20260916T171400Z_off",
+      "rviz_image_id": "980cec478c0659eaecc87b5bb79685bc3399135a2ce4033d5e815defe4478ed2",
+      "viewer_cpu_limit_cores": 2,
+      "viewer_memory_limit_bytes": 2147483648,
+      "xauthority": "/run/user/1000/gdm/Xauthority"
+    },
+    "errors": [],
+    "mode": "off",
+    "monitor_exit_code": 0
+  },
+  "passed": false,
+  "pilot_driver_exit_code": 2,
+  "post_cleanup_ports": {
+    "command": {
+      "free": true,
+      "port": 46241
+    },
+    "http": {
+      "free": true,
+      "port": 8765
+    },
+    "pct": {
+      "free": true,
+      "port": 47631
+    },
+    "telemetry": {
+      "free": true,
+      "port": 46240
+    }
+  },
+  "process_cleanup": [
+    {
+      "action": "sigkill",
+      "name": "backend",
+      "ok": true,
+      "pid": 191517,
+      "returncode": -9
+    },
+    {
+      "action": "sigkill",
+      "name": "pct_worker",
+      "ok": true,
+      "pid": 191370,
+      "returncode": -9
+    },
+    {
+      "action": "none",
+      "name": "runner",
+      "ok": true,
+      "pid": 191011,
+      "reason": "already_exited",
+      "returncode": 0
+    },
+    {
+      "action": "sigkill",
+      "name": "bridge",
+      "ok": true,
+      "pid": 190901,
+      "returncode": -9
+    }
+  ],
+  "remote_scan_workspace": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03",
+  "run_epoch_ns": 1789578904218499035
+}

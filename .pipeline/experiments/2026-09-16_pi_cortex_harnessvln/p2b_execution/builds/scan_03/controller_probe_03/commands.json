@@ -1,0 +1,74 @@
+[
+  {
+    "label": "mkdir",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "mkdir -p /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03/controller_probe_03"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "sync",
+    "command": [
+      "rsync",
+      "-a",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/p2b_execution/builds/scan_03/controller_probe_03/executed_probe.py",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03/controller_probe_03/"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "source_gate",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "python3 -"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "probe",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "timeout --kill-after=5 60 podman run --rm --pull=never --network=none -e ROS_DOMAIN_ID=95 -e ROS_LOCALHOST_ONLY=1 -e ROS_LOG_DIR=/evidence/ros_logs -e PYTHONDONTWRITEBYTECODE=1 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03:/workspace:ro -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03/controller_probe_03:/evidence e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'set -e\nsource /opt/ros/foxy/setup.bash\nsource /workspace/install/setup.bash\nexec python3 /evidence/executed_probe.py --output /evidence/result'"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "collect",
+    "command": [
+      "rsync",
+      "-a",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03/controller_probe_03/result/",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/p2b_execution/builds/scan_03/controller_probe_03/result/"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "return_hashes",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "python3 -"
+    ],
+    "exit_code": 0
+  }
+]

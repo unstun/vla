@@ -1,0 +1,44 @@
+{
+  "goal_payload": {
+    "frame": "world by default",
+    "required": [
+      "request_id",
+      "goal_id",
+      "target_ground_xyz",
+      "map_epoch",
+      "map_revision"
+    ],
+    "schema": "p2b_http_goal_request_v1",
+    "target_ground_xyz": "[x_m, y_m, z_m] in world frame; PCT input target, not native body-reference output"
+  },
+  "http": {
+    "endpoints": {
+      "GET /state": "readiness, measured pose, owner, jobs and terminal result records",
+      "POST /cancel": "cancel active P2A owner and require controller hold plus causal stop evidence",
+      "POST /goal": "asynchronous spatial goal admission; returns a job_id and later terminal record"
+    },
+    "host": "127.0.0.1",
+    "port": 8765
+  },
+  "schema": "p2b_backend_ros_wire_contract_v1",
+  "semantics": {
+    "admission": "route accepted only from matching P2BAdmission consumer=fsm",
+    "planning": "PCT runs in a bounded separate worker through backend_adapter.PctIpcClient",
+    "route_z": "native route waypoints are Lite3 body-reference z with no display +0.5 m offset",
+    "start_z": "PCT start is measured body pose minus nominal_body_height_m",
+    "stop": "release requires matching consumer=controller hold plus post-cancel applied-zero/stillness dwell",
+    "watchdog": "before first same-generation raw heartbeat the gate publishes zero and waits within grace; it does not pre-fault a new owner"
+  },
+  "state_payload": {
+    "readiness": "separate body_pose, active owner, gate and last error fields; owner=None is not success",
+    "terminal_results": "per-request arrived/cancelled/failed/rejected/ignored records with route and cause"
+  },
+  "topics": {
+    "admission": "/p2b/scan_admission",
+    "cancel": "/p2b/scan_cancel",
+    "gated_bridge_velocity": "/quad_0/cmd_vel",
+    "measured_body_pose": "/quad_0/body_pose",
+    "raw_scan_velocity": "/quad_0/raw_scan_cmd_vel",
+    "route": "/p2b/route"
+  }
+}

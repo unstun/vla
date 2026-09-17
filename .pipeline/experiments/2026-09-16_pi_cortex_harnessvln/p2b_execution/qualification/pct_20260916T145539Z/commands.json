@@ -1,0 +1,52 @@
+[
+  {
+    "label": "mkdir",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "mkdir -p /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/qualification/pct_20260916T145539Z"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "sync",
+    "command": [
+      "rsync",
+      "-a",
+      "--files-from=/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/p2b_execution/qualification/pct_20260916T145539Z/files.txt",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/p2b_execution/",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/qualification/pct_20260916T145539Z/"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "source_gate",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "python3 -"
+    ],
+    "exit_code": 0
+  },
+  {
+    "label": "compute",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "podman run --rm --pull=never --network=none -e PYTHONDONTWRITEBYTECODE=1 -e OPENBLAS_NUM_THREADS=1 -e OMP_NUM_THREADS=2 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/qualification/pct_20260916T145539Z:/qualification 40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555 bash -lc 'set -e\nsource /opt/ros/humble/setup.bash\nexport PYTHONPATH=/qualification/pct_runtime/python\nexport LD_LIBRARY_PATH=/qualification/pct_runtime/lib:$LD_LIBRARY_PATH\nexec python3 /qualification/qualify_pct.py --inside --output /qualification/result'"
+    ],
+    "exit_code": 1
+  }
+]

@@ -1,0 +1,61 @@
+{
+  "roots": {
+    "native": "/home/sun/machine-dog-nav-runs/2026-09-11_pct_scan_upstream_baseline",
+    "assets": "/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics",
+    "pct": "/home/sun/machine-dog-nav-runs/2026-09-08_pct_scan_retest",
+    "map": "/home/sun/machine-dog-nav-runs/2026-09-08_new_building_pct"
+  },
+  "exists": {
+    "native": true,
+    "assets": true,
+    "pct": true,
+    "map": true
+  },
+  "gpu": {
+    "exit": 0,
+    "stdout": "NVIDIA GeForce RTX 5070 Ti, 195 MiB, 16303 MiB, 0 %\n",
+    "stderr": ""
+  },
+  "containers": {
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "images": {
+    "exit": 0,
+    "stdout": "sha256:40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555 localhost/machine-dog-nav/pct-scan-rviz-video:20260908\nsha256:f9862b2773088cdafd0a8282a8638cfbb9fb0c10f6de7b5ee6e3b63807f54eff localhost/machine-dog-nav/pct-scan-humble-full:20260908\nsha256:960e384cad7d8d8fbb20454952cab8d5d99f9af48db8da66ed73c8a9b7ffd75e localhost/machine-dog-nav/pct-scan-humble:20260908\nsha256:980cec478c0659eaecc87b5bb79685bc3399135a2ce4033d5e815defe4478ed2 localhost/machine-dog-nav/foxy-scan-rviz:20260818\nsha256:3a86cdb5404b598d0a74504f9d0f6b865e799bde6a53f535cc23b1f99d38cbcc docker.io/library/ros:humble-ros-base-jammy\nsha256:b63f0092ef1d5f14b79db251b425bc5202ff8dfd4aa78ff9d91d7c8e879581d5 <none>:<none>\nsha256:e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 localhost/machine-dog-nav/foxy-scan:20260813\nsha256:1c1d5483b8b43a862b1256bad052199679e3b1ff8170531934b9cc8e3adf9892 localhost/ubuntu:focal-minimal-20250625\n",
+    "stderr": ""
+  },
+  "gpu_processes": {
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "files": [
+    {
+      "path": "/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/input/building.usda",
+      "exists": true,
+      "bytes": 736116,
+      "sha256": "e55e4a9507441b8f1788503f909505a49b63d6eb36f6882ba782aee7c38a5d39"
+    },
+    {
+      "path": "/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/checkpoint/model_149999.pt",
+      "exists": true,
+      "bytes": 26367345,
+      "sha256": "a9d31dce90e6e8c564d955e473d6d3502f893d7ef5a5c1efaf5bb50d6b3d5450"
+    },
+    {
+      "path": "/home/sun/machine-dog-nav-runs/2026-09-08_new_building_pct/runs/preflight03/new_building.pickle",
+      "exists": true,
+      "bytes": 3825630,
+      "sha256": "ab5499ff100fe233f6cfabb59ce7592290cddd042c92ead5e37e9e2b593d24da"
+    },
+    {
+      "path": "/home/sun/machine-dog-nav-runs/2026-09-08_pct_scan_retest/workspace_retry01/scripts/_pct_scan_env.sh",
+      "exists": true,
+      "bytes": 1346,
+      "sha256": "44f9d06928126b4ad98871dcc4a3392a20500036466f25175ae0802aea05b417"
+    }
+  ],
+  "pct_env_script": "#!/usr/bin/env bash\n# Shared runtime environment. Source this file; do not execute it directly.\n\nif [[ \"${BASH_SOURCE[0]}\" == \"$0\" ]]; then\n  echo \"This helper must be sourced by a PCT-SCAN-ROS2 launch script.\" >&2\n  exit 2\nfi\n\nPCT_SCAN_SCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd -P)\"\nPCT_SCAN_PROJECT_ROOT=\"$(cd \"$PCT_SCAN_SCRIPT_DIR/..\" && pwd -P)\"\n\nif [[ ! -f /opt/ros/humble/setup.bash ]]; then\n  echo \"[pct-scan] ROS 2 Humble was not found at /opt/ros/humble.\" >&2\n  return 2\nfi\nif [[ ! -f \"$PCT_SCAN_PROJECT_ROOT/install/setup.bash\" ]]; then\n  echo \"[pct-scan] Workspace is not built. Run ./scripts/build_workspace.sh.\" >&2\n  return 2\nfi\n\n# Generated ROS setup files legitimately inspect optional unset variables.\nset +u\nsource /opt/ros/humble/setup.bash\n\nPCT_DEPS_ROOT=\"${PCT_DEPS_ROOT:-$PCT_SCAN_PROJECT_ROOT/.deps/install}\"\nif [[ ! -f \"$PCT_DEPS_ROOT/gtsam-4.2/lib/libgtsam.so.4\" ]]; then\n  echo \"[pct-scan] PCT dependencies are missing. Run ./scripts/setup_pct_dependencies.sh.\" >&2\n  return 2\nfi\n\nexport LD_LIBRARY_PATH=\"$PCT_DEPS_ROOT/gtsam-4.2/lib:$PCT_DEPS_ROOT/osqp-1.0.0/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"\nsource \"$PCT_SCAN_PROJECT_ROOT/install/setup.bash\"\nset -u\n\nexport PCT_SCAN_ROS2_ROOT=\"$PCT_SCAN_PROJECT_ROOT\"\nexport ROS_LOG_DIR=\"${ROS_LOG_DIR:-$PCT_SCAN_PROJECT_ROOT/.ros/log}\"\nmkdir -p \"$ROS_LOG_DIR\"\n"
+}

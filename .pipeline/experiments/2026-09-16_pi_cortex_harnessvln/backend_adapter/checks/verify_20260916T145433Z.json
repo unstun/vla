@@ -1,0 +1,77 @@
+{
+  "claim_boundary": "contract tests only; no ROS graph, simulator, native PCT worker or Isaac episode launched",
+  "commands": [
+    {
+      "cmd": [
+        "/Users/sun/.openviking-venv/bin/python3",
+        "-m",
+        "compileall",
+        "-q",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/backend_adapter"
+      ],
+      "output": "",
+      "returncode": 0,
+      "wall_seconds": 0.038
+    },
+    {
+      "cmd": [
+        "/Users/sun/.openviking-venv/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/tests",
+        "-v"
+      ],
+      "output": "test_adapter_uses_measured_start_and_scan_ack_before_gate_opens (test_adapter_ipc.AdapterIpcTests.test_adapter_uses_measured_start_and_scan_ack_before_gate_opens) ... ok\ntest_cancel_releases_only_after_scan_hold_and_measured_stillness (test_adapter_ipc.AdapterIpcTests.test_cancel_releases_only_after_scan_hold_and_measured_stillness) ... ok\ntest_missing_pct_worker_fails_explicitly (test_adapter_ipc.AdapterIpcTests.test_missing_pct_worker_fails_explicitly) ... ok\ntest_scan_rejection_does_not_open_gate (test_adapter_ipc.AdapterIpcTests.test_scan_rejection_does_not_open_gate) ... ok\ntest_finish_request_payload_matches_runner_schema (test_applied_evidence.AppliedEvidenceTests.test_finish_request_payload_matches_runner_schema) ... ok\ntest_fresh_applied_zero_and_stillness_confirms_stop (test_applied_evidence.AppliedEvidenceTests.test_fresh_applied_zero_and_stillness_confirms_stop) ... ok\ntest_nonzero_applied_or_stale_command_does_not_confirm (test_applied_evidence.AppliedEvidenceTests.test_nonzero_applied_or_stale_command_does_not_confirm) ... ok\ntest_stale_or_wrong_epoch_rejected (test_applied_evidence.AppliedEvidenceTests.test_stale_or_wrong_epoch_rejected) ... ok\ntest_gate_blocks_without_fresh_measurement_and_heartbeat (test_contracts_gate.ContractGateTests.test_gate_blocks_without_fresh_measurement_and_heartbeat) ... ok\ntest_gate_suppresses_late_old_generation_and_map_change (test_contracts_gate.ContractGateTests.test_gate_suppresses_late_old_generation_and_map_change) ... ok\ntest_nan_and_bad_identity_rejected_at_wire_boundary (test_contracts_gate.ContractGateTests.test_nan_and_bad_identity_rejected_at_wire_boundary) ... ok\ntest_route_id_derived_from_real_waypoints_and_z_semantics_preserved (test_contracts_gate.ContractGateTests.test_route_id_derived_from_real_waypoints_and_z_semantics_preserved) ... ok\ntest_route_metadata_requires_matching_map_and_route (test_contracts_gate.ContractGateTests.test_route_metadata_requires_matching_map_and_route) ... ok\ntest_scan_admission_identity_and_stop_quiescence_are_validated (test_contracts_gate.ContractGateTests.test_scan_admission_identity_and_stop_quiescence_are_validated) ... ok\ntest_stop_requires_consumer_hold_and_measured_stillness_window (test_contracts_gate.ContractGateTests.test_stop_requires_consumer_hold_and_measured_stillness_window) ... ok\n\n----------------------------------------------------------------------\nRan 15 tests in 0.006s\n\nOK\n",
+      "returncode": 0,
+      "wall_seconds": 0.071
+    },
+    {
+      "cmd": [
+        "/Users/sun/.openviking-venv/bin/python3",
+        "-m",
+        "backend_adapter.run_adapter",
+        "--config",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/config/p2b_adapter.example.json",
+        "--print-contract"
+      ],
+      "output": "{\n  \"gate\": {\n    \"heartbeat_stale_s\": 0.2,\n    \"odom_stale_s\": 0.25,\n    \"still_speed_mps\": 0.05,\n    \"still_window_s\": 0.5\n  },\n  \"pct_worker\": {\n    \"connect_timeout_s\": 0.2,\n    \"host\": \"127.0.0.1\",\n    \"port\": 47631,\n    \"response_timeout_s\": 5.0\n  },\n  \"schema\": \"p2b_backend_adapter_contract_v1\",\n  \"semantics\": {\n    \"gate\": \"raw SCAN cmd_vel is remapped through the generation/heartbeat/odom gate before bridge publication.\",\n    \"planner\": \"Native PCT runs in a separate bounded worker; unavailable worker fails explicitly.\",\n    \"stop\": \"stopped requires consumer hold ack and measured stillness window.\",\n    \"submit_acceptance\": \"accepted only after SCAN consumer echoes matching command_id/route_id/generation.\",\n    \"z_semantics\": \"PCT output z is Lite3 body reference; no display-only +0.5 m offset is added.\"\n  },\n  \"topics\": {\n    \"admission_topic\": \"/p2b/scan_admission\",\n    \"body_state_topic\": \"/p2b/body_state\",\n    \"cancel_topic\": \"/p2b/scan_cancel\",\n    \"gated_cmd_topic\": \"/quad_0/cmd_vel\",\n    \"heartbeat_topic\": \"/p2b/scan_heartbeat\",\n    \"path_topic\": \"/initial_path\",\n    \"raw_cmd_topic\": \"/quad_0/raw_scan_cmd_vel\",\n    \"route_meta_topic\": \"/p2b/scan_route_meta\"\n  }\n}\n",
+      "returncode": 0,
+      "wall_seconds": 0.058
+    }
+  ],
+  "ok": true,
+  "owned_hashes": {
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/README.md": "abb4a56370ee568676e17edcd4bca3120dbf4d8ef110e938e065a50b65f48449",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/RESULT.md": "9104e531f02576a4a9e14de054fe2474ee524bdbc94536a215beb6f3a3ad1830",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/backend_adapter/__init__.py": "7c4be559d92b4aa55eacb701b6c1483be536580fe17b175ee735bf737794a528",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/backend_adapter/adapter_core.py": "1e46e608a75e839f95ce29f16edb8be489f331aa547750d0bd92fdb9524c72a3",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/backend_adapter/applied_evidence.py": "07676d1f36c309daec01501f6e887b547fe9e9d57c456af1e10db773f58c30f5",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/backend_adapter/contracts.py": "9b9fd6637a4ce1483bb89ccc7be1495d6527baf594d6ef3caa45fb427be3301c",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/backend_adapter/control_gate.py": "603597103fbafe7bd2d9eeccfad3018ec9adfd6664b3f2578165397a2993ed3f",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/backend_adapter/p2a_bridge.py": "672d3908f40906cd5c1afeb3c8f4307a598d865ec9229b06f44a8d0f63b2ca18",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/backend_adapter/pct_ipc.py": "8d0a90be6a69f34722d3c33caa44c658a758ff780c186f04e89a9caeaf4f0407",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/backend_adapter/pct_worker.py": "57c49aff37c806b4810cfce1a55c06555166afd9b26acda5ed005b9f768833b8",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/backend_adapter/run_adapter.py": "f894a3de42ecc32de35ad619e763b492b1426b3e989eb9d683922a99e691f22a",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/backend_adapter/scan_wire.py": "615972dee1f6317653bc1f803372fd06dc5517dc64f6287de8e41f695a99475a",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/config/p2b_adapter.example.json": "bb91904de78e6070ee73ed777960a59b255c6c9366e3ed825e30f195e02fc39c",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/patches/0001_scan_identity_cancel_ack.patch": "ad4304f50722bb406b23dfaa6bec2db096935e640ce06d886d8d950967c585f4",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/patches/0002_bridge_command_gate_remap.patch": "d2119f32d1dc57b9774e4ebddcc22323da0217e7ca9e9ceeb42119181bbe4f3c",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/tests/test_adapter_ipc.py": "4c7443c62d4e1969fdcee9aa249bbcc29673000a711283727aed266e98448647",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/tests/test_applied_evidence.py": "bf044a12a1602e80c45a7c0d3735c0194c6e94f352d388bd12f7d3583828b289",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/tests/test_contracts_gate.py": "d140338223770e4b4449b1c9658c1337e3ccc1861b00438c45587dca0bf20104",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/verify.py": "a35c8c98cdc9bfb9d329d3e55fef18ab140afcd9817c5eef3e06e3f42d040aa0"
+  },
+  "python": "3.12.13 (main, Mar  3 2026, 12:39:30) [Clang 17.0.0 (clang-1700.6.3.2)]",
+  "reference_hashes": {
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/SNAPSHOT_SCHEMA.md": "cef45a57bc15ed348dd5f4712aa66dccb3efea05ba862818f131e433bc795754",
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/navigation_service/core.py": "0fe9addf9f2901b38728b21e3e12485a14cf99dded989e6684dd8475397bef96",
+    "references/upstream/2026-09-16_lite3_isaac_harness_backend/source/machine-dog-nav/integration/lite3_sim_bridge/lite3_sim_bridge/run_pct_scan_building.py": "1490dc85146ce7ea71f05c4f5520639da1a342a13e9dfcd8ce0ba04f21c8a76b",
+    "references/upstream/2026-09-16_lite3_isaac_harness_backend/source/pct_global/src/pct/pct_planner/pct_planner/planner_wrapper.py": "4b59fca5c67481edbe7f7040a74dde279d2bf382849773467da3c7b14818c8a8",
+    "references/upstream/2026-09-16_lite3_isaac_harness_backend/source/pct_scan_foxy/src/plan_manage/src/closed_loop_controller.cpp": "32d3e2c75f3dc2177c496c30bd483d28791ba17685fe7c8a41b6ad909631fcd7",
+    "references/upstream/2026-09-16_lite3_isaac_harness_backend/source/pct_scan_foxy/src/plan_manage/src/scan_replan_fsm.cpp": "bb5fa854031ecb9a94fc9b3aeff0a225a48ff3bb81cefdc9f345659afcf285eb"
+  },
+  "schema": "p2b_backend_adapter_verify_v1",
+  "timestamp_utc": "20260916T145433Z"
+}

@@ -1,0 +1,94 @@
+test_concurrent_submits_cannot_create_two_command_owners (__main__.Acceptance.test_concurrent_submits_cannot_create_two_command_owners) ... ok
+test_configuration_cannot_disable_freshness_with_nan (__main__.Acceptance.test_configuration_cannot_disable_freshness_with_nan) ... FAIL
+test_evidence_is_rechecked_after_route_planning (__main__.Acceptance.test_evidence_is_rechecked_after_route_planning) ... ok
+test_failure_without_stop_receipt_keeps_motion_owner (__main__.Acceptance.test_failure_without_stop_receipt_keeps_motion_owner) ... ok
+test_invalid_feedback_does_not_poison_sequence_state (__main__.Acceptance.test_invalid_feedback_does_not_poison_sequence_state) ... FAIL
+test_late_accept_progress_arrival_cannot_override_pending_stop (__main__.Acceptance.test_late_accept_progress_arrival_cannot_override_pending_stop) ... ok
+test_late_rejection_ack_cannot_clear_pending_stop (__main__.Acceptance.test_late_rejection_ack_cannot_clear_pending_stop) ... FAIL
+test_malformed_submit_reply_is_structured_and_retains_owner (__main__.Acceptance.test_malformed_submit_reply_is_structured_and_retains_owner) ... ERROR
+test_map_change_cancellation_uses_original_command_identity (__main__.Acceptance.test_map_change_cancellation_uses_original_command_identity) ... ok
+test_nonfinite_and_future_evidence_is_rejected (__main__.Acceptance.test_nonfinite_and_future_evidence_is_rejected) ... ok
+test_reentrant_admission_during_planning_cannot_dispatch_twice (__main__.Acceptance.test_reentrant_admission_during_planning_cannot_dispatch_twice) ... FAIL
+test_reply_for_different_route_is_not_acceptance (__main__.Acceptance.test_reply_for_different_route_is_not_acceptance) ... FAIL
+test_stop_callback_cannot_erase_a_new_command_owner (__main__.Acceptance.test_stop_callback_cannot_erase_a_new_command_owner) ... FAIL
+test_stop_receipt_with_original_map_is_valid_after_map_change (__main__.Acceptance.test_stop_receipt_with_original_map_is_valid_after_map_change) ... FAIL
+test_synchronous_failure_is_not_reported_as_success (__main__.Acceptance.test_synchronous_failure_is_not_reported_as_success) ... ok
+test_timeout_requests_stop_not_only_a_status_change (__main__.Acceptance.test_timeout_requests_stop_not_only_a_status_change) ... ok
+test_unknown_submit_reply_does_not_release_uncertain_motion (__main__.Acceptance.test_unknown_submit_reply_does_not_release_uncertain_motion) ... ok
+
+======================================================================
+ERROR: test_malformed_submit_reply_is_structured_and_retains_owner (__main__.Acceptance.test_malformed_submit_reply_is_structured_and_retains_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 209, in test_malformed_submit_reply_is_structured_and_retains_owner
+    result = self.service.submit_goal(self.request())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/navigation_service/core.py", line 184, in submit_goal
+    result = self._submit_validated(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/navigation_service/core.py", line 359, in _submit_validated
+    if outcome.status == "accepted":
+       ^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'status'
+
+======================================================================
+FAIL: test_configuration_cannot_disable_freshness_with_nan (__main__.Acceptance.test_configuration_cannot_disable_freshness_with_nan)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 223, in test_configuration_cannot_disable_freshness_with_nan
+    with self.assertRaises((ValueError, TypeError)):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (<class 'ValueError'>, <class 'TypeError'>) not raised
+
+======================================================================
+FAIL: test_invalid_feedback_does_not_poison_sequence_state (__main__.Acceptance.test_invalid_feedback_does_not_poison_sequence_state)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 197, in test_invalid_feedback_does_not_poison_sequence_state
+    self.assertFalse(invalid['ok'], invalid)
+AssertionError: True is not false : {'ok': True, 'status': 'ok', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': {'request_id': 'request-1', 'command_run_id': 'run', 'command_epoch': 1, 'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35', 'status': 'executing', 'last_feedback_seq': nan, 'terminal_cause': None, 'unresolved_reason': None}, 'event_seq': 3}, 'data': {'owner_status': 'executing'}}
+
+======================================================================
+FAIL: test_late_rejection_ack_cannot_clear_pending_stop (__main__.Acceptance.test_late_rejection_ack_cannot_clear_pending_stop)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 159, in test_late_rejection_ack_cannot_clear_pending_stop
+    self.assertEqual(len(self.backend.commands), 1, 'Late contradictory rejection released a possibly moving command')
+AssertionError: 2 != 1 : Late contradictory rejection released a possibly moving command
+
+======================================================================
+FAIL: test_reentrant_admission_during_planning_cannot_dispatch_twice (__main__.Acceptance.test_reentrant_admission_during_planning_cannot_dispatch_twice)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 176, in test_reentrant_admission_during_planning_cannot_dispatch_twice
+    self.assertLessEqual(len(self.backend.commands), 1, nested)
+AssertionError: 2 not less than or equal to 1 : [{'ok': True, 'status': 'accepted', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': {'request_id': 'request-2', 'command_run_id': 'run', 'command_epoch': 1, 'goal_id': 'goal-2', 'route_id': 'route-goal-2', 'command_id': '9f0c1dfd0f3a3628', 'status': 'accepted', 'last_feedback_seq': 0, 'terminal_cause': None, 'unresolved_reason': None}, 'event_seq': 2}, 'data': {'goal_id': 'goal-2', 'route_id': 'route-goal-2', 'command_id': '9f0c1dfd0f3a3628'}}]
+
+======================================================================
+FAIL: test_reply_for_different_route_is_not_acceptance (__main__.Acceptance.test_reply_for_different_route_is_not_acceptance)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 219, in test_reply_for_different_route_is_not_acceptance
+    self.assertFalse(result['ok'], result)
+AssertionError: True is not false : {'ok': True, 'status': 'accepted', 'state': {'run_id': 'run', 'epoch': 1, 'map_epoch': 'map-1', 'map_revision': 1, 'active_owner': {'request_id': 'request-1', 'command_run_id': 'run', 'command_epoch': 1, 'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35', 'status': 'accepted', 'last_feedback_seq': 0, 'terminal_cause': None, 'unresolved_reason': None}, 'event_seq': 2}, 'data': {'goal_id': 'goal-1', 'route_id': 'route-goal-1', 'command_id': '1cf6e72be38a5f35'}}
+
+======================================================================
+FAIL: test_stop_callback_cannot_erase_a_new_command_owner (__main__.Acceptance.test_stop_callback_cannot_erase_a_new_command_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 189, in test_stop_callback_cannot_erase_a_new_command_owner
+    self.assertIsNotNone(self.service.active_owner, 'Stop return erased the callback-admitted owner')
+AssertionError: unexpectedly None : Stop return erased the callback-admitted owner
+
+======================================================================
+FAIL: test_stop_receipt_with_original_map_is_valid_after_map_change (__main__.Acceptance.test_stop_receipt_with_original_map_is_valid_after_map_change)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py", line 167, in test_stop_receipt_with_original_map_is_valid_after_map_change
+    self.assertIsNone(self.service.active_owner, 'Original command stop receipt rejected just because map changed')
+AssertionError: CommandOwner(command=BackendCommand(run_id='run', epoch=1, request_id='request-1', goal_id='goal-1', route_id='route-goal-1', command_id='1cf6e72be38a5f35'), request_id='request-1', goal_id='goal-1', route_id='route-goal-1', command_id='1cf6e72be38a5f35', status='stop_unresolved', started_monotonic_s=100.0, last_feedback_seq=0, terminal_cause=None, unresolved_reason='pending') is not None : Original command stop receipt rejected just because map changed
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.106s
+
+FAILED (failures=7, errors=1)

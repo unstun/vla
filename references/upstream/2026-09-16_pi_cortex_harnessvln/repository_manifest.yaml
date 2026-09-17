@@ -1,0 +1,46 @@
+topic: pi_cortex_harnessvln
+date: 2026-09-16
+status: imported_reference_snapshots
+repositories:
+  - name: pi
+    canonical_url: https://github.com/earendil-works/pi
+    license: MIT
+    default_branch: main
+    pinned_commit: d981de1229ef899957bbe968bc8dcda02a21f477
+    package: '@earendil-works/pi-agent-core@0.85.1'
+    package_integrity: sha512-hIXIP3eAWueAYiAl8aMvWCvvZ8Q5gT3Dip5bE5uJyIGh4+YlWRjtMLI4BaeoXoSs93zndjue61u1B/vhefLnuA==
+    dependencies: ['Node.js >=22.19.0', pi-ai, chord, pi-telemetry, typebox]
+    original_install_command: npm install --ignore-scripts @earendil-works/pi-agent-core@0.85.1
+    original_demo_command: See packages/agent/README.md Quick Start; requires a model provider.
+    local_source_path: source/pi
+    reproduction_status: not_run
+    notes: Release gitHead from npm. No coding-agent CLI or shell tools used.
+  - name: emos
+    canonical_url: https://github.com/automatika-robotics/emos
+    license: MIT
+    default_branch: main
+    pinned_commit: 31b82958e7a1646b9af606184518333c97290f58
+    dependencies: [ROS 2, EmbodiedAgents, Sugarcoat, Kompass]
+    original_install_command: emos install --mode pixi
+    original_demo_entry: docs/recipes/planning-and-manipulation/cortex-navigation.md
+    local_source_path: source/emos
+    reproduction_status: not_run
+    notes: Submodules are separate pins; no physical plugin activation.
+  - name: embodied-agents
+    canonical_url: https://github.com/automatika-robotics/embodied-agents
+    license: MIT
+    default_branch: main
+    pinned_commit: c37ab75db4aba88bcc99d17f6eabac146ad46d20
+    dependencies: [ROS 2, automatika_ros_sugar, automatika_embodied_agents_interfaces]
+    original_install_command: Install as the EMOS-pinned submodule via the selected ROS build.
+    original_demo_entry: README.md Quick Start Python recipe
+    local_source_path: source/embodied-agents
+    reproduction_status: not_run
+    notes: EMOS gitlink. Tool-only Cortex adapter is project work.
+selection:
+  recommended_first_target: Real Pi loop with a deterministic Python gateway
+  reason: Verify tool and evidence boundaries before ROS and simulator integration.
+  unresolved_questions:
+    - Cortex lifecycle isolation without autonomous planning
+    - Live ROS action cancellation and feedback
+    - Paper-equivalent vision, memory and planar execution

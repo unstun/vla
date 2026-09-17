@@ -1,0 +1,78 @@
+{
+  "passed": true,
+  "host": "gpu5070ti",
+  "image_id": "e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8",
+  "source_hashes_match": true,
+  "runtime_scope": "real rclpy/Foxy bridge transport tests in isolated CPU container",
+  "network": "none",
+  "source_mount": "read-only",
+  "gpu_used": false,
+  "isaac_run": false,
+  "physical_actuation": false,
+  "commands": [
+    {
+      "label": "mkdir",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "mkdir -p /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2a_qualification/ros_transport_20260916T140123Z/bridge"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "sync",
+      "command": [
+        "rsync",
+        "-a",
+        "--exclude=__pycache__/",
+        "--exclude=.pytest_cache/",
+        "/Users/sun/tongbu/study/phdproject/vla/references/upstream/2026-09-16_lite3_isaac_harness_backend/source/machine-dog-nav/integration/lite3_sim_bridge/",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2a_qualification/ros_transport_20260916T140123Z/bridge/"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "source_gate",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "python3 -"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "image_id",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "podman image inspect --format '{{.Id}}' localhost/machine-dog-nav/foxy-scan:20260813"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "transport_tests",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "podman run --rm --pull=never --network=none --name vla-ros_transport_20260916t140123z -e ROS_DOMAIN_ID=93 -e ROS_LOCALHOST_ONLY=1 -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPATH=/bridge -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2a_qualification/ros_transport_20260916T140123Z/bridge:/bridge:ro e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'source /opt/ros/foxy/setup.bash\npython3 -c '\"'\"'import rclpy,sys; print(sys.version); print(rclpy.__file__)'\"'\"'\nexec python3 -m unittest discover -s /bridge/tests -p test_transport.py -v'"
+      ],
+      "exit_code": 0
+    }
+  ]
+}

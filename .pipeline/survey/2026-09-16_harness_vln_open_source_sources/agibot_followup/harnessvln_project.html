@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="HarnessVLN: a training-free agent harness for unified embodied navigation.">
+  <meta name="author" content="Yang Chen, Lirong Che, Zhenyu Huang, Wenbo Fu, Chuang Wang, Xu Cao, Daqi Liu, Yuzhe Yang, Jian Su, Lan-Zhe Guo">
+  <meta name="theme-color" content="#f3f1ec">
+  <title>HarnessVLN — Training-Free Embodied Navigation</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <nav class="site-nav" aria-label="Primary navigation">
+    <a class="wordmark" href="#top" aria-label="HarnessVLN home"><span class="mark" aria-hidden="true">H</span><span>HarnessVLN</span></a>
+    <div class="nav-links"><a href="#overview-video">Video</a><a href="#method">Method</a><a href="#results">Results</a><a href="#simulation">Simulation</a><a href="#deployment">Real world</a></div>
+
+  </nav>
+
+  <main id="main">
+    <header class="hero" id="top">
+      <div class="hero-inner">
+        <h1>HarnessVLN</h1>
+        <p class="hero-subtitle">Unifying Training-Free Embodied Navigation<br class="hero-break"> through an Agent Harness</p>
+        <div class="author-block reveal" aria-label="Authors and affiliations">
+          <ul class="authors" aria-label="Authors">
+            <li>Yang Chen<sup>1,2</sup></li>
+            <li>Lirong Che<sup>2,3</sup></li>
+            <li>Zhenyu Huang<sup>1</sup></li>
+            <li>Wenbo Fu<sup>1</sup></li>
+            <li>Chuang Wang<sup>2</sup></li>
+            <li>Xu Cao<sup>2</sup></li>
+            <li>Daqi Liu<sup>2</sup></li>
+            <li>Yuzhe Yang<sup>2</sup></li>
+            <li>Jian Su<sup>2,*</sup></li>
+            <li>Lan-Zhe Guo<sup>1,*</sup></li>
+          </ul>
+          <ul class="affiliations" aria-label="Affiliations">
+            <li><sup>1</sup> Nanjing University</li>
+            <li><sup>2</sup> AGIBOT</li>
+            <li><sup>3</sup> Tsinghua University</li>
+          </ul>
+          <p class="corresponding-authors"><sup>*</sup> Corresponding authors</p>
+        </div>
+        <div class="hero-actions reveal">
+
+          <a class="button button-dark" href="#overview-video">Watch video <span aria-hidden="true">▶</span></a>
+          <a class="button button-light" href="#deployment">Demo <span>↓</span></a>
+          <a class="button button-light" href="https://github.com/AgibotGeneral/harnessvln/tree/main" target="_blank" rel="noopener noreferrer">Code <span>↗</span></a>
+        </div>
+      </div>
+    </header>
+
+    <section class="overview-video" id="overview-video" aria-labelledby="overview-video-title">
+      <div class="overview-video-heading">
+        <h2 id="overview-video-title">Video overview</h2>
+        <p>4 min 49 sec · English narration</p>
+      </div>
+      <figure class="overview-video-player">
+        <video id="overview-player" controls playsinline preload="none" poster="assets/figures/harnessvln-overview-v7.jpg" width="1920" height="1080" aria-label="HarnessVLN video overview" aria-describedby="overview-video-caption">
+          <source src="assets/videos/harnessvln-overview-v7.mp4" type="video/mp4">
+          <track kind="subtitles" src="assets/videos/harnessvln-overview-v7.en.vtt" srclang="en" label="English">
+          Your browser does not support HTML5 video. <a href="assets/videos/harnessvln-overview-v7.mp4">Download the video</a>.
+        </video>
+        <figcaption id="overview-video-caption">An introduction to HarnessVLN, its agent harness, and experimental results, followed by simulation and real-world instruction navigation with online exploration.</figcaption>
+      </figure>
+    </section>
+
+    <section class="metrics-band" aria-label="Headline results">
+      <div class="metrics-label"><span>Training-free</span><strong>Success rate</strong></div>
+      <article><span class="metric-task">R2R</span><strong>60.8</strong><span class="metric-unit">SR %</span></article>
+      <article><span class="metric-task">RxR</span><strong>53.9</strong><span class="metric-unit">SR %</span></article>
+      <article><span class="metric-task">HM3D-v2</span><strong>76.0</strong><span class="metric-unit">SR %</span></article>
+      <article><span class="metric-task">HM3D-OVON</span><strong>59.3</strong><span class="metric-unit">SR %</span></article>
+    </section>
+
+    <section class="paper-summary section-pad">
+      <h2>Abstract</h2>
+      <div class="summary-grid">
+        <div class="abstract reveal">
+          <p>Embodied navigation requires an agent to interpret visual observations, accumulate spatial knowledge, and execute actions over long horizons. Existing training-free methods benefit from multimodal large language models, but their task-specific pipelines often lack explicit mechanisms to reconcile proposals with spatial evidence, task progress, and execution failures.</p>
+          <p><strong>HarnessVLN</strong> introduces an Agent Harness that coordinates perception, retrieval, grounding, navigation, recovery, and termination through a unified tool interface. Hierarchical event memory tracks progress and execution history, while a persistent Spatiotemporal Graph organizes reusable evidence for target verification and recovery.</p>
+        </div>
+      </div>
+      <figure class="wide-figure reveal">
+        <img src="assets/figures/teaser.png" alt="HarnessVLN overview across instruction following, object-goal navigation, simulation and real-world humanoid deployment" width="3574" height="2053" loading="lazy">
+        <figcaption><span>Figure 1</span> Overview of HarnessVLN across navigation tasks and environments.</figcaption>
+      </figure>
+    </section>
+
+    <section class="method section-pad" id="method">
+      <div class="section-heading">
+        <div><div class="section-kicker">Method</div><h2 class="reveal">Framework overview</h2></div>
+        <p class="section-intro reveal">The multimodal language model proposes operations. The Agent Harness assembles context, validates proposals, dispatches tools, and integrates execution feedback.</p>
+      </div>
+
+      <figure class="method-figure">
+        <a href="assets/figures/framework.png" target="_blank" rel="noreferrer" aria-label="Open the full-resolution HarnessVLN architecture figure">
+          <img src="assets/figures/framework.png" alt="HarnessVLN architecture: the MLLM planner proposes operations; the Agent Harness assembles context, validates proposals, dispatches tools and integrates feedback, with event memory and a spatiotemporal graph." width="2983" height="1865" loading="lazy">
+        </a>
+        <figcaption><span>Figure 2</span> HarnessVLN system architecture. A shared runtime connects the planner, memory, spatial evidence, and tool execution across navigation tasks. <a href="assets/figures/framework.png" target="_blank" rel="noreferrer">View full size ↗</a></figcaption>
+      </figure>
+
+      <div class="method-pillars">
+        <article class="pillar reveal"><span class="pillar-num">01</span><h3>Hierarchical event memory</h3><p>Working, progress, and reflection memory represent the current task context, completed subgoals, and execution failures.</p></article>
+        <article class="pillar reveal"><span class="pillar-num">02</span><h3>Spatiotemporal graph</h3><p>Places, entities, navigable relations, evidence provenance, and failure annotations persist across subgoals.</p></article>
+        <article class="pillar reveal"><span class="pillar-num">03</span><h3>Validated execution</h3><p>Operation proposals are validated against available evidence, geometric feasibility, task consistency, and prior failures.</p></article>
+      </div>
+
+    </section>
+
+    <section class="tools section-pad">
+      <div class="section-kicker">Method</div>
+      <div class="tools-header"><h2 class="reveal">Unified tool interface</h2><p class="reveal">Eight tools provide a common interface for perception, retrieval, grounding, navigation, recovery, and termination.</p></div>
+      <div class="tool-list reveal">
+        <div class="tool-row"><span>01</span><strong>observe</strong><em>Perception</em><p>Capture current RGB-D and pose.</p></div>
+        <div class="tool-row"><span>02</span><strong>observe_panorama</strong><em>Perception</em><p>Capture predefined headings.</p></div>
+        <div class="tool-row"><span>03</span><strong>retrieve_memory</strong><em>Retrieval</em><p>Recall task-relevant evidence.</p></div>
+        <div class="tool-row"><span>04</span><strong>ground_target</strong><em>Grounding</em><p>Map semantics to an image region.</p></div>
+        <div class="tool-row"><span>05</span><strong>query_depth</strong><em>Perception</em><p>Estimate target depth and uncertainty.</p></div>
+        <div class="tool-row"><span>06</span><strong>navigate_to</strong><em>Navigation</em><p>Execute a validated spatial target.</p></div>
+        <div class="tool-row"><span>07</span><strong>backtrack</strong><em>Recovery</em><p>Return to a verified visited location.</p></div>
+        <div class="tool-row"><span>08</span><strong>request_stop</strong><em>Termination</em><p>Verify completion before stopping.</p></div>
+      </div>
+    </section>
+
+    <section class="results section-pad" id="results">
+      <div class="section-heading results-heading">
+        <div><div class="section-kicker">Evaluation</div><h2 class="reveal">Quantitative results</h2></div>
+        <div class="benchmark-switch" role="tablist" aria-label="Result family"><button class="active" role="tab" aria-selected="true" aria-controls="instruction-table" data-result-tab="instruction">Instruction following</button><button role="tab" aria-selected="false" aria-controls="object-table" data-result-tab="object">Object navigation</button></div>
+      </div>
+
+      <div class="result-panel active reveal" id="instruction-table" data-result-panel="instruction" role="tabpanel">
+        <div class="result-callout"><span>Training-free SR</span><strong>60.8<span>%</span></strong><p>R2R val-unseen</p></div>
+        <div class="table-wrap">
+          <table>
+            <caption>Instruction-following results on VLN-CE val-unseen splits. Best training-free results are highlighted.</caption>
+            <thead><tr><th rowspan="2">Method</th><th colspan="3">R2R</th><th colspan="3">RxR</th></tr><tr><th>OSR ↑</th><th>SR ↑</th><th>SPL ↑</th><th>SR ↑</th><th>SPL ↑</th><th>nDTW ↑</th></tr></thead>
+            <tbody>
+              <tr><td>CA-Nav</td><td>48.0</td><td>25.3</td><td>10.8</td><td>19.0</td><td>6.0</td><td>13.5</td></tr>
+              <tr><td>GC-VLN</td><td>41.8</td><td>33.6</td><td>16.3</td><td>33.8</td><td>13.8</td><td>—</td></tr>
+              <tr><td>HSGM</td><td>58.7</td><td>47.9</td><td>32.8</td><td>41.8</td><td>25.1</td><td><strong>54.9</strong></td></tr>
+              <tr><td>AgenticNav-GPT-5.5</td><td>65.0</td><td>55.0</td><td><strong>48.4</strong></td><td>—</td><td>—</td><td>—</td></tr>
+              <tr class="ours"><td><span>HarnessVLN-GPT-5.5</span><small>Ours</small></td><td><strong>72.7</strong></td><td><strong>60.8</strong></td><td>43.5</td><td><strong>53.9</strong></td><td><strong>38.0</strong></td><td>54.8</td></tr>
+            </tbody>
+          </table>
+          <p class="table-note">All metrics are percentages. The page shows selected training-free baselines; see the paper for the complete comparison.</p>
+        </div>
+      </div>
+
+      <div class="result-panel" id="object-table" data-result-panel="object" role="tabpanel" hidden>
+        <div class="result-callout"><span>Training-free SR</span><strong>76.0<span>%</span></strong><p>HM3D-v2</p></div>
+        <div class="table-wrap">
+          <table>
+            <caption>Object-goal navigation results. Best training-free results are highlighted.</caption>
+            <thead><tr><th rowspan="2">Method</th><th colspan="2">HM3D-v2</th><th colspan="2">HM3D-OVON</th></tr><tr><th>SR ↑</th><th>SPL ↑</th><th>SR ↑</th><th>SPL ↑</th></tr></thead>
+            <tbody>
+              <tr><td>InstructNav</td><td>58.0</td><td>20.9</td><td>—</td><td>—</td></tr>
+              <tr><td>VLFM</td><td>63.6</td><td>32.5</td><td>38.5</td><td>22.2</td></tr>
+              <tr><td>STEGNav</td><td>69.4</td><td>28.2</td><td>—</td><td>—</td></tr>
+              <tr><td>DRIVE-Nav</td><td>72.4</td><td><strong>41.3</strong></td><td>50.2</td><td>32.6</td></tr>
+              <tr><td>MSGNav</td><td>74.4</td><td>33.4</td><td>48.3</td><td>27.0</td></tr>
+              <tr class="ours"><td><span>HarnessVLN</span><small>Ours</small></td><td><strong>76.0</strong></td><td>37.9</td><td><strong>59.3</strong></td><td><strong>36.6</strong></td></tr>
+            </tbody>
+          </table>
+          <p class="table-note">All listed methods are training-free. See the paper for training-based comparisons and full protocol details.</p>
+        </div>
+      </div>
+
+      <div class="ablation reveal">
+        <div class="ablation-copy"><span class="section-kicker">Component ablation</span><h3>Effect of individual components</h3><p>Cumulative ablations evaluate the contribution of event memory, graph retrieval, and stop validation on fixed 100-episode subsets.</p></div>
+        <div class="ablation-chart" aria-label="R2R success rate improves from 46 to 64 with Harness components">
+          <div class="bar-row"><span>Base agent</span><div><i style="--value:71.875%"></i></div><strong>46.0</strong></div>
+          <div class="bar-row"><span>+ Memory</span><div><i style="--value:84.375%"></i></div><strong>54.0</strong></div>
+          <div class="bar-row"><span>+ ST Graph</span><div><i style="--value:93.75%"></i></div><strong>60.0</strong></div>
+          <div class="bar-row accent"><span>+ Stop validation</span><div><i style="--value:100%"></i></div><strong>64.0</strong></div>
+          <small>R2R success rate (%) · fixed 100-episode subset</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="simulation section-pad" id="simulation">
+      <div class="section-heading">
+        <div><div class="section-kicker">Qualitative results</div><h2>Simulation demonstrations</h2></div>
+        <p class="section-intro">Recorded trajectories show egocentric observations, spatial maps, and task-state updates on four navigation benchmarks.</p>
+      </div>
+      <div class="simulation-toolbar">
+        <p id="simulation-help">Scroll horizontally to browse. Use fullscreen to inspect each trajectory.</p>
+        <div class="carousel-controls"><button type="button" data-carousel-prev aria-label="Previous simulation video" aria-controls="simulation-track">←</button><button type="button" data-carousel-next aria-label="Next simulation video" aria-controls="simulation-track">→</button></div>
+      </div>
+      <div class="simulation-track" id="simulation-track" tabindex="0" role="region" aria-label="Simulation videos" aria-describedby="simulation-help">
+        <article class="simulation-card" aria-labelledby="sim-title-1">
+          <div class="simulation-card-heading"><span>R2R</span><span>01 / 04 · 30 s</span></div>
+          <video controls playsinline preload="none" poster="assets/figures/simulation/r2r-stairs.jpg" aria-label="R2R episode 729"><source src="assets/videos/simulation/r2r-stairs.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+          <div class="simulation-card-body"><h3 id="sim-title-1">Instruction following with stair traversal</h3><p>The agent ascends the stairs and enters the first doorway on the right.</p><p class="simulation-meta">Episode 729 · GPT-5.5 · 223 steps · Success</p></div>
+        </article>
+        <article class="simulation-card" aria-labelledby="sim-title-2">
+          <div class="simulation-card-heading"><span>RxR</span><span>02 / 04 · 31 s</span></div>
+          <video controls playsinline preload="none" poster="assets/figures/simulation/rxr-instructions.jpg" aria-label="RxR episode 187"><source src="assets/videos/simulation/rxr-instructions.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+          <div class="simulation-card-body"><h3 id="sim-title-2">Multi-stage instruction following</h3><p>The agent follows an instruction involving an archway, a change of direction, and a dining-table landmark.</p><p class="simulation-meta">Episode 187 · GPT-5.5 · 71 steps · Success</p></div>
+        </article>
+        <article class="simulation-card" aria-labelledby="sim-title-3">
+          <div class="simulation-card-heading"><span>HM3D-v2</span><span>03 / 04 · 45 s</span></div>
+          <video controls playsinline preload="none" poster="assets/figures/simulation/hm3d-bed-ep487.jpg" aria-label="HM3D-v2 episode 487"><source src="assets/videos/simulation/hm3d-bed-ep487.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+          <div class="simulation-card-body"><h3 id="sim-title-3">Object-goal navigation: bed</h3><p>An extended search trajectory culminating in successful navigation to a bed.</p><p class="simulation-meta">Episode 487 · GPT-5.6-Luna · 368 steps · Success</p></div>
+        </article>
+        <article class="simulation-card" aria-labelledby="sim-title-4">
+          <div class="simulation-card-heading"><span>HM3D-OVON</span><span>04 / 04 · 30 s</span></div>
+          <video controls playsinline preload="none" poster="assets/figures/simulation/ovon-picture.jpg" aria-label="HM3D-OVON episode 2518"><source src="assets/videos/simulation/ovon-picture.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+          <div class="simulation-card-body"><h3 id="sim-title-4">Open-vocabulary navigation: picture</h3><p>The agent explores the scene and navigates to a picture specified as the target.</p><p class="simulation-meta">Episode 2518 · GPT-5.6-Luna · 146 steps · Success</p></div>
+        </article>
+      </div>
+      <p class="simulation-note">Selected successful episodes from the September 9 demo set. Playback is temporally condensed; the HM3D-v2 clip also uses uniform frame subsampling. These examples illustrate behavior and do not constitute an aggregate evaluation.</p>
+    </section>
+
+    <section class="deployment section-pad" id="deployment" data-video-gallery>
+      <div class="section-heading">
+        <div><div class="section-kicker">Robot experiments</div><h2 class="reveal">Real-world deployment</h2></div>
+        <p class="section-intro reveal">HarnessVLN is deployed on a 1.74 m AgiBot A3U humanoid equipped with stereo vision, 3D LiDAR, onboard NVIDIA Thor compute, and a local path planner.</p>
+      </div>
+      <div class="video-stage reveal">
+        <video id="demo-video" controls playsinline preload="none" poster="assets/figures/realworld_1.mp4.png"><source src="assets/videos/realworld_1.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+        <div class="video-caption"><div><span id="video-index" data-video-index>01 / 03</span><strong id="video-title" data-video-title>Combined navigation task</strong></div><p id="video-description" data-video-description>Stop at the entrance signboard, then continue to the vending machine through one shared Harness protocol.</p></div>
+      </div>
+      <div class="video-selector" role="list" aria-label="Real-world demonstrations">
+        <button class="video-item active" type="button" data-video="assets/videos/realworld_1.mp4" data-poster="assets/figures/realworld_1.mp4.png" data-index="01 / 03" data-title="Combined navigation task" data-description="Stop at the entrance signboard, then continue to the vending machine through one shared Harness protocol."><span><small>01</small><strong>Combined task</strong><em>Route + object</em></span></button>
+        <button class="video-item" type="button" data-video="assets/videos/realworld_2.mp4" data-poster="assets/figures/realworld_2.mp4.png" data-index="02 / 03" data-title="Sequential instruction following" data-description="Follow the route through Room 806, stop at the water dispenser, and continue to the refrigerator."><span><small>02</small><strong>Instruction following</strong><em>Route navigation</em></span></button>
+        <button class="video-item" type="button" data-video="assets/videos/realworld_3.mp4" data-poster="assets/figures/realworld_3.mp4.png" data-index="03 / 03" data-title="Online object navigation" data-description="Search for a printer from live observations, approach it safely, and verify the target at close range."><span><small>03</small><strong>Object navigation</strong><em>Online search</em></span></button>
+      </div>
+    </section>
+
+    <section class="citation section-pad" id="citation">
+      <span class="section-kicker">Citation</span>
+      <div class="citation-grid">
+        <h2>BibTeX</h2>
+        <div><pre id="citation-text">@misc{chen2026harnessvlnunifyingtrainingfreeembodied,
+  title={HarnessVLN: Unifying Training-Free Embodied Navigation through an Agent Harness},
+  author={Yang Chen and Lirong Che and Zhenyu Huang and Wenbo Fu and Chuang Wang and Xu Cao and Daqi Liu and Yuzhe Yang and Jian Su and Lan-Zhe Guo},
+  year={2026},
+  eprint={2609.15195},
+  archivePrefix={arXiv},
+  primaryClass={cs.RO},
+  url={https://arxiv.org/abs/2609.15195}
+}</pre><button class="button button-light" type="button" data-copy-citation>Copy BibTeX <span>＋</span></button></div>
+      </div>
+    </section>
+  </main>
+
+  <footer><a class="wordmark" href="#top"><span class="mark">H</span><span>HarnessVLN</span></a><p>Training-free embodied navigation through an Agent Harness.</p><a href="#top">Back to top ↑</a></footer>
+  <div class="toast" role="status" aria-live="polite">Citation copied</div>
+  <script src="script.js"></script>
+</body>
+</html>

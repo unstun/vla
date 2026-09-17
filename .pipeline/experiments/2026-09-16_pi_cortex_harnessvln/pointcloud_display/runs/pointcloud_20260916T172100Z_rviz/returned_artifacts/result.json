@@ -1,0 +1,270 @@
+{
+  "artifact_finalization": [
+    {
+      "artifact_count": 46,
+      "monotonic_ns": 93284333778388,
+      "ok": true,
+      "phase": "after_process_cleanup"
+    },
+    {
+      "artifact_count": 47,
+      "monotonic_ns": 93314610338097,
+      "ok": true,
+      "phase": "after_container_cleanup"
+    }
+  ],
+  "claim": "known-map truth-pose diagnostic two-goal pilot; no LLM/Cortex/SLAM/physical robot",
+  "cleanup_errors": [],
+  "container_cleanup": [
+    {
+      "container": "vla-p2b-backend-pointcloud-20260916t172100z-rviz",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "time=\"2026-09-16T13:31:31-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-p2b-backend-pointcloud-20260916t172100z-rviz in 10 seconds, resorting to SIGKILL\"\n",
+      "stdout": "vla-p2b-backend-pointcloud-20260916t172100z-rviz\n",
+      "timeout_s": 20.0
+    },
+    {
+      "container": "vla-p2b-pct-pointcloud-20260916t172100z-rviz",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "time=\"2026-09-16T13:31:41-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-p2b-pct-pointcloud-20260916t172100z-rviz in 10 seconds, resorting to SIGKILL\"\n",
+      "stdout": "vla-p2b-pct-pointcloud-20260916t172100z-rviz\n",
+      "timeout_s": 20.0
+    },
+    {
+      "container": "vla-p2b-bridge-pointcloud-20260916t172100z-rviz",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "time=\"2026-09-16T13:31:51-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-p2b-bridge-pointcloud-20260916t172100z-rviz in 10 seconds, resorting to SIGKILL\"\n",
+      "stdout": "vla-p2b-bridge-pointcloud-20260916t172100z-rviz\n",
+      "timeout_s": 20.0
+    }
+  ],
+  "error": "pilot driver failed with exit 2",
+  "error_type": "RuntimeError",
+  "last_result_write_phase": "final",
+  "observer": {
+    "capture_exit_code": 255,
+    "capture_resolution": [
+      1228,
+      826
+    ],
+    "capture_started_monotonic_ns": 92972657411792,
+    "capture_stopped_monotonic_ns": 93222105276779,
+    "capture_wall_fps": 10,
+    "commands": [
+      [
+        "/usr/bin/python3",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T172100Z_rviz/observer/resource_monitor.py",
+        "--output",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T172100Z_rviz/artifacts/pointcloud_observer/resource_samples.jsonl",
+        "--pids",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T172100Z_rviz/artifacts/pointcloud_observer/pids.json",
+        "--snapshot",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T172100Z_rviz/artifacts/external_episode/current_command.json"
+      ],
+      [
+        "xwininfo",
+        "-root",
+        "-tree"
+      ],
+      [
+        "podman",
+        "container",
+        "exists",
+        "vla-pointcloud-pointcloud-20260916t172100z-rviz"
+      ],
+      [
+        "podman",
+        "run",
+        "-d",
+        "--pull=never",
+        "--network=host",
+        "--ipc=host",
+        "--cpus=2",
+        "--memory=2g",
+        "--name",
+        "vla-pointcloud-pointcloud-20260916t172100z-rviz",
+        "-e",
+        "DISPLAY=:0",
+        "-e",
+        "XAUTHORITY=/tmp/.Xauthority",
+        "-e",
+        "QT_X11_NO_MITSHM=1",
+        "-e",
+        "LIBGL_ALWAYS_SOFTWARE=1",
+        "-e",
+        "LP_NUM_THREADS=2",
+        "-e",
+        "ROS_LOG_DIR=/observer-out/ros_logs",
+        "-e",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "-v",
+        "/tmp/.X11-unix:/tmp/.X11-unix:ro",
+        "-v",
+        "/run/user/1000/gdm/Xauthority:/tmp/.Xauthority:ro",
+        "-v",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T172100Z_rviz/observer:/observer:ro",
+        "-v",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T172100Z_rviz/artifacts/pointcloud_observer:/observer-out:rw",
+        "980cec478c0659eaecc87b5bb79685bc3399135a2ce4033d5e815defe4478ed2",
+        "bash",
+        "-lc",
+        "set -e\nsource /opt/ros/foxy/setup.bash\nexport ROS_DOMAIN_ID=94\nexport ROS_LOCALHOST_ONLY=1\ncd /observer-out\npython3 /observer/cloud_audit.py --output /observer-out/cloud_receipts.jsonl &\nexec rviz2 --ogre-log -d /observer/pointcloud.rviz --ros-args -p use_sim_time:=true\n"
+      ],
+      [
+        "xwininfo",
+        "-root",
+        "-tree"
+      ],
+      [
+        "xwininfo",
+        "-root",
+        "-tree"
+      ],
+      [
+        "xwininfo",
+        "-root",
+        "-tree"
+      ],
+      [
+        "xwininfo",
+        "-root",
+        "-tree"
+      ],
+      [
+        "podman",
+        "inspect",
+        "--format",
+        "{{.State.Pid}}",
+        "vla-pointcloud-pointcloud-20260916t172100z-rviz"
+      ],
+      [
+        "xwininfo",
+        "-id",
+        "0x60000e"
+      ],
+      [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "warning",
+        "-f",
+        "x11grab",
+        "-draw_mouse",
+        "0",
+        "-framerate",
+        "10",
+        "-window_id",
+        "6291470",
+        "-video_size",
+        "1228x826",
+        "-i",
+        ":0.0",
+        "-an",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "24",
+        "-pix_fmt",
+        "yuv420p",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T172100Z_rviz/artifacts/pointcloud_observer/rviz_live_wall_time.mp4"
+      ],
+      [
+        "podman",
+        "logs",
+        "vla-pointcloud-pointcloud-20260916t172100z-rviz"
+      ],
+      [
+        "podman",
+        "rm",
+        "-f",
+        "-t",
+        "2",
+        "vla-pointcloud-pointcloud-20260916t172100z-rviz"
+      ]
+    ],
+    "config": {
+      "capture_in_display_condition_only": true,
+      "capture_scope": "own RViz window only",
+      "capture_time_basis": "wall time",
+      "decay_seconds": 0,
+      "display": ":0",
+      "draw_rate_hz": 10,
+      "mode": "rviz",
+      "pointcloud_qos": "BEST_EFFORT KEEP_LAST depth 1",
+      "pointcloud_topic": "/quad_0/cloud_raw",
+      "renderer_requested": "Mesa software, LIBGL_ALWAYS_SOFTWARE=1; verify Ogre.log",
+      "run_id": "pointcloud_20260916T172100Z_rviz",
+      "rviz_image_id": "980cec478c0659eaecc87b5bb79685bc3399135a2ce4033d5e815defe4478ed2",
+      "viewer_cpu_limit_cores": 2,
+      "viewer_memory_limit_bytes": 2147483648,
+      "xauthority": "/run/user/1000/gdm/Xauthority"
+    },
+    "container_removal": {
+      "returncode": 0,
+      "stderr": "time=\"2026-09-16T13:30:21-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-pointcloud-pointcloud-20260916t172100z-rviz in 2 seconds, resorting to SIGKILL\"\n"
+    },
+    "errors": [],
+    "mode": "rviz",
+    "monitor_exit_code": 0,
+    "window": "0x60000e \"/observer/pointcloud.rviz - RViz\": (\"mutter-x11-frames\" \"mutter-x11-frames\")  1228x826+52+28  +52+28",
+    "window_geometry": "\nxwininfo: Window id: 0x60000e \"/observer/pointcloud.rviz - RViz\"\n\n  Absolute upper-left X:  52\n  Absolute upper-left Y:  28\n  Relative upper-left X:  52\n  Relative upper-left Y:  28\n  Width: 1228\n  Height: 826\n  Depth: 32\n  Visual: 0x82\n  Visual Class: TrueColor\n  Border width: 0\n  Class: InputOutput\n  Colormap: 0x600001 (not installed)\n  Bit Gravity State: NorthWestGravity\n  Window Gravity State: NorthWestGravity\n  Backing Store State: NotUseful\n  Save Under State: no\n  Map State: IsViewable\n  Override Redirect State: no\n  Corners:  +52+28  -1280+28  -1280-586  +52-586\n  -geometry 1228x826+52+28\n\n"
+  },
+  "passed": false,
+  "pilot_driver_exit_code": 2,
+  "post_cleanup_ports": {
+    "command": {
+      "free": true,
+      "port": 46241
+    },
+    "http": {
+      "free": true,
+      "port": 8765
+    },
+    "pct": {
+      "free": true,
+      "port": 47631
+    },
+    "telemetry": {
+      "free": true,
+      "port": 46240
+    }
+  },
+  "process_cleanup": [
+    {
+      "action": "sigkill",
+      "name": "backend",
+      "ok": true,
+      "pid": 198238,
+      "returncode": -9
+    },
+    {
+      "action": "sigkill",
+      "name": "pct_worker",
+      "ok": true,
+      "pid": 198043,
+      "returncode": -9
+    },
+    {
+      "action": "none",
+      "name": "runner",
+      "ok": true,
+      "pid": 197671,
+      "reason": "already_exited",
+      "returncode": 0
+    },
+    {
+      "action": "sigkill",
+      "name": "bridge",
+      "ok": true,
+      "pid": 197563,
+      "returncode": -9
+    }
+  ],
+  "remote_scan_workspace": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03",
+  "run_epoch_ns": 1789579568272655195
+}

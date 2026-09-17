@@ -1,0 +1,264 @@
+[
+  {
+    "path": "coding-agent/bridges/go2_bridge.py",
+    "commit": "b2b363af80a010ea9f73a0be9d49bc75555efdef",
+    "url": "https://raw.githubusercontent.com/jianzhou0420/AgentCanvas/b2b363af80a010ea9f73a0be9d49bc75555efdef/coding-agent/bridges/go2_bridge.py",
+    "sha256": "279e5b18cfb3b918d94bdaca13ce5da9d6d12e9e981b541198dadfe3900f355c",
+    "bytes": 16480,
+    "symbols": [
+      {
+        "line": 119,
+        "text": "def _budget_fields() -> dict[str, Any]:"
+      },
+      {
+        "line": 146,
+        "text": "def _live_frame(jpg: bytes) -> None:"
+      },
+      {
+        "line": 154,
+        "text": "def _live_log(entry: dict[str, Any]) -> None:"
+      },
+      {
+        "line": 162,
+        "text": "def _call(function_name: str, inputs: dict[str, Any]) -> dict[str, Any]:"
+      },
+      {
+        "line": 171,
+        "text": "def observe() -> list:"
+      },
+      {
+        "line": 191,
+        "text": "def look_around() -> list:"
+      },
+      {
+        "line": 247,
+        "text": "def step(actions: list[int]) -> dict[str, Any]:"
+      },
+      {
+        "line": 293,
+        "text": "def _execute_actions(actions: list[int]) -> dict[str, Any]:"
+      },
+      {
+        "line": 348,
+        "text": "def _summarize(measured: list[dict[str, Any]]) -> dict[str, Any]:"
+      }
+    ],
+    "interface_excerpts": [
+      {
+        "line": 1,
+        "text": "\"\"\"MCP bridge — expose a real Unitree Go2 to an external coding agent."
+      },
+      {
+        "line": 6,
+        "text": "``mcp__env__{observe,step,look_around}`` allowlist needs no edit."
+      },
+      {
+        "line": 15,
+        "text": "observe()       -> head-camera RGB"
+      },
+      {
+        "line": 16,
+        "text": "step(actions)   -> discrete actions 0-3, sanitized flags only"
+      },
+      {
+        "line": 38,
+        "text": "STEP_M / MAX_VX seconds plus settle. Batching via ``step([...])`` is not just a"
+      },
+      {
+        "line": 46,
+        "text": "GO2_TURN_BUDGET   the driver's max_turns; when set (>0), every step() result"
+      },
+      {
+        "line": 49,
+        "text": "GO2_LIVE_DIR      optional dir for live spectating: every observe frame lands"
+      },
+      {
+        "line": 81,
+        "text": "_OBSERVE_DESC = ("
+      },
+      {
+        "line": 98,
+        "text": "\"observe() to see the result.\""
+      },
+      {
+        "line": 103,
+        "text": "\"withheld pending a placement check — call step([0]) again to confirm \""
+      },
+      {
+        "line": 122,
+        "text": "and the model cannot otherwise observe it.\"\"\""
+      },
+      {
+        "line": 135,
+        "text": "\"step([0]). Ending without STOP scores ZERO.\""
+      },
+      {
+        "line": 170,
+        "text": "@mcp.tool(description=_OBSERVE_DESC)"
+      },
+      {
+        "line": 171,
+        "text": "def observe() -> list:"
+      },
+      {
+        "line": 174,
+        "text": "outputs = _call(\"env_go2__observe_egocentric\", {})"
+      },
+      {
+        "line": 207,
+        "text": "outputs = _call(\"env_go2__observe_egocentric\", {})"
+      }
+    ]
+  },
+  {
+    "path": "coding-agent/bridges/go2_host.py",
+    "commit": "b2b363af80a010ea9f73a0be9d49bc75555efdef",
+    "url": "https://raw.githubusercontent.com/jianzhou0420/AgentCanvas/b2b363af80a010ea9f73a0be9d49bc75555efdef/coding-agent/bridges/go2_host.py",
+    "sha256": "b960c7b07acc9f5999235e504bd4f12cd547232ffe81367135927a4bb736467a",
+    "bytes": 23903,
+    "symbols": [
+      {
+        "line": 127,
+        "text": "def init_robot(iface: str) -> None:"
+      },
+      {
+        "line": 151,
+        "text": "def _on_state(msg: Any) -> None:"
+      },
+      {
+        "line": 172,
+        "text": "def _rc(label: str, code: Any) -> None:"
+      },
+      {
+        "line": 183,
+        "text": "def _fresh_state() -> dict | None:"
+      },
+      {
+        "line": 191,
+        "text": "def _await_state(timeout_s: float) -> dict | None:"
+      },
+      {
+        "line": 207,
+        "text": "def _signed(v: float, lo: float, hi: float) -> float:"
+      },
+      {
+        "line": 212,
+        "text": "def _drive_open(vx: float, vyaw: float, duration: float) -> None:"
+      },
+      {
+        "line": 233,
+        "text": "def _turn(delta_rad: float) -> dict:"
+      },
+      {
+        "line": 290,
+        "text": "def _forward(dist_m: float) -> dict:"
+      },
+      {
+        "line": 310,
+        "text": "def _project(pos: tuple) -> tuple:"
+      },
+      {
+        "line": 361,
+        "text": "def fn_reset(_inputs: dict) -> dict:"
+      },
+      {
+        "line": 401,
+        "text": "def fn_step_discrete(inputs: dict) -> dict:"
+      },
+      {
+        "line": 439,
+        "text": "def fn_observe_egocentric(_inputs: dict) -> dict:"
+      },
+      {
+        "line": 465,
+        "text": "class Handler(BaseHTTPRequestHandler):"
+      },
+      {
+        "line": 470,
+        "text": "def _send(self, code: int, payload: dict) -> None:"
+      },
+      {
+        "line": 478,
+        "text": "def do_GET(self) -> None:"
+      },
+      {
+        "line": 502,
+        "text": "def do_POST(self) -> None:"
+      },
+      {
+        "line": 523,
+        "text": "def log_message(self, fmt: str, *args: Any) -> None:"
+      },
+      {
+        "line": 527,
+        "text": "def main() -> None:"
+      }
+    ],
+    "interface_excerpts": [
+      {
+        "line": 1,
+        "text": "\"\"\"Go2 host — the auto_host stand-in for a real Unitree Go2."
+      },
+      {
+        "line": 9,
+        "text": "line that touches ``SportClient`` has to live next to the dog. Nothing else"
+      },
+      {
+        "line": 21,
+        "text": "env_go2__observe_egocentric  head-camera RGB (base64 JPEG)"
+      },
+      {
+        "line": 23,
+        "text": "Motion safety — the reason this file is hand-written rather than manifest-derived:"
+      },
+      {
+        "line": 25,
+        "text": "* only Move / StopMove / StandUp / BalanceStand are reachable. The 41-method"
+      },
+      {
+        "line": 26,
+        "text": "SportClient surface (BackFlip, HandStand, FrontJump, Dance…) is not wired to"
+      },
+      {
+        "line": 29,
+        "text": "* ``Move`` is ``_CallNoReply`` — a velocity setpoint with an onboard watchdog,"
+      },
+      {
+        "line": 31,
+        "text": "computed duration and then calls StopMove(), so a dropped packet or a crashed"
+      },
+      {
+        "line": 33,
+        "text": "* StopMove() is issued in a finally-block on every path, including exceptions."
+      },
+      {
+        "line": 36,
+        "text": "position from onboard odometry); open-loop time-integrated velocity survives"
+      },
+      {
+        "line": 40,
+        "text": "Usage (in the ``unitree`` conda env on the robot host)::"
+      },
+      {
+        "line": 75,
+        "text": "CMD_HZ = 50.0            # Move is a watchdog'd setpoint; re-issue at this rate"
+      },
+      {
+        "line": 76,
+        "text": "SETTLE_S = 0.35          # let the gait actually stop before the next observe"
+      },
+      {
+        "line": 94,
+        "text": "# safety made the motion LESS controllable, not more — hence floors high enough"
+      },
+      {
+        "line": 97,
+        "text": "# Coast compensation: after StopMove the body keeps rotating a highly stable"
+      },
+      {
+        "line": 135,
+        "text": "from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber"
+      }
+    ]
+  }
+]

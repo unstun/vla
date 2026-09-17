@@ -1,0 +1,271 @@
+[
+  {
+    "path": "src/plan_env/CMakeLists.txt",
+    "upstream_path": "src/planner/plan_env/CMakeLists.txt",
+    "base_sha256": "32358b7f430445757fd294b79d23a89794e9186bbffc0a7620485859b31fb33a",
+    "ported_sha256": "745cd8acf90e0dff6fd5faec592ad20a06dbb8e39c053e9f0693c1e65cfa3ca5",
+    "declared_adaptations": [
+      "Export existing OpenCV/PCL build dependencies"
+    ],
+    "edits": [
+      {
+        "start_line_zero_based": 41,
+        "old_lines": [
+          "  cv_bridge Eigen3 geometry_msgs message_filters nav_msgs pcl_conversions\n"
+        ],
+        "new_lines": [
+          "  cv_bridge Eigen3 geometry_msgs message_filters nav_msgs OpenCV PCL pcl_conversions\n"
+        ]
+      }
+    ]
+  },
+  {
+    "path": "src/plan_env/include/plan_env/grid_map.h",
+    "upstream_path": "src/planner/plan_env/include/plan_env/grid_map.h",
+    "base_sha256": "f6f40c633af78cd3fa182c429ea0d19bbbabb15803f3cf5575bbc50e998fd297",
+    "ported_sha256": "3a562e007f40dc78fd811b31f4326cf778cfb0e475a1d61fd0836eda3aaa28d4",
+    "declared_adaptations": [
+      "Foxy callback shared_ptr signature"
+    ],
+    "edits": [
+      {
+        "start_line_zero_based": 206,
+        "old_lines": [
+          "  void depthPoseCallback(const sensor_msgs::msg::Image::ConstSharedPtr& img,\n",
+          "                         const nav_msgs::msg::Odometry::ConstSharedPtr& pose);\n",
+          "  void sensorPoseCallback(const nav_msgs::msg::Odometry::ConstSharedPtr& pose);\n",
+          "  void slidingMapFrameCallback(const nav_msgs::msg::Odometry::ConstSharedPtr& pose);\n",
+          "  void cloudCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& img);\n"
+        ],
+        "new_lines": [
+          "  void depthPoseCallback(sensor_msgs::msg::Image::ConstSharedPtr  img,\n",
+          "                         nav_msgs::msg::Odometry::ConstSharedPtr  pose);\n",
+          "  void sensorPoseCallback(nav_msgs::msg::Odometry::ConstSharedPtr  pose);\n",
+          "  void slidingMapFrameCallback(nav_msgs::msg::Odometry::ConstSharedPtr  pose);\n",
+          "  void cloudCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr  img);\n"
+        ]
+      }
+    ]
+  },
+  {
+    "path": "src/plan_env/src/grid_map.cpp",
+    "upstream_path": "src/planner/plan_env/src/grid_map.cpp",
+    "base_sha256": "144abf7c40f6e6a29a38eff61643f3232f145cdcaca7876cde2ba2c7354e58c1",
+    "ported_sha256": "2b94d5e09a71f3d9349e9b816f0b1e42b3dbc03551a20b7452579122e88efc87",
+    "declared_adaptations": [
+      "Foxy callback shared_ptr signature"
+    ],
+    "edits": [
+      {
+        "start_line_zero_based": 773,
+        "old_lines": [
+          "void GridMap::depthPoseCallback(const sensor_msgs::msg::Image::ConstSharedPtr &img,\n",
+          "                                const nav_msgs::msg::Odometry::ConstSharedPtr &pose)\n"
+        ],
+        "new_lines": [
+          "void GridMap::depthPoseCallback(sensor_msgs::msg::Image::ConstSharedPtr img,\n",
+          "                                nav_msgs::msg::Odometry::ConstSharedPtr pose)\n"
+        ]
+      },
+      {
+        "start_line_zero_based": 836,
+        "old_lines": [
+          "void GridMap::sensorPoseCallback(const nav_msgs::msg::Odometry::ConstSharedPtr &pose_msg)\n"
+        ],
+        "new_lines": [
+          "void GridMap::sensorPoseCallback(nav_msgs::msg::Odometry::ConstSharedPtr pose_msg)\n"
+        ]
+      },
+      {
+        "start_line_zero_based": 865,
+        "old_lines": [
+          "void GridMap::slidingMapFrameCallback(const nav_msgs::msg::Odometry::ConstSharedPtr &pose)\n"
+        ],
+        "new_lines": [
+          "void GridMap::slidingMapFrameCallback(nav_msgs::msg::Odometry::ConstSharedPtr pose)\n"
+        ]
+      },
+      {
+        "start_line_zero_based": 871,
+        "old_lines": [
+          "void GridMap::cloudCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &img)\n"
+        ],
+        "new_lines": [
+          "void GridMap::cloudCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr img)\n"
+        ]
+      }
+    ]
+  },
+  {
+    "path": "src/plan_manage/include/plan_manage/scan_replan_fsm.h",
+    "upstream_path": "src/planner/plan_manage/include/plan_manage/scan_replan_fsm.h",
+    "base_sha256": "6483bac39f9d7252e37dfb850217901e8268adb9f26906aa541f0943e7084025",
+    "ported_sha256": "b97e789e87db1e4e4c51848a418e651e90ff46ec231d943b99f93cea7ca06ed6",
+    "declared_adaptations": [
+      "Foxy callback shared_ptr signature"
+    ],
+    "edits": [
+      {
+        "start_line_zero_based": 126,
+        "old_lines": [
+          "    void rvizGoalCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr &msg);\n",
+          "    void waypointCallback(const nav_msgs::msg::Path::ConstSharedPtr &msg);\n",
+          "    void pathCallback(const nav_msgs::msg::Path::ConstSharedPtr &msg);\n",
+          "    void odometryCallback(const nav_msgs::msg::Odometry::ConstSharedPtr &msg);\n",
+          "    void go2ExecutionFrozenCallback(const std_msgs::msg::Bool::ConstSharedPtr &msg);\n"
+        ],
+        "new_lines": [
+          "    void rvizGoalCallback(geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);\n",
+          "    void waypointCallback(nav_msgs::msg::Path::ConstSharedPtr msg);\n",
+          "    void pathCallback(nav_msgs::msg::Path::ConstSharedPtr msg);\n",
+          "    void odometryCallback(nav_msgs::msg::Odometry::ConstSharedPtr msg);\n",
+          "    void go2ExecutionFrozenCallback(std_msgs::msg::Bool::ConstSharedPtr msg);\n"
+        ]
+      }
+    ]
+  },
+  {
+    "path": "src/plan_manage/src/closed_loop_controller.cpp",
+    "upstream_path": "src/planner/plan_manage/src/closed_loop_controller.cpp",
+    "base_sha256": "1bc1124a643b912ca8a56a66c3e7fe63088cd21fb9ec7f7ef82eb393fe0d0dd0",
+    "ported_sha256": "32d3e2c75f3dc2177c496c30bd483d28791ba17685fe7c8a41b6ad909631fcd7",
+    "declared_adaptations": [
+      "Foxy header spelling"
+    ],
+    "edits": [
+      {
+        "start_line_zero_based": 12,
+        "old_lines": [
+          "#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>\n",
+          "#include <tf2/utils.hpp>\n"
+        ],
+        "new_lines": [
+          "#include <tf2_geometry_msgs/tf2_geometry_msgs.h>\n",
+          "#include <tf2/utils.h>\n"
+        ]
+      }
+    ]
+  },
+  {
+    "path": "src/plan_manage/src/go2_kinematic_sim.cpp",
+    "upstream_path": "src/planner/plan_manage/src/go2_kinematic_sim.cpp",
+    "base_sha256": "c01c8eee657124f2c5ba5547a781b43c3ea10915e1a0dd4d3a47b9f8ed6cffc8",
+    "ported_sha256": "468045b4c8427247f70c04ce0a0575e52903d3601d7217a658cafb9c3a7c0ae3",
+    "declared_adaptations": [
+      "Foxy header spelling"
+    ],
+    "edits": [
+      {
+        "start_line_zero_based": 10,
+        "old_lines": [
+          "#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>\n"
+        ],
+        "new_lines": [
+          "#include <tf2_geometry_msgs/tf2_geometry_msgs.h>\n"
+        ]
+      }
+    ]
+  },
+  {
+    "path": "src/plan_manage/src/open_loop_controller.cpp",
+    "upstream_path": "src/planner/plan_manage/src/open_loop_controller.cpp",
+    "base_sha256": "686695e53036eec110a750b076172c3c99b8437390b8a0a43a2751c1fef215ba",
+    "ported_sha256": "5b5c12be79e63cd4c0c8362a7630e15a2930f7371fae9bddcd9e00e8f7d3ef6c",
+    "declared_adaptations": [
+      "Foxy callback shared_ptr signature",
+      "Foxy header spelling"
+    ],
+    "edits": [
+      {
+        "start_line_zero_based": 12,
+        "old_lines": [
+          "#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>\n"
+        ],
+        "new_lines": [
+          "#include <tf2_geometry_msgs/tf2_geometry_msgs.h>\n"
+        ]
+      },
+      {
+        "start_line_zero_based": 45,
+        "old_lines": [
+          "  bool parseBspline(const scan_planner_msgs::msg::Bspline::ConstSharedPtr &msg,\n"
+        ],
+        "new_lines": [
+          "  bool parseBspline(scan_planner_msgs::msg::Bspline::ConstSharedPtr msg,\n"
+        ]
+      }
+    ]
+  },
+  {
+    "path": "src/plan_manage/src/scan_replan_fsm.cpp",
+    "upstream_path": "src/planner/plan_manage/src/scan_replan_fsm.cpp",
+    "base_sha256": "d544229225b4474209dda1e2547f52c1e549386c2e8f0b97ffa2c1acaa88738c",
+    "ported_sha256": "bb5fa854031ecb9a94fc9b3aeff0a225a48ff3bb81cefdc9f345659afcf285eb",
+    "declared_adaptations": [
+      "Foxy callback shared_ptr signature",
+      "Lite3 Odometry body-to-world velocity representation"
+    ],
+    "edits": [
+      {
+        "start_line_zero_based": 129,
+        "old_lines": [
+          "  void SCANReplanFSM::rvizGoalCallback(const geometry_msgs::msg::PoseStamped::ConstSharedPtr &msg)\n"
+        ],
+        "new_lines": [
+          "  void SCANReplanFSM::rvizGoalCallback(geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)\n"
+        ]
+      },
+      {
+        "start_line_zero_based": 146,
+        "old_lines": [
+          "  void SCANReplanFSM::waypointCallback(const nav_msgs::msg::Path::ConstSharedPtr &msg)\n"
+        ],
+        "new_lines": [
+          "  void SCANReplanFSM::waypointCallback(nav_msgs::msg::Path::ConstSharedPtr msg)\n"
+        ]
+      },
+      {
+        "start_line_zero_based": 346,
+        "old_lines": [
+          "  void SCANReplanFSM::pathCallback(const nav_msgs::msg::Path::ConstSharedPtr &msg)\n"
+        ],
+        "new_lines": [
+          "  void SCANReplanFSM::pathCallback(nav_msgs::msg::Path::ConstSharedPtr msg)\n"
+        ]
+      },
+      {
+        "start_line_zero_based": 400,
+        "old_lines": [
+          "  void SCANReplanFSM::odometryCallback(const nav_msgs::msg::Odometry::ConstSharedPtr &msg)\n"
+        ],
+        "new_lines": [
+          "  void SCANReplanFSM::odometryCallback(nav_msgs::msg::Odometry::ConstSharedPtr msg)\n"
+        ]
+      },
+      {
+        "start_line_zero_based": 422,
+        "old_lines": [
+          "    odom_orient_.z() = msg->pose.pose.orientation.z;\r\n"
+        ],
+        "new_lines": [
+          "    odom_orient_.z() = msg->pose.pose.orientation.z;\n",
+          "\n",
+          "    // Lite3 interface: Odometry twist is in child_frame_id=base;\n",
+          "    // native SCAN's seed velocity is in the world frame.\n",
+          "    if (msg->child_frame_id == \"base\")\n",
+          "      odom_vel_ = odom_orient_ * odom_vel_;\n",
+          "\r\n"
+        ]
+      },
+      {
+        "start_line_zero_based": 433,
+        "old_lines": [
+          "  void SCANReplanFSM::go2ExecutionFrozenCallback(const std_msgs::msg::Bool::ConstSharedPtr &msg)\n"
+        ],
+        "new_lines": [
+          "  void SCANReplanFSM::go2ExecutionFrozenCallback(std_msgs::msg::Bool::ConstSharedPtr msg)\n"
+        ]
+      }
+    ]
+  }
+]

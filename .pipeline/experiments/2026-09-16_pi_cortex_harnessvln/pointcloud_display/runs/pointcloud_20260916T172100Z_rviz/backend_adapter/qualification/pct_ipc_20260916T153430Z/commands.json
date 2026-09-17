@@ -1,0 +1,120 @@
+[
+  {
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "python3 --version && podman --version && podman image exists 40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555 && echo pct_image_ok"
+    ],
+    "exit_code": 0,
+    "label": "remote_preflight",
+    "wall_seconds": 4.636
+  },
+  {
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "mkdir -p /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/backend_adapter_qualification/pct_ipc_20260916T153430Z/experiment /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/backend_adapter_qualification/pct_ipc_20260916T153430Z/result /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/backend_adapter_qualification/pct_ipc_20260916T153430Z/foxy_tests"
+    ],
+    "exit_code": 0,
+    "label": "mkdir",
+    "wall_seconds": 4.362
+  },
+  {
+    "command": [
+      "rsync",
+      "-a",
+      "--files-from=/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/qualification/pct_ipc_20260916T153430Z/files.txt",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/backend_adapter_qualification/pct_ipc_20260916T153430Z/experiment/"
+    ],
+    "exit_code": 0,
+    "label": "sync",
+    "wall_seconds": 11.914
+  },
+  {
+    "command": [
+      "rsync",
+      "-a",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/qualification/pct_ipc_20260916T153430Z/source_sha256.json",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/backend_adapter_qualification/pct_ipc_20260916T153430Z/source_sha256.json"
+    ],
+    "exit_code": 0,
+    "label": "sync_hashes",
+    "wall_seconds": 7.538
+  },
+  {
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "python3 -"
+    ],
+    "exit_code": 0,
+    "label": "source_gate",
+    "wall_seconds": 4.907
+  },
+  {
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "podman run --rm --name p2b-pct-ipc-pct_ipc_20260916t153430z --pull=never --network=none -e PYTHONDONTWRITEBYTECODE=1 -e OPENBLAS_NUM_THREADS=1 -e OMP_NUM_THREADS=2 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/backend_adapter_qualification/pct_ipc_20260916T153430Z:/qualification 40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555 bash -lc 'set -e\nsource /opt/ros/humble/setup.bash\nexport PYTHONDONTWRITEBYTECODE=1\nexport PYTHONPATH=/qualification/experiment/backend_adapter:/qualification/experiment/p2b_execution/pct_runtime/python:${PYTHONPATH:-}\nexport LD_LIBRARY_PATH=/qualification/experiment/p2b_execution/pct_runtime/lib:${LD_LIBRARY_PATH:-}\nexec python3 /qualification/experiment/backend_adapter/qualify_pct_ipc.py --inside --output /qualification/result'"
+    ],
+    "exit_code": 0,
+    "label": "pct_ipc_container",
+    "wall_seconds": 5.705
+  },
+  {
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "podman run --rm --name p2b-foxy-tests-pct_ipc_20260916t153430z --pull=never --network=none -e PYTHONDONTWRITEBYTECODE=1 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/backend_adapter_qualification/pct_ipc_20260916T153430Z/experiment:/work:ro e4aa7154 bash -lc 'set -e\nsource /opt/ros/foxy/setup.bash || true\nexport PYTHONDONTWRITEBYTECODE=1\ncd /work/backend_adapter\npython3 --version\npython3 -m unittest discover -s tests -v'"
+    ],
+    "exit_code": 0,
+    "label": "foxy38_tests",
+    "wall_seconds": 4.578
+  },
+  {
+    "command": [
+      "rsync",
+      "-a",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/backend_adapter_qualification/pct_ipc_20260916T153430Z/result/",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_adapter/qualification/pct_ipc_20260916T153430Z/result/"
+    ],
+    "exit_code": 0,
+    "label": "return_result",
+    "wall_seconds": 8.012
+  },
+  {
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "python3 -"
+    ],
+    "exit_code": 0,
+    "label": "return_hashes",
+    "wall_seconds": 4.916
+  }
+]

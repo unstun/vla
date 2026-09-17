@@ -1,0 +1,41 @@
+{
+  "command": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=8",
+    "gpu5070ti",
+    "podman run --rm --pull=never --network=none -e PYTHONDONTWRITEBYTECODE=1 -v /home/sun/machine-dog-nav-runs/2026-09-08_pct_scan_retest:/io:ro -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/qualification:/qualification 40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555 bash -c 'set -e\nexport ROS_LOG_DIR=/qualification/ros_logs\nsource /io/workspace_retry01/scripts/_pct_scan_env.sh\npython3 -c '\"'\"'import json,sys,hashlib,subprocess\nfrom pathlib import Path\nfrom pct_planner import planner_wrapper\nfrom pct_planner.lib import a_star,ele_planner,traj_opt\nmodules={}\nfor m in [planner_wrapper,a_star,ele_planner,traj_opt]:\n p=Path(m.__file__).resolve()\n modules[m.__name__]={'\"'\"'\"'\"'\"'\"'\"'\"'path'\"'\"'\"'\"'\"'\"'\"'\"':str(p),'\"'\"'\"'\"'\"'\"'\"'\"'bytes'\"'\"'\"'\"'\"'\"'\"'\"':p.stat().st_size,'\"'\"'\"'\"'\"'\"'\"'\"'sha256'\"'\"'\"'\"'\"'\"'\"'\"':hashlib.sha256(p.read_bytes()).hexdigest()}\n if p.suffix=='\"'\"'\"'\"'\"'\"'\"'\"'.so'\"'\"'\"'\"'\"'\"'\"'\"':\n  modules[m.__name__]['\"'\"'\"'\"'\"'\"'\"'\"'ldd'\"'\"'\"'\"'\"'\"'\"'\"']=subprocess.run(['\"'\"'\"'\"'\"'\"'\"'\"'ldd'\"'\"'\"'\"'\"'\"'\"'\"',str(p)],capture_output=True,text=True).stdout\nprint(json.dumps({'\"'\"'\"'\"'\"'\"'\"'\"'python'\"'\"'\"'\"'\"'\"'\"'\"':sys.version,'\"'\"'\"'\"'\"'\"'\"'\"'modules'\"'\"'\"'\"'\"'\"'\"'\"':modules},indent=2))\n'\"'\"''"
+  ],
+  "image_id": "40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555",
+  "exit_code": 0,
+  "inspection": {
+    "python": "3.10.12 (main, Jun 22 2026, 18:55:27) [GCC 11.4.0]",
+    "modules": {
+      "pct_planner.planner_wrapper": {
+        "path": "/io/workspace_retry01/src/pct/pct_planner/pct_planner/planner_wrapper.py",
+        "bytes": 15441,
+        "sha256": "4b59fca5c67481edbe7f7040a74dde279d2bf382849773467da3c7b14818c8a8"
+      },
+      "pct_planner.lib.a_star": {
+        "path": "/io/workspace_retry01/build/pct_planner/lib/src/a_star/a_star.cpython-310-x86_64-linux-gnu.so",
+        "bytes": 216736,
+        "sha256": "bdefd4a668bc507f280215f55d12ed7338093d5bb494f564d80a62836a2b9612",
+        "ldd": "\tlinux-vdso.so.1 (0x00007479e104c000)\n\tliba_star_search.so => /io/workspace_retry01/build/pct_planner/lib/src/a_star/liba_star_search.so (0x00007479e1004000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007479e0dc0000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007479e0da0000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007479e0b75000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007479e0a8e000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007479e104e000)\n"
+      },
+      "pct_planner.lib.ele_planner": {
+        "path": "/io/workspace_retry01/build/pct_planner/lib/src/ele_planner/ele_planner.cpython-310-x86_64-linux-gnu.so",
+        "bytes": 183904,
+        "sha256": "533ddb73c0aa90b9f59b46a7314191e4b9b2e958d615c57b4bbc5f706e76a2b6",
+        "ldd": "\tlinux-vdso.so.1 (0x0000721f8a01e000)\n\tlibele_planner_lib.so => /io/workspace_retry01/build/pct_planner/lib/src/ele_planner/libele_planner_lib.so (0x0000721f89fe1000)\n\tliba_star_search.so => /io/workspace_retry01/build/pct_planner/lib/src/a_star/liba_star_search.so (0x0000721f89fd7000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x0000721f89d91000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x0000721f89d71000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x0000721f89b48000)\n\tlibgpmp_optimizer.so => /io/workspace_retry01/build/pct_planner/lib/src/trajectory_optimization/libgpmp_optimizer.so (0x0000721f89afd000)\n\tlibmap_manager.so => /io/workspace_retry01/build/pct_planner/lib/src/map_manager/libmap_manager.so (0x0000721f89af7000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x0000721f89a0e000)\n\t/lib64/ld-linux-x86-64.so.2 (0x0000721f8a020000)\n\tlibgtsam.so.4 => /io/workspace_retry01/.deps/install/gtsam-4.2/lib/libgtsam.so.4 (0x0000721f89200000)\n\tlibcommon_smoothing.so => /io/workspace_retry01/build/pct_planner/lib/src/common/smoothing/libcommon_smoothing.so (0x0000721f899bc000)\n\tlibtbb.so.12 => /lib/x86_64-linux-gnu/libtbb.so.12 (0x0000721f8996c000)\n\tlibboost_serialization.so.1.74.0 => /lib/x86_64-linux-gnu/libboost_serialization.so.1.74.0 (0x0000721f8992a000)\n\tlibboost_filesystem.so.1.74.0 => /lib/x86_64-linux-gnu/libboost_filesystem.so.1.74.0 (0x0000721f89908000)\n\tlibboost_timer.so.1.74.0 => /lib/x86_64-linux-gnu/libboost_timer.so.1.74.0 (0x0000721f898fe000)\n\tlibtbbmalloc.so.2 => /lib/x86_64-linux-gnu/libtbbmalloc.so.2 (0x0000721f898be000)\n\tlibmetis-gtsam.so => /io/workspace_retry01/.deps/install/gtsam-4.2/lib/libmetis-gtsam.so (0x0000721f8984e000)\n\tlibboost_chrono.so.1.74.0 => /lib/x86_64-linux-gnu/libboost_chrono.so.1.74.0 (0x0000721f891f5000)\n"
+      },
+      "pct_planner.lib.traj_opt": {
+        "path": "/io/workspace_retry01/build/pct_planner/lib/src/trajectory_optimization/traj_opt.cpython-310-x86_64-linux-gnu.so",
+        "bytes": 163424,
+        "sha256": "ef011277bb47ff9c1f970d20c8ef10ad764a1ca4b365be6102383c13ef24c3ef",
+        "ldd": "\tlinux-vdso.so.1 (0x000075fc01818000)\n\tlibgpmp_optimizer.so => /io/workspace_retry01/build/pct_planner/lib/src/trajectory_optimization/libgpmp_optimizer.so (0x000075fc0179c000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x000075fc01558000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x000075fc01538000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x000075fc0130d000)\n\tlibgtsam.so.4 => /io/workspace_retry01/.deps/install/gtsam-4.2/lib/libgtsam.so.4 (0x000075fc00c00000)\n\tlibmap_manager.so => /io/workspace_retry01/build/pct_planner/lib/src/map_manager/libmap_manager.so (0x000075fc01307000)\n\tlibcommon_smoothing.so => /io/workspace_retry01/build/pct_planner/lib/src/common/smoothing/libcommon_smoothing.so (0x000075fc012b5000)\n\tlibtbb.so.12 => /lib/x86_64-linux-gnu/libtbb.so.12 (0x000075fc01265000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x000075fc00b19000)\n\t/lib64/ld-linux-x86-64.so.2 (0x000075fc0181a000)\n\tlibboost_serialization.so.1.74.0 => /lib/x86_64-linux-gnu/libboost_serialization.so.1.74.0 (0x000075fc00ad7000)\n\tlibboost_filesystem.so.1.74.0 => /lib/x86_64-linux-gnu/libboost_filesystem.so.1.74.0 (0x000075fc00ab7000)\n\tlibboost_timer.so.1.74.0 => /lib/x86_64-linux-gnu/libboost_timer.so.1.74.0 (0x000075fc01259000)\n\tlibtbbmalloc.so.2 => /lib/x86_64-linux-gnu/libtbbmalloc.so.2 (0x000075fc00a77000)\n\tlibmetis-gtsam.so => /io/workspace_retry01/.deps/install/gtsam-4.2/lib/libmetis-gtsam.so (0x000075fc00a07000)\n\tlibboost_chrono.so.1.74.0 => /lib/x86_64-linux-gnu/libboost_chrono.so.1.74.0 (0x000075fc0124c000)\n"
+      }
+    }
+  }
+}

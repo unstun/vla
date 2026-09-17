@@ -1,0 +1,110 @@
+{
+  "all_passed": true,
+  "source_gate_passed": true,
+  "returned_artifacts_match": true,
+  "returned_file_count": 11,
+  "host": "gpu5070ti",
+  "remote_root": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln",
+  "evidence_kind": "offline_protocol_probe_on_linux",
+  "actual_llm_calls": 0,
+  "cortex_runtime_executed": false,
+  "habitat_executed": false,
+  "commands": [
+    {
+      "label": "mkdir",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "mkdir -p /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "sync_source",
+      "command": [
+        "rsync",
+        "-a",
+        "--files-from=/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/remote_results/probe_20260916T132317Z/files.txt",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "source_gate",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "python3 -"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "npm_ci",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "env PATH=/home/sun/vla_exec/2026-09-16_mip_5070ti/tools/node-v24.21.0-linux-x64/bin:/usr/local/bin:/usr/bin:/bin npm --prefix /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/pi ci --ignore-scripts --no-audit --no-fund"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "verify",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "env PATH=/home/sun/vla_exec/2026-09-16_mip_5070ti/tools/node-v24.21.0-linux-x64/bin:/usr/local/bin:/usr/bin:/bin python3 /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/verify.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "return_checks",
+      "command": [
+        "rsync",
+        "-a",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/checks/",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/remote_results/probe_20260916T132317Z/checks/"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "return_runs",
+      "command": [
+        "rsync",
+        "-a",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/runs/",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/remote_results/probe_20260916T132317Z/runs/"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "artifact_hashes",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "python3 -"
+      ],
+      "exit_code": 0
+    }
+  ]
+}

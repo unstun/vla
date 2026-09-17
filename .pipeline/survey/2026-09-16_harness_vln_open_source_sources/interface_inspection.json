@@ -1,0 +1,504 @@
+[
+  {
+    "repo": "bagh2178/GC-VLN",
+    "path": "src/solver/instruction_graph.py",
+    "commit": "1beddca8d90d79855c110c5a433f7b8856ca263a",
+    "url": "https://raw.githubusercontent.com/bagh2178/GC-VLN/1beddca8d90d79855c110c5a433f7b8856ca263a/src/solver/instruction_graph.py",
+    "sha256": "081d9200e0c8c9ced91d87e5463b92ee5fee4359715d41445d9b460174044680",
+    "bytes": 3816,
+    "excerpts": [
+      {
+        "line": 1,
+        "text": "import json"
+      },
+      {
+        "line": 8,
+        "text": "def get_instruction_graphs(observations):"
+      },
+      {
+        "line": 9,
+        "text": "    \"\"\"Convert JSON DAG to NetworkX graph."
+      },
+      {
+        "line": 12,
+        "text": "        observations: List of observations containing instruction['DAG']"
+      },
+      {
+        "line": 14,
+        "text": "    Returns:"
+      },
+      {
+        "line": 15,
+        "text": "        stage_num: Number of stages per instruction"
+      },
+      {
+        "line": 16,
+        "text": "        instruction_graphs: List of NetworkX DiGraph objects"
+      },
+      {
+        "line": 17,
+        "text": "        objects_sum: List of object names to match per instruction"
+      },
+      {
+        "line": 20,
+        "text": "    instruction_graph_dict = []"
+      },
+      {
+        "line": 22,
+        "text": "        instruction_graph_dict.append(observations[i]['instruction']['DAG'])"
+      },
+      {
+        "line": 24,
+        "text": "    instruction_graphs = []"
+      },
+      {
+        "line": 29,
+        "text": "    for index, dag_str in enumerate(instruction_graph_dict):"
+      },
+      {
+        "line": 31,
+        "text": "        list_t = json.loads(dag_str)"
+      },
+      {
+        "line": 87,
+        "text": "        instruction_graphs.append(G)"
+      },
+      {
+        "line": 90,
+        "text": "    return stage_num, instruction_graphs, objects_sum, wrong_dags"
+      }
+    ]
+  },
+  {
+    "repo": "bagh2178/GC-VLN",
+    "path": "config/r2r_vlnce.yaml",
+    "commit": "1beddca8d90d79855c110c5a433f7b8856ca263a",
+    "url": "https://raw.githubusercontent.com/bagh2178/GC-VLN/1beddca8d90d79855c110c5a433f7b8856ca263a/config/r2r_vlnce.yaml",
+    "sha256": "4ec89fef90d006875f1ef5a0dcc19913f467d50d586b3dfb0764033b3678cae9",
+    "bytes": 2230,
+    "excerpts": [
+      {
+        "line": 7,
+        "text": "  FORWARD_STEP_SIZE: 0.25"
+      },
+      {
+        "line": 8,
+        "text": "  TURN_ANGLE: 30"
+      },
+      {
+        "line": 13,
+        "text": "    HEIGHT: 1.5"
+      },
+      {
+        "line": 14,
+        "text": "    RADIUS: 0.18"
+      },
+      {
+        "line": 21,
+        "text": "    PHYSICS_CONFIG_FILE: ./data/default.physics_config.json"
+      },
+      {
+        "line": 24,
+        "text": "    HEIGHT: 480"
+      },
+      {
+        "line": 25,
+        "text": "    HFOV: 90"
+      },
+      {
+        "line": 31,
+        "text": "    HEIGHT: 480"
+      },
+      {
+        "line": 32,
+        "text": "    HFOV: 90"
+      },
+      {
+        "line": 43,
+        "text": "  POSSIBLE_ACTIONS: [STOP, MOVE_FORWARD, TURN_LEFT, TURN_RIGHT, HIGHTOLOW]"
+      },
+      {
+        "line": 46,
+        "text": "    INSTRUCTION_SENSOR, "
+      },
+      {
+        "line": 52,
+        "text": "  INSTRUCTION_SENSOR_UUID: instruction"
+      },
+      {
+        "line": 71,
+        "text": "  #     FOV: 360"
+      },
+      {
+        "line": 79,
+        "text": "    GT_PATH: data/datasets/R2R_VLNCE_v1-2_preprocessed/{split}/{split}_gt.json.gz"
+      },
+      {
+        "line": 82,
+        "text": "    GT_PATH: data/datasets/R2R_VLNCE_v1-2_preprocessed/{split}/{split}_gt.json.gz"
+      },
+      {
+        "line": 91,
+        "text": "  DATA_PATH: data/datasets/R2R_VLNCE_v1-2_preprocessed/{split}/{split}.json.gz"
+      }
+    ]
+  },
+  {
+    "repo": "jianzhou0420/AgentCanvas",
+    "path": "coding-agent/bridges/mcp_bridge.py",
+    "commit": "b2b363af80a010ea9f73a0be9d49bc75555efdef",
+    "url": "https://raw.githubusercontent.com/jianzhou0420/AgentCanvas/b2b363af80a010ea9f73a0be9d49bc75555efdef/coding-agent/bridges/mcp_bridge.py",
+    "sha256": "26a9714e83b7159472a0e06ebca5ab19ae8cfb6fa859a5d65a8f533839d18928",
+    "bytes": 18863,
+    "excerpts": [
+      {
+        "line": 3,
+        "text": "Stdio MCP server (FastMCP) forwarding a deliberately minimal toolset to a"
+      },
+      {
+        "line": 7,
+        "text": "- ``observe()``      -> egocentric RGB (base64 PNG passthrough as MCP image)"
+      },
+      {
+        "line": 8,
+        "text": "- ``step(actions)``  -> discrete actions 0-3, sanitized gym flags only; with"
+      },
+      {
+        "line": 9,
+        "text": "                        HABITAT_AUTO_OBSERVE on, the result also carries the"
+      },
+      {
+        "line": 10,
+        "text": "                        post-move RGB so no separate observe() turn is spent"
+      },
+      {
+        "line": 11,
+        "text": "                        (RxR default); off = classic separate observe/step"
+      },
+      {
+        "line": 27,
+        "text": "                         this bridge uses — observe_egocentric (rgb + depth)"
+      },
+      {
+        "line": 28,
+        "text": "                         and step_discrete (0=STOP, 1=FWD 0.25 m, 2/3=turn"
+      },
+      {
+        "line": 35,
+        "text": "    HABITAT_TURN_BUDGET  the driver's max_turns; when set (>0), every step()"
+      },
+      {
+        "line": 40,
+        "text": "    HABITAT_LIVE_DIR     optional dir for live spectating: every observe frame"
+      },
+      {
+        "line": 48,
+        "text": "import json"
+      },
+      {
+        "line": 63,
+        "text": "TURN_BUDGET = int(os.environ.get(\"HABITAT_TURN_BUDGET\", \"0\"))"
+      },
+      {
+        "line": 65,
+        "text": "# as observe() (std-v2; std-v1 used 384)"
+      },
+      {
+        "line": 70,
+        "text": "# exactly observe(RGB) + step — the \"bare\" ① condition. look_around is"
+      },
+      {
+        "line": 71,
+        "text": "# withheld driver-side (removed from allowed_tools) and TURN_BUDGET=0 already"
+      },
+      {
+        "line": 72,
+        "text": "# disables the budget broadcast + STOP gate, so BARE only needs to drop the"
+      },
+      {
+        "line": 75,
+        "text": "# Auto-observe: step() attaches the post-move camera view so observe() is a"
+      },
+      {
+        "line": 77,
+        "text": "# when unset) = classic separate observe/step, byte-compatible with the frozen"
+      },
+      {
+        "line": 78,
+        "text": "# R2R-CE baselines. The driver sets this per dataset (HABITAT_AUTO_OBSERVE): on"
+      },
+      {
+        "line": 79,
+        "text": "# for RxR-CE (its long instructions otherwise double the turn count), off else."
+      },
+      {
+        "line": 80,
+        "text": "AUTO_OBSERVE = os.environ.get(\"HABITAT_AUTO_OBSERVE\") == \"1\""
+      },
+      {
+        "line": 82,
+        "text": "_OBSERVE_DESC = ("
+      },
+      {
+        "line": 83,
+        "text": "    \"Look through the robot's forward-facing camera. Returns the current \""
+      },
+      {
+        "line": 87,
+        "text": "    \"Look through the robot's forward-facing camera.\\n\\n\""
+      },
+      {
+        "line": 88,
+        "text": "    \"Returns the current egocentric RGB view plus a clearance readout: \""
+      },
+      {
+        "line": 96,
+        "text": "    \"Actions: 0 = STOP (permanently ENDS the episode — issue it only when you \""
+      },
+      {
+        "line": 97,
+        "text": "    \"believe the robot is within 3 meters of the goal), 1 = move forward \""
+      },
+      {
+        "line": 98,
+        "text": "    \"0.25 m, 2 = turn left 15 degrees, 3 = turn right 15 degrees.\\n\\n\""
+      },
+      {
+        "line": 99,
+        "text": "    \"Executes sequentially and halts early if the episode ends. Returns how \""
+      },
+      {
+        "line": 103,
+        "text": "        \" The resulting camera view is attached as an image (auto-observe), so \""
+      },
+      {
+        "line": 104,
+        "text": "        \"you do NOT need to call observe() after moving — only observe() for \""
+      },
+      {
+        "line": 106,
+        "text": "        if AUTO_OBSERVE else"
+      },
+      {
+        "line": 107,
+        "text": "        \" The camera view changes after stepping — call observe() to see the \""
+      },
+      {
+        "line": 113,
+        "text": "        \" Note: when plenty of budget remains, your FIRST STOP request is \""
+      },
+      {
+        "line": 114,
+        "text": "        \"withheld pending a placement check — call step([0]) again to confirm \""
+      },
+      {
+        "line": 126,
+        "text": "_stop_armed = False  # first budget-rich STOP request is withheld; second executes"
+      },
+      {
+        "line": 130,
+        "text": "def _budget_fields() -> dict[str, Any]:"
+      },
+      {
+        "line": 131,
+        "text": "    \"\"\"Turn-budget broadcast — one tool call ≈ one harness turn."
+      },
+      {
+        "line": 133,
+        "text": "    The driver's max_turns is the budget that actually kills sessions, but the"
+      },
+      {
+        "line": 134,
+        "text": "    model has no way to observe it. Report it in every step result and escalate"
+      },
+      {
+        "line": 135,
+        "text": "    to explicit orders near exhaustion; a session that ends without STOP scores"
+      },
+      {
+        "line": 138,
+        "text": "    if TURN_BUDGET <= 0:"
+      },
+      {
+        "line": 139,
+        "text": "        return {}"
+      },
+      {
+        "line": 140,
+        "text": "    remaining = max(0, TURN_BUDGET - _tool_calls)"
+      },
+      {
+        "line": 148,
+        "text": "            \"killed. Execute your terminal stop protocol NOW: move to your best \""
+      },
+      {
+        "line": 150,
+        "text": "            \"step([0]). Ending without STOP scores ZERO.\""
+      },
+      {
+        "line": 155,
+        "text": "            \"Stop exploring new areas; commit to your best goal candidate, \""
+      },
+      {
+        "line": 156,
+        "text": "            \"approach it, and STOP before the budget runs out.\""
+      },
+      {
+        "line": 158,
+        "text": "    return fields"
+      },
+      {
+        "line": 161,
+        "text": "def _clearance_m(depth_field: dict[str, Any] | None) -> dict[str, float] | None:"
+      },
+      {
+        "line": 170,
+        "text": "        return None"
+      },
+      {
+        "line": 177,
+        "text": "        return None"
+      },
+      {
+        "line": 185,
+        "text": "    return {"
+      },
+      {
+        "line": 191,
+        "text": "def _downscale(png: bytes, side: int) -> bytes:"
+      },
+      {
+        "line": 196,
+        "text": "        return png"
+      },
+      {
+        "line": 200,
+        "text": "    return buf.getvalue()"
+      },
+      {
+        "line": 203,
+        "text": "def _live_frame(png: bytes) -> None:"
+      },
+      {
+        "line": 205,
+        "text": "        return"
+      },
+      {
+        "line": 211,
+        "text": "def _live_log(entry: dict[str, Any]) -> None:"
+      },
+      {
+        "line": 213,
+        "text": "        return"
+      },
+      {
+        "line": 216,
+        "text": "        fh.write(json.dumps({\"t\": round(time.time() - _t0, 1), **entry}) + \"\\n\")"
+      },
+      {
+        "line": 219,
+        "text": "def _call(function_name: str, inputs: dict[str, Any]) -> dict[str, Any]:"
+      },
+      {
+        "line": 221,
+        "text": "        f\"{SERVER_URL}/call/{function_name}\", json={\"inputs\": inputs}, timeout=300"
+      },
+      {
+        "line": 224,
+        "text": "    return resp.json()[\"outputs\"]"
+      },
+      {
+        "line": 227,
+        "text": "def _capture_view() -> tuple[bytes, dict[str, float] | None]:"
+      }
+    ]
+  },
+  {
+    "repo": "jianzhou0420/AgentCanvas",
+    "path": "coding-agent/harnesses/mini/nav_agent.py",
+    "commit": "b2b363af80a010ea9f73a0be9d49bc75555efdef",
+    "url": "https://raw.githubusercontent.com/jianzhou0420/AgentCanvas/b2b363af80a010ea9f73a0be9d49bc75555efdef/coding-agent/harnesses/mini/nav_agent.py",
+    "sha256": "9403a4c94c1f5355c325e4b1e92366f9d7be86e2c6a1e4597b73700ea47c9a83",
+    "bytes": 3515,
+    "excerpts": [
+      {
+        "line": 6,
+        "text": "tool_result / exit) so ``episode_{i}.jsonl`` keeps the same shape the backend"
+      },
+      {
+        "line": 18,
+        "text": "def elide_blobs(obj: Any) -> Any:"
+      },
+      {
+        "line": 21,
+        "text": "        return {k: elide_blobs(v) for k, v in obj.items()}"
+      },
+      {
+        "line": 23,
+        "text": "        return [elide_blobs(x) for x in obj]"
+      },
+      {
+        "line": 25,
+        "text": "        return f\"<blob {len(obj)} chars elided>\""
+      },
+      {
+        "line": 26,
+        "text": "    return obj"
+      },
+      {
+        "line": 29,
+        "text": "class NavAgent(DefaultAgent):"
+      },
+      {
+        "line": 30,
+        "text": "    def __init__("
+      },
+      {
+        "line": 36,
+        "text": "    def add_messages(self, *messages: dict) -> list[dict]:"
+      },
+      {
+        "line": 43,
+        "text": "        return super().add_messages(*messages)"
+      },
+      {
+        "line": 45,
+        "text": "    def _emit(self, msg: dict) -> None:"
+      },
+      {
+        "line": 83,
+        "text": "    def serialize(self, *extra_dicts: dict) -> dict:"
+      },
+      {
+        "line": 84,
+        "text": "        return elide_blobs(super().serialize(*extra_dicts))"
+      }
+    ]
+  },
+  {
+    "repo": "Teacher-Tom/HSGM_public",
+    "path": "config/vlnce_test.yaml",
+    "commit": "e2df6e70df869af57d77a32ba658fba04e6814eb",
+    "url": "https://raw.githubusercontent.com/Teacher-Tom/HSGM_public/e2df6e70df869af57d77a32ba658fba04e6814eb/config/vlnce_test.yaml",
+    "sha256": "9aaacf0674b27c9105b4b37da8a0a5c1d58fc7ec0b70e4b7774619cd9fd57957",
+    "bytes": 277,
+    "excerpts": [
+      {
+        "line": 2,
+        "text": "  radius: 0.1"
+      },
+      {
+        "line": 6,
+        "text": "  height: 1.2"
+      },
+      {
+        "line": 7,
+        "text": "  fov: 135.0"
+      },
+      {
+        "line": 8,
+        "text": "  pitch: -30.0"
+      }
+    ]
+  }
+]

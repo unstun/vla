@@ -1,0 +1,40 @@
+Python 3.8.10
+test_adapter_ipc (unittest.loader._FailedTest) ... ERROR
+test_finish_request_payload_matches_runner_schema (test_applied_evidence.AppliedEvidenceTests) ... ok
+test_fresh_applied_zero_and_stillness_confirms_stop (test_applied_evidence.AppliedEvidenceTests) ... ok
+test_nonzero_applied_or_stale_command_does_not_confirm (test_applied_evidence.AppliedEvidenceTests) ... ok
+test_stale_or_wrong_epoch_rejected (test_applied_evidence.AppliedEvidenceTests) ... ok
+test_stop_evidence_window_rejects_pre_cancel_cached_sample (test_applied_evidence.AppliedEvidenceTests) ... ok
+test_stop_evidence_window_requires_post_cancel_dwell_and_advancing_state (test_applied_evidence.AppliedEvidenceTests) ... ok
+test_gate_blocks_without_fresh_measurement_and_heartbeat (test_contracts_gate.ContractGateTests) ... ok
+test_gate_suppresses_late_old_generation_and_map_change (test_contracts_gate.ContractGateTests) ... ok
+test_nan_and_bad_identity_rejected_at_wire_boundary (test_contracts_gate.ContractGateTests) ... ok
+test_route_id_derived_from_real_waypoints_and_z_semantics_preserved (test_contracts_gate.ContractGateTests) ... ok
+test_route_metadata_requires_matching_map_and_route (test_contracts_gate.ContractGateTests) ... ok
+test_scan_admission_identity_and_stop_quiescence_are_validated (test_contracts_gate.ContractGateTests) ... ok
+test_stop_requires_consumer_hold_and_measured_stillness_window (test_contracts_gate.ContractGateTests) ... ok
+
+======================================================================
+ERROR: test_adapter_ipc (unittest.loader._FailedTest)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_adapter_ipc
+Traceback (most recent call last):
+  File "/usr/lib/python3.8/unittest/loader.py", line 436, in _find_test_path
+    module = self._get_module_from_name(name)
+  File "/usr/lib/python3.8/unittest/loader.py", line 377, in _get_module_from_name
+    __import__(name)
+  File "/work/tests/test_adapter_ipc.py", line 10, in <module>
+    from backend_adapter.adapter_core import P2BBackendAdapter
+  File "/work/backend_adapter/__init__.py", line 11, in <module>
+    from .adapter_core import P2BBackendAdapter
+  File "/work/backend_adapter/adapter_core.py", line 18, in <module>
+    class P2BBackendAdapter(load_p2a_core().NavigationBackendPort):  # type: ignore[misc]
+  File "/work/backend_adapter/p2a_bridge.py", line 22, in load_p2a_core
+    raise RuntimeError("p2a_core_missing:%s" % core_path)
+RuntimeError: p2a_core_missing:/navigation_service/core.py
+
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.002s
+
+FAILED (errors=1)

@@ -1,0 +1,82 @@
+{
+  "evidence_kind": "offline_protocol_checks",
+  "checks": [
+    {
+      "command": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "-v",
+        "test_gateway.py"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "log": "00.log"
+    },
+    {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "cwd": "pi",
+      "exit_code": 0,
+      "log": "01.log"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "smoke"
+      ],
+      "cwd": "pi",
+      "exit_code": 0,
+      "log": "02.log"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/pi/fixture_process.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "log": "03.log"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/pi/offline_smoke.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "log": "04.log"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/pi/runtime.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "log": "05.log"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/pi/scripted_provider.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "log": "06.log"
+    }
+  ],
+  "all_passed": true,
+  "python": "3.12.3 (main, Mar 23 2026, 19:04:32) [GCC 13.3.0]",
+  "node": "v24.21.0",
+  "cortex_runtime_executed": false,
+  "habitat_executed": false,
+  "actual_llm_calls": 0
+}

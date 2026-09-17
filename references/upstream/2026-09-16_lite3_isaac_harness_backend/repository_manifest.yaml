@@ -1,0 +1,29 @@
+topic: lite3_isaac_harness_backend
+date: 2026-09-16
+status: committed_bridge_and_native_planner_sources_imported
+repositories:
+  - name: machine-dog-nav-bridge
+    canonical_url: /Users/sun/tongbu/study/phdproject/machine-dog-nav
+    default_branch: codex/scan-foxy-isaac
+    pinned_commit: 848b4aecd01237805e0564c88d3ba09146fd2353
+    selected_paths: [integration/lite3_sim_bridge]
+    license: Project-owned reference; no root license file at this commit. Preserve upstream attribution.
+    local_source_path: source/machine-dog-nav/integration/lite3_sim_bridge
+    dependencies: [Isaac Sim 5.1, Isaac Lab, Lite3 V12 runtime, model_149999, ROS 2 Foxy bridge]
+    original_demo_entry: lite3_sim_bridge.run_pct_scan_building
+    reproduction_status: selected_cpu_tests_passed_93_then_ros_transport_tests_passed_8_no_simulator_run
+    notes: Export git objects only, never the unrelated dirty working tree. Simulator truth pose is the current source.
+  - name: native-pct-scan-reference
+    canonical_url: https://github.com/yagami-light7/PCT-SCAN-ROS2
+    pinned_commit: 1cf45a1c12ca785ce533293302be09d51daf0ccb
+    license: Preserve upstream LICENSE and component-specific notices; do not flatten mixed licensing.
+    reproduction_status: imported_sources_with_prior_run_evidence_no_new_planner_execution
+    local_source_path: source/pct_scan_base, source/pct_scan_foxy, source/pct_global
+    notes: 65 canonical/ported files reconstructed with eight explicit hash-checked adaptations; 145 global PCT/license files exported from committed objects. See native_planner_acquisition.json and foxy_adaptations.json.
+selection:
+  recommended_first_target: Committed Lite3 bridge and continuous subgoal service over native PCT/SCAN
+  reason: Reuse the existing Isaac Lab articulated robot, control and navigation capabilities.
+  unresolved_questions:
+    - Review/freeze the runner difference and scene/map/configuration with matching execution evidence.
+    - Pin and validate the separate machine-dog FAST-LIVO2 provider; the inspected simulation uses root-state truth.
+    - Add dynamic subgoals and cancellation without resetting robot or policy state.

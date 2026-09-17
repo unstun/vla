@@ -1,0 +1,58 @@
+{
+  "passed": true,
+  "image_id": "e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8",
+  "source_hashes_match": true,
+  "scope": "actual Python 3.8 lifecycle/contract tests; no simulator or motion",
+  "commands": [
+    {
+      "label": "mkdir",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "mkdir -p /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2a_qualification/python38_20260916T141838Z"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "sync",
+      "command": [
+        "rsync",
+        "-a",
+        "--files-from=/Users/sun/tongbu/study/phdproject/vla/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/python38_20260916T141838Z/files.txt",
+        "/Users/sun/tongbu/study/phdproject/vla/",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2a_qualification/python38_20260916T141838Z/"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "source_gate",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "python3 -"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "tests",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        "gpu5070ti",
+        "podman run --rm --pull=never --network=none --name vla-python38_20260916t141838z -e PYTHONDONTWRITEBYTECODE=1 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2a_qualification/python38_20260916T141838Z:/review:ro e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'set -e\nsource /opt/ros/foxy/setup.bash\npython3 --version\npython3 -m unittest discover -s /review/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/navigation_service -p test_core.py -v\npython3 /review/.trellis/tasks/09-16-emos-harnessvln-reimplementation/research/acceptance/test_p2a_adversarial.py'"
+      ],
+      "exit_code": 0
+    }
+  ]
+}

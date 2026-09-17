@@ -1,0 +1,17 @@
+[
+  "podman",
+  "run",
+  "--rm",
+  "--pull=never",
+  "--network=host",
+  "--name",
+  "vla-p2b-pct-pointcloud-20260916t172100z-rviz",
+  "-e",
+  "PYTHONDONTWRITEBYTECODE=1",
+  "-v",
+  "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/pointcloud_display/pointcloud_20260916T172100Z_rviz:/qualification:ro",
+  "40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555",
+  "bash",
+  "-lc",
+  "source /opt/ros/humble/setup.bash && export PYTHONPATH=/qualification/backend_adapter:/qualification/pct_runtime/python:${PYTHONPATH:-} && export LD_LIBRARY_PATH=/qualification/pct_runtime/lib:${LD_LIBRARY_PATH:-} && exec python3 -m backend_adapter.pct_worker --host 127.0.0.1 --port 47631 --pct-source-root /qualification/pct_runtime/python --rsg-root /qualification/inputs --tomogram-path /qualification/inputs/new_building.pickle --reference-height-m 0.35"
+]

@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "profile": "diagnostic_simulator_truth_known_map",
+  "frame_id": "world",
+  "units": "m",
+  "pct_layer": 1,
+  "nominal_body_height_m": 0.35,
+  "spawn_ground_xyz_m": [
+    -1.6088105720747303,
+    -4.542777504301488,
+    1.5608844757080078
+  ],
+  "spawn_yaw_rad": 0.057418473165896385,
+  "goals": [
+    {
+      "goal_id": "goal-a",
+      "ground_xyz_m": [
+        0.3894274002895943,
+        -4.464121271854497,
+        1.5608844757080078
+      ]
+    },
+    {
+      "goal_id": "goal-b",
+      "ground_xyz_m": [
+        2.3894024585958937,
+        -4.45715232978101,
+        1.5608844757080078
+      ]
+    }
+  ],
+  "selection": "Endpoints selected on the previously geometry-audited flat platform; every execution route must be freshly computed by native PCT from measured pose.",
+  "no_reference_route_replay": true,
+  "max_sim_seconds": 75.0,
+  "max_wall_seconds": 1200.0,
+  "goal_xy_tolerance_m": 0.25,
+  "goal_z_tolerance_m": 0.2,
+  "stop_dwell_sim_seconds": 1.0,
+  "stop_speed_mps": 0.1,
+  "stop_yaw_rate_radps": 0.15,
+  "stop_command_norm": 0.01,
+  "required_arrivals": 2,
+  "initialization_only_reset": true,
+  "cancellation_test": "Cancel the first attempt of goal-a after at least 0.4 m measured displacement; require confirmed stop before resubmitting goal-a, then execute goal-b.",
+  "provisional": "Resource/deadline bounds are fixed for the first pilot; changes require a new declared run configuration and preserve failed attempts."
+}
