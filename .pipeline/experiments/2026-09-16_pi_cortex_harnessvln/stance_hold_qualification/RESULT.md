@@ -2,7 +2,7 @@
 origin: ai_with_source_check
 reviewed: false
 date: 2026-09-18
-task: .trellis/tasks/09-17-isaac-runner-stance-hold
+task: .trellis/tasks/archive/2026-09/09-17-isaac-runner-stance-hold
 machine: gpu5070ti (Isaac Lab on the RTX 5070 Ti); analysis local
 ---
 
@@ -10,7 +10,7 @@ machine: gpu5070ti (Isaac Lab on the RTX 5070 Ti); analysis local
 
 The Isaac runner can now hand the joints from the V12 policy (`model_149999.pt`) to a PD stance hold when the
 command is zero, and hand them back when a command arrives. This file reports the acceptance criteria of
-`.trellis/tasks/09-17-isaac-runner-stance-hold/prd.md` for the selected entry, `xfade1s` (PRD D6). It also covers
+`.trellis/tasks/archive/2026-09/09-17-isaac-runner-stance-hold/prd.md` for the selected entry, `xfade1s` (PRD D6). It also covers
 the entry variants that failed before it.
 
 ## Verdict

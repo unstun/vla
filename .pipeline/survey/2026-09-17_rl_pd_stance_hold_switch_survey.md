@@ -3,7 +3,7 @@ origin: ai_with_source_check
 reviewed: false
 date: 2026-09-17
 stage: planning
-task: .trellis/tasks/09-17-isaac-runner-stance-hold
+task: .trellis/tasks/archive/2026-09/09-17-isaac-runner-stance-hold
 claim_boundary: "Survey only (label: surveyed). Nothing here was imported, reproduced or run. The run-data check uses the existing C1d walk runs on gpu5070ti; no new run was made."
 ---
 
@@ -24,7 +24,7 @@ code make the switch between an RL locomotion policy and a PD stance hold smooth
   - `NVlabs/GR00T-WholeBodyControl@7f15131`, `HybridRobotics/whole_body_tracking@cd65172`;
   - Isaac Lab `actuator_pd.py`.
 - Our own C1d walk runs were also re-analysed.
-- Detailed notes, all `reviewed: false`, in `.trellis/tasks/09-17-isaac-runner-stance-hold/research/`:
+- Detailed notes, all `reviewed: false`, in `.trellis/tasks/archive/2026-09/09-17-isaac-runner-stance-hold/research/`:
   - `rl_pd_switch_open_source_code.md` (17 stacks);
   - `rl_pd_switch_papers_legged.md` (about 25 papers);
   - `rl_pd_switch_control_theory.md`.

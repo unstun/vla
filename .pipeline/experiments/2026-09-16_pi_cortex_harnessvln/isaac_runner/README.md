@@ -194,7 +194,7 @@ frozen command script". The other limits stay.
 
 ## Stance Hold
 
-Task: `.trellis/tasks/09-17-isaac-runner-stance-hold` (design.md, implement.md).
+Task: `.trellis/tasks/archive/2026-09/09-17-isaac-runner-stance-hold` (design.md, implement.md).
 
 - `stance_hold.py`: the state machine (RL, STAND_SETTLING, STAND_TRANSITION,
   FIXED_STAND, REJOIN). It is ported from the stand path of the machine-dog
