@@ -6,6 +6,12 @@ runner, copies the current local sources needed by the pilot into an immutable
 run directory, and writes exact remote commands plus a remote worker. Actual
 physics execution is guarded by --execute --lead-authorized-execute and requires
 an explicitly accepted SCAN workspace.
+
+Stance hold defaults (PRD D8, 2026-09-18): `--stance-hold auto` with the
+`--stance-entry-kd xfade1s` entry, as in the C2 series. `--stance-hold off`
+stays available; it then accepts only the runner's `ramp` entry and passes no
+entry flag to the runner. A prepared package without these `run_request.json`
+fields keeps its recorded meaning: hold off, ramp entry.
 """
 
 from __future__ import annotations
@@ -56,7 +62,17 @@ CANCEL_DISPLACEMENT_MIN_M = 0.40
 STANCE_HOLD_CHOICES = ("off", "auto")
 # stance_hold.py STANCE_ENTRY_KD_MODES / STANCE_ENTRY_KD_DEFAULT; the launcher tests check the two agree.
 STANCE_ENTRY_KD_CHOICES = ("ramp", "step1", "step2p5", "xfade1s", "xfade2s")
-DEFAULT_STANCE_ENTRY_KD = "ramp"
+# The runner's own entry variant when no --stance-entry-kd is passed, and the only
+# one accepted with --stance-hold off (recorded, not passed to the runner).
+RUNNER_STANCE_ENTRY_KD = "ramp"
+# Launcher defaults since PRD D8 (2026-09-18): the hold on with the D5/D6-selected
+# crossfade entry. The patched runner keeps its own default --stance-hold off.
+DEFAULT_STANCE_HOLD = "auto"
+DEFAULT_STANCE_ENTRY_KD_AUTO = "xfade1s"
+# Meaning of a prepared package whose run_request.json lacks these fields: it was
+# prepared before the flags existed and ran the hold off with the ramp entry.
+LEGACY_PACKAGE_STANCE_HOLD = "off"
+LEGACY_PACKAGE_STANCE_ENTRY_KD = "ramp"
 CANCEL_GOAL_A_CLEARANCE_MIN_M = 0.30
 GPU_SAMPLE_INTERVAL_S = 1.0
 # --remote-only-bulk leaves exactly these runner outputs (paths relative to
@@ -619,18 +635,28 @@ def build_runner_argv(args, remote_run: str, run_id: str, pilot: dict) -> List[s
 
 
 def stance_hold_setting(args) -> str:
-    value = getattr(args, "stance_hold", "off")
+    """Validated --stance-hold; unset means the PRD D8 default (auto)."""
+    value = getattr(args, "stance_hold", None)
+    if value is None:
+        value = DEFAULT_STANCE_HOLD
     if value not in STANCE_HOLD_CHOICES:
         raise ValueError("--stance-hold must be one of %s" % (STANCE_HOLD_CHOICES,))
     return value
 
 
 def stance_entry_kd_setting(args) -> str:
-    """Validated --stance-entry-kd; a non-default entry needs --stance-hold auto (as the runner requires)."""
-    value = getattr(args, "stance_entry_kd", DEFAULT_STANCE_ENTRY_KD)
+    """Validated --stance-entry-kd.
+
+    Unset means xfade1s with the hold on (PRD D8) and the runner's ramp with the
+    hold off. Any other entry needs --stance-hold auto, as the runner requires.
+    """
+    stance_hold = stance_hold_setting(args)
+    value = getattr(args, "stance_entry_kd", None)
+    if value is None:
+        value = DEFAULT_STANCE_ENTRY_KD_AUTO if stance_hold == "auto" else RUNNER_STANCE_ENTRY_KD
     if value not in STANCE_ENTRY_KD_CHOICES:
         raise ValueError("--stance-entry-kd must be one of %s" % (STANCE_ENTRY_KD_CHOICES,))
-    if stance_hold_setting(args) != "auto" and value != DEFAULT_STANCE_ENTRY_KD:
+    if stance_hold != "auto" and value != RUNNER_STANCE_ENTRY_KD:
         raise ValueError("--stance-entry-kd %s applies only with --stance-hold auto" % value)
     return value
 
@@ -639,7 +665,7 @@ def stance_entry_kd_flags(args) -> List[str]:
     """Runner argv for the entry variant: passed only with --stance-hold auto.
 
     With --stance-hold off the runner default (ramp) applies and the argv stays as
-    before the flag existed; the scope records the parsed value either way.
+    before the flag existed; the scope records the resolved value either way.
     """
     value = stance_entry_kd_setting(args)
     if stance_hold_setting(args) != "auto":
@@ -1696,8 +1722,8 @@ def walk_review_remote_script(remote_run: str) -> str:
 
 
 def runbook_text(run_id: str, remote_run: str, cancel_displacement_m: float = CANCEL_DISPLACEMENT_MIN_M,
-                 remote_only_bulk: bool = False, stance_hold: str = "off",
-                 stance_entry_kd: str = DEFAULT_STANCE_ENTRY_KD) -> str:
+                 remote_only_bulk: bool = False, stance_hold: str = LEGACY_PACKAGE_STANCE_HOLD,
+                 stance_entry_kd: str = LEGACY_PACKAGE_STANCE_ENTRY_KD) -> str:
     text = runbook_base_text(run_id, remote_run, cancel_displacement_m)
     if stance_hold == "auto":
         text += """
@@ -2116,17 +2142,18 @@ def execute(args, local_run: Path, commands: dict) -> None:
                 "--cancel-displacement-m %r differs from the prepared package (package cancel_displacement_m=%r)"
                 % (requested_cancel, prepared_cancel)
             )
-        # Packages prepared before the flag ran the runner without a stance hold.
-        prepared_stance = prepared_request.get("stance_hold", "off")
-        requested_stance = getattr(args, "stance_hold", "off")
+        # Packages prepared before the flag ran the runner without a stance hold; the
+        # PRD D8 default change (auto) does not change that recorded meaning.
+        prepared_stance = prepared_request.get("stance_hold", LEGACY_PACKAGE_STANCE_HOLD)
+        requested_stance = stance_hold_setting(args)
         if prepared_stance != requested_stance:
             raise RuntimeError(
                 "--stance-hold %r differs from the prepared package (package stance_hold=%r)"
                 % (requested_stance, prepared_stance)
             )
         # Packages prepared before the flag ran the runner default entry (ramp).
-        prepared_entry_kd = prepared_request.get("stance_entry_kd", DEFAULT_STANCE_ENTRY_KD)
-        requested_entry_kd = getattr(args, "stance_entry_kd", DEFAULT_STANCE_ENTRY_KD)
+        prepared_entry_kd = prepared_request.get("stance_entry_kd", LEGACY_PACKAGE_STANCE_ENTRY_KD)
+        requested_entry_kd = stance_entry_kd_setting(args)
         if prepared_entry_kd != requested_entry_kd:
             raise RuntimeError(
                 "--stance-entry-kd %r differs from the prepared package (package stance_entry_kd=%r)"
@@ -2231,14 +2258,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Measured XY displacement that triggers the goal-a cancel; at least 0.40 m and >= 0.30 m short of goal A.",
     )
     parser.add_argument(
-        "--stance-hold", choices=STANCE_HOLD_CHOICES, default="off",
-        help="Runner stance hold mode passed to the patched runner; auto enables the PD stand hold (stance_hold.py).",
+        "--stance-hold", choices=STANCE_HOLD_CHOICES, default=DEFAULT_STANCE_HOLD,
+        help=(
+            "Runner stance hold mode passed to the patched runner, default auto (PRD D8): auto enables the PD stand "
+            "hold (stance_hold.py), off keeps the RL-only control path. A package prepared without this field ran off."
+        ),
     )
     parser.add_argument(
-        "--stance-entry-kd", choices=STANCE_ENTRY_KD_CHOICES, default=DEFAULT_STANCE_ENTRY_KD,
+        "--stance-entry-kd", choices=STANCE_ENTRY_KD_CHOICES, default=None,
         help=(
-            "Stance hold entry variant (--stance-hold auto only; passed to the runner then): ramp, step1 or step2p5 "
-            "(PRD D5), or the xfade1s / xfade2s crossfade with a 1 s landing grace (PRD D6)."
+            "Stance hold entry variant, passed to the runner with --stance-hold auto only: ramp, step1 or step2p5 "
+            "(PRD D5), or the xfade1s / xfade2s crossfade with a 1 s landing grace (PRD D6). Default xfade1s with "
+            "--stance-hold auto (PRD D8); with --stance-hold off only ramp, the runner default, is accepted. A package "
+            "prepared without this field ran ramp."
         ),
     )
     parser.add_argument(

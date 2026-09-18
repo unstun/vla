@@ -129,6 +129,11 @@ class EpisodeLedgerTest(unittest.TestCase):
         for command in (prepare, execute):
             self.assertIn('--remote-only-bulk', command)
             self.assertEqual(command[command.index('--cancel-displacement-m') + 1], '0.50')
+            # Stance-hold task PRD D8: the launcher defaults to the hold on; this series pins its recorded hold-off
+            # condition and passes no entry variant (the launcher then records the runner's ramp).
+            self.assertEqual(command[command.index('--stance-hold') + 1], 'off')
+            self.assertEqual(command.count('--stance-hold'), 1)
+            self.assertNotIn('--stance-entry-kd', command)
 
     def test_plan_matches_prd_d12(self):
         self.assertEqual([1] + [i for i, _ in ris.PLAN], list(range(1, 9)))

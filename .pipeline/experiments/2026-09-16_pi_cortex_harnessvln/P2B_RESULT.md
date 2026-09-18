@@ -64,6 +64,9 @@ scan_03 workspace. The package fixes source hashes, runtime, checkpoint, scene,
 tomogram, configs, local-only ports and ROS domain. The local repository remains
 the source of truth. Root review uses `p2b_execution/review_two_goal.py` against
 returned raw records. Execution ceilings remain 45 simulation / 1200 wall s.
+Since 2026-09-18 the launcher defaults to the PD stance hold (`--stance-hold auto`,
+task 09-17-isaac-runner-stance-hold PRD D8). P2B ran without it, so to reproduce
+P2B pass `--stance-hold off` explicitly.
 
 ## Implemented behavior and important corrections
 

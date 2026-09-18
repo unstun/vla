@@ -47,7 +47,21 @@
     "max_abs_yaw_rate_radps": 0.15,
     "vertical_speed": "metrics.jsonl base_linear_velocity_world[2]",
     "max_abs_vertical_speed_mps": 0.05,
-    "missing_field": "a window row without base_linear_velocity_world fails the check as not evaluable"
+    "missing_field": "a window row without base_linear_velocity_world fails the check as not evaluable",
+    "end_at_restart": true,
+    "restart": "the first metrics.jsonl row after the entry row whose stance_mode is neither STAND_TRANSITION nor FIXED_STAND (normally the first REJOIN row, or RL after a direct exit); that row and every later row are excluded from the window; the window still ends at t0 + window_s (window_tolerance_s at the end) when that comes first",
+    "amendment": {
+      "decision": "PRD D7",
+      "date": "2026-09-18",
+      "by": "Dr Sun",
+      "quote": "Change the AC7 rule to stop the evaluation window at a restart, and explicitly label it as a post-result change in the report.",
+      "post_result": true,
+      "trigger": "C2 episode 6 (two_goal_20260918T030524Z_hold_e06): the hold entry at step 332 was followed by a resumed command; the V12 restart peaked at 0.174 rad/s inside REJOIN, within 1.0 s of the entry",
+      "unchanged": "the limits, the entry definition, window_s and window_tolerance_s; AC8 b (ac8_walk.b_entry_windows) keeps the full window [t0, t0 + window_s]",
+      "reporting": "every report gives the amended verdict, labelled as a post-result change, and the verdict as frozen before the results (the full window) with the full-window maxima",
+      "previous_sha256": "0be59927aa18ad97cc6dfc01a3179867ce84e71e712286ee971a485a5238a29d",
+      "previous_copy": "stance_hold_thresholds_history/stance_hold_thresholds_0be59927.json"
+    }
   },
   "ac8_walk": {
     "added": "2026-09-17 before any scripted-walk run, PRD D5",
@@ -188,6 +202,15 @@
       "previous_sha256": "683a8ca6d9d26fe4c45af22fc449c1c05525fde9eb0fb3dc4125c4f2831b43b8",
       "previous_copy": "stance_hold_thresholds_history/stance_hold_thresholds_683a8ca6.json",
       "frozen_before": "the D6 scripted-walk runs"
+    },
+    {
+      "date": "2026-09-18",
+      "change": "ac7_entry gains end_at_restart, restart and amendment: the AC7 window also ends at the restart row, which is excluded; no limit, entry definition, window length, tolerance or other section changed, and AC8 b keeps the full window",
+      "reason": "PRD D7 (Dr Sun): C2 episode 6 failed AC7 as written in 1 of 30 entry windows because a resumed command restarted V12 inside the 1.0 s entry window",
+      "post_result": true,
+      "previous_sha256": "0be59927aa18ad97cc6dfc01a3179867ce84e71e712286ee971a485a5238a29d",
+      "previous_copy": "stance_hold_thresholds_history/stance_hold_thresholds_0be59927.json",
+      "frozen_before": "the D7 re-analysis of the recorded hold-on runs; this is a post-result change, made after the C2 result was known"
     }
   ]
 }

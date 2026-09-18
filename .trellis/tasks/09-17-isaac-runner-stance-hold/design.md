@@ -11,7 +11,7 @@
   record fields. The frozen source hash (`1490dc85…`) is unchanged. `runner_external_episode.patch` and
   `source_hashes.json` are regenerated and reviewed.
 - **Launchers:** `qualify_stand_runner.py` and `run_two_goal_pilot.py` get `--stance-hold {off,auto}`, default
-  `off`, written to `run_request.json` and checked at `--execute` against the prepared package.
+  `off` (`auto` since PRD D8, 2026-09-18; the runner patch default stays `off`), written to `run_request.json` and checked at `--execute` against the prepared package.
 - **`make_walk_review.py`:** shows the mode when the metrics carry it; old runs render as before.
 - **Not touched:** `machine-dog` (read-only reference `0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py`),
   the V12 snapshot, backend, SCAN/PCT, `review_two_goal.py`.
@@ -170,7 +170,8 @@ commands, not actions, so it is unaffected.
 
 ## 6. Rollback
 
-`--stance-hold off` is the default. A run with `off` uses today's control path. The previous patch and its hashes stay
+`--stance-hold off` is the runner default (and was the launcher default until PRD D8). A run with `off` uses today's
+control path. The previous patch and its hashes stay
 in git history; existing run packages are untouched.
 
 ## 7. Scripted walk, side camera and entry damping (PRD D5, added 2026-09-17)
@@ -244,7 +245,8 @@ in git history; existing run packages are untouched.
   `stance_hold_setup.json` and `summary.json` describe the executed variant.
 - **Launchers.**
   - `qualify_stand_runner.py` accepts the new values.
-  - `run_two_goal_pilot.py` adds `--stance-entry-kd`: default `ramp`, refused with `--stance-hold off`, recorded
+  - `run_two_goal_pilot.py` adds `--stance-entry-kd`: default `ramp` (since PRD D8: `xfade1s` with the hold on,
+    `ramp` with it off), other values refused with `--stance-hold off`, recorded
     in `run_request.json` and checked against the prepared package, as `--stance-hold` is.
 - **Thresholds.** `stance_hold_thresholds.json` gets a descriptive amendment only: the `ac8_walk.run` text names
   the new variants, and an amendments entry records D6. It is re-frozen before the runs. No limit changes.

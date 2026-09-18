@@ -138,10 +138,10 @@ substeps, so the entry torque can jump for up to 20 ms. Dr Sun approved the budg
       Episodes 4-8 ran from `--from-episode 4`.
       Report `stance_hold_qualification/series_d6_20260918.json` (`series_report.py`, hold-off SCAN ledger as
       baseline). AC5 pass in all 8. **AC7 fails as written in episode 6** (1 of 30 entry windows): entry at 6.66 s
-      was calm (|yaw| ≤ 0.053 until 6.84 s), the planner resumed at 6.86 s (crossfade Kp 22.7), and the V12
-      restart peaked at 0.174 rad/s at 6.92 s inside REJOIN. 9 of 30 windows are cut by a rejoin; up to the first
+      was calm (|yaw| ≤ 0.063 up to 6.82 s), the planner resumed at 6.84 s (first REJOIN row, step 341; crossfade
+      Kp 22.7), and the V12 restart peaked at 0.174 rad/s at 6.92 s inside REJOIN. 9 of 30 windows are cut by a rejoin; up to the first
       REJOIN row every window stays ≤ 0.098 rad/s and ≤ 0.024 m/s (diagnostic, not a verdict). Restart context,
-      1 s after each resumed command: hold max 0.197 / median 0.165 (n = 24), hold off max 0.341 / median 0.206.
+      1 s after each resumed command: hold max 0.197 / median 0.165 (n = 24), hold off max 0.341 / median 0.201.
       **Finding:** the hold does not change the review still windows. The 24 windows run from 0.10-0.38 s to
       1.12-1.40 s after the zero command, i.e. over STAND_SETTLING (RL still drives) plus the early crossfade (3 of
       24 are STAND_SETTLING only); every peak is in the RL settling part. Still-window max |yaw| 0.077-0.145 (median 0.120) vs hold off 0.083-0.160 (median 0.121).
@@ -150,9 +150,39 @@ substeps, so the entry torque can jump for up to 20 ms. Dr Sun approved the budg
 - [x] C3 Host state after; containers and ports clean. 2026-09-18 03:15 UTC: GPU 202 MiB, 0 %, no compute apps,
       containers or ports.
 
+- [x] C4 AC7 post-result amendment (PRD D7) and launcher defaults (PRD D8), local only, no host run:
+      - thresholds: add the restart rule to `ac7_entry` with an `amendment` record (date, Dr Sun's words,
+        `post_result: true`, previous SHA `0be59927…`). Archive `0be59927…` in `stance_hold_thresholds_history/`,
+        re-freeze, and move the old SHA into `SUPERSEDED_THRESHOLDS`;
+      - analyzer `ac7`: per window, the amended maxima and verdict (window ends at the restart row, which is
+        excluded; `window_end` = `window_s` | `restart`, `restart_step`), plus the full-window maxima and the
+        `as_frozen_before_results` verdict. The run verdict uses the amended rule; `ac7_as_frozen` is reported
+        beside it. AC8 b keeps the full 1.0 s window;
+      - defaults: `--stance-hold auto` and `--stance-entry-kd xfade1s` in both launchers. Legacy package
+        meanings stay `off` / `ramp`. The runner patch default stays `off`, and its bytes are unchanged. The SCAN
+        series driver passes `--stance-hold off` explicitly;
+      - tests for the window rule (restart inside and outside the window, direct exit, as-frozen fields) and for
+        the defaults (argv, legacy package guard); README;
+      - rerun the analyzer on every hold-on run (stand C1 and C1b, walk C1d and D6, two-goal e01-e08). Only e06
+        may change verdict; any other change stops the work.
+      Done 2026-09-18:
+      - thresholds re-frozen `34c15fe6fabd6bf90f34456371e363fc3e4ed813a2570a96a80760f6c5a8e049`, with `0be59927…`
+        archived;
+      - isaac_runner 211 tests; materializer --check clean; patched runner still `0649747e…`;
+      - entry kd resolves to xfade1s with the hold on and ramp with it off (no fixed parser default);
+      - `pointcloud_display/run_probe.py` is also pinned to `--stance-hold off`, and `P2B_RESULT.md` has a
+        reproduction note;
+      - re-analysis `stance_hold_qualification/*_d7_*.json`: the only verdict change is two-goal e06 AC7 (amended
+        pass 0.063 rad/s, window ends at restart step 341; as frozen fail 0.174). The C1 stand now reports AC7 fail
+        (the known hop; its old report predates AC7).
+
 ## D. Report
 
-- [ ] D1 `RESULT.md` (AC3-AC6), figures (the stand A/B yaw and drift traces, the per-episode mode timelines) and
-      a private Artifact page.
-- [ ] D2 Dr Sun decides whether `--stance-hold auto` becomes the default for later pilots.
+- [x] D1 `RESULT.md` (AC3-AC6), figures (the stand A/B yaw and drift traces, the per-episode mode timelines) and
+      a private Artifact page. Done 2026-09-18: `stance_hold_qualification/RESULT.md` (all ACs; AC7 amended pass /
+      as-frozen fail labelled post-result), figures `make_result_figures.py` → `report/figures/fig1-5` (PNG local-only,
+      in the manifest), page `report/index.html`, published privately at
+      https://claude.ai/artifact/LbF8JD4XWmnsfgvnDbUVMM.
+- [x] D2 Dr Sun decides whether `--stance-hold auto` becomes the default for later pilots. Decided 2026-09-18:
+      yes (PRD D8), implemented in C4.
 - [ ] D3 Commit (local-only bytes in the manifest), journal, hot zone, archive.

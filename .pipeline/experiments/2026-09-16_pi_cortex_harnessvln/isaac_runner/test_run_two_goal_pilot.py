@@ -486,12 +486,14 @@ class ScanGateCancelAndResourceTests(unittest.TestCase):
         self.assertIn('result["gpu_memory"] = gpu_sampler.stop()', src)
         self.assertLess(src.index("gpu_sampler.start()"), src.index("verify_manifest(run_root"))
 
-    def test_default_request_matches_actual4_apart_from_new_fields(self):
+    def test_hold_off_request_matches_actual4_apart_from_new_fields(self):
         if not (ACTUAL4 / "run_request.json").exists() or not (SCAN_03 / "src").is_dir():
             self.skipTest("local-only actual4 package or scan_03 source is absent")
+        # actual4 ran without a stance hold; since PRD D8 the launcher default is auto, so the comparison pins off.
         args = self.m.build_parser().parse_args([
             "--run-id", ACTUAL4.name, "--local-runs-root", self.tmp.name,
             "--accepted-scan-build-dir", str(SCAN_03), "--remote-scan-workspace", SCAN_03_REMOTE,
+            "--stance-hold", "off",
         ])
         local_run, commands = self.m.prepare(args)
 
@@ -945,7 +947,7 @@ class PackageStorageAndRemoteOnlyTests(unittest.TestCase):
         request = json.loads((local_run / "run_request.json").read_text(encoding="utf-8"))
         self.assertEqual(request["stance_hold"], "auto")
         self.assertIn("--stance-hold auto", (local_run / "RUNBOOK.md").read_text(encoding="utf-8"))
-        _, off_run, _ = self.prepare("stance_off")
+        _, off_run, _ = self.prepare("stance_off", "--stance-hold", "off")
         self.assertNotIn("Stance hold", (off_run / "RUNBOOK.md").read_text(encoding="utf-8"))
         with self.assertRaises(ValueError):
             self.m.build_runner_argv(types.SimpleNamespace(stance_hold="on", remote_v12_runtime="r",
@@ -953,41 +955,61 @@ class PackageStorageAndRemoteOnlyTests(unittest.TestCase):
                                      "/remote", "run", json.loads((self.m.P2B / "inputs/pilot.json").read_text()))
 
     def test_execute_refuses_stance_hold_that_differs_from_package(self):
-        _, local_run, commands = self.prepare("stance_mismatch", "--stance-hold", "auto")
-        for extra in ([], ["--stance-hold", "off"]):
+        _, local_run, commands = self.prepare("stance_mismatch", "--stance-hold", "off")
+        # Unset --stance-hold now means auto (PRD D8), which differs from the off package.
+        for extra in ([], ["--stance-hold", "auto"]):
             args = self.m.build_parser().parse_args([
                 "--run-id", "stance_mismatch", "--local-runs-root", str(self.root / "runs"), "--execute",
                 "--lead-authorized-execute", "--remote-scan-workspace", self.remote, *extra,
             ])
-            with self.assertRaisesRegex(RuntimeError, "--stance-hold 'off' differs from the prepared package"):
+            with self.assertRaisesRegex(RuntimeError, "--stance-hold 'auto' differs from the prepared package"):
                 self.m.execute(args, local_run, commands)
         self.assertFalse((local_run / "host_logs").exists())
-        # A package prepared before the flag existed counts as off.
-        request_path = local_run / "run_request.json"
+        _, auto_run, auto_commands = self.prepare("stance_mismatch_auto", "--stance-hold", "auto")
+        args = self.m.build_parser().parse_args([
+            "--run-id", "stance_mismatch_auto", "--local-runs-root", str(self.root / "runs"), "--execute",
+            "--lead-authorized-execute", "--remote-scan-workspace", self.remote, "--stance-hold", "off",
+        ])
+        with self.assertRaisesRegex(RuntimeError, "--stance-hold 'off' differs from the prepared package"):
+            self.m.execute(args, auto_run, auto_commands)
+        self.assertFalse((auto_run / "host_logs").exists())
+        # A package prepared before the flag existed counts as off, whatever the launcher default is.
+        request_path = auto_run / "run_request.json"
         request = json.loads(request_path.read_text(encoding="utf-8"))
         del request["stance_hold"]
         request_path.write_text(json.dumps(request), encoding="utf-8")
-        args = self.m.build_parser().parse_args([
-            "--run-id", "stance_mismatch", "--local-runs-root", str(self.root / "runs"), "--execute",
-            "--lead-authorized-execute", "--remote-scan-workspace", self.remote, "--stance-hold", "auto",
-        ])
-        with self.assertRaisesRegex(RuntimeError, "--stance-hold 'auto' differs from the prepared package .*'off'"):
-            self.m.execute(args, local_run, commands)
+        for extra in ([], ["--stance-hold", "auto"]):
+            args = self.m.build_parser().parse_args([
+                "--run-id", "stance_mismatch_auto", "--local-runs-root", str(self.root / "runs"), "--execute",
+                "--lead-authorized-execute", "--remote-scan-workspace", self.remote, *extra,
+            ])
+            with self.subTest(extra=extra), self.assertRaisesRegex(
+                    RuntimeError, "--stance-hold 'auto' differs from the prepared package .*'off'"):
+                self.m.execute(args, auto_run, auto_commands)
+        self.assertFalse((auto_run / "host_logs").exists())
 
     def test_stance_entry_kd_reaches_runner_scope_request_and_runbook(self):
         import stance_hold
         self.assertEqual(self.m.STANCE_ENTRY_KD_CHOICES, stance_hold.STANCE_ENTRY_KD_MODES)
-        self.assertEqual(self.m.DEFAULT_STANCE_ENTRY_KD, stance_hold.STANCE_ENTRY_KD_DEFAULT)
+        self.assertEqual(self.m.RUNNER_STANCE_ENTRY_KD, stance_hold.STANCE_ENTRY_KD_DEFAULT)
+        self.assertEqual((self.m.DEFAULT_STANCE_HOLD, self.m.DEFAULT_STANCE_ENTRY_KD_AUTO), ("auto", "xfade1s"))
+        self.assertEqual((self.m.LEGACY_PACKAGE_STANCE_HOLD, self.m.LEGACY_PACKAGE_STANCE_ENTRY_KD), ("off", "ramp"))
+        parsed = self.m.build_parser().parse_args(["--run-id", "x"])
+        self.assertEqual((parsed.stance_hold, parsed.stance_entry_kd), ("auto", None))
         runner = None
         for run_id, extra, expected_argv, expected in (
             ("entry_xfade1s", ["--stance-hold", "auto", "--stance-entry-kd", "xfade1s"],
              ["--stance-hold", "auto", "--stance-entry-kd", "xfade1s"], "xfade1s"),
             ("entry_xfade2s", ["--stance-hold", "auto", "--stance-entry-kd", "xfade2s"],
              ["--stance-hold", "auto", "--stance-entry-kd", "xfade2s"], "xfade2s"),
-            ("entry_auto_default", ["--stance-hold", "auto"], ["--stance-hold", "auto", "--stance-entry-kd", "ramp"],
-             "ramp"),
+            ("entry_ramp", ["--stance-hold", "auto", "--stance-entry-kd", "ramp"],
+             ["--stance-hold", "auto", "--stance-entry-kd", "ramp"], "ramp"),
+            # PRD D8 defaults: the hold on with the xfade1s entry.
+            ("entry_auto_default", ["--stance-hold", "auto"],
+             ["--stance-hold", "auto", "--stance-entry-kd", "xfade1s"], "xfade1s"),
+            ("entry_all_defaults", [], ["--stance-hold", "auto", "--stance-entry-kd", "xfade1s"], "xfade1s"),
             # With the hold off the runner default applies and the argv keeps its previous form.
-            ("entry_off_default", [], ["--stance-hold", "off", "--seed"], "ramp"),
+            ("entry_off_default", ["--stance-hold", "off"], ["--stance-hold", "off", "--seed"], "ramp"),
         ):
             with self.subTest(run=run_id):
                 _, local_run, commands = self.prepare(run_id, *extra)
@@ -1009,7 +1031,8 @@ class PackageStorageAndRemoteOnlyTests(unittest.TestCase):
                 else:
                     self.assertIn("Entry variant: `--stance-entry-kd %s`" % expected, runbook)
         self.assertEqual(runner.STANCE_ENTRY_KD_MODES, self.m.STANCE_ENTRY_KD_CHOICES)
-        for extra, message in ((["--stance-entry-kd", "xfade2s"], "xfade2s applies only with --stance-hold auto"),
+        for extra, message in ((["--stance-hold", "off", "--stance-entry-kd", "xfade2s"],
+                                "xfade2s applies only with --stance-hold auto"),
                                (["--stance-hold", "off", "--stance-entry-kd", "step1"],
                                 "step1 applies only with --stance-hold auto")):
             with self.subTest(extra=extra), self.assertRaisesRegex(ValueError, message):
@@ -1020,26 +1043,33 @@ class PackageStorageAndRemoteOnlyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be one of"):
             self.m.stance_entry_kd_flags(types.SimpleNamespace(stance_hold="auto", stance_entry_kd="xfade"))
         self.assertEqual(self.m.stance_entry_kd_flags(types.SimpleNamespace(stance_hold="off")), [])
+        self.assertEqual(self.m.stance_entry_kd_flags(types.SimpleNamespace(stance_hold="off", stance_entry_kd="ramp")),
+                         [])
+        self.assertEqual(self.m.stance_entry_kd_flags(types.SimpleNamespace()), ["--stance-entry-kd", "xfade1s"])
+        self.assertEqual(self.m.stance_hold_setting(types.SimpleNamespace()), "auto")
 
     def test_execute_refuses_stance_entry_kd_that_differs_from_package(self):
         _, local_run, commands = self.prepare("entry_mismatch", "--stance-hold", "auto", "--stance-entry-kd", "xfade1s")
         base = ["--run-id", "entry_mismatch", "--local-runs-root", str(self.root / "runs"), "--execute",
                 "--lead-authorized-execute", "--remote-scan-workspace", self.remote, "--stance-hold", "auto"]
-        for extra, requested in (([], "ramp"), (["--stance-entry-kd", "xfade2s"], "xfade2s"),
+        for extra, requested in ((["--stance-entry-kd", "ramp"], "ramp"), (["--stance-entry-kd", "xfade2s"], "xfade2s"),
                                  (["--stance-entry-kd", "step1"], "step1")):
             args = self.m.build_parser().parse_args(base + extra)
             with self.subTest(requested=requested), self.assertRaisesRegex(
                     RuntimeError, "--stance-entry-kd '%s' differs from the prepared package .*'xfade1s'" % requested):
                 self.m.execute(args, local_run, commands)
         self.assertFalse((local_run / "host_logs").exists())
-        # A package prepared before the flag existed ran the runner default entry (ramp).
+        # A package prepared before the flag existed ran the runner default entry (ramp), whatever the launcher
+        # default is (xfade1s since PRD D8).
         request_path = local_run / "run_request.json"
         request = json.loads(request_path.read_text(encoding="utf-8"))
         del request["stance_entry_kd"]
         request_path.write_text(json.dumps(request), encoding="utf-8")
-        args = self.m.build_parser().parse_args(base + ["--stance-entry-kd", "xfade1s"])
-        with self.assertRaisesRegex(RuntimeError, "--stance-entry-kd 'xfade1s' differs from the prepared package .*'ramp'"):
-            self.m.execute(args, local_run, commands)
+        for extra in (["--stance-entry-kd", "xfade1s"], []):
+            args = self.m.build_parser().parse_args(base + extra)
+            with self.subTest(extra=extra), self.assertRaisesRegex(
+                    RuntimeError, "--stance-entry-kd 'xfade1s' differs from the prepared package .*'ramp'"):
+                self.m.execute(args, local_run, commands)
         self.assertFalse((local_run / "host_logs").exists())
 
     def test_execute_refuses_flag_that_differs_from_package(self):

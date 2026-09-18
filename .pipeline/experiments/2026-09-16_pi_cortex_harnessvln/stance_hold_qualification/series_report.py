@@ -11,6 +11,10 @@ dwell check that is exactly the review window; for a failing one it is the fixed
 A hold-off ledger (the SCAN fix series, same plan and build) can be given as a baseline; its runs have no stance
 fields, so only the still windows and the pass count are reported for it.
 
+AC7 is printed as two verdicts side by side, e.g. `AC7 pass (as frozen: FAIL)`: the first uses the loaded thresholds
+(PRD D7: the entry window ends at a restart, a post-result change made after the C2 result), the second is the
+full-window rule as frozen before the results (`ac7.as_frozen_before_results`).
+
     series_report.py --ledger hold_series/series_ledger.jsonl \
         --baseline-ledger ../scan_fix_qualification/isaac_series/series_ledger.jsonl --output OUT.json
 """
@@ -28,6 +32,10 @@ import analyze_stance_hold as hold  # noqa: E402  (path set above)
 
 RUNS = EXP / "isaac_runner/two_goal_runs"
 CONFIDENCE = 0.95
+AC7_AMENDED_NOTE = (
+    "AC7 verdict: PRD D7 rule, a post-result change made after the C2 result (the entry window ends at a restart); "
+    "'as frozen' is the full-window rule frozen before the results"
+)
 
 
 def lower_bound(passed, total, confidence=CONFIDENCE):
@@ -157,7 +165,10 @@ def episode_report(record, thresholds):
             "stance_entry_kd": hold.entry_kd_variant(run),
             "ac5": hold.ac5(run, thresholds),
             "ac7": ac7,
+            # ac7_ok follows the AC7 verdict under the loaded thresholds (the PRD D7 restart rule, a post-result
+            # change); ac7_as_frozen_ok is the full-window rule as frozen before the results.
             "ac7_ok": hold.ac7_ok(ac7),
+            "ac7_as_frozen_ok": hold.ac7_ok(ac7["as_frozen_before_results"]),
             "zero_command_intervals": hold.zero_command_intervals(run, thresholds),
             "exits": exits(rows),
             "mode_seconds": {m: round(sum(1 for x in hold.modes(rows) if x == m) * hold.step_dt(rows), 3)
@@ -198,14 +209,17 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     thresholds = hold.load_thresholds(args.thresholds)
+    amended = bool(thresholds["values"]["ac7_entry"].get("end_at_restart", False))
     report = {
         "purpose": __doc__.strip().splitlines()[0],
         "thresholds": {"path": str(args.thresholds), "sha256": hold.sha256_file(args.thresholds)},
+        "ac7_rule": (AC7_AMENDED_NOTE if amended else "AC7 uses the full entry window as frozen before the results"),
         "hold": series(args.ledger, thresholds),
         "baseline": series(args.baseline_ledger, thresholds) if args.baseline_ledger else None,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(hold.json_safe(report), indent=2) + "\n")
+    print(report["ac7_rule"])
     for name in ("hold", "baseline"):
         part = report[name]
         if part is None:
@@ -220,9 +234,9 @@ def main():
                 # Every hold entry (first STAND_TRANSITION row), not zero-command intervals with at least one entry.
                 entries = len(episode["ac7"]["entry_windows"])
                 exits_count = len(episode["exits"]) + len(episode.get("direct_exits", []))
-                extra = " entries %d exits %d (rejoin %d) AC5 %s AC7 %s" % (
+                extra = " entries %d exits %d (rejoin %d) AC5 %s AC7 %s (as frozen: %s)" % (
                     entries, exits_count, len(episode["exits"]), episode["ac5"]["verdict"],
-                    "pass" if episode["ac7_ok"] else "FAIL")
+                    "pass" if episode["ac7_ok"] else "FAIL", "pass" if episode["ac7_as_frozen_ok"] else "FAIL")
             print("  e%02d %s %s still-window max |yaw| %s%s" % (episode["episode"], episode["checks"],
                                                                episode["outcome"], yaws, extra))
 

@@ -124,6 +124,9 @@ def main():
         '--accepted-scan-build-dir', str(EXPERIMENT / 'p2b_execution/builds/scan_03'),
         '--remote-scan-workspace', '/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_03',
         '--lead-authorized-execute',
+        # PROTOCOL.md keeps the actual4 control settings (hold off); the launcher default is auto since the
+        # stance-hold task's PRD D8.
+        '--stance-hold', 'off',
     ])
     if (HERE / 'runs' / run_id).exists():
         local_run, commands = base.load_prepared_run(args)

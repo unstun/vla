@@ -9,6 +9,11 @@ returned hashes.
 `--case stand_probe` (default) is the zero-command stand. `--case scripted_walk`
 (PRD D5) drives V12 from a JSON command script (`--command-script`) with the
 native baseline command limits; no SCAN, PCT or motion publisher is started.
+
+Stance hold defaults (PRD D8, 2026-09-18): `--stance-hold auto` with the
+`--stance-entry-kd xfade1s` entry. `--stance-hold off` stays available and then
+accepts only the runner's `ramp` entry. A prepared package without these
+`run_request.json` fields keeps its recorded meaning: hold off, ramp entry.
 """
 
 from __future__ import annotations
@@ -53,7 +58,17 @@ CASE_CHOICES = ("stand_probe", "scripted_walk")
 DEFAULT_CASE = "stand_probe"
 # stance_hold.py STANCE_ENTRY_KD_MODES; the materializer tests check the two agree.
 STANCE_ENTRY_KD_CHOICES = ("ramp", "step1", "step2p5", "xfade1s", "xfade2s")
-DEFAULT_STANCE_ENTRY_KD = "ramp"
+# stance_hold.py STANCE_ENTRY_KD_DEFAULT: the runner's own entry variant, and the
+# only one accepted with --stance-hold off.
+RUNNER_STANCE_ENTRY_KD = "ramp"
+# Launcher defaults since PRD D8 (2026-09-18): the hold on with the D5/D6-selected
+# crossfade entry. The patched runner keeps its own default --stance-hold off.
+DEFAULT_STANCE_HOLD = "auto"
+DEFAULT_STANCE_ENTRY_KD_AUTO = "xfade1s"
+# Meaning of a prepared package whose run_request.json lacks these fields: it was
+# prepared before the flags existed and ran the hold off with the ramp entry.
+LEGACY_PACKAGE_STANCE_HOLD = "off"
+LEGACY_PACKAGE_STANCE_ENTRY_KD = "ramp"
 DEFAULT_DURATION_SECONDS = 8.0
 DEFAULT_FINISH_AFTER_SIM_SECONDS = 2.0
 # Patched runner cap for stand_probe and scripted_walk (materializer anchors
@@ -278,23 +293,38 @@ def make_bridge_config(path: Path, telemetry_port: int, command_port: int) -> No
     )
 
 
+def stance_settings(args) -> Tuple[str, str]:
+    """Validated (stance hold, entry variant) with the PRD D8 defaults.
+
+    An unset --stance-hold means auto. An unset --stance-entry-kd means xfade1s
+    with the hold on and the runner's ramp with the hold off; any other entry
+    variant needs --stance-hold auto, as the runner requires.
+    """
+    stance_hold = getattr(args, "stance_hold", None)
+    if stance_hold is None:
+        stance_hold = DEFAULT_STANCE_HOLD
+    if stance_hold not in STANCE_HOLD_CHOICES:
+        raise ValueError("--stance-hold must be one of %s" % (STANCE_HOLD_CHOICES,))
+    entry_kd = getattr(args, "stance_entry_kd", None)
+    if entry_kd is None:
+        entry_kd = DEFAULT_STANCE_ENTRY_KD_AUTO if stance_hold == "auto" else RUNNER_STANCE_ENTRY_KD
+    if entry_kd not in STANCE_ENTRY_KD_CHOICES:
+        raise ValueError("--stance-entry-kd must be one of %s" % (STANCE_ENTRY_KD_CHOICES,))
+    if stance_hold != "auto" and entry_kd != RUNNER_STANCE_ENTRY_KD:
+        raise ValueError("--stance-entry-kd %s applies only with --stance-hold auto" % entry_kd)
+    return stance_hold, entry_kd
+
+
 def stand_settings(args) -> Dict[str, object]:
     """Validated case, duration, finish time, stance hold, camera and command script for one package."""
-    stance_hold = getattr(args, "stance_hold", "off")
+    stance_hold, entry_kd = stance_settings(args)
     duration = float(getattr(args, "duration_seconds", DEFAULT_DURATION_SECONDS))
     finish_after = float(getattr(args, "finish_after_sim_seconds", DEFAULT_FINISH_AFTER_SIM_SECONDS))
     case = getattr(args, "case", DEFAULT_CASE)
-    entry_kd = getattr(args, "stance_entry_kd", DEFAULT_STANCE_ENTRY_KD)
     camera_preset = getattr(args, "camera_preset", DEFAULT_CAMERA_PRESET)
     script_path = getattr(args, "command_script", None)
-    if stance_hold not in STANCE_HOLD_CHOICES:
-        raise ValueError("--stance-hold must be one of %s" % (STANCE_HOLD_CHOICES,))
     if case not in CASE_CHOICES:
         raise ValueError("--case must be one of %s" % (CASE_CHOICES,))
-    if entry_kd not in STANCE_ENTRY_KD_CHOICES:
-        raise ValueError("--stance-entry-kd must be one of %s" % (STANCE_ENTRY_KD_CHOICES,))
-    if stance_hold != "auto" and entry_kd != DEFAULT_STANCE_ENTRY_KD:
-        raise ValueError("--stance-entry-kd %s applies only with --stance-hold auto" % entry_kd)
     if camera_preset not in CAMERA_PRESETS:
         raise ValueError("--camera-preset must be one of %s" % (sorted(CAMERA_PRESETS),))
     if not (math.isfinite(duration) and 0.0 < duration <= MAX_STAND_DURATION_SECONDS):
@@ -1090,15 +1120,17 @@ def check_prepared_request(args, local_run: Path) -> Dict[str, object]:
 
     Packages written before these flags ran the legacy runner: stand_probe,
     stance hold off with the ramp entry, 8 s duration, finish request after
-    2 sim seconds, rear camera and no command script. The command script is
-    compared by the SHA-256 of the requested file.
+    2 sim seconds, rear camera and no command script. Those legacy meanings are
+    kept after the PRD D8 default change. The command script is compared by the
+    SHA-256 of the requested file.
     """
     request = json.loads((Path(local_run) / "run_request.json").read_text(encoding="utf-8"))
     prepared_script = request.get("command_script")
+    requested_stance_hold, requested_entry_kd = stance_settings(args)
     prepared = {
         "case": request.get("case", DEFAULT_CASE),
-        "stance_hold": request.get("stance_hold", "off"),
-        "stance_entry_kd": request.get("stance_entry_kd", DEFAULT_STANCE_ENTRY_KD),
+        "stance_hold": request.get("stance_hold", LEGACY_PACKAGE_STANCE_HOLD),
+        "stance_entry_kd": request.get("stance_entry_kd", LEGACY_PACKAGE_STANCE_ENTRY_KD),
         "duration_seconds": float(request.get("duration_seconds", DEFAULT_DURATION_SECONDS)),
         "finish_after_sim_seconds": float(request.get("finish_after_sim_seconds", DEFAULT_FINISH_AFTER_SIM_SECONDS)),
         "camera_preset": request.get("camera_preset", DEFAULT_CAMERA_PRESET),
@@ -1107,8 +1139,8 @@ def check_prepared_request(args, local_run: Path) -> Dict[str, object]:
     script_path = getattr(args, "command_script", None)
     requested = {
         "case": getattr(args, "case", DEFAULT_CASE),
-        "stance_hold": getattr(args, "stance_hold", "off"),
-        "stance_entry_kd": getattr(args, "stance_entry_kd", DEFAULT_STANCE_ENTRY_KD),
+        "stance_hold": requested_stance_hold,
+        "stance_entry_kd": requested_entry_kd,
         "duration_seconds": float(getattr(args, "duration_seconds", DEFAULT_DURATION_SECONDS)),
         "finish_after_sim_seconds": float(getattr(args, "finish_after_sim_seconds", DEFAULT_FINISH_AFTER_SIM_SECONDS)),
         "camera_preset": getattr(args, "camera_preset", DEFAULT_CAMERA_PRESET),
@@ -1226,11 +1258,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--camera-preset", choices=sorted(CAMERA_PRESETS), default=DEFAULT_CAMERA_PRESET,
                         help="rear: runner camera defaults, 12.5 fps. side: PRD D5 side view, heading latched "
                              "at the first frame, 25 fps")
-    parser.add_argument("--stance-hold", choices=STANCE_HOLD_CHOICES, default="off",
-                        help="runner stance hold mode; auto enables the PD stand hold (stance_hold.py)")
-    parser.add_argument("--stance-entry-kd", choices=STANCE_ENTRY_KD_CHOICES, default=DEFAULT_STANCE_ENTRY_KD,
-                        help="stance hold entry (auto only): ramp, step1 or step2p5 (PRD D5), or the "
-                             "xfade1s / xfade2s crossfade with a 1 s landing grace (PRD D6)")
+    parser.add_argument("--stance-hold", choices=STANCE_HOLD_CHOICES, default=DEFAULT_STANCE_HOLD,
+                        help="runner stance hold mode, default auto (PRD D8): auto enables the PD stand hold "
+                             "(stance_hold.py), off keeps the RL-only path. A package prepared without this "
+                             "field ran off")
+    parser.add_argument("--stance-entry-kd", choices=STANCE_ENTRY_KD_CHOICES, default=None,
+                        help="stance hold entry: ramp, step1 or step2p5 (PRD D5), or the xfade1s / xfade2s "
+                             "crossfade with a 1 s landing grace (PRD D6). Default xfade1s with --stance-hold "
+                             "auto (PRD D8); with --stance-hold off only ramp, the runner default, is accepted. "
+                             "A package prepared without this field ran ramp")
     parser.add_argument("--duration-seconds", type=float, default=DEFAULT_DURATION_SECONDS,
                         help="run duration, at most 60 s (AC3 stand uses 60, the D5 walk 26)")
     parser.add_argument("--finish-after-sim-seconds", type=float, default=DEFAULT_FINISH_AFTER_SIM_SECONDS,

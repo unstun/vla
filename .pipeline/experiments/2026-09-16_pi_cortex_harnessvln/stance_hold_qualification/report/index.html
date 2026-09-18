@@ -1,0 +1,286 @@
+<title>Lite3 Stance Hold</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;650;750&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+:root {
+  --ground: #eef1f0; --surface: #ffffff; --ink: #14201c; --muted: #56655f; --rule: #cfd8d4;
+  --on: #0072b2; --off: #c75200; --ok: #1b7a4a; --bad: #b3261e; --lead: #8a5a00;
+  --ok-bg: #dcefe4; --bad-bg: #f7dedb; --lead-bg: #f4e8cf;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0f1614; --surface: #17211e; --ink: #e3ebe7; --muted: #9aaba4; --rule: #2c3a35;
+    --on: #5aaee0; --off: #f08a3c; --ok: #6cc796; --bad: #f08a80; --lead: #e0b460;
+    --ok-bg: #1d3a2b; --bad-bg: #452523; --lead-bg: #3d3220;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0f1614; --surface: #17211e; --ink: #e3ebe7; --muted: #9aaba4; --rule: #2c3a35;
+  --on: #5aaee0; --off: #f08a3c; --ok: #6cc796; --bad: #f08a80; --lead: #e0b460;
+  --ok-bg: #1d3a2b; --bad-bg: #452523; --lead-bg: #3d3220;
+}
+body { background: var(--ground); color: var(--ink); font: 400 17px/1.6 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 750; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 650; margin-top: 56px; padding-top: 14px; border-top: 2px solid var(--ink); }
+h3 { font-size: 17px; font-weight: 650; margin-top: 26px; }
+p { max-width: 68ch; margin: 10px 0; }
+.eyebrow { font: 500 12px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 0.86em; }
+header { display: grid; gap: 14px; }
+.lede { font-size: 19px; max-width: 64ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-top: 22px; }
+.fact { flex: 1 1 190px; background: var(--surface); padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.fact b { font: 650 30px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.fact b small { font-size: 16px; font-weight: 500; color: var(--muted); }
+.fact span { font-size: 14px; color: var(--muted); line-height: 1.4; }
+.fact.on b { color: var(--on); }
+.amend { margin-top: 22px; border-left: 4px solid var(--lead); background: var(--surface); padding: 12px 16px; font-size: 15px; }
+.amend p { margin: 4px 0; max-width: none; }
+.amend strong { color: var(--lead); font-family: var(--display); font-weight: 650; }
+.scroll { overflow-x: auto; margin-top: 14px; border: 1px solid var(--rule); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+thead th { font: 500 11px/1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+tbody th { font-weight: 600; white-space: nowrap; }
+.num td { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 13px; }
+.pill { display: inline-block; font: 500 12px/1 var(--mono); padding: 4px 8px; border-radius: 3px; white-space: nowrap; }
+.pill-pass { background: var(--ok-bg); color: var(--ok); }
+.pill-fail { background: var(--bad-bg); color: var(--bad); }
+.pill-lead { background: var(--lead-bg); color: var(--lead); }
+tr.is-current td, tr.is-current th { box-shadow: inset 0 -2px 0 var(--on); }
+.ep-link { font: 500 13px var(--mono); color: var(--on); background: none; border: 1px solid var(--rule); border-radius: 3px; padding: 3px 7px; cursor: pointer; }
+.ep-link:hover, .ep-link:focus-visible { border-color: var(--on); outline: none; }
+.plate { margin: 18px 0 0; background: #ffffff; border: 1px solid var(--rule); padding: 10px; }
+.plate img { display: block; width: 100%; height: auto; }
+figcaption { font-size: 14px; color: #3d4a45; padding: 10px 4px 2px; max-width: 82ch; }
+.viewer { display: grid; gap: 14px; margin-top: 16px; }
+.picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.picker button { font: 500 13px var(--mono); padding: 7px 11px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); border-radius: 3px; cursor: pointer; }
+.picker button[aria-pressed="true"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+.picker button.flag { border-color: var(--lead); }
+.picker button:focus-visible { outline: 2px solid var(--on); outline-offset: 2px; }
+video { width: 100%; max-width: 100%; aspect-ratio: 16 / 9; background: #0b0f0e; display: block; }
+video.wide { aspect-ratio: 1280 / 404; }
+.ep-summary { font: 400 14px/1.5 var(--mono); }
+.ep-note { font-size: 15px; border-left: 3px solid var(--lead); padding-left: 12px; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px 28px; align-items: start; }
+ul.plain { padding-left: 18px; margin: 8px 0; max-width: 74ch; }
+ul.plain li { margin: 6px 0; }
+ol.steps { padding-left: 22px; margin: 8px 0; max-width: 74ch; }
+ol.steps li { margin: 6px 0; }
+footer { margin-top: 56px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 12px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Isaac runner · V12 model_149999 · gpu5070ti · 2026-09-18</div>
+  <h1>A PD stance hold for V12 stops</h1>
+  <p class="lede">When the command goes to zero, the runner now hands the joints from the V12 policy to a PD hold, and
+  hands them back when the robot is told to walk again. The hold stands still and makes restarts gentler. In the
+  two-goal pilot, though, it arrives too late to change the stop check.</p>
+  <div class="facts">
+    <div class="fact on"><b>8/8</b><span>two-goal episodes pass the unchanged 41 checks (one-sided 95 % bound 0.688; hold off 7/8)</span></div>
+    <div class="fact on"><b>0.0038 <small>rad/s</small></b><span>max |yaw rate| over 55.7 s of FIXED_STAND in the 60 s stand; V12 alone 0.143</span></div>
+    <div class="fact on"><b>0.087 <small>rad/s</small></b><span>worst hold entry in the scripted walk with the 1 s crossfade (limit 0.15)</span></div>
+    <div class="fact on"><b>0.165 <small>rad/s</small></b><span>median restart yaw in the two-goal series; hold off 0.201</span></div>
+    <div class="fact"><b>0.120 <small>rad/s</small></b><span>median still-window yaw at two-goal stops; hold off 0.121, so no change</span></div>
+  </div>
+  <div class="amend">
+    <p><strong>Post-result change to AC7.</strong> On 2026-09-18, after the two-goal result was known, Dr Sun changed the
+    AC7 entry window to end at a restart (PRD D7). As frozen before the results, AC7 fails in episode 6; with the
+    amendment it passes. Both verdicts are shown throughout.</p>
+    <p>Also on 2026-09-18: <code>--stance-hold auto</code> with the <code>xfade1s</code> entry is now the launcher default (PRD D8).</p>
+  </div>
+</header>
+
+<h2>Verdict</h2>
+<div class="scroll">
+<table>
+  <thead><tr><th>Criterion</th><th>Status</th><th>Evidence</th></tr></thead>
+  <tbody>
+    <tr><th>AC1 state-machine tests</th><td><span class="pill pill-pass">pass</span></td><td>isaac_runner 211 tests pass. Note: the crossfade entry step applies V12's own PD law with Kd stepped 0.5 → 1.0, so the literal "torque continuous at entry" clause no longer describes the entry step. The torque-matched seed is still built and tested.</td></tr>
+    <tr><th>AC2 patch, off path unchanged</th><td><span class="pill pill-pass">pass</span></td><td>Materializer check clean; patched runner <code>0649747e…</code>. The 63 rows before the first entry are identical to the hold-off run.</td></tr>
+    <tr><th>AC3 stand A/B, 60 s</th><td><span class="pill pill-pass">pass</span></td><td>FIXED_STAND 55.7 s: yaw ≤ 0.0038 rad/s, drift 2.5 mm, min foot force 23.0 N, pitch ≤ 2.8°. Hold off: 0.143 rad/s, 3.4 cm, 0 N, 6.6°. Run with the older step entry.</td></tr>
+    <tr><th>AC4 two-goal series</th><td><span class="pill pill-pass">pass</span></td><td>8/8 on the unchanged 41 checks, one-sided 95 % lower bound 0.688.</td></tr>
+    <tr><th>AC5 transitions</th><td><span class="pill pill-pass">pass</span></td><td>All 15 hold-on runs: no non-foot contact, roll and pitch ≤ 10° in REJOIN, no torque clip at entry or rejoin.</td></tr>
+    <tr><th>AC6 claim boundary</th><td><span class="pill pill-lead">stated</span></td><td>See the claim boundary below.</td></tr>
+    <tr><th>AC7 entry smoothness</th><td><span class="pill pill-pass">pass, amended</span> <span class="pill pill-fail">fail as frozen</span></td><td><code>xfade1s</code>: walk 3/3 entries (max 0.087). Two-goal 30/30 amended, 29/30 as frozen: episode 6's window caught a restart (0.174 rad/s).</td></tr>
+    <tr><th>AC8 scripted walk</th><td><span class="pill pill-pass">pass</span></td><td><code>xfade1s</code> and <code>xfade2s</code> pass; the selection rule picks <code>xfade1s</code>. No earlier variant passed.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>The hold stands still</h2>
+<p>With the command at zero, V12 keeps stepping in place: yaw jitters around ±0.1 rad/s and the body creeps
+several centimetres. Once the PD hold owns the joints, the body stops. The 60 s stand compares the two directly.</p>
+<figure class="plate"><img src="figures/stand_ab_traces.png" alt="Yaw rate, planar drift and smallest foot force over a 60 s stand, hold off in orange and hold on in blue" loading="lazy">
+<figcaption>60 s stand. This run used the first entry design, an immediate gain step, which hopped once at 0.40 s.
+The crossfade below replaced that entry; the hold itself is unchanged.</figcaption></figure>
+<figure class="plate"><img src="figures/fig2_walk_d6_yaw.png" alt="Yaw rate during the scripted walk, hold off in orange and hold on in blue, with the hold modes below" loading="lazy">
+<figcaption>Scripted walk: stand, walk 3 s, stop 5 s, walk 2.5 s, stop. In the last 2 s of each walking stop the
+hold kept yaw at 0.0011–0.0017 rad/s and drift at 0.12–0.31 mm. Hold off: 0.065–0.117 rad/s and 1.9–4.3 mm.</figcaption></figure>
+<div class="viewer">
+  <video controls preload="metadata" playsinline src="videos/walk_d6_side_view.mp4"></video>
+  <p class="muted" style="margin:0">Side view of the whole walk, real time. Top left is V12 alone; top right is the best of the
+  earlier entries (damping stepped to 1.0); bottom row is the 1 s and 2 s crossfades. The strips below give forward
+  speed and turn rate.</p>
+</div>
+
+<h2>Getting into the hold without a kick</h2>
+<p>The entry was the hard part. V12's actuator applies position targets three physics substeps late but changes
+gains at once, so any gain step at the switch acts on a stale target.</p>
+<ol class="steps">
+  <li><b>Gain step (C1).</b> Kp 20 → 60 at once: the body hopped (0.21 m/s up, 0.30 rad/s yaw).</li>
+  <li><b>Gain ramp over 0.5 s (C1b).</b> The hop was gone, but yaw swung to 0.363 rad/s.</li>
+  <li><b>Damping first (C1d).</b> Three variants; each failed at one or more entries.</li>
+  <li><b>Crossfade (D6), after a survey of published RL→PD switches.</b> Keep V12's gains and live target at the
+  switch, and blend its PD command into the hold command over 1 s, with Kd 1.0 from entry. Every entry stayed at
+  or below 0.087 rad/s, the yaw already present on the entry row.</li>
+</ol>
+<figure class="plate"><img src="figures/fig1_entry_variants.png" alt="Max yaw rate and vertical speed in each hold entry window for five entry variants" loading="lazy">
+<figcaption>Each dot is one hold entry in the scripted walk: landing, stop 1, stop 2. Open orange dots break the 0.15 rad/s
+limit. All five variants stay far below the vertical-speed limit; yaw rate decides.</figcaption></figure>
+
+<h2>Two-goal series</h2>
+<p>Eight episodes of the two-goal pilot with the <code>scan_04</code> planner build and the hold on. Each
+episode walks toward goal A, is cancelled after 0.40–0.50 m, is resubmitted to A, then goes on to B. All eight
+passed the 41 review checks. The hold-off SCAN series on the same build passed 7/8.</p>
+<div class="scroll">
+<table>
+  <thead><tr><th>Ep</th><th>Cancel</th><th>Checks</th><th>Arrival error A / B</th><th>Time to hold per stop (s)</th><th>Still-window max |yaw| (rad/s)</th><th>AC7 frozen</th><th>AC7 amended</th><th></th></tr></thead>
+  <tbody class="num">
+    <tr data-ep="1"><th>e01</th><td>0.40 m</td><td>41/41</td><td>0.200 / 0.188 m</td><td>0.62 / 0.44 / 1.12</td><td>0.144 / 0.145 / 0.121</td><td>pass</td><td>pass</td><td><button class="ep-link" data-ep="1" type="button">video</button></td></tr>
+    <tr data-ep="2"><th>e02</th><td>0.40 m</td><td>41/41</td><td>0.188 / 0.175 m</td><td>0.62 / 0.44 / 0.54</td><td>0.125 / 0.122 / 0.143</td><td>pass</td><td>pass</td><td><button class="ep-link" data-ep="2" type="button">video</button></td></tr>
+    <tr data-ep="3"><th>e03 †</th><td>0.40 m</td><td>41/41</td><td>0.190 / 0.174 m</td><td>0.62 / 0.38 / 0.56</td><td>0.128 / 0.094 / 0.103</td><td>pass</td><td>pass</td><td><button class="ep-link" data-ep="3" type="button">video</button></td></tr>
+    <tr data-ep="4"><th>e04</th><td>0.40 m</td><td>41/41</td><td>0.181 / 0.160 m</td><td>0.90 / 0.44 / 0.52</td><td>0.134 / 0.116 / 0.143</td><td>pass</td><td>pass</td><td><button class="ep-link" data-ep="4" type="button">video</button></td></tr>
+    <tr data-ep="5"><th>e05</th><td>0.40 m</td><td>41/41</td><td>0.185 / 0.145 m</td><td>0.62 / 0.42 / —</td><td>0.125 / 0.105 / 0.135</td><td>pass</td><td>pass</td><td><button class="ep-link" data-ep="5" type="button">video</button></td></tr>
+    <tr data-ep="6"><th>e06</th><td>0.40 m</td><td>41/41</td><td>0.196 / 0.182 m</td><td>2.22 / 0.38 / 0.62</td><td>0.109 / 0.096 / 0.094</td><td><span class="pill pill-fail">fail 0.174</span></td><td><span class="pill pill-pass">pass 0.063</span></td><td><button class="ep-link" data-ep="6" type="button">video</button></td></tr>
+    <tr data-ep="7"><th>e07</th><td>0.45 m</td><td>41/41</td><td>0.181 / 0.152 m</td><td>0.54 / 1.04 / —</td><td>0.109 / 0.113 / 0.113</td><td>pass</td><td>pass</td><td><button class="ep-link" data-ep="7" type="button">video</button></td></tr>
+    <tr data-ep="8"><th>e08</th><td>0.50 m</td><td>41/41</td><td>0.174 / 0.177 m</td><td>0.84 / 0.44 / 0.52</td><td>0.077 / 0.119 / 0.135</td><td>pass</td><td>pass</td><td><button class="ep-link" data-ep="8" type="button">video</button></td></tr>
+  </tbody>
+</table>
+</div>
+<p class="muted" style="font-size:14px">Stops are the cancel, arrival at A and arrival at B; still-window limit 0.15 rad/s. "—": the episode ended before the
+hold's gates opened. † e03 finished on the host after the local driver died with the session; it was collected
+and reviewed afterwards with the launcher's own steps, without re-running the simulation.</p>
+
+<div class="viewer" id="viewer">
+  <div class="picker" id="picker" role="group" aria-label="Choose an episode"></div>
+  <div class="ep-summary" id="ep-summary"></div>
+  <p class="ep-note" id="ep-note" hidden></p>
+  <video id="ep-video" controls preload="metadata" playsinline></video>
+  <p class="muted" style="margin:0">Walk review rendered on the host: runner camera, top-down trail, and speed and non-foot-force strips with
+  the hold modes shaded. One second of video is one second of simulated time.</p>
+</div>
+
+<h3>The hold does not reach the stop check</h3>
+<p>The review decides "stopped" from the 1 s before each terminal, and that second starts 0.10–0.38 s after the
+zero command. At that point V12 still drives the joints while the hold waits for its settle gates. All 24
+still-window peaks fall in that settling phase, so the hold leaves the stop margin where it was.
+Restarts are a different story: with the hold, the yaw in the first second of walking is lower.</p>
+<figure class="plate"><img src="figures/fig3_two_goal_stops.png" alt="Still-window and restart yaw rates for the hold-off and hold-on series" loading="lazy">
+<figcaption>Left: max |yaw rate| in each review still window. Right: max |yaw rate| in the 1 s after each resumed command.
+24 values per series; bars are medians.</figcaption></figure>
+<figure class="plate"><img src="figures/fig4_two_goal_timelines.png" alt="Hold mode timeline for each of the eight episodes, with review still windows marked" loading="lazy">
+<figcaption>Hold modes per episode. The black bars are the review still windows. Every stop ends inside STAND_TRANSITION
+or earlier; none lasts the 2 s needed to reach FIXED_STAND.</figcaption></figure>
+
+<h2>Episode 6 and the AC7 amendment</h2>
+<p>AC7 checks the first second after each hold entry for a kick. In episode 6 that second was cut short by a restart:</p>
+<ol class="steps">
+  <li>At the cancel stop the hold waited 2.2 s for its support-balance gate, then entered at 6.66 s. The entry was calm (≤ 0.063 rad/s).</li>
+  <li>0.18 s later, at 6.84 s, the planner resubmitted goal A and the hold handed back to V12.</li>
+  <li>V12's restart reached 0.174 rad/s at 6.92 s. The frozen rule counted that against the entry.</li>
+</ol>
+<p>Dr Sun amended the window to end at the restart. That is the first row after entry in any mode other than
+STAND_TRANSITION or FIXED_STAND, and it is excluded. This was decided after the result and is labelled as such.
+AC8's walk check keeps its full 1 s window.</p>
+<figure class="plate"><img src="figures/fig5_e06_ac7_window.png" alt="Yaw rate and vertical speed around the episode 6 entry, with the frozen and amended AC7 windows" loading="lazy">
+<figcaption>Red: the window as frozen (1.0 s). Green: the window ended at the restart. Limits 0.15 rad/s and 0.05 m/s.</figcaption></figure>
+
+<h2>Disclosed changes and limits</h2>
+<div class="two">
+  <div>
+    <h3>Changes to the plan</h3>
+    <ul class="plain">
+      <li>Entry ramp (D4) after the C1 hop, with AC7 added before the rerun.</li>
+      <li>Scripted walk, AC8 and damping variants (D5) before any walk run.</li>
+      <li>Crossfade and a 1 s landing grace (D6) before its runs.</li>
+      <li><b>AC7 window ends at a restart (D7), after the result.</b></li>
+      <li>Hold on with <code>xfade1s</code> is the launcher default (D8). The runner itself still defaults to off, and its bytes are unchanged.</li>
+      <li>Thresholds re-frozen before each run set; no limit changed: <code>fb8f9204…</code> → <code>12373448…</code> → <code>683a8ca6…</code> → <code>0be59927…</code> → <code>34c15fe6…</code>.</li>
+      <li>The 60 s stand was not repeated with <code>xfade1s</code>. The hold law after the entry is the same, and the walk stops cover it.</li>
+    </ul>
+  </div>
+  <div>
+    <h3>Claim boundary</h3>
+    <ul class="plain">
+      <li>Simulation only: Isaac Lab on the 5070 Ti host with V12 <code>model_149999.pt</code>. Not a real-robot or deployment fix; <code>machine-dog</code> is unchanged.</li>
+      <li>One known-map two-goal route on a flat platform with simulator-truth pose, and one straight scripted walk. No slopes, obstacles, pushes, SLAM or language.</li>
+      <li>N = 8 two-goal episodes, 3 walk stops and one 60 s stand per configuration.</li>
+      <li>AC7 passes only under the post-result amendment, so the hold counts as integrated in the runner, not validated.</li>
+    </ul>
+  </div>
+</div>
+
+<footer>
+  Source: <code>.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/stance_hold_qualification/RESULT.md</code> ·
+  task <code>09-17-isaac-runner-stance-hold</code> · thresholds <code>34c15fe6…</code> · figures by
+  <code>make_result_figures.py</code> from returned metrics · origin ai_with_source_check, not yet reviewed.
+</footer>
+</div>
+
+<script>
+(function () {
+  var EPISODES = {
+    1: { run: "two_goal_20260917T184138Z_hold_e01", summary: "cancel 0.40 m · 41/41 · arrival A 0.200 m, B 0.188 m" },
+    2: { run: "two_goal_20260917T184449Z_hold_e02", summary: "cancel 0.40 m · 41/41 · arrival A 0.188 m, B 0.175 m" },
+    3: { run: "two_goal_20260917T184758Z_hold_e03", summary: "cancel 0.40 m · 41/41 · arrival A 0.190 m, B 0.174 m",
+         note: "Collected after the local driver died with the session; the remote run had finished and passed. No simulation re-run." },
+    4: { run: "two_goal_20260918T025909Z_hold_e04", summary: "cancel 0.40 m · 41/41 · arrival A 0.181 m, B 0.160 m" },
+    5: { run: "two_goal_20260918T030216Z_hold_e05", summary: "cancel 0.40 m · 41/41 · arrival A 0.185 m, B 0.145 m" },
+    6: { run: "two_goal_20260918T030524Z_hold_e06", summary: "cancel 0.40 m · 41/41 · arrival A 0.196 m, B 0.182 m",
+         note: "Hold entry at 6.66 s, restart at 6.84 s, yaw peak 0.174 rad/s at 6.92 s in REJOIN. AC7 fails as frozen and passes amended." },
+    7: { run: "two_goal_20260918T030831Z_hold_e07", summary: "cancel 0.45 m · 41/41 · arrival A 0.181 m, B 0.152 m" },
+    8: { run: "two_goal_20260918T031138Z_hold_e08", summary: "cancel 0.50 m · 41/41 · arrival A 0.174 m, B 0.177 m" }
+  };
+  var picker = document.getElementById('picker');
+  var video = document.getElementById('ep-video');
+  var summary = document.getElementById('ep-summary');
+  var note = document.getElementById('ep-note');
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function show(n, scroll) {
+    var ep = EPISODES[n];
+    if (!ep) return;
+    video.src = 'videos/e' + pad(n) + '.mp4';
+    summary.textContent = 'e' + pad(n) + ' · ' + ep.summary + ' · ' + ep.run;
+    note.hidden = !ep.note;
+    note.textContent = ep.note || '';
+    picker.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.ep) === n)); });
+    document.querySelectorAll('tr[data-ep]').forEach(function (r) { r.classList.toggle('is-current', Number(r.dataset.ep) === n); });
+    try { localStorage.setItem('stancehold-ep', String(n)); } catch (e) {}
+    if (scroll) document.getElementById('viewer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  Object.keys(EPISODES).map(Number).sort(function (a, b) { return a - b; }).forEach(function (n) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.dataset.ep = n; b.id = 'pick-e' + pad(n);
+    b.textContent = 'e' + pad(n);
+    if (EPISODES[n].note) b.classList.add('flag');
+    b.addEventListener('click', function () { show(n, false); });
+    picker.appendChild(b);
+  });
+  document.querySelectorAll('.ep-link').forEach(function (b) {
+    b.addEventListener('click', function () { show(Number(b.dataset.ep), true); });
+  });
+  var start = 6;
+  try { var saved = Number(localStorage.getItem('stancehold-ep')); if (EPISODES[saved]) start = saved; } catch (e) {}
+  show(start, false);
+})();
+</script>

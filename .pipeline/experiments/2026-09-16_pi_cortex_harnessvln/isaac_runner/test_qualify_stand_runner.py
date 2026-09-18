@@ -132,22 +132,41 @@ class StandHoldSettingsTests(unittest.TestCase):
         ])
         return args, qualify.prepare(args)
 
-    def test_defaults_keep_the_legacy_stand_and_pass_stance_hold_off(self):
+    def test_defaults_are_the_d8_hold_and_off_keeps_the_legacy_stand(self):
+        """PRD D8: the launcher defaults to --stance-hold auto --stance-entry-kd xfade1s; off is still available."""
+        parsed = qualify.build_parser().parse_args([])
+        self.assertEqual((parsed.stance_hold, parsed.stance_entry_kd), ("auto", None))
+        self.assertEqual(qualify.stance_settings(parsed), ("auto", "xfade1s"))
+        self.assertEqual(qualify.stance_settings(qualify.build_parser().parse_args(["--stance-hold", "off"])),
+                         ("off", "ramp"))
+        self.assertEqual(qualify.stance_settings(qualify.build_parser().parse_args(["--stance-hold", "auto"])),
+                         ("auto", "xfade1s"))
         with tempfile.TemporaryDirectory() as tmp:
-            args, (local_run, commands) = self.prepare(tmp, "stand_defaults")
-            argv = qualify.build_runner_argv(args, "/remote/root/stand_defaults", "stand_defaults")
-            self.assertEqual(argv[argv.index("--duration-seconds") + 1], "8.0")
-            self.assertEqual(argv[argv.index("--stance-hold") + 1], "off")
-            scope = json.loads((local_run / "inputs/stand_scope.json").read_text())
-            self.assertEqual(scope["execution_configuration"]["stance_hold"], "off")
-            self.assertEqual(scope["execution_configuration"]["duration_seconds"], 8.0)
-            self.assertEqual(scope["resource_ceiling"]["simulation_seconds"], 8.0)
-            request = json.loads((local_run / "run_request.json").read_text())
-            self.assertEqual((request["stance_hold"], request["duration_seconds"], request["finish_after_sim_seconds"]),
-                             ("off", 8.0, 2.0))
-            self.assertEqual(commands["run"][-1].split()[-2:], ["--finish-after-sim-seconds", "2.0"])
-            runner_text = (local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py").read_text()
-            self.assertIn("def _stance_hold_setup(", runner_text)
+            for run_id, extra, expected in (("stand_defaults", [], ("auto", "xfade1s")),
+                                            ("stand_off", ["--stance-hold", "off"], ("off", "ramp"))):
+                with self.subTest(run=run_id):
+                    args, (local_run, commands) = self.prepare(tmp, run_id, *extra)
+                    argv = qualify.build_runner_argv(args, "/remote/root/" + run_id, run_id)
+                    self.assertEqual(argv, runner_argv_from(commands))
+                    self.assertEqual(argv[argv.index("--duration-seconds") + 1], "8.0")
+                    at = argv.index("--stance-hold")
+                    self.assertEqual(argv[at:at + 4], ["--stance-hold", expected[0], "--stance-entry-kd", expected[1]])
+                    scope = json.loads((local_run / "inputs/stand_scope.json").read_text())
+                    self.assertEqual(scope["execution_configuration"]["stance_hold"], expected[0])
+                    self.assertEqual(scope["execution_configuration"]["stance_entry_kd"], expected[1])
+                    self.assertEqual(scope["execution_configuration"]["duration_seconds"], 8.0)
+                    self.assertEqual(scope["resource_ceiling"]["simulation_seconds"], 8.0)
+                    request = json.loads((local_run / "run_request.json").read_text())
+                    self.assertEqual((request["stance_hold"], request["stance_entry_kd"], request["duration_seconds"],
+                                      request["finish_after_sim_seconds"]), expected + (8.0, 2.0))
+                    self.assertEqual(commands["run"][-1].split()[-2:], ["--finish-after-sim-seconds", "2.0"])
+                    runner_text = (local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py").read_text()
+                    self.assertIn("def _stance_hold_setup(", runner_text)
+                    runner = qualify.import_runner(local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py")
+                    self.assertEqual(runner.execution_configuration(runner.build_parser().parse_args(argv)),
+                                     scope["execution_configuration"])
+            # The patched runner's own default stays off; the launcher always passes the flag.
+            self.assertEqual(runner.build_parser().get_default("stance_hold"), "off")
 
     def test_sixty_second_auto_stand_package(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -198,7 +217,8 @@ class StandHoldSettingsTests(unittest.TestCase):
             with mock.patch.object(qualify, "execute") as execute, contextlib.redirect_stdout(io.StringIO()):
                 qualify.main(same)
                 execute.assert_called_once()
-            for extra, flag in (([], "stance-hold"),
+            for extra, flag in ((["--stance-hold", "off"], "stance-hold"),
+                                ([], "duration-seconds"),
                                 (["--stance-hold", "auto"], "duration-seconds"),
                                 (["--stance-hold", "auto", "--duration-seconds", "60"], "finish-after-sim-seconds")):
                 with self.subTest(flag=flag), mock.patch.object(qualify, "execute") as execute:
@@ -207,17 +227,21 @@ class StandHoldSettingsTests(unittest.TestCase):
                     execute.assert_not_called()
 
     def test_legacy_package_request_counts_as_off_eight_seconds(self):
+        """A package without stance fields ran off / ramp; the PRD D8 default (auto) does not change that."""
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp)
             (run / "run_request.json").write_text(json.dumps({"duration_seconds": 8.0}))
-            args = qualify.build_parser().parse_args([])
-            self.assertEqual(qualify.check_prepared_request(args, run),
-                             {"stance_hold": "off", "duration_seconds": 8.0, "finish_after_sim_seconds": 2.0,
-                              "case": "stand_probe", "stance_entry_kd": "ramp", "camera_preset": "rear",
-                              "command_script": None})
-            args = qualify.build_parser().parse_args(["--stance-hold", "auto"])
-            with self.assertRaisesRegex(RuntimeError, "stance-hold"):
-                qualify.check_prepared_request(args, run)
+            for flags in (["--stance-hold", "off"], ["--stance-hold", "off", "--stance-entry-kd", "ramp"]):
+                args = qualify.build_parser().parse_args(flags)
+                self.assertEqual(qualify.check_prepared_request(args, run),
+                                 {"stance_hold": "off", "duration_seconds": 8.0, "finish_after_sim_seconds": 2.0,
+                                  "case": "stand_probe", "stance_entry_kd": "ramp", "camera_preset": "rear",
+                                  "command_script": None})
+            for flags in ([], ["--stance-hold", "auto"]):
+                args = qualify.build_parser().parse_args(flags)
+                with self.subTest(flags=flags), self.assertRaisesRegex(
+                        RuntimeError, "--stance-hold 'auto' differs from the prepared package .*'off'"):
+                    qualify.check_prepared_request(args, run)
 
 
 D5_SCRIPT = Path(qualify.HERE) / "command_scripts/walk_stop_start_stop_v1.json"
@@ -256,13 +280,17 @@ class ScriptedWalkPackageTests(unittest.TestCase):
         return args, qualify.prepare(args)
 
     def test_default_stand_argv_only_gains_the_entry_kd_flag(self):
-        args = qualify.build_parser().parse_args([])
-        argv = qualify.build_runner_argv(args, "/r/run", "run")
         legacy = [item.replace("{run}", "/r/run").replace("{id}", "run") for item in LEGACY_STAND_ARGV]
         position = legacy.index("--stance-hold") + 2
+        args = qualify.build_parser().parse_args(["--stance-hold", "off"])
+        argv = qualify.build_runner_argv(args, "/r/run", "run")
         self.assertEqual(argv, legacy[:position] + ["--stance-entry-kd", "ramp"] + legacy[position:])
         self.assertNotIn("--command-script", argv)
         self.assertNotIn("--camera-heading-mode", argv)
+        # PRD D8 defaults: only the two stance values differ from the hold-off stand.
+        default = qualify.build_runner_argv(qualify.build_parser().parse_args([]), "/r/run", "run")
+        expected = legacy[:position - 1] + ["auto", "--stance-entry-kd", "xfade1s"] + legacy[position:]
+        self.assertEqual(default, expected)
 
     def test_scripted_walk_package_binds_script_limits_camera_and_variant(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -363,15 +391,20 @@ class ScriptedWalkPackageTests(unittest.TestCase):
             with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
                 qualify.build_parser().parse_args(["--run-id", "x", "--stance-entry-kd", "xfade3s"])
             with self.assertRaisesRegex(ValueError, "applies only with --stance-hold auto"):
-                self.prepare(tmp, "walk_refused", *WALK_FLAGS, "--stance-entry-kd", "xfade1s")
+                self.prepare(tmp, "walk_refused", *WALK_FLAGS, "--stance-hold", "off", "--stance-entry-kd", "xfade1s")
 
     def test_hold_off_walk_package_uses_ramp_and_stand_defaults_are_unchanged(self):
         with tempfile.TemporaryDirectory() as tmp:
-            _args, (local_run, commands) = self.prepare(tmp, "walk_off", *WALK_FLAGS)
+            _args, (local_run, commands) = self.prepare(tmp, "walk_off", *WALK_FLAGS, "--stance-hold", "off")
             argv = runner_argv_from(commands)
             self.assertEqual(argv[argv.index("--stance-hold") + 1], "off")
             self.assertEqual(argv[argv.index("--stance-entry-kd") + 1], "ramp")
-            _args, (stand_run, _commands) = self.prepare(tmp, "stand_default")
+            # PRD D8: without stance flags the walk runs the hold with the xfade1s entry.
+            _args, (walk_default, commands) = self.prepare(tmp, "walk_default", *WALK_FLAGS)
+            argv = runner_argv_from(commands)
+            self.assertEqual((argv[argv.index("--stance-hold") + 1], argv[argv.index("--stance-entry-kd") + 1]),
+                             ("auto", "xfade1s"))
+            _args, (stand_run, _commands) = self.prepare(tmp, "stand_default", "--stance-hold", "off")
             request = json.loads((stand_run / "run_request.json").read_text())
             self.assertEqual((request["case"], request["camera_preset"], request["stance_entry_kd"],
                               request["command_script"]), ("stand_probe", "rear", "ramp", None))
@@ -396,7 +429,7 @@ class ScriptedWalkPackageTests(unittest.TestCase):
             cases = {
                 "requires --command-script": ["--case", "scripted_walk"] + base,
                 "only with --case scripted_walk": ["--command-script", str(D5_SCRIPT)],
-                "applies only with --stance-hold auto": WALK_FLAGS + ["--stance-entry-kd", "step1"],
+                "applies only with --stance-hold auto": WALK_FLAGS + ["--stance-hold", "off", "--stance-entry-kd", "step1"],
                 "comes before the last": ["--case", "scripted_walk", "--command-script", str(D5_SCRIPT),
                                           "--duration-seconds", "26", "--finish-after-sim-seconds", "14"],
                 "last segment must be a zero command": ["--case", "scripted_walk", "--command-script",
@@ -454,12 +487,14 @@ class ScriptedWalkPackageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp)
             (run / "run_request.json").write_text(json.dumps({"duration_seconds": 8.0, "stance_hold": "auto"}))
-            args = qualify.build_parser().parse_args(["--stance-hold", "auto"])
+            args = qualify.build_parser().parse_args(["--stance-hold", "auto", "--stance-entry-kd", "ramp"])
             self.assertEqual(qualify.check_prepared_request(args, run), {
                 "case": "stand_probe", "stance_hold": "auto", "stance_entry_kd": "ramp", "duration_seconds": 8.0,
                 "finish_after_sim_seconds": 2.0, "camera_preset": "rear", "command_script": None})
-            for flags, name in ((["--stance-entry-kd", "step1"], "stance-entry-kd"),
-                                (["--camera-preset", "side"], "camera-preset")):
+            # A package without stance_entry_kd ran ramp, so the PRD D8 default entry (xfade1s) is refused.
+            for flags, name in (([], "stance-entry-kd 'xfade1s' differs from the prepared package .*'ramp'"),
+                                (["--stance-entry-kd", "step1"], "stance-entry-kd"),
+                                (["--stance-entry-kd", "ramp", "--camera-preset", "side"], "camera-preset")):
                 args = qualify.build_parser().parse_args(["--stance-hold", "auto"] + flags)
                 with self.subTest(flag=name), self.assertRaisesRegex(RuntimeError, name):
                     qualify.check_prepared_request(args, run)
@@ -467,7 +502,9 @@ class ScriptedWalkPackageTests(unittest.TestCase):
     def test_launcher_entry_kd_choices_match_the_module(self):
         import stance_hold
         self.assertEqual(qualify.STANCE_ENTRY_KD_CHOICES, stance_hold.STANCE_ENTRY_KD_MODES)
-        self.assertEqual(qualify.DEFAULT_STANCE_ENTRY_KD, stance_hold.STANCE_ENTRY_KD_DEFAULT)
+        self.assertEqual(qualify.RUNNER_STANCE_ENTRY_KD, stance_hold.STANCE_ENTRY_KD_DEFAULT)
+        self.assertEqual((qualify.DEFAULT_STANCE_HOLD, qualify.DEFAULT_STANCE_ENTRY_KD_AUTO), ("auto", "xfade1s"))
+        self.assertEqual((qualify.LEGACY_PACKAGE_STANCE_HOLD, qualify.LEGACY_PACKAGE_STANCE_ENTRY_KD), ("off", "ramp"))
         self.assertEqual(qualify.native_command_limits(), {
             "max_vx": 1.0, "max_vy": 0.35, "max_wz": 1.0, "max_horizontal_norm": 1.0, "speed_profile": "speed_1p0"})
 

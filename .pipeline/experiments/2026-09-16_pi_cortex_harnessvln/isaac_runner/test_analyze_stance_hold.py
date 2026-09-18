@@ -12,12 +12,15 @@ HERE = Path(__file__).resolve().parent
 OLD_STAND_RUN = HERE / "runs/stand_20260916T152235Z_p2b_fix1"
 OLD_TWO_GOAL_RUN = HERE / "two_goal_runs/two_goal_20260917T090126Z_scanfix_e03"
 C1_HOLD_AUTO_RUN = HERE / "runs/stand_20260917T125239Z_hold_auto"
+C2_E06_RUN = HERE / "two_goal_runs/two_goal_20260918T030524Z_hold_e06"
 PREVIOUS_THRESHOLDS = HERE / "stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json"
 PREVIOUS_THRESHOLDS_SHA256 = "fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66"
 AC7_THRESHOLDS = HERE / "stance_hold_thresholds_history/stance_hold_thresholds_12373448.json"
 AC7_THRESHOLDS_SHA256 = "12373448a8aee02534b529c69189bc5155bbe13cb0d17b632d260b075e075da5"
 AC8_THRESHOLDS = HERE / "stance_hold_thresholds_history/stance_hold_thresholds_683a8ca6.json"
 AC8_THRESHOLDS_SHA256 = "683a8ca6d9d26fe4c45af22fc449c1c05525fde9eb0fb3dc4125c4f2831b43b8"
+D6_THRESHOLDS = HERE / "stance_hold_thresholds_history/stance_hold_thresholds_0be59927.json"
+D6_THRESHOLDS_SHA256 = "0be59927aa18ad97cc6dfc01a3179867ce84e71e712286ee971a485a5238a29d"
 D5_SCRIPT = HERE / "command_scripts/walk_stop_start_stop_v1.json"
 DT = 0.02
 
@@ -136,6 +139,19 @@ class ThresholdTests(unittest.TestCase):
         self.assertEqual(loaded["values"]["amendments"][1]["previous_sha256"], AC7_THRESHOLDS_SHA256)
         self.assertEqual(loaded["values"]["amendments"][2]["previous_sha256"], AC8_THRESHOLDS_SHA256)
         self.assertIn("xfade1s, xfade2s (PRD D6)", ac8["run"])
+        # PRD D7 (post-result): the AC7 window also ends at a restart.
+        self.assertIs(ac7["end_at_restart"], True)
+        self.assertIn("neither STAND_TRANSITION nor FIXED_STAND", ac7["restart"])
+        amendment = ac7["amendment"]
+        self.assertEqual((amendment["decision"], amendment["date"], amendment["by"], amendment["post_result"],
+                          amendment["previous_sha256"], amendment["previous_copy"]),
+                         ("PRD D7", "2026-09-18", "Dr Sun", True, D6_THRESHOLDS_SHA256,
+                          str(D6_THRESHOLDS.relative_to(HERE))))
+        self.assertEqual(amendment["quote"], "Change the AC7 rule to stop the evaluation window at a restart, and "
+                                             "explicitly label it as a post-result change in the report.")
+        self.assertIn("two_goal_20260918T030524Z_hold_e06", amendment["trigger"])
+        self.assertIn("step 332", amendment["trigger"])
+        self.assertEqual(loaded["values"]["amendments"][3]["previous_sha256"], D6_THRESHOLDS_SHA256)
 
     def test_amendment_only_adds_ac7_to_the_previous_frozen_file(self):
         self.assertEqual(analyzer.sha256_file(PREVIOUS_THRESHOLDS), PREVIOUS_THRESHOLDS_SHA256)
@@ -170,8 +186,9 @@ class ThresholdTests(unittest.TestCase):
     def test_d6_amendment_only_renames_the_ac8_run_text(self):
         """PRD D6: the crossfade variants are named; no limit, window or rule changes."""
         self.assertEqual(analyzer.sha256_file(AC8_THRESHOLDS), AC8_THRESHOLDS_SHA256)
+        self.assertEqual(analyzer.sha256_file(D6_THRESHOLDS), D6_THRESHOLDS_SHA256)
         previous = json.loads(AC8_THRESHOLDS.read_text())
-        current = json.loads(analyzer.DEFAULT_THRESHOLDS.read_text())
+        current = json.loads(D6_THRESHOLDS.read_text())
         self.assertEqual(set(current), set(previous))
         self.assertEqual({k: v for k, v in current.items() if k not in ("amendments", "ac8_walk")},
                          {k: v for k, v in previous.items() if k not in ("amendments", "ac8_walk")})
@@ -192,6 +209,30 @@ class ThresholdTests(unittest.TestCase):
             analyzer.load_thresholds(AC8_THRESHOLDS)
         self.assertNotEqual(analyzer.FROZEN_THRESHOLDS_SHA256, AC8_THRESHOLDS_SHA256)
         self.assertEqual(analyzer.sha256_file(analyzer.DEFAULT_THRESHOLDS), analyzer.FROZEN_THRESHOLDS_SHA256)
+
+    def test_d7_amendment_only_adds_the_restart_rule_to_ac7(self):
+        """PRD D7 (post-result): ac7_entry gains the restart rule; limits, AC8 and every other section are unchanged."""
+        self.assertEqual(analyzer.sha256_file(D6_THRESHOLDS), D6_THRESHOLDS_SHA256)
+        previous = json.loads(D6_THRESHOLDS.read_text())
+        current = json.loads(analyzer.DEFAULT_THRESHOLDS.read_text())
+        self.assertEqual(set(current), set(previous))
+        self.assertEqual({k: v for k, v in current.items() if k not in ("amendments", "ac7_entry")},
+                         {k: v for k, v in previous.items() if k not in ("amendments", "ac7_entry")})
+        self.assertEqual(set(current["ac7_entry"]) - set(previous["ac7_entry"]),
+                         {"end_at_restart", "restart", "amendment"})
+        self.assertEqual({k: v for k, v in current["ac7_entry"].items() if k in previous["ac7_entry"]},
+                         previous["ac7_entry"])
+        self.assertEqual(current["ac8_walk"]["b_entry_windows"], previous["ac8_walk"]["b_entry_windows"])
+        self.assertEqual(current["amendments"][:-1], previous["amendments"])
+        last = current["amendments"][-1]
+        self.assertEqual((last["date"], last["post_result"], last["previous_sha256"], last["previous_copy"]),
+                         ("2026-09-18", True, D6_THRESHOLDS_SHA256, str(D6_THRESHOLDS.relative_to(HERE))))
+        self.assertIn("post-result", last["frozen_before"])
+        self.assertEqual(len(current["amendments"]), 4)
+        with self.assertRaisesRegex(analyzer.AnalysisError, "superseded .*0be59927"):
+            analyzer.load_thresholds(D6_THRESHOLDS)
+        self.assertIn(D6_THRESHOLDS_SHA256, analyzer.SUPERSEDED_THRESHOLDS)
+        self.assertNotEqual(analyzer.FROZEN_THRESHOLDS_SHA256, D6_THRESHOLDS_SHA256)
 
     def test_changed_thresholds_are_refused_unless_allowed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -457,6 +498,133 @@ class EntrySmoothnessTests(unittest.TestCase):
         self.assertAlmostEqual(window["max_abs_vertical_speed_mps"], 0.210, places=3)
         self.assertEqual((window["max_abs_yaw_rate_step"], window["max_abs_vertical_speed_step"]), (20, 20))
         self.assertEqual(len(result["entry_windows"]), 1)
+        # No restart inside the window: the D7 amendment gives the same verdict.
+        self.assertEqual((window["amended"]["window_end"], window["amended"]["rows"]), ("window_s", 51))
+        self.assertEqual(result["as_frozen_before_results"]["verdict"], "fail")
+
+
+    # ---- PRD D7 restart window (post-result amendment) ----
+    # stand_rows(): entry row index 135 (step 135, t0 = 2.72 s); the full window ends at row 185 (3.72 s).
+    def with_modes(self, rows, start, modes):
+        for offset, mode in enumerate(modes):
+            rows[start + offset].update(stance_mode=mode, policy_owns_joints=mode in ("RL", "REJOIN"))
+        return rows
+
+    def test_restart_inside_the_window_truncates_the_amended_window(self):
+        rows = self.with_modes(stand_rows(), 145, ["REJOIN"] * 13 + ["RL"] * 40)
+        rows[150]["yaw_rate_radps"] = -0.174  # inside REJOIN, after the restart row 145
+        rows[152]["base_linear_velocity_world"] = [0.0, 0.0, 0.06]
+        result = self.ac7(rows, "restart")
+        self.assertEqual(result["verdict"], "pass", result["problems"])
+        self.assertEqual(result["verdict_rule"], "amended_end_at_restart")
+        self.assertIn("post-result", result["window_rule"])
+        self.assertIn("PRD D7", result["window_rule"])
+        self.assertEqual(result["post_result_amendment"]["decision"], "PRD D7")
+        self.assertIs(result["limits"]["end_at_restart"], True)
+        self.assertEqual(result["windows_ended_at_restart"], 1)
+        frozen = result["as_frozen_before_results"]
+        self.assertEqual(frozen["verdict"], "fail")
+        self.assertEqual(len(frozen["problems"]), 2)
+        self.assertIn("|yaw rate| 0.1740 rad/s at step 150", frozen["problems"][0])
+        self.assertIn("as frozen before the results", frozen["window_rule"])
+        window = result["entry_windows"][0]
+        # Top-level window fields stay the full window.
+        self.assertEqual((window["start_s"], window["end_s"], window["rows"]), (2.72, 3.72, 51))
+        self.assertAlmostEqual(window["max_abs_yaw_rate_radps"], 0.174)
+        self.assertEqual((window["yaw_rate"]["pass"], window["vertical_speed"]["pass"]), (False, False))
+        self.assertEqual(window["modes"], ["REJOIN", "RL", "STAND_TRANSITION"])
+        amended = window["amended"]
+        self.assertEqual((amended["window_end"], amended["restart_step"], amended["restart_s"], amended["restart_mode"]),
+                         ("restart", 145, 2.92, "REJOIN"))
+        self.assertEqual((amended["end_s"], amended["rows"], amended["modes"]), (2.9, 10, ["STAND_TRANSITION"]))
+        self.assertTrue(amended["window_complete"])
+        self.assertEqual((amended["max_abs_yaw_rate_radps"], amended["max_abs_vertical_speed_mps"]), (0.01, 0.002))
+        self.assertEqual((amended["yaw_rate"]["pass"], amended["vertical_speed"]["pass"]), (True, True))
+        # A spike on the restart row itself is excluded; one row earlier counts.
+        rows[145]["yaw_rate_radps"] = 0.3
+        self.assertEqual(self.ac7(rows, "restart_row_spike")["verdict"], "pass")
+        rows[144]["yaw_rate_radps"] = 0.16
+        result = self.ac7(rows, "before_restart_spike")
+        self.assertEqual(result["verdict"], "fail")
+        self.assertEqual(len(result["problems"]), 1)
+        self.assertIn("at step 144 exceeds 0.15 (window ends before the restart at step 145)", result["problems"][0])
+
+    def test_restart_after_the_window_changes_nothing(self):
+        rows = self.with_modes(stand_rows(), 186, ["REJOIN"] * 13)
+        rows[160]["yaw_rate_radps"] = 0.2
+        result = self.ac7(rows, "late_restart")
+        window = result["entry_windows"][0]
+        amended = window["amended"]
+        self.assertEqual((amended["window_end"], amended["restart_step"], amended["restart_s"], amended["restart_mode"]),
+                         ("window_s", None, None, None))
+        for key in ("end_s", "rows", "modes", "max_abs_yaw_rate_radps", "max_abs_yaw_rate_step",
+                    "max_abs_vertical_speed_mps", "max_abs_vertical_speed_step", "yaw_rate", "vertical_speed",
+                    "window_complete"):
+            self.assertEqual(amended[key], window[key], key)
+        self.assertEqual((result["verdict"], result["as_frozen_before_results"]["verdict"]), ("fail", "fail"))
+        self.assertEqual(result["problems"], result["as_frozen_before_results"]["problems"])
+        self.assertEqual(result["windows_ended_at_restart"], 0)
+
+    def test_direct_exit_to_rl_is_a_restart(self):
+        rows = self.with_modes(stand_rows(), 160, ["RL"] * 30)
+        rows[170]["yaw_rate_radps"] = 0.25
+        result = self.ac7(rows, "direct_exit")
+        amended = result["entry_windows"][0]["amended"]
+        self.assertEqual((amended["window_end"], amended["restart_step"], amended["restart_mode"], amended["rows"]),
+                         ("restart", 160, "RL", 25))
+        self.assertEqual((result["verdict"], result["as_frozen_before_results"]["verdict"]), ("pass", "fail"))
+
+    def test_fixed_stand_inside_the_window_is_not_a_restart(self):
+        rows = stand_rows(fixed_from=3.2)  # FIXED_STAND from row 159, inside the 1.0 s window
+        rows[170]["yaw_rate_radps"] = 0.2
+        result = self.ac7(rows, "fixed_inside")
+        window = result["entry_windows"][0]
+        self.assertEqual(window["modes"], ["FIXED_STAND", "STAND_TRANSITION"])
+        self.assertEqual((window["amended"]["window_end"], window["amended"]["rows"]), ("window_s", 51))
+        self.assertEqual((result["verdict"], result["as_frozen_before_results"]["verdict"]), ("fail", "fail"))
+
+    def test_as_frozen_fields_for_hold_off_and_no_entry_runs(self):
+        off = self.ac7(stand_rows(stance=False), "off_fields", mode="off")
+        self.assertEqual(off["as_frozen_before_results"]["verdict"], "not_applicable")
+        self.assertTrue(analyzer.ac7_ok(off["as_frozen_before_results"]))
+        self.assertEqual(off["verdict_rule"], "amended_end_at_restart")
+        none = self.ac7(stand_rows(settle_until=61.0), "no_entry_fields")
+        self.assertEqual((none["verdict"], none["as_frozen_before_results"]["verdict"]), ("pass", "pass"))
+        self.assertEqual(none["windows_ended_at_restart"], 0)
+
+    def test_superseded_thresholds_reproduce_the_full_window_verdict(self):
+        """Loading the pre-D7 file (allowed explicitly) gives the old verdict and no amended window."""
+        rows = self.with_modes(stand_rows(), 145, ["REJOIN"] * 13 + ["RL"] * 40)
+        rows[150]["yaw_rate_radps"] = -0.174
+        run = analyzer.load_run(write_run(self.root, "old_rule", rows))
+        old = analyzer.ac7(run, analyzer.load_thresholds(D6_THRESHOLDS, allow_unfrozen=True))
+        self.assertEqual((old["verdict"], old["verdict_rule"], old["limits"]["end_at_restart"]),
+                         ("fail", "full_window", False))
+        self.assertNotIn("amended", old["entry_windows"][0])
+        self.assertIsNone(old["windows_ended_at_restart"])
+        self.assertIsNone(old["post_result_amendment"])
+        self.assertEqual(old["problems"], old["as_frozen_before_results"]["problems"])
+        new = analyzer.ac7(run, self.thresholds)
+        self.assertEqual(new["as_frozen_before_results"]["problems"], old["problems"])
+        self.assertEqual({k: v for k, v in new["entry_windows"][0].items() if k != "amended"},
+                         old["entry_windows"][0])
+
+    def test_recorded_c2_e06_passes_amended_and_fails_as_frozen(self):
+        if not (C2_E06_RUN / "returned_artifacts/runner_output/metrics.jsonl").is_file():
+            self.skipTest("local C2 episode 6 artifacts are absent")
+        result = analyzer.ac7(analyzer.load_run(C2_E06_RUN), self.thresholds)
+        self.assertEqual(result["verdict"], "pass", result["problems"])
+        frozen = result["as_frozen_before_results"]
+        self.assertEqual(frozen["verdict"], "fail")
+        self.assertEqual(len(frozen["problems"]), 1)
+        self.assertIn("entry at step 332: |yaw rate| 0.1744 rad/s at step 345", frozen["problems"][0])
+        window = next(w for w in result["entry_windows"] if w["entry_step"] == 332)
+        self.assertAlmostEqual(window["max_abs_yaw_rate_radps"], 0.1744, places=4)
+        amended = window["amended"]
+        self.assertEqual((amended["window_end"], amended["restart_step"], amended["restart_mode"], amended["rows"]),
+                         ("restart", 341, "REJOIN", 9))
+        self.assertLessEqual(amended["max_abs_yaw_rate_radps"], 0.15)
+        self.assertLessEqual(amended["max_abs_vertical_speed_mps"], 0.05)
 
 
 class TransitionTests(unittest.TestCase):
@@ -782,6 +950,27 @@ class WalkTests(unittest.TestCase):
         self.assertEqual([c["pass"] for c in ac8["a_fixed_stand"]], [False, True, True])
         self.assertTrue(any("a: phase stand_initial did not reach FIXED_STAND" in p for p in ac8["problems"]),
                         ac8["problems"])
+
+    def test_b_keeps_the_full_window_when_ac7_ends_at_a_restart(self):
+        """PRD D7 applies to AC7 only: AC8 b and the D5 selection value use the full 1.0 s entry window."""
+        # stop_1 entry at 11.5 s; the walk_2 command at 12.0 s starts REJOIN inside that entry's window.
+        rows = walk_rows(entry_delay=(0.4, 4.5, 0.8))
+        spike = next(i for i, row in enumerate(rows) if abs(row["sim_time_s"] - 12.2) < 1e-6)
+        self.assertEqual(rows[spike]["stance_mode"], "REJOIN")
+        rows[spike]["yaw_rate_radps"] = 0.3
+        report = self.analyze(self.on("restart", rows=rows))["runs"][1]
+        ac7 = report["ac7"]
+        self.assertEqual(ac7["verdict"], "pass", ac7["problems"])
+        self.assertEqual(ac7["as_frozen_before_results"]["verdict"], "fail")
+        window = ac7["entry_windows"][1]
+        self.assertEqual((window["amended"]["window_end"], window["amended"]["restart_mode"]), ("restart", "REJOIN"))
+        self.assertAlmostEqual(window["amended"]["restart_s"], 12.02, places=6)
+        b = report["ac8"]["b_entry_windows"]
+        self.assertEqual((b["verdict"], b["entry_windows"]), ("fail", 3))
+        self.assertEqual(b["problems"], ac7["as_frozen_before_results"]["problems"])
+        self.assertIn("full window", b["window_rule"])
+        self.assertTrue(any(p.startswith("b: entry at step") and "0.3000" in p for p in report["ac8"]["problems"]))
+        self.assertEqual(report["max_entry_window_abs_yaw_rate_radps"], 0.3)
 
     def test_a_requires_fixed_stand_in_every_zero_phase(self):
         # Entry 3.1 s after the 7 s stop: FIXED_STAND would start at 12.1 s, after the 12 s start.

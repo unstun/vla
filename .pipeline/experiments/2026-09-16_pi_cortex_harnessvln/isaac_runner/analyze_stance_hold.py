@@ -17,6 +17,15 @@ such as a two-goal episode. AC7 (entry smoothness, PRD D4) applies to hold-on
 runs only and is "not_applicable" for the others. Rows without stance fields
 are reported as "hold off / no stance fields".
 
+AC7 window (PRD D7, a post-result amendment made after the C2 result): when
+the thresholds set `ac7_entry.end_at_restart`, each entry window also ends at
+the restart row (the first row after the entry whose stance_mode is neither
+STAND_TRANSITION nor FIXED_STAND), which is excluded. The AC7 `verdict` uses
+that rule; `as_frozen_before_results` gives the verdict with the full window as
+frozen before the results. In each entry window the top-level maxima and checks
+are the full window, as before, and `amended` holds the truncated window. AC8 b
+and the D5 selection use the full window.
+
 `walk` (PRD D5) takes scripted_walk runs: one hold-off baseline and one or
 more hold-on entry damping variants. It gives AC8 (a-d) for each hold-on run,
 AC5 and AC7 for every run, per-stop and per-start numbers for every run (the
@@ -39,13 +48,18 @@ from typing import Iterable, List, Optional
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_THRESHOLDS = HERE / "stance_hold_thresholds.json"
-# SHA-256 of stance_hold_thresholds.json as amended for the PRD D6 crossfade
-# variants (a descriptive ac8_walk.run change only), before the D6 scripted-walk
-# runs. A different file is refused unless --allow-unfrozen-thresholds.
-FROZEN_THRESHOLDS_SHA256 = "0be59927aa18ad97cc6dfc01a3179867ce84e71e712286ee971a485a5238a29d"
+# SHA-256 of stance_hold_thresholds.json with the PRD D7 AC7 amendment (the entry
+# window also ends at a restart). D7 is a post-result change: it was made after
+# the C2 two-goal result was known. A different file is refused unless
+# --allow-unfrozen-thresholds.
+FROZEN_THRESHOLDS_SHA256 = "34c15fe6fabd6bf90f34456371e363fc3e4ed813a2570a96a80760f6c5a8e049"
 # Superseded frozen files, kept byte-for-byte for the reports that used them.
 # They are refused like any other file.
 SUPERSEDED_THRESHOLDS = {
+    "0be59927aa18ad97cc6dfc01a3179867ce84e71e712286ee971a485a5238a29d":
+        "stance_hold_thresholds_history/stance_hold_thresholds_0be59927.json (AC7 before the PRD D7 "
+        "amendment, full 1.0 s entry window; used by the D6 walk report walk_d6_20260917T181650Z and the C2 "
+        "series report series_d6_20260918)",
     "fb8f9204c18e0b400ae2b7a2abc22bb052526538ff9713689759f15bff897c66":
         "stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json (AC3/AC5 only, used by C1 "
         "stand_20260917T125239Z)",
@@ -402,24 +416,94 @@ def ac5(run: dict, thresholds: dict) -> dict:
     }
 
 
+# Stance modes that keep an AC7 entry window open under the PRD D7 amendment.
+HOLD_MODES = ("STAND_TRANSITION", "FIXED_STAND")
+AC7_FULL_WINDOW_RULE = ("rows with sim_time_s in [t0, t0 + window_s] (window_tolerance_s at the end), "
+                        "t0 = entry row sim_time_s")
+AC7_AMENDED_WINDOW_RULE = (
+    "PRD D7 post-result amendment (Dr Sun, 2026-09-18, made after the C2 result was known): "
+    + AC7_FULL_WINDOW_RULE + ", ending before the restart row, the first row after the entry row whose "
+    "stance_mode is neither STAND_TRANSITION nor FIXED_STAND; the restart row and every later row are excluded. "
+    "Per entry window, the top-level maxima and checks are the full window and 'amended' is the truncated window; "
+    "as_frozen_before_results gives the verdict with the full window"
+)
+
+
+def entry_window_stats(part: List[dict], yaw_limit: float, vertical_limit: float):
+    """|yaw rate| and |vertical speed| maxima and checks over the rows of one entry window.
+
+    Returns the statistics and the steps whose base_linear_velocity_world is missing.
+    """
+    yaw = [abs(float(row["yaw_rate_radps"])) for row in part]
+    velocities = [row.get("base_linear_velocity_world") for row in part]
+    missing = [row["step"] for row, value in zip(part, velocities)
+               if not isinstance(value, (list, tuple)) or len(value) < 3]
+    vertical = None if missing else [abs(float(value[2])) for value in velocities]
+    max_yaw = max(yaw)
+    max_vertical = None if vertical is None else max(vertical)
+    yaw_pass = max_yaw <= yaw_limit
+    vertical_pass = None if max_vertical is None else max_vertical <= vertical_limit
+    stats = {
+        "end_s": float(part[-1]["sim_time_s"]),
+        "rows": len(part),
+        "modes": sorted({str(row.get("stance_mode")) for row in part}),
+        "max_abs_yaw_rate_radps": max_yaw,
+        "max_abs_yaw_rate_step": part[yaw.index(max_yaw)]["step"],
+        "max_abs_vertical_speed_mps": max_vertical,
+        "max_abs_vertical_speed_step": None if vertical is None else part[vertical.index(max_vertical)]["step"],
+        "yaw_rate": check(max_yaw, yaw_limit, yaw_pass),
+        "vertical_speed": check(max_vertical, vertical_limit, vertical_pass),
+    }
+    return stats, missing
+
+
+def entry_window_problems(entry_step, stats: dict, missing: List, yaw_limit: float, vertical_limit: float,
+                          suffix: str = "") -> List[str]:
+    problems = []
+    if missing:
+        problems.append("entry at step %s: vertical speed is not evaluable (base_linear_velocity_world "
+                        "missing at steps %s)%s" % (entry_step, missing[:10], suffix))
+    if not stats["yaw_rate"]["pass"]:
+        problems.append("entry at step %s: |yaw rate| %.4f rad/s at step %s exceeds %.2f%s"
+                        % (entry_step, stats["max_abs_yaw_rate_radps"], stats["max_abs_yaw_rate_step"], yaw_limit,
+                           suffix))
+    if stats["vertical_speed"]["pass"] is False:
+        problems.append("entry at step %s: |vertical speed| %.4f m/s at step %s exceeds %.2f%s"
+                        % (entry_step, stats["max_abs_vertical_speed_mps"], stats["max_abs_vertical_speed_step"],
+                           vertical_limit, suffix))
+    return problems
+
+
 def ac7(run: dict, thresholds: dict) -> dict:
-    """Entry smoothness (PRD D4): yaw rate and vertical body speed after each hold entry."""
+    """Entry smoothness (PRD D4): yaw rate and vertical body speed after each hold entry.
+
+    With ac7_entry.end_at_restart (PRD D7, post-result) the verdict uses windows that end at the restart;
+    as_frozen_before_results keeps the full-window verdict, which AC8 b uses.
+    """
     limits = thresholds["values"]["ac7_entry"]
     rows = run["rows"]
     window_s = float(limits["window_s"])
     tolerance_s = float(limits["window_tolerance_s"])
     yaw_limit = float(limits["max_abs_yaw_rate_radps"])
     vertical_limit = float(limits["max_abs_vertical_speed_mps"])
+    end_at_restart = bool(limits.get("end_at_restart", False))
     base = {
         "limits": {"window_s": window_s, "window_tolerance_s": tolerance_s, "max_abs_yaw_rate_radps": yaw_limit,
-                   "max_abs_vertical_speed_mps": vertical_limit},
+                   "max_abs_vertical_speed_mps": vertical_limit, "end_at_restart": end_at_restart},
         "stance_fields": stance_fields(rows),
+        "verdict_rule": "amended_end_at_restart" if end_at_restart else "full_window",
+        "window_rule": AC7_AMENDED_WINDOW_RULE if end_at_restart else AC7_FULL_WINDOW_RULE,
+        "post_result_amendment": limits.get("amendment") if end_at_restart else None,
     }
+    as_frozen_rule = AC7_FULL_WINDOW_RULE + "; the AC7 rule as frozen before the results; AC8 b uses this window"
     if not hold_on(run):
         base.update({"verdict": "not_applicable", "problems": [], "entry_windows": [],
-                     "note": "not a stance_hold auto run"})
+                     "note": "not a stance_hold auto run",
+                     "as_frozen_before_results": {"verdict": "not_applicable", "problems": [],
+                                                  "window_rule": as_frozen_rule}})
         return base
-    problems = []
+    full_problems = []
+    amended_problems = []
     windows = []
     for index in entry_indices(rows):
         t0 = float(rows[index]["sim_time_s"])
@@ -428,47 +512,40 @@ def ac7(run: dict, thresholds: dict) -> dict:
             if float(row["sim_time_s"]) > t0 + window_s + tolerance_s:
                 break
             part.append(row)
-        yaw = [abs(float(row["yaw_rate_radps"])) for row in part]
-        velocities = [row.get("base_linear_velocity_world") for row in part]
-        missing = [row["step"] for row, value in zip(part, velocities)
-                   if not isinstance(value, (list, tuple)) or len(value) < 3]
-        vertical = None if missing else [abs(float(value[2])) for value in velocities]
-        max_yaw = max(yaw)
-        max_vertical = None if vertical is None else max(vertical)
-        yaw_pass = max_yaw <= yaw_limit
-        vertical_pass = None if max_vertical is None else max_vertical <= vertical_limit
-        window = {
-            "entry_step": rows[index]["step"],
-            "start_s": t0,
-            "end_s": float(part[-1]["sim_time_s"]),
-            "rows": len(part),
-            "window_complete": float(rows[-1]["sim_time_s"]) >= t0 + window_s - tolerance_s,
-            "modes": sorted({str(row.get("stance_mode")) for row in part}),
-            "max_abs_yaw_rate_radps": max_yaw,
-            "max_abs_yaw_rate_step": part[yaw.index(max_yaw)]["step"],
-            "max_abs_vertical_speed_mps": max_vertical,
-            "max_abs_vertical_speed_step": None if vertical is None else part[vertical.index(max_vertical)]["step"],
-            "yaw_rate": check(max_yaw, yaw_limit, yaw_pass),
-            "vertical_speed": check(max_vertical, vertical_limit, vertical_pass),
-        }
+        entry_step = rows[index]["step"]
+        stats, missing = entry_window_stats(part, yaw_limit, vertical_limit)
+        window_complete = float(rows[-1]["sim_time_s"]) >= t0 + window_s - tolerance_s
+        # Top-level fields: the full window, exactly as before the D7 amendment.
+        window = dict(stats, entry_step=entry_step, start_s=t0, window_complete=window_complete)
+        full_problems.extend(entry_window_problems(entry_step, stats, missing, yaw_limit, vertical_limit))
+        if end_at_restart:
+            restart = next((offset for offset in range(1, len(part))
+                            if str(part[offset].get("stance_mode")) not in HOLD_MODES), None)
+            kept = part if restart is None else part[:restart]
+            amended, amended_missing = entry_window_stats(kept, yaw_limit, vertical_limit)
+            amended.update({
+                "window_end": "window_s" if restart is None else "restart",
+                "restart_step": None if restart is None else part[restart]["step"],
+                "restart_s": None if restart is None else float(part[restart]["sim_time_s"]),
+                "restart_mode": None if restart is None else str(part[restart].get("stance_mode")),
+                "window_complete": window_complete if restart is None else True,
+            })
+            window["amended"] = amended
+            suffix = "" if restart is None else " (window ends before the restart at step %s)" % amended["restart_step"]
+            amended_problems.extend(entry_window_problems(entry_step, amended, amended_missing, yaw_limit,
+                                                          vertical_limit, suffix))
         windows.append(window)
-        if missing:
-            problems.append("entry at step %s: vertical speed is not evaluable (base_linear_velocity_world "
-                            "missing at steps %s)" % (window["entry_step"], missing[:10]))
-        if not yaw_pass:
-            problems.append("entry at step %s: |yaw rate| %.4f rad/s at step %s exceeds %.2f"
-                            % (window["entry_step"], max_yaw, window["max_abs_yaw_rate_step"], yaw_limit))
-        if vertical_pass is False:
-            problems.append("entry at step %s: |vertical speed| %.4f m/s at step %s exceeds %.2f"
-                            % (window["entry_step"], max_vertical, window["max_abs_vertical_speed_step"],
-                               vertical_limit))
+    as_frozen = {"verdict": "pass" if not full_problems else "fail", "problems": full_problems,
+                 "window_rule": as_frozen_rule}
+    problems = amended_problems if end_at_restart else full_problems
     base.update({
         "verdict": "pass" if not problems else "fail",
         "problems": problems,
         "entry_windows": windows,
         "note": None if windows else "hold-on run without an entry; no window to check",
-        "window_rule": "rows with sim_time_s in [t0, t0 + window_s] (window_tolerance_s at the end), "
-                       "t0 = entry row sim_time_s",
+        "windows_ended_at_restart": (sum(1 for w in windows if w["amended"]["window_end"] == "restart")
+                                     if end_at_restart else None),
+        "as_frozen_before_results": as_frozen,
     })
     return base
 
@@ -854,10 +931,13 @@ def ac8(on: dict, on_report: dict, off_report: dict, thresholds: dict, ac7_resul
     if len(on_report["zero_phases"]) != sum(1 for p in limits["phases"] if not any(p["command"])):
         problems.append("a: not every zero phase was recorded")
 
-    b = {"verdict": ac7_result["verdict"], "entry_windows": len(ac7_result["entry_windows"]),
-         "problems": ac7_result["problems"]}
-    if ac7_result["verdict"] != "pass":
-        problems.extend("b: " + item for item in (ac7_result["problems"] or ["AC7 verdict " + ac7_result["verdict"]]))
+    # AC8 b keeps the literal full 1.0 s window; the PRD D7 restart amendment applies to AC7 only.
+    full = ac7_result["as_frozen_before_results"]
+    b = {"verdict": full["verdict"], "entry_windows": len(ac7_result["entry_windows"]),
+         "problems": full["problems"],
+         "window_rule": "full window: " + AC7_FULL_WINDOW_RULE + " (ac8_walk.b_entry_windows; not the D7 restart rule)"}
+    if full["verdict"] != "pass":
+        problems.extend("b: " + item for item in (full["problems"] or ["AC7 verdict " + full["verdict"]]))
 
     c_checks = []
     off_starts = off_report["starts"]
@@ -916,6 +996,7 @@ def ac8(on: dict, on_report: dict, off_report: dict, thresholds: dict, ac7_resul
 
 
 def max_entry_yaw(ac7_result: dict) -> Optional[float]:
+    """D5 selection value: the largest full-window |yaw rate| over all entry windows (not the D7 amended window)."""
     values = [window["max_abs_yaw_rate_radps"] for window in ac7_result["entry_windows"]]
     return max(values) if values else None
 

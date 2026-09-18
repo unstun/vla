@@ -32,7 +32,10 @@ ownership belongs to the external PCT/SCAN backend.
 
 `--stance-hold {off,auto}` (default `off`) selects the PD stance hold described
 in "Stance Hold" below. With `off`, the step path is the runner's own
-`previous_actions = actions` and no actuator gain is written.
+`previous_actions = actions` and no actuator gain is written. These are the
+patched runner's own defaults, which PRD D8 left unchanged; the launchers
+always pass the flags and default to the hold on (see "Launcher Defaults
+(PRD D8)" below).
 
 Three more flags come from PRD D5 (see "Scripted Walk" below). Their defaults
 keep the previous path:
@@ -161,13 +164,13 @@ It waits for `current_command.json` to reach `--finish-after-sim-seconds`
 enforce the stillness exit.
 
 Stand options (added 2026-09-17 for the stance-hold task): `--stance-hold
-{off,auto}` (default `off`), `--duration-seconds` (default 8, at most 60) and
-`--finish-after-sim-seconds` (default 2; it must leave 1 s of stillness plus
-1 s of margin before the duration ends). All three are written to
-`run_request.json`. `--execute` refuses a value that differs from the prepared
-package, and a package without these keys counts as `off`, 8 s and 2 s. The
-worker also checks that the runner summary reports the requested stance-hold
-mode. The AC3 stand pair is:
+{off,auto}` (default `auto` since PRD D8; it was `off`), `--duration-seconds`
+(default 8, at most 60) and `--finish-after-sim-seconds` (default 2; it must
+leave 1 s of stillness plus 1 s of margin before the duration ends). All three
+are written to `run_request.json`. `--execute` refuses a value that differs
+from the prepared package, and a package without these keys counts as `off`,
+8 s and 2 s. The worker also checks that the runner summary reports the
+requested stance-hold mode. The AC3 stand pair is:
 
 ```bash
 python3 .pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/qualify_stand_runner.py \
@@ -258,17 +261,21 @@ Task: `.trellis/tasks/09-17-isaac-runner-stance-hold` (design.md, implement.md).
   nonzero unless every applicable verdict passes. `walk` is described in
   "Scripted Walk" below.
   - Thresholds live in `stance_hold_thresholds.json`, frozen at SHA-256
-    `0be59927aa18ad97cc6dfc01a3179867ce84e71e712286ee971a485a5238a29d`
-    (the `ac8_walk.run` text names the D6 crossfade variants; no limit,
-    window, definition or selection rule changed). Any other file is refused,
-    including the three superseded files, which are kept byte-for-byte:
+    `34c15fe6fabd6bf90f34456371e363fc3e4ed813a2570a96a80760f6c5a8e049`
+    (PRD D7: the AC7 entry window also ends at a restart; a post-result
+    change, see "AC7 Restart Amendment (PRD D7)" below). Any other file is
+    refused, including the four superseded files, which are kept
+    byte-for-byte:
     - `stance_hold_thresholds_history/stance_hold_thresholds_fb8f9204.json`
       (AC3/AC5 only; used for the first C1 report);
     - `stance_hold_thresholds_history/stance_hold_thresholds_12373448.json`
       (adds AC7; used for the C1b report);
     - `stance_hold_thresholds_history/stance_hold_thresholds_683a8ca6.json`
-      (adds AC8; used for the C1d walk report).
-    - The live file's `amendments` list records all three changes. Those
+      (adds AC8; used for the C1d walk report);
+    - `stance_hold_thresholds_history/stance_hold_thresholds_0be59927.json`
+      (names the D6 crossfade variants; AC7 with the full 1.0 s window; used
+      for the D6 walk report and the C2 series report `series_d6_20260918`).
+    - The live file's `amendments` list records all four changes. Those
       reports can be reproduced only with `--allow-unfrozen-thresholds`.
   - AC7 (entry smoothness): each entry window runs from the first
     STAND_TRANSITION row to 1.0 s after it, inclusive, with a 1 ms tolerance.
@@ -276,7 +283,8 @@ Task: `.trellis/tasks/09-17-isaac-runner-stance-hold` (design.md, implement.md).
     |`base_linear_velocity_world[2]`| ≤ 0.05 m/s. A window row without the
     velocity field fails the check. Hold-off runs report `not_applicable`.
     The first C1 hold-on run fails AC7 (0.302 rad/s and 0.210 m/s, both at
-    step 20).
+    step 20). Since PRD D7 the window also ends at a restart; see "AC7
+    Restart Amendment (PRD D7)" below.
   - Rows without stance fields are reported as "hold off / no stance fields".
   - AC3 also fails when the hold-on run has no `summary.json`, ended with a
     status other than `EXTERNAL_EPISODE_FINISHED` or `DURATION_REACHED`, or
@@ -447,10 +455,11 @@ unchanged.
   `entry_crossfade_rule`, `entry_grace_s` and `entry_grace_variants`, so
   `stance_hold_setup.json` and `summary.json` describe the executed variant.
 - Launchers: `qualify_stand_runner.py` accepts the new values.
-  `run_two_goal_pilot.py` gained `--stance-entry-kd` (default `ramp`, refused
-  with `--stance-hold off`, passed to the runner only with `--stance-hold
-  auto`, recorded in `run_request.json` and in the RUNBOOK, and checked
-  against the prepared package at `--execute`).
+  `run_two_goal_pilot.py` gained `--stance-entry-kd` (then default `ramp`;
+  xfade1s with the hold on since PRD D8; refused with `--stance-hold off`
+  unless it is `ramp`, passed to the runner only with `--stance-hold auto`,
+  recorded in `run_request.json` and in the RUNBOOK, and checked against the
+  prepared package at `--execute`).
 - The D6 runs (26 s; finish request at 20 s; the C1d hold-off run is the
   reused baseline):
 
@@ -473,6 +482,74 @@ python3 $Q --run-id walk_YYYYMMDDTHHMMSSZ_hold_auto_xfade2s --case scripted_walk
 - Claim boundary: simulation only (V12 in Isaac, one flat Building corridor).
   Local tests use synthetic inputs and fake Isaac objects; they are not run
   evidence.
+
+## AC7 Restart Amendment (PRD D7, post-result)
+
+Dr Sun, 2026-09-18: "Change the AC7 rule to stop the evaluation window at a
+restart, and explicitly label it as a post-result change in the report." The
+change was made after the C2 two-goal result was known: episode 6
+(`two_goal_20260918T030524Z_hold_e06`) failed AC7 as written in 1 of 30 entry
+windows, because a resumed command restarted V12 inside the 1.0 s window of the
+entry at step 332 (0.174 rad/s at step 345, inside REJOIN).
+
+- Thresholds: `ac7_entry` gains `end_at_restart: true`, the `restart`
+  definition and an `amendment` record (`post_result: true`, previous SHA-256
+  `0be59927...`). No limit, the entry definition, `window_s`,
+  `window_tolerance_s` or any other section changed.
+- Rule: the window ends at the restart row, the first row after the entry row
+  whose `stance_mode` is neither STAND_TRANSITION nor FIXED_STAND (normally the
+  first REJOIN row, or RL after a direct exit). That row and every later row
+  are excluded. The window still ends 1.0 s after the entry row when that
+  comes first. FIXED_STAND inside the window is not a restart.
+- Analyzer output (`ac7`):
+  - `verdict` and `problems` use the amended rule, `verdict_rule` is
+    `amended_end_at_restart`, and `window_rule` says it is a post-result
+    change. `post_result_amendment` copies the thresholds record.
+  - `as_frozen_before_results` holds the verdict and problems with the full
+    window, the rule as frozen before the results.
+  - In each entry window the top-level fields (`end_s`, `rows`, the maxima and
+    the `yaw_rate` / `vertical_speed` checks) are still the full window, and
+    `amended` holds the truncated window with `window_end` (`window_s` or
+    `restart`), `restart_step`, `restart_s` and `restart_mode`.
+  - `windows_ended_at_restart` counts the truncated windows.
+  - A superseded thresholds file without `end_at_restart` (loaded with
+    `--allow-unfrozen-thresholds`) gives the old full-window behaviour.
+- Unchanged by D7: AC8 b uses `as_frozen_before_results`, the literal full
+  1.0 s window from the first STAND_TRANSITION row. The D5 selection value
+  (`max_entry_window_abs_yaw_rate_radps`) is the full-window maximum.
+- `stance_hold_qualification/series_report.py` prints both AC7 verdicts side
+  by side, e.g. `AC7 pass (as frozen: FAIL)`, and writes `ac7_rule`,
+  `ac7_ok` and `ac7_as_frozen_ok`.
+- Re-analysis with the amended thresholds (`stance_hold_qualification/*_d7_*`
+  and `series_d7_20260918.json`): the only verdict change is AC7 for C2
+  episode 6 (amended pass, as frozen fail). Its step-332 window ends at the
+  restart row 341 (REJOIN, 6.84 s); the amended maxima are 0.063 rad/s and
+  0.013 m/s. Across the 30 C2 entry windows, 9 end at a restart.
+
+## Launcher Defaults (PRD D8)
+
+Dr Sun, 2026-09-18: "Make --stance-hold auto the default going forward."
+
+- `qualify_stand_runner.py` and `run_two_goal_pilot.py` default to
+  `--stance-hold auto` with `--stance-entry-kd xfade1s`, the D5/D6-selected
+  variant that C2 ran. The old launcher default, `ramp`, failed AC7 in C1b.
+- `--stance-hold off` stays available. Without `--stance-entry-kd` it records
+  the runner's `ramp`; any other entry variant is refused with the hold off.
+  `run_two_goal_pilot.py` passes no entry flag to the runner with the hold
+  off, so a hold-off package keeps its previous runner argv.
+- Legacy packages keep their recorded meaning: at `--execute`, a
+  `run_request.json` without `stance_hold` counts as `off`, and one without
+  `stance_entry_kd` counts as `ramp` (`LEGACY_PACKAGE_STANCE_HOLD`,
+  `LEGACY_PACKAGE_STANCE_ENTRY_KD`). Executing such a package now needs an
+  explicit `--stance-hold off`.
+- The patched runner keeps its own default `--stance-hold off`, so the
+  qualified runner bytes (`0649747e...`) and `source_hashes.json` are
+  unchanged.
+- Callers pinned to their recorded hold-off conditions:
+  `scan_fix_qualification/run_isaac_series.py` and
+  `pointcloud_display/run_probe.py` pass `--stance-hold off` explicitly.
+  `stance_hold_qualification/run_hold_series.py` already passes
+  `--stance-hold auto --stance-entry-kd <variant>`.
 
 ## Two-Goal P2B Pilot Prepared Package
 
@@ -518,9 +595,10 @@ Resource records: `artifacts/gpu_samples.jsonl` holds device-wide `nvidia-smi`
 samples every 1 s; `result.json` holds `gpu_memory` (peak and first sample),
 `remote_wall_seconds`, `started_utc` and `finished_utc`; and
 `return_verdict.json` holds `host_wall_seconds` for each host command. With
-default flags, `run_request.json` and `commands.json` match the actual4 package
-except for these new fields and the explicit `--cancel-displacement-m 0.4`.
-The launcher tests check this.
+`--stance-hold off` (the default before PRD D8) and otherwise default flags,
+`run_request.json` and `commands.json` match the actual4 package except for
+these new fields, the runner's `--stance-hold off` and the explicit
+`--cancel-displacement-m 0.4`. The launcher tests check this.
 
 Package storage (added 2026-09-17, design 5.2). `prepare` hardlinks the frozen
 `pct_runtime/` tree and `inputs/{building.usda,new_building.pickle,pilot.json,input_manifest.json}`
@@ -563,12 +641,13 @@ when the post-run recheck fails.
 
 `--execute` on an existing package refuses a `--remote-only-bulk`,
 `--cancel-displacement-m`, `--stance-hold` or `--stance-entry-kd` value that
-differs from the prepared package. `--stance-hold` (default `off`) is passed to
-the runner and recorded in `run_request.json`. A package without the key counts
-as `off`. `--stance-entry-kd` (default `ramp`, PRD D6) is recorded the same way,
-is refused with `--stance-hold off`, and is passed to the runner only with
-`--stance-hold auto`, so a hold-off package keeps its previous runner argv. A
-package without that key counts as `ramp`.
+differs from the prepared package. `--stance-hold` (default `auto` since PRD
+D8; it was `off`) is passed to the runner and recorded in `run_request.json`. A
+package without the key counts as `off`. `--stance-entry-kd` (PRD D6; default
+`xfade1s` with the hold on since PRD D8, `ramp` with the hold off) is recorded
+the same way, is refused with `--stance-hold off` unless it is `ramp`, and is
+passed to the runner only with `--stance-hold auto`, so a hold-off package
+keeps its previous runner argv. A package without that key counts as `ramp`.
 
 ## Walk Review Video
 

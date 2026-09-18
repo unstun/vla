@@ -96,6 +96,44 @@ robot still without the policy's standing jitter, and resume walking without a f
   - The D5 selection rule applies unchanged to the two new runs. If neither passes AC5 and AC8, report and stop.
   - `run_two_goal_pilot.py` gains the `--stance-entry-kd` passthrough, so C2 can use a selected variant. C2 still
     runs only after the walk verdict is reported.
+- D7 (Dr Sun, 2026-09-18, **post-result change**) "Change the AC7 rule to stop the evaluation window at a restart,
+  and explicitly label it as a post-result change in the report." Context:
+  - The C2 series (8/8 on AC4) failed AC7 as written in episode 6, 1 of 30 entry windows. The entry at 6.66 s
+    stayed at |yaw| ≤ 0.063 rad/s. The planner resumed at 6.84 s (the first REJOIN row, step 341), and the V12
+    restart peaked at 0.174 rad/s at 6.92 s inside REJOIN.
+  - The original rule's window (a fixed 1.0 s after entry) had no clause for a restart. It was frozen before any
+    two-goal run, and no hold-on run before C2 had a restart within 1 s of an entry.
+
+  Amended AC7 window:
+  - The window ends at the first row after the entry row whose `stance_mode` is neither STAND_TRANSITION nor
+    FIXED_STAND. That row is the restart, normally the first REJOIN row, or RL after a direct exit. The restart
+    row and every row after it are excluded.
+  - The window also ends at 1.0 s after the entry row, as before, if that comes first.
+  - Limits, entry definition and window tolerance are unchanged.
+
+  Reporting and scope:
+  - Every report shows both verdicts for each run: the amended one, and the original "as frozen before results"
+    one, with the full-window maxima.
+  - The report labels the amended verdict as a post-result change, made after the C2 result was known.
+  - The thresholds file is re-frozen with the amendment recorded in it. The previous file (`0be59927…`) is kept in
+    `stance_hold_thresholds_history/`.
+  - AC8 b keeps its literal window, 1.0 s from the first STAND_TRANSITION row. The amendment applies to AC7 only.
+- D8 (Dr Sun, 2026-09-18) "Make --stance-hold auto the default going forward." Implementation (lead):
+  - The launchers `qualify_stand_runner.py` and `run_two_goal_pilot.py` default to `--stance-hold auto` with the
+    `xfade1s` entry. xfade1s is the D5/D6-selected variant, and C2 ran with it. The old default `ramp`
+    failed AC7 in C1b, so auto with ramp would be an unqualified default.
+  - Old prepared packages keep their recorded meaning. A package without a `stance_hold` field ran with `off`;
+    without `stance_entry_kd` it ran `ramp`. The execute-time mismatch guard therefore compares against these
+    legacy values.
+  - The runner patch keeps its own default `--stance-hold off`, and the launchers always pass the flag explicitly.
+    The qualified patched runner bytes (`0649747e…`) therefore do not change.
+  - The SCAN-fix series driver (`scan_fix_qualification/run_isaac_series.py`) gets an explicit `--stance-hold off`,
+    so it keeps reproducing its recorded hold-off conditions.
+  - `--stance-hold off` stays available.
+  - As implemented (C4), `--stance-entry-kd` has no fixed parser default. It resolves to `xfade1s` with the hold
+    on and `ramp` with the hold off, because the launchers accept only `ramp` with the hold off.
+    `pointcloud_display/run_probe.py`, whose protocol requires the hold off, also passes `--stance-hold off`, and
+    `P2B_RESULT.md` notes the flag for reproduction.
 
 ## Constraints
 
@@ -105,7 +143,8 @@ robot still without the policy's standing jitter, and resume walking without a f
   pass.
 - The runner used in Isaac is the frozen reference plus the recorded, hash-checked patch (`materialize_runner_patch.py`).
   The hold is added the same way, and existing run packages stay immutable.
-- `--stance-hold off` is the default and must leave today's control path unchanged.
+- `--stance-hold off` must leave today's control path unchanged. It was the launcher default until D8 (2026-09-18) and
+  stays the runner patch default.
 - No Isaac run before Dr Sun approves the run budget (implement.md step C).
 
 ## Requirements
@@ -156,6 +195,9 @@ robot still without the policy's standing jitter, and resume walking without a f
 - [ ] AC7 Entry smoothness (added 2026-09-17 before the rerun, D4). In every hold-on run, over each entry window
       (from the first STAND_TRANSITION row to 1.0 s after it): max |yaw rate| ≤ 0.15 rad/s and max |vertical body
       speed| ≤ 0.05 m/s.
+      **Post-result amendment (D7, 2026-09-18, after C2):** the window also ends at the restart. That is the first row
+      after entry whose mode is neither STAND_TRANSITION nor FIXED_STAND, and it is excluded. Reports give both
+      verdicts.
 - [ ] AC8 Scripted walk (added 2026-09-17 before any walk run, D5). For each hold-on run:
       - a) every zero-command phase (0-4, 7-12 and 14.5-20 s) reaches FIXED_STAND before the next non-zero command,
         or before the finish request for the last phase;

@@ -139,6 +139,8 @@ def run_episode(index, cancel_m, ledger):
         sys.executable, str(LAUNCHER), "--run-id", run_id,
         "--accepted-scan-build-dir", str(BUILD), "--remote-scan-workspace", REMOTE_BUILD,
         "--cancel-displacement-m", f"{cancel_m:.2f}", "--remote-only-bulk",
+        # The SCAN series was qualified with the hold off; the launcher default is auto since the stance-hold task's PRD D8.
+        "--stance-hold", "off",
     ]
     steps = [("prepare", common), ("execute", common + ["--execute", "--lead-authorized-execute"])]
     for label, command in steps:
