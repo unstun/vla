@@ -1,0 +1,509 @@
+{
+  "artifacts_dir": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04/artifacts",
+  "claim": "Visual review aid built from recorded run files; not an acceptance check.",
+  "encoder": {
+    "attempts": [
+      {
+        "args": [
+          "-c:v",
+          "h264_nvenc",
+          "-gpu",
+          "0",
+          "-preset",
+          "p4",
+          "-tune",
+          "hq",
+          "-rc",
+          "vbr",
+          "-cq",
+          "30",
+          "-b:v",
+          "0"
+        ],
+        "decoded_frames": 205,
+        "decoder_returncode": 0,
+        "encoder": "h264_nvenc",
+        "encoder_returncode": 0,
+        "error": null,
+        "probe_ok": true,
+        "rendered_frames": 205,
+        "state_row_rules": [
+          "same_step"
+        ]
+      }
+    ],
+    "command": [
+      "/usr/bin/ffmpeg",
+      "-hide_banner",
+      "-nostdin",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "rawvideo",
+      "-pix_fmt",
+      "rgba",
+      "-s",
+      "1280x720",
+      "-framerate",
+      "25/2",
+      "-i",
+      "-",
+      "-c:v",
+      "h264_nvenc",
+      "-gpu",
+      "0",
+      "-preset",
+      "p4",
+      "-tune",
+      "hq",
+      "-rc",
+      "vbr",
+      "-cq",
+      "30",
+      "-b:v",
+      "0",
+      "-pix_fmt",
+      "yuv420p",
+      "-movflags",
+      "+faststart",
+      "-an",
+      "-f",
+      "mp4",
+      "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04/walk_review/walk_review.partial.mp4"
+    ],
+    "fallback": "libx264",
+    "ffmpeg": "/usr/bin/ffmpeg",
+    "ffmpeg_version": "ffmpeg version 6.1.1-3ubuntu5+esm10 Copyright (c) 2000-2023 the FFmpeg developers",
+    "requested": "h264_nvenc",
+    "used": "h264_nvenc"
+  },
+  "events": [
+    {
+      "accepted": true,
+      "first_frame_index": 34,
+      "journal_order": 1,
+      "key": "goal_a_sent",
+      "label": "goal A",
+      "monotonic_ns": 213787459540852,
+      "phase": "walking to A",
+      "placement": "timeline",
+      "request_id": "two_goal_20260918T025909Z_hold_e04-goal-a-attempt-1",
+      "sim_time_s": 2.7399999387562275,
+      "source": "pilot_journal.json post_goal wall_monotonic_ns",
+      "state_row": 136,
+      "state_row_lag_s": 0.023806984
+    },
+    {
+      "accepted": true,
+      "cancel_displacement_m": 0.4,
+      "first_frame_index": 55,
+      "journal_order": 2,
+      "key": "cancel_sent",
+      "label": "cancel",
+      "monotonic_ns": 213789570036808,
+      "phase": "cancel sent, stopping",
+      "placement": "timeline",
+      "sim_time_s": 4.419999901205301,
+      "snapshot_sim_time_s": 4.419999901205301,
+      "source": "pilot_journal.json post_cancel wall_monotonic_ns",
+      "state_row": 220,
+      "state_row_lag_s": 0.043027226
+    },
+    {
+      "cause": "http_cancel",
+      "first_frame_index": 73,
+      "journal_order": 7,
+      "key": "cancel_confirmed",
+      "label": "cancelled",
+      "monotonic_ns": 213791364470266,
+      "phase": "cancel confirmed, stopping",
+      "placement": "timeline",
+      "request_id": "two_goal_20260918T025909Z_hold_e04-goal-a-attempt-1",
+      "sim_time_s": 5.859999869018793,
+      "source": "pilot_journal.json state.terminal_results monotonic_s (backend)",
+      "state_row": 292,
+      "state_row_lag_s": 0.00995581
+    },
+    {
+      "first_frame_index": 74,
+      "journal_order": 3,
+      "key": "still_dwell_start",
+      "label": "dwell",
+      "phase": "stopped, confirming stillness (dwell)",
+      "placement": "timeline",
+      "sim_time_s": 5.879999868571758,
+      "source": "pilot_journal.json post_stop_proof dwell_start_sim_s",
+      "time_source": "recorded sim_time_s"
+    },
+    {
+      "dwell_sim_s": 1.0399999767541885,
+      "first_frame_index": 87,
+      "journal_order": 4,
+      "key": "still_confirmed",
+      "label": "still",
+      "monotonic_ns": 213792696702090,
+      "phase": "still confirmed",
+      "placement": "timeline",
+      "sim_time_s": 6.919999845325947,
+      "snapshot_sim_time_s": 6.919999845325947,
+      "source": "pilot_journal.json post_stop_proof wall_monotonic_ns",
+      "state_row": 345,
+      "state_row_lag_s": 0.010341985
+    },
+    {
+      "accepted": true,
+      "first_frame_index": 87,
+      "journal_order": 5,
+      "key": "goal_a_resent",
+      "label": "resubmit A",
+      "monotonic_ns": 213792697602350,
+      "phase": "resubmitted A, walking to A",
+      "placement": "timeline",
+      "request_id": "two_goal_20260918T025909Z_hold_e04-goal-a-attempt-2",
+      "sim_time_s": 6.919999845325947,
+      "source": "pilot_journal.json post_goal wall_monotonic_ns",
+      "state_row": 345,
+      "state_row_lag_s": 0.011242245
+    },
+    {
+      "cause": "arrived_after_quiescence",
+      "first_frame_index": 135,
+      "journal_order": 8,
+      "key": "arrived_a",
+      "label": "arrived A",
+      "monotonic_ns": 213797589009056,
+      "phase": "arrived A",
+      "placement": "timeline",
+      "request_id": "two_goal_20260918T025909Z_hold_e04-goal-a-attempt-2",
+      "sim_time_s": 10.819999758154154,
+      "source": "pilot_journal.json state.terminal_results monotonic_s (backend)",
+      "state_row": 540,
+      "state_row_lag_s": 0.006408291
+    },
+    {
+      "accepted": true,
+      "first_frame_index": 136,
+      "journal_order": 6,
+      "key": "goal_b_sent",
+      "label": "goal B",
+      "monotonic_ns": 213797656888747,
+      "phase": "walking to B",
+      "placement": "timeline",
+      "request_id": "two_goal_20260918T025909Z_hold_e04-goal-b",
+      "sim_time_s": 10.859999757260084,
+      "source": "pilot_journal.json post_goal wall_monotonic_ns",
+      "state_row": 542,
+      "state_row_lag_s": 0.004398277
+    },
+    {
+      "cause": "arrived_after_quiescence",
+      "first_frame_index": 191,
+      "journal_order": 9,
+      "key": "arrived_b",
+      "label": "arrived B",
+      "monotonic_ns": 213803206511975,
+      "phase": "arrived B",
+      "placement": "timeline",
+      "request_id": "two_goal_20260918T025909Z_hold_e04-goal-b",
+      "sim_time_s": 15.279999658465385,
+      "source": "pilot_journal.json state.terminal_results monotonic_s (backend)",
+      "state_row": 763,
+      "state_row_lag_s": 0.006079352
+    }
+  ],
+  "frame_alignment": {
+    "camera_rows": 205,
+    "decoded_frames": 205,
+    "rendered_frames": 205,
+    "rule": "equal: video frame i is paired with camera_frames frame_index i",
+    "state_row_rules": [
+      "same_step"
+    ],
+    "video_frames": 205
+  },
+  "goal_tolerance_m": 0.25,
+  "goal_tolerance_source": "inputs/pilot.json goal_xy_tolerance_m",
+  "goals": {
+    "goal-a": {
+      "ground_xyz_m": [
+        0.3894274002895943,
+        -4.464121271854497,
+        1.5608844757080078
+      ],
+      "source": "inputs/pilot.json goals (matches pilot_journal.json post_goal payload) (matches pilot_journal.json post_goal payload)"
+    },
+    "goal-b": {
+      "ground_xyz_m": [
+        2.3894024585958937,
+        -4.45715232978101,
+        1.5608844757080078
+      ],
+      "source": "inputs/pilot.json goals (matches pilot_journal.json post_goal payload)"
+    }
+  },
+  "inputs": {
+    "camera_frames": {
+      "bytes": 84866,
+      "path": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04/artifacts/runner_output/camera_frames.jsonl",
+      "sha256": "59c232770b4a1c0b13a8139eb9a24bdc319ade957fb4a2e013aa48229338b8a3"
+    },
+    "metrics": {
+      "bytes": 3404882,
+      "path": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04/artifacts/runner_output/metrics.jsonl",
+      "sha256": "883f104f8e611bcda04f472b7996c696062b656ffc10e436afc23f251f1f96f2"
+    },
+    "pilot": {
+      "bytes": 1474,
+      "path": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04/inputs/pilot.json",
+      "sha256": "623db10bb5c500c9afc033cbfab25097c6aa75e0245c9b85cbb6582833c9c8ed"
+    },
+    "pilot_journal": {
+      "bytes": 2685541,
+      "path": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04/artifacts/pilot_journal.json",
+      "sha256": "376eac8356afab2e9f81c72cd913027e0f87037017e4e2468ac3470447f1c983"
+    },
+    "run_clock": {
+      "bytes": 571,
+      "path": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04/artifacts/runner_output/run_clock.json",
+      "sha256": "6173f8105ae439d7d224ed8abcd109d2898859204a7877d41eb79712077b8aa4"
+    },
+    "summary": {
+      "bytes": 17238,
+      "path": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04/artifacts/runner_output/summary.json",
+      "sha256": "d3a6a259866bf2af41598b6d0df0d2b11e4c2ccb22f86809769fa676f82f7656"
+    },
+    "video": {
+      "bytes": 7394496,
+      "path": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04/artifacts/runner_output/third_person_master.mp4",
+      "sha256": "1271d6896fd870866e8ad968f58b89957a0acab977ec6d0044bb7108895a3271"
+    }
+  },
+  "journal_passed": true,
+  "missing_events": [],
+  "output": {
+    "bytes": 265595,
+    "codec": "h264",
+    "duration_s": 16.4,
+    "frames": 205,
+    "height": 720,
+    "path": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04/walk_review/walk_review.mp4",
+    "sha256": "aefbdf07f22e6c3da929ea9e87b359e6e20ac9e7a73704f15702eb8aa0a4e5d6",
+    "width": 1280
+  },
+  "plans": [
+    {
+      "placement": "timeline",
+      "request_id": "two_goal_20260918T025909Z_hold_e04-goal-a-attempt-1",
+      "sim_time_s": 2.7399999387562275
+    },
+    {
+      "placement": "timeline",
+      "request_id": "two_goal_20260918T025909Z_hold_e04-goal-a-attempt-2",
+      "sim_time_s": 6.919999845325947
+    },
+    {
+      "placement": "timeline",
+      "request_id": "two_goal_20260918T025909Z_hold_e04-goal-b",
+      "sim_time_s": 10.859999757260084
+    }
+  ],
+  "points": {
+    "cancel": {
+      "source": "pilot_journal.json post_cancel trigger_snapshot.measured.base_xyz",
+      "xyz": [
+        -1.1909524202346802,
+        -4.523812770843506,
+        1.8742235898971558
+      ]
+    },
+    "start": {
+      "source": "pilot_journal.json initial_cancel_reference_snapshot snapshot.measured.base_xyz",
+      "xyz": [
+        -1.5915451049804688,
+        -4.538625240325928,
+        1.8621255159378052
+      ]
+    },
+    "stop": {
+      "source": "pilot_journal.json post_stop_proof snapshot.measured.base_xyz",
+      "xyz": [
+        -1.1199644804000854,
+        -4.499478340148926,
+        1.8646856546401978
+      ]
+    }
+  },
+  "render_wall_seconds": 9.077391988015734,
+  "run_dir": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04",
+  "run_id": "two_goal_20260918T025909Z_hold_e04",
+  "run_id_source": "run directory name (remote_worker.py passes run_root.name as the run id)",
+  "schema_version": 1,
+  "series": {
+    "admitted_vs_raw_command_max_abs_diff": 0.0,
+    "command": "metrics.jsonl command_horizontal_norm_mps (admitted command)",
+    "force": "metrics.jsonl nonfoot_force_max_n",
+    "speed": "metrics.jsonl horizontal_speed_mps",
+    "trail": "metrics.jsonl base_xyz; heading metrics.jsonl base_rpy_rad[2]"
+  },
+  "size_target": {
+    "bytes_per_17_s": 275311.89024390245,
+    "target_bytes_per_17_s": 2000000,
+    "within_target": true
+  },
+  "source_video": {
+    "codec_name": "h264",
+    "duration": "16.400000",
+    "frames": 205,
+    "height": 1080,
+    "nb_frames": "205",
+    "nb_read_packets": "205",
+    "r_frame_rate": "25/2",
+    "width": 1920
+  },
+  "stance_hold": {
+    "mode_seconds": {
+      "REJOIN": 0.7799999825656414,
+      "RL": 7.819999825209379,
+      "STAND_SETTLING": 2.059999953955412,
+      "STAND_TRANSITION": 5.6599998734891415
+    },
+    "segments": [
+      {
+        "end_s": 1.0199999772012234,
+        "first_step_row": 0,
+        "mode": "RL",
+        "rows": 50,
+        "start_s": 0.019999999552965164
+      },
+      {
+        "end_s": 1.2799999713897705,
+        "first_step_row": 50,
+        "mode": "STAND_SETTLING",
+        "rows": 13,
+        "start_s": 1.0199999772012234
+      },
+      {
+        "end_s": 2.8399999365210533,
+        "first_step_row": 63,
+        "mode": "STAND_TRANSITION",
+        "rows": 78,
+        "start_s": 1.2799999713897705
+      },
+      {
+        "end_s": 3.0999999307096004,
+        "first_step_row": 141,
+        "mode": "REJOIN",
+        "rows": 13,
+        "start_s": 2.8399999365210533
+      },
+      {
+        "end_s": 4.479999899864197,
+        "first_step_row": 154,
+        "mode": "RL",
+        "rows": 69,
+        "start_s": 3.0999999307096004
+      },
+      {
+        "end_s": 5.359999880194664,
+        "first_step_row": 223,
+        "mode": "STAND_SETTLING",
+        "rows": 44,
+        "start_s": 4.479999899864197
+      },
+      {
+        "end_s": 6.959999844431877,
+        "first_step_row": 267,
+        "mode": "STAND_TRANSITION",
+        "rows": 80,
+        "start_s": 5.359999880194664
+      },
+      {
+        "end_s": 7.219999838620424,
+        "first_step_row": 347,
+        "mode": "REJOIN",
+        "rows": 13,
+        "start_s": 6.959999844431877
+      },
+      {
+        "end_s": 9.71999978274107,
+        "first_step_row": 360,
+        "mode": "RL",
+        "rows": 125,
+        "start_s": 7.219999838620424
+      },
+      {
+        "end_s": 10.139999773353338,
+        "first_step_row": 485,
+        "mode": "STAND_SETTLING",
+        "rows": 21,
+        "start_s": 9.71999978274107
+      },
+      {
+        "end_s": 10.91999975591898,
+        "first_step_row": 506,
+        "mode": "STAND_TRANSITION",
+        "rows": 39,
+        "start_s": 10.139999773353338
+      },
+      {
+        "end_s": 11.179999750107527,
+        "first_step_row": 545,
+        "mode": "REJOIN",
+        "rows": 13,
+        "start_s": 10.91999975591898
+      },
+      {
+        "end_s": 14.119999684393406,
+        "first_step_row": 558,
+        "mode": "RL",
+        "rows": 147,
+        "start_s": 11.179999750107527
+      },
+      {
+        "end_s": 14.619999673217535,
+        "first_step_row": 705,
+        "mode": "STAND_SETTLING",
+        "rows": 25,
+        "start_s": 14.119999684393406
+      },
+      {
+        "end_s": 16.33999963477254,
+        "first_step_row": 730,
+        "mode": "STAND_TRANSITION",
+        "rows": 87,
+        "start_s": 14.619999673217535
+      }
+    ],
+    "source": "metrics.jsonl stance_mode (segment end = next row's sim_time_s)"
+  },
+  "time": {
+    "event_mapping": "wall/backend monotonic time -> sim_time_s of the last metrics row with state_sample_monotonic_ns <= event (review_two_goal.py rule); events more than 0.25 s after that row are listed as outside recorded state",
+    "frame_sim_dt_median_s": 0.07999999821186066,
+    "playback_speed_vs_sim": 1.0000000223517422,
+    "rendered_sim_time_range_s": [
+      0.019999999552965164,
+      16.33999963477254
+    ],
+    "run_clock": {
+      "complete_body_state": true,
+      "complete_body_state_period_s": 0.02,
+      "physics_dt_s": 0.005,
+      "policy_dt_s": 0.02,
+      "run_epoch_ns": 1789700379953511261,
+      "schema_version": 2,
+      "semantics": "metrics.jsonl sim_time_s = Isaac absolute simulation time - simulation_origin_s. Telemetry timestamp_ns, /clock and B-spline start stamps are absolute simulation time. The command freshness domain is local monotonic wall time at both ends and is never compared against either of these.",
+      "simulation_origin_ns": 10000000,
+      "simulation_origin_s": 0.009999999776482582
+    },
+    "timeline_range_s": [
+      0.0,
+      16.33999963477254
+    ],
+    "video_fps": 12.5
+  },
+  "tool": {
+    "path": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/two_goal_pilot/two_goal_20260918T025909Z_hold_e04/make_walk_review.py",
+    "sha256": "0901c6ec2ef3f2bbcc15089765be8f45ca8ffdfa0c4392be12ffe9851717d84e"
+  }
+}

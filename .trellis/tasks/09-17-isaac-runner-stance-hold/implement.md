@@ -124,9 +124,31 @@ substeps, so the entry torque can jump for up to 20 ms. Dr Sun approved the budg
       faster. The trace is identical to C1 up to entry (deterministic). Report:
       `stance_hold_qualification/stand_ab_ramp_20260917T132323Z_hold_auto_ramp.json`; figure `stand_ab/entry_ramp_compare.png`.
       C2 stays paused; next step needs Dr Sun (damping at entry, see the lead's report).
-- [ ] C2 Two-goal series with `scan_04` and `--stance-hold auto`: 8 episodes (6 cancel at 0.40 m, 1 at 0.45 m, 1 at
+- [x] C2 Two-goal series with `scan_04` and `--stance-hold auto`: 8 episodes (6 cancel at 0.40 m, 1 at 0.45 m, 1 at
       0.50 m), reviewed like the SCAN series (41 checks, D11-style stop rule), with walk videos.
-- [ ] C3 Host state after; containers and ports clean.
+      Done 2026-09-17 18:41 – 2026-09-18 03:14 UTC on gpu5070ti, `--stance-entry-kd xfade1s` (D6 selection),
+      `stance_hold_qualification/run_hold_series.py`, ledger `stance_hold_qualification/hold_series/series_ledger.jsonl`,
+      runs `isaac_runner/two_goal_runs/two_goal_*_hold_e0{1..8}`. **AC4 8/8 passed the unchanged 41 checks**
+      (one-sided 95 % Clopper-Pearson lower bound 0.688; hold-off SCAN series 7/8, 0.529). Returned hashes, walk
+      review and both SCAN workspace gates pass in all 8; GPU peak 7086-7134 MiB; arrival XY error 0.145-0.200 m.
+      Interruption: the local driver died with the Claude session after episode 3's remote worker had finished
+      (remote result final, passed). Episode 3 was collected and reviewed by
+      `stance_hold_qualification/recover_interrupted_episode.py` (launcher's own remote-only collect; no physics
+      rerun; `02_remote_worker.log` not captured) and its ledger line is marked `recovered_after_driver_interrupt`.
+      Episodes 4-8 ran from `--from-episode 4`.
+      Report `stance_hold_qualification/series_d6_20260918.json` (`series_report.py`, hold-off SCAN ledger as
+      baseline). AC5 pass in all 8. **AC7 fails as written in episode 6** (1 of 30 entry windows): entry at 6.66 s
+      was calm (|yaw| ≤ 0.053 until 6.84 s), the planner resumed at 6.86 s (crossfade Kp 22.7), and the V12
+      restart peaked at 0.174 rad/s at 6.92 s inside REJOIN. 9 of 30 windows are cut by a rejoin; up to the first
+      REJOIN row every window stays ≤ 0.098 rad/s and ≤ 0.024 m/s (diagnostic, not a verdict). Restart context,
+      1 s after each resumed command: hold max 0.197 / median 0.165 (n = 24), hold off max 0.341 / median 0.206.
+      **Finding:** the hold does not change the review still windows. The 24 windows run from 0.10-0.38 s to
+      1.12-1.40 s after the zero command, i.e. over STAND_SETTLING (RL still drives) plus the early crossfade (3 of
+      24 are STAND_SETTLING only); every peak is in the RL settling part. Still-window max |yaw| 0.077-0.145 (median 0.120) vs hold off 0.083-0.160 (median 0.121).
+      No two-goal stop reaches FIXED_STAND (entry 0.38-2.22 s after the zero command; stops end before the 2 s
+      transition completes). Entries 30, exits 24 (all from STAND_TRANSITION).
+- [x] C3 Host state after; containers and ports clean. 2026-09-18 03:15 UTC: GPU 202 MiB, 0 %, no compute apps,
+      containers or ports.
 
 ## D. Report
 
