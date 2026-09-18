@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 15
+- **Total Sessions**: 16
 - **Last Active**: 2026-09-17
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~610 | Active |
+| `journal-1.md` | ~651 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 16 | 2026-09-17 | Isaac runner stance hold: crossfade entry, two-goal 8/8, post-result AC7, default on | `02e4e55b`, `a826eb75`, `87f3c0d1`, `fe82a471`, `9b4bcc34` | `main` |
 | 15 | 2026-09-17 | SCAN fix Isaac series, report and adoption | `290a0ec5`, `20f24308`, `097304f4`, `486cc80a` | `main` |
 | 14 | 2026-09-16 | Status review, Sep 16 decisions and Sep 15-16 evidence commit | `8df243fc`, `c10f2976`, `e226be6f`, `ad9b157d` | `main` |
 | 13 | 2026-09-15 | Status review and backlog evidence commit | `ab7c8414`, `b472a48c`, `540abf14`, `63002f85`, `0d134e49`, `0a816433`, `3cfa2189`, `7f743cfa`, `0374716f` | `main` |

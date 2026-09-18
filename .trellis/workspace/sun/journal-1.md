@@ -608,3 +608,44 @@ Ran 8 Isaac cancel/resume episodes with scan_04 (7/8 pass), replayed stop poses 
 
 - Stance-hold task: answer Q1-Q3 (hold pose, trigger, gains/blend source), then design.md and implement.md, then run budget.
 - Pi/Cortex, D.1b and older items remain on hold; MIP halted.
+
+
+## Session 16: Isaac runner stance hold: crossfade entry, two-goal 8/8, post-result AC7, default on
+
+**Date**: 2026-09-17
+**Task**: Isaac runner stance hold: crossfade entry, two-goal 8/8, post-result AC7, default on
+**Branch**: `main`
+
+### Summary
+
+Task 09-17-isaac-runner-stance-hold closed. The xfade1s crossfade entry was selected after a survey. The two-goal series with the hold on passed 8/8 (one-sided 95% lower bound 0.688; hold-off 7/8), but the hold does not change the two-goal stop check (V12 is still settling in the review window). AC7 passes only under Dr Sun's post-result amendment D7 (window ends at a restart; as frozen, episode 6 fails at 0.174 rad/s). Launchers default to --stance-hold auto (D8). Evidence label integrated, not validated. Simulation only.
+
+### Main Changes
+
+- Crossfade entry xfade1s and landing grace (D6); walk entries <= 0.087 rad/s; D5 selection.
+- Two-goal series 8/8 on gpu5070ti; episode 3 recovered after the local driver died (no physics re-run).
+- D7 post-result AC7 amendment: thresholds 34c15fe6, amended and as-frozen verdicts side by side.
+- D8: launchers default to --stance-hold auto (xfade1s); the runner default stays off; SCAN series driver and point-cloud probe pinned off.
+- RESULT.md, figures, private page https://claude.ai/artifact/LbF8JD4XWmnsfgvnDbUVMM; spec section on post-result amendments and interrupted series; memory archive.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `02e4e55b` | (see git log) |
+| `a826eb75` | (see git log) |
+| `87f3c0d1` | (see git log) |
+| `fe82a471` | (see git log) |
+| `9b4bcc34` | (see git log) |
+
+### Testing
+
+- [OK] isaac_runner 211 tests; scan_fix_qualification 102 + 11; materializer --check clean; patched runner 0649747e unchanged; implement/check agents GO.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Dr Sun chooses the next foundation step. Open: the two-goal stop-dwell margin (worst 0.145 of 0.15) is set by V12 settling; no PD hold on the real robot; local clouds.jsonl copies of the stand/walk runs (~650 MB).
