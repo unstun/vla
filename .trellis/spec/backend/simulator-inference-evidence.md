@@ -221,10 +221,11 @@ Learned from `.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_fix_qua
   overwritten `current_command.json` in a 0.02 s loop and can miss samples. `review_two_goal.py` walks every 0.02 s
   `metrics.jsonl` row and is the acceptance authority. A single out-of-limit sample (0.1595 against 0.15 rad/s)
   failed the check that the backend had passed.
-- **Stillness failures after a stop belong to the locomotion layer first.** The V12 runner keeps the RL policy
-  running on a zero command, with no PD stance hold. Its zero-command yaw noise is already close to the 0.15 rad/s
-  limit (see the `machine-dog` flat stand-still diagnosis). Check that before blaming the planner, and never relax the
-  threshold to hide it.
+- **Stillness failures after a stop belong to the locomotion layer first.** Before 2026-09-18 the V12 runner kept the
+  RL policy running on a zero command, with no PD stance hold. Its zero-command yaw noise is already close to the
+  0.15 rad/s limit (see the `machine-dog` flat stand-still diagnosis). Check that before blaming the planner, and never
+  relax the threshold to hide it. The stance hold added since does not move this margin in the two-goal pilot; see the
+  next section.
 - **Remote-only bulk needs a returned record and a narrow rule.** Bulk files left on the execution host
   (`clouds.jsonl`, `third_person_master.mp4`) come back as `remote_only_artifacts.json`: path, bytes, remote SHA-256,
   manifest SHA-256 and `all_match`. The review accepts exactly those paths as absent, and only when all three hashes
@@ -244,3 +245,58 @@ Learned from `.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_fix_qua
 | Backend reports arrival, full-rate dwell < required | Count the episode as failed; report the sampling gap |
 | Remote-only record hash ≠ manifest hash, or an extra path is missing | `returned_hashes_match` false |
 | Host probe command fails or reports no GPU | Host not idle; do not launch |
+
+## Stance hold, post-result amendments and interrupted series (added 2026-09-18)
+
+Learned from `.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/stance_hold_qualification/RESULT.md` (task
+`09-17-isaac-runner-stance-hold`).
+
+- **A hold that enters after the review window does not change the stop check.** The two-goal review judges the
+  1.0 s before each terminal, which falls 0.10–1.40 s after the zero command. At that time V12 still drives
+  (STAND_SETTLING) and the PD hold waits for its gates. All 24 still-window peaks were in STAND_SETTLING (median
+  0.120 rad/s with the hold, 0.121 without). Before crediting a controller change for a stop-dwell pass, locate each
+  window peak in the controller's mode timeline (`series_report.py` → `still_windows`, `zero_command_intervals`).
+- **Give every post-switch window an end condition before results.** AC7's fixed 1.0 s window after a hold entry
+  also scored a planner restart 0.18 s later (episode 6: entry calm at 0.063 rad/s, restart peak 0.174). Define what
+  ends a window (for example a mode change or a new command) when the criterion is frozen, not after a failure.
+- **Post-result amendments are recorded, never silent.** An acceptance rule may change after results only on Dr
+  Sun's explicit instruction, and then:
+  - the frozen thresholds file carries the rule as data (`ac7_entry.end_at_restart: true`, `restart` definition)
+    plus an `amendment` record: `date`, `by`, verbatim `quote`, `post_result: true`, `trigger` (run, step, value),
+    and `previous_sha256`;
+  - the previous file is archived byte for byte in `stance_hold_thresholds_history/`; the analyzer pins the new SHA
+    (`FROZEN_THRESHOLDS_SHA256`) and lists the old one in `SUPERSEDED_THRESHOLDS`, and loading an older file
+    reproduces the old rule;
+  - the analyzer returns the amended `verdict` and `as_frozen_before_results` side by side, and other criteria that
+    reuse the window (AC8 b, the D5 selection) keep the frozen window unless the instruction names them;
+  - every report shows both verdicts, labels the amended one post-result, and does not promote the evidence label
+    to `validated`.
+- **Recover a finished episode; never re-run it.** If the local series driver dies after the remote worker has
+  written its final `result.json`, the episode happened. Re-running it would drop a finished outcome.
+  `recover_interrupted_episode.py` handles this case:
+  - it checks the prepared package hashes;
+  - it requires `last_result_write_phase == "final"`, refuses a run that is already collected, and treats a remote
+    `passed` other than true as `execute_failed`;
+  - it runs the launcher's own `collect_remote_only`, writes `return_verdict.json` with a `recovered_collect` record,
+    and appends a ledger line marked `recovered_after_driver_interrupt`.
+  Keep the executed script bytes if it is edited afterwards.
+- **Run long series drivers detached.** A background task started from a Claude session dies with the session.
+  Start drivers with `nohup … &` and follow the ledger or log with a monitor.
+- **Changing a launcher default keeps old evidence reproducible.**
+  - Leave the runner's own default (and its hashed bytes) unchanged.
+  - Read a prepared package that lacks the field with its legacy meaning (`stance_hold` → `off`,
+    `stance_entry_kd` → `ramp`).
+  - Pin every caller that reproduces older conditions (`run_isaac_series.py`, `pointcloud_display/run_probe.py`
+    pass `--stance-hold off`).
+  - Add a reproduction note to the older result (`P2B_RESULT.md`).
+  - Derive dependent defaults from the new default instead of fixing them (`--stance-entry-kd` resolves to
+    `xfade1s` with the hold on and `ramp` with it off).
+
+| Condition | Required outcome |
+|---|---|
+| Rule changed after results without an `amendment` record or archived previous file | Refuse; the analyzer only accepts the pinned SHA |
+| Amended criterion reported without its as-frozen verdict | Report incomplete |
+| Local driver died, remote result final | Collect and review with the launcher's steps; mark the ledger line; no physics rerun |
+| Local driver died, remote result not final | Do not recover; report the episode as interrupted |
+| Remote result final but `passed` not true | Ledger `execute_failed`, even if the review passes |
+| Launcher default changed | Old packages keep their recorded meaning; reproducing callers pinned explicitly |

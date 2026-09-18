@@ -1,6 +1,6 @@
 # Isaac runner stance hold for V12 stops
 
-Stage: planning. Parent: `09-16-emos-harnessvln-reimplementation`.
+Stage: done 2026-09-18 (experiment + analysis complete; RESULT in `stance_hold_qualification/RESULT.md`). Parent: `09-16-emos-harnessvln-reimplementation`.
 
 ## Goal
 
@@ -166,7 +166,7 @@ robot still without the policy's standing jitter, and resume walking without a f
 
 ## Acceptance Criteria (fixed before any Isaac run)
 
-- [ ] AC1 Unit tests of the state machine:
+- [x] AC1 Unit tests of the state machine:
       - entry gates (zero command, speed ≤ 0.15 m/s, |yaw rate| ≤ 0.5 rad/s, tilt ≤ 10°, all four feet ≥ 10 N,
         dwell-mean support shares in [0.35, 0.65] over 0.25 s);
       - a torque-matched seed, so the commanded PD torque is continuous at entry (difference ≤ 1e-6 Nm);
@@ -175,9 +175,11 @@ robot still without the policy's standing jitter, and resume walking without a f
       - disturbance exit after 0.25 s persistence, then a 0.5 s re-entry lockout;
       - non-finite input fails closed (the hold refuses and the runner stops the case);
       - `off` mode returns the policy target and V12 gains unchanged.
-- [ ] AC2 Patch: `materialize_runner_patch.py --check` passes; with `--stance-hold off` the patched control step
+      **Result 2026-09-18: pass, with a note** (the crossfade entry step changes Kd, so the literal torque-continuity clause no longer describes the entry step; the torque-matched seed is still tested).
+- [x] AC2 Patch: `materialize_runner_patch.py --check` passes; with `--stance-hold off` the patched control step
       equals today's (test on the materialized text plus a mock-step test); the existing isaac_runner tests pass.
-- [ ] AC3 Isaac stand A/B (`stand_probe`, 60 s, one run each with the hold off and on). Over the FIXED_STAND part of
+      **Result: pass** (materializer check clean; runner `0649747e…`; 63 pre-entry rows identical to hold off).
+- [x] AC3 Isaac stand A/B (`stand_probe`, 60 s, one run each with the hold off and on). Over the FIXED_STAND part of
       the hold-on run:
       - every sample has four feet above 1 N;
       - planar drift ≤ 0.02 m, max horizontal speed ≤ 0.02 m/s, max |yaw rate| ≤ 0.05 rad/s;
@@ -185,20 +187,24 @@ robot still without the policy's standing jitter, and resume walking without a f
       - no torque-clip step and no non-finite value;
       - FIXED_STAND is reached within 10 s of the zero command.
       The hold-off numbers are reported as the baseline, with no threshold.
-- [ ] AC4 Two-goal series with `scan_04` and the hold on, 8 episodes (6 cancel at 0.40 m, 1 at 0.45 m, 1 at 0.50 m):
+      **Result: pass** (C1 stand; yaw ≤ 0.0038 rad/s, drift 2.5 mm; run with the step entry).
+- [x] AC4 Two-goal series with `scan_04` and the hold on, 8 episodes (6 cancel at 0.40 m, 1 at 0.45 m, 1 at 0.50 m):
       - every episode passes the unchanged 41 checks;
       - stop rule as the SCAN series (PRD D11 there);
       - the report gives the pass count with its exact bound, the hold entries and exits, the time to hold, the max
         |yaw rate| inside each review still window, and the rejoin transitions.
-- [ ] AC5 Transitions in every run: no non-foot contact above the 5 N guard, |roll| and |pitch| ≤ 10° during
+      **Result: pass**, 8/8 (one-sided 95 % lower bound 0.688).
+- [x] AC5 Transitions in every run: no non-foot contact above the 5 N guard, |roll| and |pitch| ≤ 10° during
       REJOIN, and no torque-clip step at an entry or rejoin step.
-- [ ] AC7 Entry smoothness (added 2026-09-17 before the rerun, D4). In every hold-on run, over each entry window
+      **Result: pass** in all 15 hold-on runs.
+- [x] AC7 Entry smoothness (added 2026-09-17 before the rerun, D4). In every hold-on run, over each entry window
       (from the first STAND_TRANSITION row to 1.0 s after it): max |yaw rate| ≤ 0.15 rad/s and max |vertical body
       speed| ≤ 0.05 m/s.
       **Post-result amendment (D7, 2026-09-18, after C2):** the window also ends at the restart. That is the first row
       after entry whose mode is neither STAND_TRANSITION nor FIXED_STAND, and it is excluded. Reports give both
       verdicts.
-- [ ] AC8 Scripted walk (added 2026-09-17 before any walk run, D5). For each hold-on run:
+      **Result: pass under the D7 amendment (post-result); fail as frozen** (C2 episode 6, 1 of 30 windows).
+- [x] AC8 Scripted walk (added 2026-09-17 before any walk run, D5). For each hold-on run:
       - a) every zero-command phase (0-4, 7-12 and 14.5-20 s) reaches FIXED_STAND before the next non-zero command,
         or before the finish request for the last phase;
       - b) every entry window meets the AC7 limits (|yaw rate| ≤ 0.15 rad/s, |vertical speed| ≤ 0.05 m/s over 1.0 s
@@ -208,8 +214,10 @@ robot still without the policy's standing jitter, and resume walking without a f
       - d) the run ends normally (EXTERNAL_EPISODE_FINISHED or DURATION_REACHED) with no reset, pose write,
         non-finite value or contact-guard failure, and planar travel within ±20 % of the hold-off run.
       The hold-off run is reported with the same per-stop and per-start numbers, without thresholds.
-- [ ] AC6 The report states the claim boundary: simulation only, V12 in Isaac, one flat route, not a real-robot or
+      **Result: pass** (`xfade1s`, `xfade2s`; D5 selects `xfade1s`).
+- [x] AC6 The report states the claim boundary: simulation only, V12 in Isaac, one flat route, not a real-robot or
       deployment fix.
+      **Result: stated** (`stance_hold_qualification/RESULT.md`, Claim boundary).
 
 ## Out of scope
 

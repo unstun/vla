@@ -3,8 +3,9 @@
 Current status, 2026-09-16: the successful pilot described below is one bounded
 result. Three later display probes failed SCAN resubmission, including display
 off. A native replay isolated the endpoint-acceleration defect; its one-line
-candidate passed 12/12 fixture calls, but production code and corrected Isaac
-closed-loop validation remain unchanged/pending. NVIDIA RViz/NVENC display and
+candidate passed 12/12 fixture calls and was adopted as `scan_04` on 2026-09-17
+(`scan_fix_qualification/RESULT.md`, Isaac series 7/8). A PD stance hold for V12
+stops followed (`stance_hold_qualification/RESULT.md`). NVIDIA RViz/NVENC display and
 recording were verified separately. See the
 [local archival handoff](../../handoffs/2026-09-16_harnessvln_local_archive.md)
 for evidence and the next acceptance steps. The overall task remains in

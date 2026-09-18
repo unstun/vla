@@ -1,5 +1,16 @@
 # Experiment Records
 
+- [`2026-09-16_pi_cortex_harnessvln/stance_hold_qualification/`](2026-09-16_pi_cortex_harnessvln/stance_hold_qualification/RESULT.md)
+  — Isaac runner PD stance hold (task `.trellis/tasks/09-17-isaac-runner-stance-hold/`), Isaac Lab on
+  gpu5070ti with V12 `model_149999.pt`; selected entry `xfade1s`. 60 s stand in FIXED_STAND: yaw rate
+  ≤ 0.0038 rad/s, drift 2.5 mm (hold off 0.143 rad/s, 3.4 cm). Walk entries ≤ 0.087 rad/s (limit 0.15).
+  Two-goal series 8/8 on the unchanged 41 checks (one-sided 95 % lower bound 0.688; hold-off 7/8, 0.529).
+  The hold does not change the stop check (still-window median 0.120 vs 0.121 rad/s; all peaks in
+  STAND_SETTLING); restart median 0.165 vs 0.201 rad/s. AC7 passes only under Dr Sun's post-result
+  amendment D7 (window ends at the restart); as frozen it fails in episode 6 (0.174 rad/s; amended 0.063).
+  Thresholds `34c15fe6…`; launchers default to `--stance-hold auto` (D8). Label: integrated, not
+  validated; simulation only. Commits `02e4e55b`, `a826eb75`, `87f3c0d1`, `fe82a471`.
+
 - [`2026-09-16_pi_cortex_harnessvln/`](2026-09-16_pi_cortex_harnessvln/README.md)
   — Pi fixture loop and a separate native PCT/SCAN/Lite3 V12 Isaac service;
   one continuous cancel/resubmit/two-goal pilot passed 41 checks, but three
@@ -9,7 +20,8 @@
   telemetry drops. Native SCAN replay traced the rejection to the last-sample
   acceleration being used as the terminal derivative. A one-line isolated
   candidate passed 12/12 fixture calls without relaxing the 1.5 m/s^2 gate;
-  production adoption and corrected Isaac closed-loop validation remain open.
+  Dr Sun adopted it as `scan_04` on 2026-09-17 (PRD D14; Isaac series
+  7/8, see `scan_fix_qualification/RESULT.md`).
   See the [local archival handoff](../handoffs/2026-09-16_harnessvln_local_archive.md)
   for immutable run IDs, raw evidence, claim limits and continuation. The
   overall task remains in progress; archive review is pending.
