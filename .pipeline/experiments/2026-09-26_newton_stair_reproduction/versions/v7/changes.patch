@@ -1,0 +1,210 @@
+--- v6/src/plan_manage/src/planner_manager.cpp
++++ v7/src/plan_manage/src/planner_manager.cpp
+@@ -6,6 +6,7 @@
+ #include <bspline_opt/full_trajectory_collision.h>
+ // #include <fstream>
+ #include <plan_manage/planner_manager.h>
++#include <plan_manage/minimum_cruise.h>
+ #include <plan_manage/polyline_trajectory_utils.h>
+ #include <chrono>
+ #include <thread>
+@@ -29,6 +30,16 @@
+     pp_.max_vel_ = get_double("manager.max_vel", -1.0);
+     pp_.max_acc_ = get_double("manager.max_acc", -1.0);
+     pp_.max_jerk_ = get_double("manager.max_jerk", -1.0);
++    min_cruise_speed_ = get_double("manager.min_cruise_speed", 0.0);
++    if (!std::isfinite(min_cruise_speed_) || min_cruise_speed_ < 0.0 ||
++        (min_cruise_speed_ > 0.0 &&
++         (!std::isfinite(pp_.max_vel_) || min_cruise_speed_ > pp_.max_vel_ ||
++          !std::isfinite(pp_.max_acc_) || pp_.max_acc_ <= 0.0 ||
++          !std::isfinite(pp_.max_jerk_) || pp_.max_jerk_ <= 0.0)))
++      throw std::runtime_error("Invalid minimum cruise speed or nominal dynamic limits");
++    RCLCPP_INFO(node_->get_logger(), "minimum_planned_cruise_speed=%.3f m/s; boundary ramps and stops exempt",
++                min_cruise_speed_);
++
+     pp_.vel_tolerance_ = get_double("optimization.vel_tolerance", 1.0);
+     pp_.acc_tolerance_ = get_double("optimization.acc_tolerance", 1.0);
+     pp_.feasibility_tolerance_ = get_double("manager.feasibility_tolerance", 0.0);
+@@ -401,6 +412,11 @@
+     }
+     flag_step_2_success = flag_step_2_success && native_feasible;
+ 
++    if (flag_step_2_success && min_cruise_speed_ > 0.0) {
++      flag_step_2_success = enforceMinimumCruise(pos, start_end_derivatives, ts);
++      if (flag_step_2_success) capture_curve("minimum_cruise_checked");
++    }
++
+     // A later native soft refit may change PVA. Reject that drift rather than
+     // claiming initialization constraints survived a subsequent retiming.
+     if (flag_step_2_success && !reactive_stair::matchesBoundaryPva(
+@@ -625,6 +641,36 @@
+     return true;
+   }
+ 
++  bool SCANPlannerManager::enforceMinimumCruise(
++      UniformBspline &curve, vector<Eigen::Vector3d> &boundary, double &interval)
++  {
++    if (min_cruise_speed_ == 0.0) return true;
++    for (int attempt = 0; attempt <= 3; ++attempt) {
++      const auto report = measureMinimumCruise(curve, min_cruise_speed_, pp_.max_acc_, pp_.max_jerk_);
++      RCLCPP_INFO(node_->get_logger(),
++          "minimum_cruise_check attempt=%d valid=%d passed=%d samples=%d min=%.9f requested=%.9f length=%.9f entry=%.9f exit=%.9f dt=%.9f",
++          attempt, report.valid, report.passed, report.cruise_samples, report.minimum_speed,
++          min_cruise_speed_, report.path_length, report.entry_distance, report.exit_distance, report.sample_dt);
++      if (!report.valid) return false;
++      if (report.passed) return true;
++      if (attempt == 3 || report.minimum_speed <= 1e-6) break;
++      // Reuse SCAN's native knot reallocation, boundary-PVA fit and refinement.
++      // Limit each compression step; no downstream command-floor override.
++      const double ratio = std::clamp(0.98 * report.minimum_speed / min_cruise_speed_, 0.7, 0.98);
++      Eigen::MatrixXd controls;
++      if (!refineTrajAlgo(curve, boundary, ratio, interval, controls)) return false;
++      curve = UniformBspline(controls, 3, interval);
++      curve.setPhysicalLimits(pp_.max_vel_, pp_.max_acc_, pp_.feasibility_tolerance_);
++      double feasibility_ratio = 0.0;
++      if (!curve.checkFeasibility(feasibility_ratio, false) || !checkDynamicFeasibility(curve)) {
++        RCLCPP_WARN(node_->get_logger(), "minimum_cruise_dynamic_limit_rejected");
++        return false;
++      }
++    }
++    RCLCPP_WARN(node_->get_logger(), "minimum_cruise_unreachable; no slower cruise published");
++    return false;
++  }
++
+   bool SCANPlannerManager::reparamBspline(UniformBspline &bspline, vector<Eigen::Vector3d> &start_end_derivative, double ratio,
+                                          Eigen::MatrixXd &ctrl_pts, double &dt, double &time_inc)
+   {
+--- v6/src/plan_manage/include/plan_manage/planner_manager.h
++++ v7/src/plan_manage/include/plan_manage/planner_manager.h
+@@ -46,6 +46,7 @@
+   private:
+     rclcpp::Node *node_{nullptr};
+     bool resolution_aware_progress_{false};
++    double min_cruise_speed_{0.0};
+     /* main planning algorithms & modules */
+     PlanningVisualization::Ptr visualization_;
+ 
+@@ -55,6 +56,9 @@
+ 
+     void updateTrajInfo(const UniformBspline &position_traj, const rclcpp::Time time_now);
+     bool checkDynamicFeasibility(UniformBspline position_traj);
++    bool enforceMinimumCruise(UniformBspline &curve,
++                             vector<Eigen::Vector3d> &boundary, double &interval);
++
+ 
+     bool reparamBspline(UniformBspline &bspline, vector<Eigen::Vector3d> &start_end_derivative, double ratio, Eigen::MatrixXd &ctrl_pts, double &dt,
+                         double &time_inc);
+--- v6/src/plan_manage/include/plan_manage/minimum_cruise.h
++++ v7/src/plan_manage/include/plan_manage/minimum_cruise.h
+@@ -0,0 +1,91 @@
++#pragma once
++
++#include <algorithm>
++#include <cmath>
++#include <limits>
++#include <vector>
++#include <bspline_opt/uniform_bspline.h>
++
++namespace scan_planner
++{
++struct CruiseSpeedReport
++{
++  bool valid{false};
++  bool passed{false};
++  int cruise_samples{0};
++  double path_length{0.0};
++  double entry_distance{0.0};
++  double exit_distance{0.0};
++  double minimum_speed{0.0};
++  double sample_dt{0.0};
++};
++
++// Boundary envelope for a symmetric acceleration transition. This uses the
++// configured jerk to reserve ramp distance; it does not certify actual jerk.
++inline double cruiseBoundaryDistance(double boundary_speed, double cruise_speed,
++                                     double acceleration, double jerk)
++{
++  const double delta = std::max(0.0, cruise_speed - boundary_speed);
++  if (delta == 0.0) return 0.0;
++  const double ramp_time = delta >= acceleration * acceleration / jerk
++      ? delta / acceleration + acceleration / jerk
++      : 2.0 * std::sqrt(delta / jerk);
++  return 0.5 * (boundary_speed + cruise_speed) * ramp_time;
++}
++
++// Nav2 RPP separates its minimum travel speed from approach slowing; MPPI
++// scores speeds below its travel deadband. Here the same distinction is made
++// on SCAN's timed curve, before the existing final PVA/dynamic/collision gates.
++inline CruiseSpeedReport measureMinimumCruise(UniformBspline curve,
++                                              double minimum_speed,
++                                              double acceleration, double jerk)
++{
++  CruiseSpeedReport result;
++  if (!std::isfinite(minimum_speed) || minimum_speed < 0.0) return result;
++  if (minimum_speed == 0.0) {
++    result.valid = result.passed = true;
++    return result;
++  }
++  if (!std::isfinite(acceleration) || acceleration <= 0.0 ||
++      !std::isfinite(jerk) || jerk <= 0.0) return result;
++  const auto controls = curve.getControlPoint();
++  const auto knots = curve.getKnot();
++  const double duration = curve.getTimeSum();
++  if (controls.rows() != 3 || controls.cols() < 6 || !controls.allFinite() ||
++      !knots.allFinite() || !std::isfinite(duration) || duration <= 0.0 ||
++      duration > 1000.0) return result;
++  for (int i = 1; i < knots.size(); ++i)
++    if (knots[i] <= knots[i - 1]) return result;
++
++  auto velocity = curve.getDerivative();
++  const double start_speed = velocity.evaluateDeBoorT(0.0).head<2>().norm();
++  const double end_speed = velocity.evaluateDeBoorT(duration).head<2>().norm();
++  if (!std::isfinite(start_speed) || !std::isfinite(end_speed)) return result;
++  result.entry_distance = cruiseBoundaryDistance(start_speed, minimum_speed, acceleration, jerk);
++  result.exit_distance = cruiseBoundaryDistance(end_speed, minimum_speed, acceleration, jerk);
++  const int intervals = std::max(1, static_cast<int>(std::ceil(duration / 0.01)));
++  result.sample_dt = duration / intervals;
++  std::vector<double> distance(intervals + 1, 0.0), speed(intervals + 1, 0.0);
++  Eigen::Vector2d previous = curve.evaluateDeBoorT(0.0).head<2>();
++  for (int i = 0; i <= intervals; ++i) {
++    const double t = i * result.sample_dt;
++    const Eigen::Vector2d point = curve.evaluateDeBoorT(t).head<2>();
++    speed[i] = velocity.evaluateDeBoorT(t).head<2>().norm();
++    if (!point.allFinite() || !std::isfinite(speed[i])) return result;
++    if (i) distance[i] = distance[i - 1] + (point - previous).norm();
++    previous = point;
++  }
++  result.path_length = distance.back();
++  double observed_minimum = std::numeric_limits<double>::infinity();
++  for (int i = 0; i <= intervals; ++i) {
++    if (distance[i] < result.entry_distance ||
++        result.path_length - distance[i] < result.exit_distance) continue;
++    ++result.cruise_samples;
++    observed_minimum = std::min(observed_minimum, speed[i]);
++  }
++  result.minimum_speed = result.cruise_samples ? observed_minimum : 0.0;
++  result.valid = true;
++  result.passed = result.cruise_samples == 0 || observed_minimum + 1e-9 >= minimum_speed;
++  return result;
++}
++}  // namespace scan_planner
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v6/building_planner.yaml
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v7/building_planner.yaml
+@@ -53,6 +53,7 @@
+     manager.use_upstream_search_plane: true
+     manager.goal_approach_max_iterations: 50
+     manager.max_vel: 1.0
++    manager.min_cruise_speed: 0.6
+     manager.resolution_aware_progress: true
+     manager.max_acc: 0.5
+     manager.max_jerk: 4.0
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/repairs/2026-09-26_generic_occupancy/geometry_smac_approach_flat.yaml
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v7/flat_planner.yaml
+@@ -53,6 +53,7 @@
+     manager.use_upstream_search_plane: true
+     manager.goal_approach_max_iterations: 50
+     manager.max_vel: 1.0
++    manager.min_cruise_speed: 0.6
+     manager.max_acc: 0.5
+     manager.max_jerk: 4.0
+     manager.control_points_distance: 0.2

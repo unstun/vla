@@ -1,0 +1,143 @@
+{
+  "run_id": "v7_empty_route02",
+  "stage": "experiment + analysis",
+  "source_checks": {
+    "source_identity.json": {
+      "files": 32,
+      "mismatches": []
+    },
+    "runtime_sources.json": {
+      "files": 99,
+      "mismatches": []
+    },
+    "source_sha256.json": {
+      "files": 97,
+      "mismatches": []
+    },
+    "install_sha256.json": {
+      "files": 515,
+      "mismatches": []
+    }
+  },
+  "checks": {
+    "process_completed": false,
+    "source_identity": true,
+    "continuous_physics_steps": true,
+    "positive_ack_and_applied_trace": true,
+    "source_timestamp_not_restamped": true,
+    "actual_command_enters_policy": true,
+    "clock_and_disconnect_fail_closed": true,
+    "no_applied_read_errors_after_first_ack": true,
+    "linux_bytes_returned": true,
+    "paired_unfiltered_sensor": true,
+    "sensor_files_intact": true,
+    "native_moving_curves_observed": false,
+    "actual_nonzero_commands_observed": false,
+    "bounded_driver_completed": false,
+    "measured_stop_verified": true
+  },
+  "interface_checks_passed": false,
+  "navigation_validated": false,
+  "flat_navigation_checks": {
+    "actual_goal_arrival": false,
+    "every_physics_substep_scored": true,
+    "no_obstacle_surface_contact": true,
+    "upright_above_09": true,
+    "body_above_025m": true,
+    "goal_distance_below_025m": false
+  },
+  "height_assessment_window": "all_physics",
+  "full_rate_obstacle_contact_scoring": {
+    "physics_substeps_checked": 14880,
+    "maximum_candidate_count": 0,
+    "touching_substeps": 0,
+    "minimum_surface_separation_m": null
+  },
+  "navigation_terminal_results": [
+    {
+      "cause": "initial_heartbeat_missing",
+      "data": {
+        "data": {
+          "terminal_cause": "stopped"
+        },
+        "ok": true,
+        "state": {
+          "active_owner": null,
+          "epoch": 1,
+          "event_seq": 3,
+          "map_epoch": "stair_reactive",
+          "map_revision": 1,
+          "run_id": "v7_empty_route02"
+        },
+        "status": "ok"
+      },
+      "goal_id": "long-goal",
+      "monotonic_s": 240.403256234,
+      "request_id": "v7_empty_route02-long-goal",
+      "route_id": "pct:long-goal:51b24d7177d255356c76",
+      "seq": 1,
+      "status": "failed"
+    }
+  ],
+  "moving_curves": [],
+  "event_counts": {
+    "raw_command": 2063,
+    "gated_command": 3090,
+    "body_pose_observer": 232,
+    "pct_tomogram": 1,
+    "lidar_pose": 38,
+    "cloud": 38,
+    "pct_route": 1,
+    "scan_admission": 5,
+    "bspline": 2
+  },
+  "physics_duration_s": 14.879999999997192,
+  "policy_steps": 192,
+  "control_steps": 192,
+  "nonzero_command_steps": 0,
+  "displacement_xyz_m": [
+    -0.0009808704281554226,
+    -6.260705047005436e-06,
+    0.0008262736779562352
+  ],
+  "final_goal_xy_distance_m": 12.09673270182123,
+  "minimum_base_up_z": 0.9999986876215943,
+  "positive_applied_acknowledgments": 190,
+  "ack_errors": [],
+  "receive_age_range_s": [
+    0.014866708,
+    0.045939999
+  ],
+  "applied_reader_errors_before_first_ack": {
+    "applied_snapshot_missing": 122
+  },
+  "applied_reader_errors_after_first_ack": [],
+  "command_reasons": {
+    "no_command": 1,
+    "active": 133,
+    "clock_unsynchronized": 1,
+    "disconnected": 6,
+    "case_failed": 51
+  },
+  "rejected_clock_samples": 7,
+  "command_transport": {
+    "accepted_connections": 3,
+    "reconnects": 2,
+    "frames_received": 292,
+    "frames_sent": 0,
+    "protocol_errors": 2,
+    "io_errors": 0,
+    "last_protocol_error": "rejected_clock_observation",
+    "coalesced_frames": 0
+  },
+  "nonempty_current_track_messages": 0,
+  "claim": "Recorded native/Newton episode; full flat-navigation acceptance not established by this review",
+  "video_states_sha256": "df610043153da8774e928a7a0eee4a338adfc69551f2c3b44dc4908a259754b4",
+  "review_script_sha256": "b7c1f1eccc30ab835ebc0d99c38f3e2b3655d19967cc20b72b513424795a1d49"
+}
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/review_local_episode.py", line 164, in <module>
+    main()
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/review_local_episode.py", line 160, in main
+    raise AssertionError("One or more interface checks failed")
+AssertionError: One or more interface checks failed
