@@ -1,0 +1,40 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--cpus=2",
+    "--memory=4g",
+    "--name",
+    "vla-v5-frontier-audit",
+    "-e",
+    "ROS_DOMAIN_ID=218",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction:/base:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_v5_frontier:/audit:rw",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan44_height_v5:/workspace:ro",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/audit/inside_checks.sh"
+  ],
+  "deadline_s": 240,
+  "source_files": {
+    "inside_checks.sh": "48214c4478902655f80c1932ba885b458b7badb7dae31519f1544fd9414cff3b",
+    "probe_source_checks/CMakeLists.txt": "f875467910dbdb2086deeaffaccbe3541c8c33d2123b1f2325141377c9f3138c",
+    "probe_source_checks/package.xml": "4ebc137341c572ee1e0731e8436d4a032c0a4219ae7fa9b114e67a2fc8947575",
+    "probe_source_checks/src/frontier_probe.cpp": "801b787c028859fb1d83b45a07fa0c0119f64f7a917db73243b0fdd49dd0ea8c"
+  },
+  "native_sources_changed": false,
+  "attempt": "occupancy_checks",
+  "reason": "Observe start and complete straight segment with existing native collision API; production sources and captured inputs unchanged.",
+  "exit_code": 0,
+  "wall_s": 44.8054042079998
+}

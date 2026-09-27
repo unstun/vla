@@ -21,6 +21,7 @@ establishes conventions.
 | [Error Handling](./error-handling.md) | Error types and propagation | Deferred: no runtime selected |
 | [Quality Guidelines](./quality-guidelines.md) | Baseline, interface, and evidence gates | Active |
 | [Simulator Inference Evidence](./simulator-inference-evidence.md) | Bounded upstream trials, clocks, resources, and artifact integrity | Active for upstream experiments |
+| [Newton Reference Progress](./newton-reference-progress.md) | Shared map-resolution progress rule and native short-window regression | Scoped to the v6 Building integration |
 | [Quantized Inference Evidence](./quantized-inference-evidence.md) | Low-bit state, resource measurements, export/reload, and action claim boundaries | Active for quantized VLA probes |
 | [Logging Guidelines](./logging-guidelines.md) | Structured logging and run identity | Deferred: no runtime selected |
 

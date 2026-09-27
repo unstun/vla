@@ -1,0 +1,49 @@
+--- v5/src/plan_manage/src/planner_manager.cpp
++++ v6/src/plan_manage/src/planner_manager.cpp
+@@ -0,0 +1 @@
++#include <cmath>
+@@ -35,0 +37,5 @@
++    if (!node->has_parameter("manager.resolution_aware_progress"))
++      node->declare_parameter<bool>("manager.resolution_aware_progress", false);
++    resolution_aware_progress_ = node->get_parameter("manager.resolution_aware_progress").as_bool();
++    RCLCPP_INFO(node->get_logger(), "local_progress_mode=%s",
++                resolution_aware_progress_ ? "map_resolution" : "legacy_0.2m");
+@@ -60,0 +67,18 @@
++  bool SCANPlannerManager::hasLocalTranslation(const Eigen::Vector3d &start,
++                                               const Eigen::Vector3d &target) const
++  {
++    if (!start.allFinite() || !target.allFinite()) return false;
++    if (!resolution_aware_progress_) return (target - start).norm() >= 0.2;
++    if (!grid_map_ || !grid_map_->isInMap(start) || !grid_map_->isInMap(target)) return false;
++    const double resolution = grid_map_->getResolution();
++    if (!std::isfinite(resolution) || resolution <= 0.0) return false;
++    // Nav2 Smac 3c3db59 distinguishes same-cell and translated goals. Require
++    // a full resolution as well so a tiny cross-boundary move is not progress.
++    const double translation_cells = (target - start).head<2>().norm() / resolution;
++    if (translation_cells + 1e-9 < 1.0) return false;
++    Eigen::Vector3i start_cell, target_cell;
++    grid_map_->posToIndex(start, start_cell);
++    grid_map_->posToIndex(target, target_cell);
++    return start_cell.x() != target_cell.x() || start_cell.y() != target_cell.y();
++  }
++
+@@ -75 +99 @@
+-    if ((start_pt - local_target_pt).norm() < 0.2)
++    if (!hasLocalTranslation(start_pt, local_target_pt))
+--- v5/src/plan_manage/include/plan_manage/planner_manager.h
++++ v6/src/plan_manage/include/plan_manage/planner_manager.h
+@@ -28,0 +29 @@
++    bool hasLocalTranslation(const Eigen::Vector3d &start, const Eigen::Vector3d &target) const;
+@@ -46,0 +48 @@
++    bool resolution_aware_progress_{false};
+--- v5/src/plan_manage/src/scan_replan_fsm.cpp
++++ v6/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -348 +348 @@
+-            (path.back() - start_pt_).norm() >= 0.2) {
++            planner_manager_->hasLocalTranslation(start_pt_, path.back())) {
+@@ -1145 +1145 @@
+-      if (!candidate.allFinite() || (candidate - start_pt_).norm() < 0.2) continue;
++      if (!candidate.allFinite() || !planner_manager_->hasLocalTranslation(start_pt_, candidate)) continue;
+@@ -1382 +1382 @@
+-                      (local_target_pt_ - start_pt_).norm() < 0.2)) return false;
++                      !planner_manager_->hasLocalTranslation(start_pt_, local_target_pt_))) return false;
