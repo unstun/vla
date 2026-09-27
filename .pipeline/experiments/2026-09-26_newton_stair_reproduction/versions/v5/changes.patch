@@ -1,0 +1,1964 @@
+--- v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/repairs/2026-09-26_generic_occupancy/candidate44_height_v5_identity.json
++++ v5/.pipeline/experiments/2026-09-26_newton_stair_reproduction/repairs/2026-09-26_generic_occupancy/candidate44_height_v5_identity.json
+@@ -0,0 +1,103 @@
++{
++  "source_sha256": {
++    "src/traj_utils/CMakeLists.txt": "5e2f21bb681b22ebc1e9b03c78df1b39a53d585ca436219abbab510434b77bb6",
++    "src/traj_utils/package.xml": "41eccf955db4758e3d21faee9f3ba273aaa3b3950a26815a085e82511a1b3143",
++    "src/bspline_opt/CMakeLists.txt": "625227e0ae7516236c423085abc16cfa9b9496b96f2f3e49e2d50cc243d92a33",
++    "src/bspline_opt/package.xml": "2157a112274394488a791b422007690eadc4343f861067f47cd0308a22bc8009",
++    "src/path_searching/CMakeLists.txt": "0abd39e42a0879750487260bd6da795496d8971fbc7cf1ad83c207a979e70f27",
++    "src/path_searching/package.xml": "9dfc54b1045a51703b9ac7a191b4d8f1c52a6193ea8a6ddcad8d8a8e7310f985",
++    "src/plan_manage/CMakeLists.txt": "4389e9884523a0decfcff992644cc8fd3813ee2a5140f4d41c02f7fd6ab08e53",
++    "src/plan_manage/package.xml": "2ad60127fb69a9df7cf0f9bd4ac5e314ab5f66a7368bb87c813dc809e4ba23f3",
++    "src/scan_reactive_tracker/package.xml": "19793799d1be804215c58e5e75424bc8a106789115235d2e5355364d10a5778c",
++    "src/scan_reactive_tracker/setup.py": "8f8aa9cd7467d6d0f396fc3d807478f89d90f3586c1a6b5113e258dbd4cb3c60",
++    "src/scan_reactive_tracker/setup.cfg": "f79a2762c5711ee6d2be6bfaa68f532ad2ae9c650905332fe041b14902a5e34c",
++    "src/scan_planner_msgs/CMakeLists.txt": "a64a8256f2904a70881525c19d6eef3dceabd65e9ca3f9aec6dc2996f865fa08",
++    "src/scan_planner_msgs/package.xml": "905ac86cf012e103496e9c3d8fd87f8a318f249ace7b25d317d9f44c948f8de2",
++    "src/plan_env/CMakeLists.txt": "5ba1842c5c9126770d8fe55ac9cc51b72e2dbf33b03294c945f52a8c52eab38a",
++    "src/plan_env/package.xml": "0b4a3da1a9bb7457c70b4bc145113c15ca1e6c177c8c0c3d0ec9d4396f5be5fd",
++    "src/geometry_probe/CMakeLists.txt": "5b843c1dedadfb4acc8b5a6dc61bb97a0fea1794c2295d12495ac1c46fa1e7e1",
++    "src/geometry_probe/package.xml": "bc25e602e032f6337511969f7e2199515ce394fc391a4246895aba26e486b086",
++    "src/traj_utils/src/planning_visualization.cpp": "938924191bfe46dbfadd83df45d118f0fc7fc54c080ecf9bf310fc7b1ba71541",
++    "src/traj_utils/src/polynomial_traj.cpp": "608005c392dbfa46315cfa3f6e5f3b9db5bc3a10cb3f9ac539c3321505acdb18",
++    "src/traj_utils/include/traj_utils/planning_visualization.h": "c7d0bb617163f7931fce28346963a5cc5ab0f383aa00ebb360c2f8319bc5a4c1",
++    "src/traj_utils/include/traj_utils/polynomial_traj.h": "7ce335eea4abc5afb9f02fb3d1f5e926f57dc90e2a0b9005ad11ab13836f1060",
++    "src/bspline_opt/test/test_uniform_bspline.cpp": "acf9fa94285c426ca04c2b5c21b77e926d0a635915f75373a1d99371690e730e",
++    "src/bspline_opt/src/uniform_bspline.cpp": "e91c5a429155738389602dc4c50301ea65f8f134809406545779c1bf0c1d7a8b",
++    "src/bspline_opt/src/gradient_descent_optimizer.cpp": "4dca3811be57cf3f819a0d3601d6a6024c304f5b9852e4079bf3334706f133c7",
++    "src/bspline_opt/src/bspline_optimizer.cpp": "cb2e0422c8d676e55cbf0ff7ba5d16b75a516c4dda8473331b47e440b42fb342",
++    "src/bspline_opt/include/bspline_opt/uniform_bspline.h": "3746719f8d1377191be673b704fcd6b8967c67c7e3e866de75d585e52cf71a75",
++    "src/bspline_opt/include/bspline_opt/rebound_constraint_utils.h": "c32f9163a98fe0d954ce480ad8492362e9462bebac09c4917e6fed6e5645172a",
++    "src/bspline_opt/include/bspline_opt/timed_cubic_initialization.h": "85cc6c2d457ce9cf18c1afa2e14d8f3999eb96b4bfdc5fd3dfaed49e32db62e7",
++    "src/bspline_opt/include/bspline_opt/bspline_optimizer.h": "98a14e2b922949ab2aa8e821613dd11a48ad5bb6e2605d74a30cbeaac22567f1",
++    "src/bspline_opt/include/bspline_opt/lbfgs.hpp": "39174dfe750b142f448fe8ac637976edc8a1bcf6a6ab8a56930e6543cfdf6b07",
++    "src/bspline_opt/include/bspline_opt/gradient_descent_optimizer.h": "1b02e713ac1112ea0a365f84e23af262822a1d76fe9cef3e8740b073d906abca",
++    "src/bspline_opt/include/bspline_opt/full_trajectory_collision.h": "0e96924362431e4ad3c296ecfe319141cd11b512374f9f3b091ddf6153f24d3d",
++    "src/path_searching/src/dyn_a_star.cpp": "840a4c011b57276b78f1eebc29c77bc47012237f06a25b9884f09fa6f368ea1d",
++    "src/path_searching/include/path_searching/dyn_a_star.h": "755bc34603466216b019bb27df8b3c2046f0d5db5c1d3542ac50fd428e08dec5",
++    "src/plan_manage/test/test_reference_path_utils.cpp": "0c51047a68b6daff0b43338870b7150f8d749b0f5a608272ab401fab1d3d6ffd",
++    "src/plan_manage/test/test_reference_path_publisher_launch.py": "c4f82856f47a651e57cc89aefd46671de653f0fff210901055e5260818c5a60c",
++    "src/plan_manage/test/test_planner_startup.py": "b9853c05debeabb808313e99696ed70683b29c676e52edddcd2721018da3f260",
++    "src/plan_manage/test/test_waypoint_parameters.py": "9c4d01bd06ecbc5982b7cb63b915eb0253a67304c1e7b354ae2f40ebe9da96f5",
++    "src/plan_manage/test/test_reference_path_publisher_unit.py": "2abc5ed35d778a69bf2ad7e2fa2857764dfd4a4379cde6a3cf7f9cfb9279cadc",
++    "src/plan_manage/config/reference_path.map.yaml": "fb6d7ccde75ccf6af7e2dcc804d7dea9afcf5e60340607043a9cb09ad03d66ba",
++    "src/plan_manage/config/controllers.yaml": "7139eefb804179589583ccd6dcc900aad50d47a45c5134ef7997e1aeaac4b0e8",
++    "src/plan_manage/config/simulator.yaml": "fa49f55acae0c678ec77fc72ccf5a0e2023970f0361c2fc20b534292e1d94a61",
++    "src/plan_manage/config/planner.yaml": "adc4c52259c2745b99d61f65c06550f05dbd7f64a7737ba22ff112d56744b6e4",
++    "src/plan_manage/config/keypoints.example.yaml": "e681f321f2f336081f2d443d6a576f6300ccf63f86b3692fb82f55a7df02b6ca",
++    "src/plan_manage/launch/simulator.launch.py": "1887eb0df073f6bd04c2bfe54584a69f49301f1f61300e39766c90307d184b1d",
++    "src/plan_manage/launch/pct_scan_phase1.launch.py": "1becaa534487aa68ca3b324dfe1744e03f080b8c67efca007b7c0dda5c00ce17",
++    "src/plan_manage/launch/p2b_scan.launch.py": "9489a0a686c4684975c136740a7911b610224ff17e9b3e7967971e0daf1cb8aa",
++    "src/plan_manage/launch/building.rviz": "5126cc3e7c5d229aae90bf3a48257342d60b5d45bb7da63f987e5dcdd233b985",
++    "src/plan_manage/launch/default.rviz": "7f3f69b0ce88072b25a7532842f49ec7bea43d9cb6781ace731a62be31716eb6",
++    "src/plan_manage/launch/rviz.launch.py": "3461655a5833d8cce8df045fcc5ca1dc12b52548b4398c3fb2cd59f89dec61d8",
++    "src/plan_manage/launch/run.launch.py": "9ca4931ae39504ee9d4d77b0691f7b94116399edebecee3b1fa15cb1e38faf0b",
++    "src/plan_manage/scripts/keypoint_recorder.py": "e2ba7f3cd0d5eb77bfb5062bd8d7d926304f4b3565c30cd4f1592dfc46bd6114",
++    "src/plan_manage/scripts/reference_path_publisher.py": "3df13e20a27371e513dcf6ef1ff744ee212261851fddf6a141d2c4747ff5aeda",
++    "src/plan_manage/src/open_loop_controller.cpp": "5b5c12be79e63cd4c0c8362a7630e15a2930f7371fae9bddcd9e00e8f7d3ef6c",
++    "src/plan_manage/src/closed_loop_controller.cpp": "dd215a6388379dbb108ae2b4e55eb8997b7bd5bfe0813c20b7597d12b60b927d",
++    "src/plan_manage/src/scan_planner_node.cpp": "2040950cf8e72e6037543185b89a92fa9f416b05976131730d7ae05236bc2f08",
++    "src/plan_manage/src/scan_replan_fsm.cpp": "1f664ec154732b5331b913343e8e4d59af77bd55bb663e1ddf6510a97562e45d",
++    "src/plan_manage/src/go2_gait_publisher.cpp": "9f90cb9bf0a5d9aa156a0e6cfe6af3ccc8ff550ea694703a157dbd3b39408b12",
++    "src/plan_manage/src/go2_kinematic_sim.cpp": "468045b4c8427247f70c04ce0a0575e52903d3601d7217a658cafb9c3a7c0ae3",
++    "src/plan_manage/src/planner_manager.cpp": "088269c0febce3ac2f49060199848e1650b6a50b5bc68b1bf35bcdff7f0e4723",
++    "src/plan_manage/include/plan_manage/planner_manager.h": "26f0259918c4616fbb79ac9d6e861e5a836863140c41dd1da8c3bf4b55f98060",
++    "src/plan_manage/include/plan_manage/reference_path_utils.h": "798dd14d54fe48445d9ed5d99014cc9e18ac640320737566f0581f522799c20f",
++    "src/plan_manage/include/plan_manage/polyline_trajectory_utils.h": "01dce9c759780754335a8499e62e1513fd3d60ea6fd75b1b86719353587cc6fe",
++    "src/plan_manage/include/plan_manage/seed_polyline_sampling.h": "dfe12c0130ab48f02475b166b1ad61d8ac29cc990d55014f37a7eb8be4d2206f",
++    "src/plan_manage/include/plan_manage/scan_replan_fsm.h": "fba0cc75013df79bcc13f785cacad84df5efa39d7fc805ca84e2a39dafc0cba4",
++    "src/plan_manage/include/plan_manage/plan_container.hpp": "c5c37fdd776a09b846ec04034329c2781b07f3ad4feeab095084115b179bf2d4",
++    "src/scan_reactive_tracker/scan_reactive_tracker/static_background.py": "64a4f8b3ff284d6a1b8ad92a12749d8da4aa1156f2f010c0185b7c5aa0edff2f",
++    "src/scan_reactive_tracker/scan_reactive_tracker/static_foreground_tracker.py": "c4d61b3d493c7052158c314d9cf7b6b45013333ae5b36131bed9abfde207e719",
++    "src/scan_reactive_tracker/scan_reactive_tracker/io.py": "456dc00907fbc37ef7ebf33115c6983993a5be5a810b133028b8acd76b037db9",
++    "src/scan_reactive_tracker/scan_reactive_tracker/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "src/scan_reactive_tracker/scan_reactive_tracker/core.py": "2051acc08d22acc4ed681486412d7aa78817d68a917123cc58013490173ebc53",
++    "src/scan_reactive_tracker/scan_reactive_tracker/physical_ground_contract.py": "4e0e0077b54d69e14f0883721b46374435d408e6b6062546e7a2f5bc5783912f",
++    "src/scan_reactive_tracker/scan_reactive_tracker/node.py": "96c74ff21438d9b25625647073d2c666deb0075610787a2732e8df4ead1cb7ab",
++    "src/scan_reactive_tracker/resource/scan_reactive_tracker": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "src/scan_planner_msgs/msg/P2BStampedTwist.msg": "cde4b4a43a3064b4ccd45429b172737fec9e9e9a812ee6c1f94b0b400e6115dd",
++    "src/scan_planner_msgs/msg/TrackedPersonSnapshot.msg": "accde7045df4c3b1b726f973e00d3bffd1d32c7e2cdc9393a2e0f72610e38498",
++    "src/scan_planner_msgs/msg/TrackedPerson.msg": "7f342a6e19b454d5ff9f4306652db4d7c78b1282e732acb50f8c77e8088e92cf",
++    "src/scan_planner_msgs/msg/Bspline.msg": "bc1e95ce50633f73cbe7d3f9d8d5a3b585b7c7987b99358df2efd06639f82289",
++    "src/scan_planner_msgs/msg/P2BAdmission.msg": "21511c74add12c685fb3e9d0b282280a5395184085e0eca5fe66bbd9c1dc19bc",
++    "src/scan_planner_msgs/msg/P2BRoute.msg": "1ca4da2c63337524c6760f0aa40db026e95f33bdda1f88b5a0f8f6784082d70a",
++    "src/scan_planner_msgs/msg/DataDisp.msg": "e5af486e44777df259d35ee0a4d6f99a1a9bcb6d99de0c64687d1e5c02abc7f2",
++    "src/scan_planner_msgs/msg/P2BCancel.msg": "8b45d825ed4603e7cd505b8c208e52e12358d2f6163387ae44857449ef5d04f8",
++    "src/plan_env/src/grid_map.cpp": "3162e1f66fa08917b9e184631e00c5e59ebe54c16074fec3ca64b078da0c6ecb",
++    "src/plan_env/src/raycast.cpp": "d7cd0a81c3264fe8aa0920b796cf5dd86241b35aa74c15890af5a5c10f270a40",
++    "src/plan_env/include/plan_env/astar_grid_coordinates.h": "9fd307fec25f57db57d32a5ced8d093baf60dd5a52f817445ffd4f9626d2ef41",
++    "src/plan_env/include/plan_env/eth_step_score_adaptation.h": "17e3847dfe3591cd97b827bb920b993beb833690ebcd982d8429ea3b6611a353",
++    "src/plan_env/include/plan_env/raw_return_classification.h": "533a674b31e2b141ade53814d1cff8638390541ef4dbb98936f09f33985b01ba",
++    "src/plan_env/include/plan_env/ETH_STEPFILTER_LICENSE.txt": "c35a214548e537ac722906b28f3b9086d8edd75f2b0a192ce4f70b2ccccbc534",
++    "src/plan_env/include/plan_env/collision_segment.h": "816847e9e484a98b075119cac2d1368d28f4f622d7f3b769367936c1ae6a9a5c",
++    "src/plan_env/include/plan_env/scan_reactive_grid_methods.inc": "d45a7f4285635071149d9033a7ecdd3a43a8df0b7088bc9bb5b96efb4bb8ee17",
++    "src/plan_env/include/plan_env/motion_heading.h": "297c1687a02e4606b9f8c131de809fba66aea9f3493c0f40875fcc06c2b35aff",
++    "src/plan_env/include/plan_env/grid_map.h": "db1fc79b3282fa05ea983149e191c0b9ea07120a48c6a8a3a2a3691b0f0a3478",
++    "src/plan_env/include/plan_env/known_lite3_trunk.h": "8f0fb9772b397dba4070cdb4df5ce89a5ddd0bdd16307f7611f92945b2e64121",
++    "src/plan_env/include/plan_env/reactive_collision.h": "e7b84e9eb6702cce131b956d30ae42d37560b5f66cacbcfdbbef6d47ad9491f8",
++    "src/plan_env/include/plan_env/raycast.h": "0bf2bfc853eed90f8ca3b47ae14050db40a08fbe5ea1db8c3ab1fb4b363b39b0",
++    "src/geometry_probe/src/measured_cloud_probe.cpp": "9b4995eb38051a05c37ba2498ace02a1737b7593fd32db48e974846055212372"
++  },
++  "baseline": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan43_prefix_diagnostic_v2",
++  "integration_version": "v5",
++  "change": "Optional Z optimization in existing rebound/refinement; false preserves fixed-height behavior"
++}
+--- v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan44_height_v5/source_sha256.json
++++ v5/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan44_height_v5/source_sha256.json
+@@ -0,0 +1,98 @@
++{
++  "src/traj_utils/CMakeLists.txt": "5e2f21bb681b22ebc1e9b03c78df1b39a53d585ca436219abbab510434b77bb6",
++  "src/traj_utils/package.xml": "41eccf955db4758e3d21faee9f3ba273aaa3b3950a26815a085e82511a1b3143",
++  "src/bspline_opt/CMakeLists.txt": "625227e0ae7516236c423085abc16cfa9b9496b96f2f3e49e2d50cc243d92a33",
++  "src/bspline_opt/package.xml": "2157a112274394488a791b422007690eadc4343f861067f47cd0308a22bc8009",
++  "src/path_searching/CMakeLists.txt": "0abd39e42a0879750487260bd6da795496d8971fbc7cf1ad83c207a979e70f27",
++  "src/path_searching/package.xml": "9dfc54b1045a51703b9ac7a191b4d8f1c52a6193ea8a6ddcad8d8a8e7310f985",
++  "src/plan_manage/CMakeLists.txt": "4389e9884523a0decfcff992644cc8fd3813ee2a5140f4d41c02f7fd6ab08e53",
++  "src/plan_manage/package.xml": "2ad60127fb69a9df7cf0f9bd4ac5e314ab5f66a7368bb87c813dc809e4ba23f3",
++  "src/scan_reactive_tracker/package.xml": "19793799d1be804215c58e5e75424bc8a106789115235d2e5355364d10a5778c",
++  "src/scan_reactive_tracker/setup.py": "8f8aa9cd7467d6d0f396fc3d807478f89d90f3586c1a6b5113e258dbd4cb3c60",
++  "src/scan_reactive_tracker/setup.cfg": "f79a2762c5711ee6d2be6bfaa68f532ad2ae9c650905332fe041b14902a5e34c",
++  "src/scan_planner_msgs/CMakeLists.txt": "a64a8256f2904a70881525c19d6eef3dceabd65e9ca3f9aec6dc2996f865fa08",
++  "src/scan_planner_msgs/package.xml": "905ac86cf012e103496e9c3d8fd87f8a318f249ace7b25d317d9f44c948f8de2",
++  "src/plan_env/CMakeLists.txt": "5ba1842c5c9126770d8fe55ac9cc51b72e2dbf33b03294c945f52a8c52eab38a",
++  "src/plan_env/package.xml": "0b4a3da1a9bb7457c70b4bc145113c15ca1e6c177c8c0c3d0ec9d4396f5be5fd",
++  "src/geometry_probe/CMakeLists.txt": "5b843c1dedadfb4acc8b5a6dc61bb97a0fea1794c2295d12495ac1c46fa1e7e1",
++  "src/geometry_probe/package.xml": "bc25e602e032f6337511969f7e2199515ce394fc391a4246895aba26e486b086",
++  "src/traj_utils/src/planning_visualization.cpp": "938924191bfe46dbfadd83df45d118f0fc7fc54c080ecf9bf310fc7b1ba71541",
++  "src/traj_utils/src/polynomial_traj.cpp": "608005c392dbfa46315cfa3f6e5f3b9db5bc3a10cb3f9ac539c3321505acdb18",
++  "src/traj_utils/include/traj_utils/planning_visualization.h": "c7d0bb617163f7931fce28346963a5cc5ab0f383aa00ebb360c2f8319bc5a4c1",
++  "src/traj_utils/include/traj_utils/polynomial_traj.h": "7ce335eea4abc5afb9f02fb3d1f5e926f57dc90e2a0b9005ad11ab13836f1060",
++  "src/bspline_opt/test/test_uniform_bspline.cpp": "acf9fa94285c426ca04c2b5c21b77e926d0a635915f75373a1d99371690e730e",
++  "src/bspline_opt/src/uniform_bspline.cpp": "e91c5a429155738389602dc4c50301ea65f8f134809406545779c1bf0c1d7a8b",
++  "src/bspline_opt/src/gradient_descent_optimizer.cpp": "4dca3811be57cf3f819a0d3601d6a6024c304f5b9852e4079bf3334706f133c7",
++  "src/bspline_opt/src/bspline_optimizer.cpp": "cb2e0422c8d676e55cbf0ff7ba5d16b75a516c4dda8473331b47e440b42fb342",
++  "src/bspline_opt/include/bspline_opt/uniform_bspline.h": "3746719f8d1377191be673b704fcd6b8967c67c7e3e866de75d585e52cf71a75",
++  "src/bspline_opt/include/bspline_opt/rebound_constraint_utils.h": "c32f9163a98fe0d954ce480ad8492362e9462bebac09c4917e6fed6e5645172a",
++  "src/bspline_opt/include/bspline_opt/timed_cubic_initialization.h": "85cc6c2d457ce9cf18c1afa2e14d8f3999eb96b4bfdc5fd3dfaed49e32db62e7",
++  "src/bspline_opt/include/bspline_opt/bspline_optimizer.h": "98a14e2b922949ab2aa8e821613dd11a48ad5bb6e2605d74a30cbeaac22567f1",
++  "src/bspline_opt/include/bspline_opt/lbfgs.hpp": "39174dfe750b142f448fe8ac637976edc8a1bcf6a6ab8a56930e6543cfdf6b07",
++  "src/bspline_opt/include/bspline_opt/gradient_descent_optimizer.h": "1b02e713ac1112ea0a365f84e23af262822a1d76fe9cef3e8740b073d906abca",
++  "src/bspline_opt/include/bspline_opt/full_trajectory_collision.h": "0e96924362431e4ad3c296ecfe319141cd11b512374f9f3b091ddf6153f24d3d",
++  "src/path_searching/src/dyn_a_star.cpp": "840a4c011b57276b78f1eebc29c77bc47012237f06a25b9884f09fa6f368ea1d",
++  "src/path_searching/include/path_searching/dyn_a_star.h": "755bc34603466216b019bb27df8b3c2046f0d5db5c1d3542ac50fd428e08dec5",
++  "src/plan_manage/test/test_reference_path_utils.cpp": "0c51047a68b6daff0b43338870b7150f8d749b0f5a608272ab401fab1d3d6ffd",
++  "src/plan_manage/test/test_reference_path_publisher_launch.py": "c4f82856f47a651e57cc89aefd46671de653f0fff210901055e5260818c5a60c",
++  "src/plan_manage/test/test_planner_startup.py": "b9853c05debeabb808313e99696ed70683b29c676e52edddcd2721018da3f260",
++  "src/plan_manage/test/test_waypoint_parameters.py": "9c4d01bd06ecbc5982b7cb63b915eb0253a67304c1e7b354ae2f40ebe9da96f5",
++  "src/plan_manage/test/test_reference_path_publisher_unit.py": "2abc5ed35d778a69bf2ad7e2fa2857764dfd4a4379cde6a3cf7f9cfb9279cadc",
++  "src/plan_manage/config/reference_path.map.yaml": "fb6d7ccde75ccf6af7e2dcc804d7dea9afcf5e60340607043a9cb09ad03d66ba",
++  "src/plan_manage/config/controllers.yaml": "7139eefb804179589583ccd6dcc900aad50d47a45c5134ef7997e1aeaac4b0e8",
++  "src/plan_manage/config/simulator.yaml": "fa49f55acae0c678ec77fc72ccf5a0e2023970f0361c2fc20b534292e1d94a61",
++  "src/plan_manage/config/planner.yaml": "adc4c52259c2745b99d61f65c06550f05dbd7f64a7737ba22ff112d56744b6e4",
++  "src/plan_manage/config/keypoints.example.yaml": "e681f321f2f336081f2d443d6a576f6300ccf63f86b3692fb82f55a7df02b6ca",
++  "src/plan_manage/launch/simulator.launch.py": "1887eb0df073f6bd04c2bfe54584a69f49301f1f61300e39766c90307d184b1d",
++  "src/plan_manage/launch/pct_scan_phase1.launch.py": "1becaa534487aa68ca3b324dfe1744e03f080b8c67efca007b7c0dda5c00ce17",
++  "src/plan_manage/launch/p2b_scan.launch.py": "9489a0a686c4684975c136740a7911b610224ff17e9b3e7967971e0daf1cb8aa",
++  "src/plan_manage/launch/building.rviz": "5126cc3e7c5d229aae90bf3a48257342d60b5d45bb7da63f987e5dcdd233b985",
++  "src/plan_manage/launch/default.rviz": "7f3f69b0ce88072b25a7532842f49ec7bea43d9cb6781ace731a62be31716eb6",
++  "src/plan_manage/launch/rviz.launch.py": "3461655a5833d8cce8df045fcc5ca1dc12b52548b4398c3fb2cd59f89dec61d8",
++  "src/plan_manage/launch/run.launch.py": "9ca4931ae39504ee9d4d77b0691f7b94116399edebecee3b1fa15cb1e38faf0b",
++  "src/plan_manage/scripts/keypoint_recorder.py": "e2ba7f3cd0d5eb77bfb5062bd8d7d926304f4b3565c30cd4f1592dfc46bd6114",
++  "src/plan_manage/scripts/reference_path_publisher.py": "3df13e20a27371e513dcf6ef1ff744ee212261851fddf6a141d2c4747ff5aeda",
++  "src/plan_manage/src/open_loop_controller.cpp": "5b5c12be79e63cd4c0c8362a7630e15a2930f7371fae9bddcd9e00e8f7d3ef6c",
++  "src/plan_manage/src/closed_loop_controller.cpp": "dd215a6388379dbb108ae2b4e55eb8997b7bd5bfe0813c20b7597d12b60b927d",
++  "src/plan_manage/src/scan_planner_node.cpp": "2040950cf8e72e6037543185b89a92fa9f416b05976131730d7ae05236bc2f08",
++  "src/plan_manage/src/scan_replan_fsm.cpp": "1f664ec154732b5331b913343e8e4d59af77bd55bb663e1ddf6510a97562e45d",
++  "src/plan_manage/src/go2_gait_publisher.cpp": "9f90cb9bf0a5d9aa156a0e6cfe6af3ccc8ff550ea694703a157dbd3b39408b12",
++  "src/plan_manage/src/go2_kinematic_sim.cpp": "468045b4c8427247f70c04ce0a0575e52903d3601d7217a658cafb9c3a7c0ae3",
++  "src/plan_manage/src/planner_manager.cpp": "088269c0febce3ac2f49060199848e1650b6a50b5bc68b1bf35bcdff7f0e4723",
++  "src/plan_manage/include/plan_manage/planner_manager.h": "26f0259918c4616fbb79ac9d6e861e5a836863140c41dd1da8c3bf4b55f98060",
++  "src/plan_manage/include/plan_manage/reference_path_utils.h": "798dd14d54fe48445d9ed5d99014cc9e18ac640320737566f0581f522799c20f",
++  "src/plan_manage/include/plan_manage/polyline_trajectory_utils.h": "01dce9c759780754335a8499e62e1513fd3d60ea6fd75b1b86719353587cc6fe",
++  "src/plan_manage/include/plan_manage/seed_polyline_sampling.h": "dfe12c0130ab48f02475b166b1ad61d8ac29cc990d55014f37a7eb8be4d2206f",
++  "src/plan_manage/include/plan_manage/scan_replan_fsm.h": "fba0cc75013df79bcc13f785cacad84df5efa39d7fc805ca84e2a39dafc0cba4",
++  "src/plan_manage/include/plan_manage/plan_container.hpp": "c5c37fdd776a09b846ec04034329c2781b07f3ad4feeab095084115b179bf2d4",
++  "src/scan_reactive_tracker/scan_reactive_tracker/static_background.py": "64a4f8b3ff284d6a1b8ad92a12749d8da4aa1156f2f010c0185b7c5aa0edff2f",
++  "src/scan_reactive_tracker/scan_reactive_tracker/static_foreground_tracker.py": "c4d61b3d493c7052158c314d9cf7b6b45013333ae5b36131bed9abfde207e719",
++  "src/scan_reactive_tracker/scan_reactive_tracker/io.py": "456dc00907fbc37ef7ebf33115c6983993a5be5a810b133028b8acd76b037db9",
++  "src/scan_reactive_tracker/scan_reactive_tracker/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++  "src/scan_reactive_tracker/scan_reactive_tracker/core.py": "2051acc08d22acc4ed681486412d7aa78817d68a917123cc58013490173ebc53",
++  "src/scan_reactive_tracker/scan_reactive_tracker/physical_ground_contract.py": "4e0e0077b54d69e14f0883721b46374435d408e6b6062546e7a2f5bc5783912f",
++  "src/scan_reactive_tracker/scan_reactive_tracker/node.py": "96c74ff21438d9b25625647073d2c666deb0075610787a2732e8df4ead1cb7ab",
++  "src/scan_reactive_tracker/resource/scan_reactive_tracker": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++  "src/scan_planner_msgs/msg/P2BStampedTwist.msg": "cde4b4a43a3064b4ccd45429b172737fec9e9e9a812ee6c1f94b0b400e6115dd",
++  "src/scan_planner_msgs/msg/TrackedPersonSnapshot.msg": "accde7045df4c3b1b726f973e00d3bffd1d32c7e2cdc9393a2e0f72610e38498",
++  "src/scan_planner_msgs/msg/TrackedPerson.msg": "7f342a6e19b454d5ff9f4306652db4d7c78b1282e732acb50f8c77e8088e92cf",
++  "src/scan_planner_msgs/msg/Bspline.msg": "bc1e95ce50633f73cbe7d3f9d8d5a3b585b7c7987b99358df2efd06639f82289",
++  "src/scan_planner_msgs/msg/P2BAdmission.msg": "21511c74add12c685fb3e9d0b282280a5395184085e0eca5fe66bbd9c1dc19bc",
++  "src/scan_planner_msgs/msg/P2BRoute.msg": "1ca4da2c63337524c6760f0aa40db026e95f33bdda1f88b5a0f8f6784082d70a",
++  "src/scan_planner_msgs/msg/DataDisp.msg": "e5af486e44777df259d35ee0a4d6f99a1a9bcb6d99de0c64687d1e5c02abc7f2",
++  "src/scan_planner_msgs/msg/P2BCancel.msg": "8b45d825ed4603e7cd505b8c208e52e12358d2f6163387ae44857449ef5d04f8",
++  "src/plan_env/src/grid_map.cpp": "3162e1f66fa08917b9e184631e00c5e59ebe54c16074fec3ca64b078da0c6ecb",
++  "src/plan_env/src/raycast.cpp": "d7cd0a81c3264fe8aa0920b796cf5dd86241b35aa74c15890af5a5c10f270a40",
++  "src/plan_env/include/plan_env/astar_grid_coordinates.h": "9fd307fec25f57db57d32a5ced8d093baf60dd5a52f817445ffd4f9626d2ef41",
++  "src/plan_env/include/plan_env/eth_step_score_adaptation.h": "17e3847dfe3591cd97b827bb920b993beb833690ebcd982d8429ea3b6611a353",
++  "src/plan_env/include/plan_env/raw_return_classification.h": "533a674b31e2b141ade53814d1cff8638390541ef4dbb98936f09f33985b01ba",
++  "src/plan_env/include/plan_env/ETH_STEPFILTER_LICENSE.txt": "c35a214548e537ac722906b28f3b9086d8edd75f2b0a192ce4f70b2ccccbc534",
++  "src/plan_env/include/plan_env/collision_segment.h": "816847e9e484a98b075119cac2d1368d28f4f622d7f3b769367936c1ae6a9a5c",
++  "src/plan_env/include/plan_env/scan_reactive_grid_methods.inc": "d45a7f4285635071149d9033a7ecdd3a43a8df0b7088bc9bb5b96efb4bb8ee17",
++  "src/plan_env/include/plan_env/motion_heading.h": "297c1687a02e4606b9f8c131de809fba66aea9f3493c0f40875fcc06c2b35aff",
++  "src/plan_env/include/plan_env/grid_map.h": "db1fc79b3282fa05ea983149e191c0b9ea07120a48c6a8a3a2a3691b0f0a3478",
++  "src/plan_env/include/plan_env/known_lite3_trunk.h": "8f0fb9772b397dba4070cdb4df5ce89a5ddd0bdd16307f7611f92945b2e64121",
++  "src/plan_env/include/plan_env/reactive_collision.h": "e7b84e9eb6702cce131b956d30ae42d37560b5f66cacbcfdbbef6d47ad9491f8",
++  "src/plan_env/include/plan_env/raycast.h": "0bf2bfc853eed90f8ca3b47ae14050db40a08fbe5ea1db8c3ab1fb4b363b39b0",
++  "src/geometry_probe/src/measured_cloud_probe.cpp": "9b4995eb38051a05c37ba2498ace02a1737b7593fd32db48e974846055212372"
++}
+--- v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan44_height_v5/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
++++ v5/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan44_height_v5/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
+@@ -0,0 +1,163 @@
++#ifndef _BSPLINE_OPTIMIZER_H_
++#define _BSPLINE_OPTIMIZER_H_
++
++#include <Eigen/Eigen>
++#include <path_searching/dyn_a_star.h>
++#include <bspline_opt/uniform_bspline.h>
++#include <plan_env/grid_map.h>
++#include <rclcpp/rclcpp.hpp>
++#include "bspline_opt/lbfgs.hpp"
++
++// Gradient and elastic band optimization
++
++// Input: a signed distance field and a sequence of points
++// Output: the optimized sequence of points
++// The format of points: N x 3 matrix, each row is a point
++namespace scan_planner
++{
++
++  class ControlPoints
++  {
++  public:
++    double clearance;
++    int size;
++    Eigen::MatrixXd points;
++    std::vector<std::vector<Eigen::Vector3d>> base_point; // The point at the start of the direction vector (collision point)
++    std::vector<std::vector<Eigen::Vector3d>> direction;  // Direction vector, must be normalized.
++    std::vector<bool> flag_temp;                          // A flag that used in many places. Initialize it every time before using it.
++    // std::vector<bool> occupancy;
++
++    void resize(const int size_set)
++    {
++      size = size_set;
++
++      base_point.clear();
++      direction.clear();
++      flag_temp.clear();
++      // occupancy.clear();
++
++      points.resize(3, size_set);
++      base_point.resize(size);
++      direction.resize(size);
++      flag_temp.resize(size);
++      // occupancy.resize(size);
++    }
++  };
++
++  class BsplineOptimizer
++  {
++
++  public:
++    BsplineOptimizer() {}
++    ~BsplineOptimizer() {}
++
++    /* main API */
++    void setEnvironment(const GridMap::Ptr &env);
++    void setParam(rclcpp::Node *node);
++    Eigen::MatrixXd BsplineOptimizeTraj(const Eigen::MatrixXd &points, const double &ts,
++                                        const int &cost_function, int max_num_id, int max_time_id);
++
++    /* helper function */
++
++    // required inputs
++    void setControlPoints(const Eigen::MatrixXd &points);
++    void setBsplineInterval(const double &ts);
++    void setCostFunction(const int &cost_function);
++    void setTerminateCond(const int &max_num_id, const int &max_time_id);
++
++    // optional inputs
++    void setGuidePath(const vector<Eigen::Vector3d> &guide_pt);
++    void setWaypoints(const vector<Eigen::Vector3d> &waypts,
++                      const vector<int> &waypt_idx); // N-2 constraints at most
++
++    void optimize();
++
++    Eigen::MatrixXd getControlPoints();
++
++    AStar::Ptr a_star_;
++    std::vector<Eigen::Vector3d> ref_pts_;
++
++    std::vector<std::vector<Eigen::Vector3d>> initControlPoints(Eigen::MatrixXd &init_points, bool flag_first_init = true);
++    bool BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double ts); // must be called after initControlPoints()
++    bool BsplineOptimizeTrajRefine(const Eigen::MatrixXd &init_points, const double ts, Eigen::MatrixXd &optimal_points);
++
++    inline int getOrder(void) { return order_; }
++
++  private:
++    GridMap::Ptr grid_map_;
++
++    enum FORCE_STOP_OPTIMIZE_TYPE
++    {
++      DONT_STOP,
++      STOP_FOR_REBOUND,
++      STOP_FOR_ERROR
++    } force_stop_type_;
++
++    // main input
++    // Eigen::MatrixXd control_points_;     // B-spline control points, N x dim
++    double bspline_interval_; // B-spline knot span
++    Eigen::Vector3d end_pt_;  // end of the trajectory
++    // int             dim_;                // dimension of the B-spline
++    //
++    vector<Eigen::Vector3d> guide_pts_; // geometric guiding path points, N-6
++    vector<Eigen::Vector3d> waypoints_; // waypts constraints
++    vector<int> waypt_idx_;             // waypts constraints index
++                                        //
++    int max_num_id_, max_time_id_;      // stopping criteria
++    int cost_function_;                 // used to determine objective function
++    double start_time_;                 // global time for moving obstacles
++
++    /* optimization parameters */
++    bool optimize_height_ = false; // Explicit terrain-constrained profile only.
++    int order_;                    // bspline degree
++    double lambda1_;               // jerk smoothness weight
++    double lambda2_, new_lambda2_; // distance weight
++    double lambda3_;               // feasibility weight
++    double lambda4_;               // curve fitting
++    int a;
++    //
++    double dist0_;             // safe distance
++    double max_vel_, max_acc_; // dynamic limits
++
++    int variable_num_;              // optimization variables
++    int iter_num_;                  // iteration of the solver
++    Eigen::VectorXd best_variable_; //
++    double min_cost_;               //
++
++    ControlPoints cps_;
++
++    /* cost function */
++    /* calculate each part of cost function with control points q as input */
++
++    static double costFunction(const std::vector<double> &x, std::vector<double> &grad, void *func_data);
++    void combineCost(const std::vector<double> &x, vector<double> &grad, double &cost);
++
++    // q contains all control points
++    void calcSmoothnessCost(const Eigen::MatrixXd &q, double &cost,
++                            Eigen::MatrixXd &gradient, bool falg_use_jerk = true);
++    void calcFeasibilityCost(const Eigen::MatrixXd &q, double &cost,
++                             Eigen::MatrixXd &gradient);
++    void calcDistanceCostRebound(const Eigen::MatrixXd &q, double &cost, Eigen::MatrixXd &gradient, int iter_num, double smoothness_cost);
++    void calcFitnessCost(const Eigen::MatrixXd &q, double &cost, Eigen::MatrixXd &gradient);
++    bool check_collision_and_rebound(void);
++    double estimateSegmentYaw(const Eigen::Vector3d &from, const Eigen::Vector3d &to) const;
++    double estimateControlPointYaw(const Eigen::MatrixXd &q, int id) const;
++
++    static int earlyExit(void *func_data, const double *x, const double *g, const double fx, const double xnorm, const double gnorm, const double step, int n, int k, int ls);
++    static double costFunctionRebound(void *func_data, const double *x, double *grad, const int n);
++    static double costFunctionRefine(void *func_data, const double *x, double *grad, const int n);
++
++    bool rebound_optimize();
++    bool refine_optimize();
++    void combineCostRebound(const double *x, double *grad, double &f_combine, const int n);
++    void combineCostRefine(const double *x, double *grad, double &f_combine, const int n);
++
++    /* for benchmark evaluation only */
++  public:
++    typedef unique_ptr<BsplineOptimizer> Ptr;
++
++    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
++  };
++
++} // namespace scan_planner
++#endif
+--- v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan44_height_v5/src/bspline_opt/src/bspline_optimizer.cpp
++++ v5/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan44_height_v5/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -0,0 +1,1206 @@
++#include "bspline_opt/bspline_optimizer.h"
++#include "bspline_opt/gradient_descent_optimizer.h"
++#include <algorithm>
++#include <chrono>
++#include <cmath>
++// using namespace std;
++
++namespace scan_planner
++{
++
++  void BsplineOptimizer::setParam(rclcpp::Node *node)
++  {
++    const auto get_double = [node](const std::string &name, double default_value) {
++      if (!node->has_parameter(name)) node->declare_parameter<double>(name, default_value);
++      return node->get_parameter(name).as_double();
++    };
++    lambda1_ = get_double("optimization.lambda_smooth", -1.0);
++    lambda2_ = get_double("optimization.lambda_collision", -1.0);
++    lambda3_ = get_double("optimization.lambda_feasibility", -1.0);
++    lambda4_ = get_double("optimization.lambda_fitness", -1.0);
++    dist0_ = get_double("optimization.dist0", -1.0);
++    max_vel_ = get_double("optimization.max_vel", -1.0);
++    max_acc_ = get_double("optimization.max_acc", -1.0);
++    if (!node->has_parameter("optimization.order")) node->declare_parameter<int>("optimization.order", 3);
++    order_ = static_cast<int>(node->get_parameter("optimization.order").as_int());
++    if (!node->has_parameter("optimization.optimize_height"))
++      node->declare_parameter<bool>("optimization.optimize_height", false);
++    optimize_height_ = node->get_parameter("optimization.optimize_height").as_bool();
++    RCLCPP_INFO(node->get_logger(), "height_optimization=%s; terrain and final trajectory gates retained",
++                optimize_height_ ? "enabled" : "fixed");
++  }
++
++  void BsplineOptimizer::setEnvironment(const GridMap::Ptr &env)
++  {
++    this->grid_map_ = env;
++  }
++
++  double BsplineOptimizer::estimateSegmentYaw(const Eigen::Vector3d &from, const Eigen::Vector3d &to) const
++  {
++    Eigen::Vector2d diff(to(0) - from(0), to(1) - from(1));
++    if (diff.squaredNorm() < 1e-8)
++      return 0.0;
++    return std::atan2(diff(1), diff(0));
++  }
++
++  double BsplineOptimizer::estimateControlPointYaw(const Eigen::MatrixXd &q, int id) const
++  {
++    if (q.cols() <= 1)
++      return 0.0;
++
++    int prev_id = std::max(0, id - 1);
++    int next_id = std::min(static_cast<int>(q.cols()) - 1, id + 1);
++    return estimateSegmentYaw(q.col(prev_id), q.col(next_id));
++  }
++
++  void BsplineOptimizer::setControlPoints(const Eigen::MatrixXd &points)
++  {
++    cps_.points = points;
++  }
++
++  void BsplineOptimizer::setBsplineInterval(const double &ts) { bspline_interval_ = ts; }
++
++  /* This function is very similar to check_collision_and_rebound(). 
++   * It was written separately, just because I did it once and it has been running stably since March 2020.
++   * But I will merge then someday.*/
++  std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Eigen::MatrixXd &init_points, bool flag_first_init /*= true*/)
++  {
++
++    if (flag_first_init)
++    {
++      cps_.clearance = dist0_;
++      cps_.resize(init_points.cols());
++      cps_.points = init_points;
++    }
++
++    /*** Segment the initial trajectory according to obstacles ***/
++    constexpr int ENOUGH_INTERVAL = 2;
++    double step_size = grid_map_->getResolution() / ((init_points.col(0) - init_points.rightCols(1)).norm() / (init_points.cols() - 1)) / 2;
++    int in_id = -1, out_id = -1;
++    vector<std::pair<int, int>> segment_ids;
++    int same_occ_state_times = ENOUGH_INTERVAL + 1;
++    bool occ, last_occ = false;
++    bool flag_got_start = false, flag_got_end = false, flag_got_end_maybe = false;
++    int i_end = (int)init_points.cols() - order_ - ((int)init_points.cols() - 2 * order_) / 3; // only check closed 2/3 points.
++    for (int i = order_; i <= i_end; ++i)
++    {
++      for (double a = 1.0; a >= 0.0; a -= step_size)
++      {
++        Eigen::Vector3d sample_pt = a * init_points.col(i - 1) + (1 - a) * init_points.col(i);
++        double sample_yaw = estimateSegmentYaw(init_points.col(i - 1), init_points.col(i));
++        occ = grid_map_->getInflateOccupancy(sample_pt, sample_yaw);
++        // cout << setprecision(5);
++        // cout << (a * init_points.col(i-1) + (1-a) * init_points.col(i)).transpose() << " occ1=" << occ << endl;
++
++        if (occ && !last_occ)
++        {
++          if (same_occ_state_times > ENOUGH_INTERVAL || i == order_)
++          {
++            in_id = i - 1;
++            flag_got_start = true;
++          }
++          same_occ_state_times = 0;
++          flag_got_end_maybe = false; // terminate in advance
++        }
++        else if (!occ && last_occ)
++        {
++          out_id = i;
++          flag_got_end_maybe = true;
++          same_occ_state_times = 0;
++        }
++        else
++        {
++          ++same_occ_state_times;
++        }
++
++        if (flag_got_end_maybe && (same_occ_state_times > ENOUGH_INTERVAL || (i == (int)init_points.cols() - order_)))
++        {
++          flag_got_end_maybe = false;
++          flag_got_end = true;
++        }
++
++        last_occ = occ;
++
++        if (flag_got_start && flag_got_end)
++        {
++          flag_got_start = false;
++          flag_got_end = false;
++          if (in_id >= 0 && out_id >= in_id && out_id < init_points.cols())
++            segment_ids.push_back(std::pair<int, int>(in_id, out_id));
++          else
++            RCLCPP_WARN(rclcpp::get_logger("bspline_opt"),
++                        "Skip invalid collision segment: in_id=%d, out_id=%d", in_id, out_id);
++        }
++      }
++    }
++
++    /*** a star search ***/
++    vector<vector<Eigen::Vector3d>> a_star_paths;
++    for (size_t i = 0; i < segment_ids.size(); ++i)
++    {
++      //cout << "in=" << in.transpose() << " out=" << out.transpose() << endl;
++      Eigen::Vector3d in(init_points.col(segment_ids[i].first)), out(init_points.col(segment_ids[i].second));
++      ASTAR_RET ret = a_star_->AstarSearch(grid_map_->getResolution(), in, out);
++      if (ret == ASTAR_RET::SUCCESS)
++      {
++        vector<Eigen::Vector3d> path = a_star_->getPath();
++        if (path.size() < 2)
++        {
++          RCLCPP_WARN(rclcpp::get_logger("bspline_opt"), "A-star path has fewer than 2 points");
++          return a_star_paths;
++        }
++        a_star_paths.push_back(path);
++      }
++      else
++      {
++        RCLCPP_ERROR(rclcpp::get_logger("bspline_opt"), "A-star failed; aborting optimization");
++        return a_star_paths;
++      }
++    }
++
++    /*** calculate bounds ***/
++    int id_low_bound, id_up_bound;
++    vector<std::pair<int, int>> bounds(segment_ids.size());
++    for (size_t i = 0; i < segment_ids.size(); i++)
++    {
++
++      if (i == 0) // first segment
++      {
++        id_low_bound = order_;
++        if (segment_ids.size() > 1)
++        {
++          id_up_bound = (int)(((segment_ids[0].second + segment_ids[1].first) - 1.0f) / 2); // id_up_bound : -1.0f fix()
++        }
++        else
++        {
++          id_up_bound = init_points.cols() - order_ - 1;
++        }
++      }
++      else if (i == segment_ids.size() - 1) // last segment, i != 0 here
++      {
++        id_low_bound = (int)(((segment_ids[i].first + segment_ids[i - 1].second) + 1.0f) / 2); // id_low_bound : +1.0f ceil()
++        id_up_bound = init_points.cols() - order_ - 1;
++      }
++      else
++      {
++        id_low_bound = (int)(((segment_ids[i].first + segment_ids[i - 1].second) + 1.0f) / 2); // id_low_bound : +1.0f ceil()
++        id_up_bound = (int)(((segment_ids[i].second + segment_ids[i + 1].first) - 1.0f) / 2);  // id_up_bound : -1.0f fix()
++      }
++
++      bounds[i] = std::pair<int, int>(id_low_bound, id_up_bound);
++    }
++
++    // cout << "+++++++++" << endl;
++    // for ( int j=0; j<bounds.size(); ++j )
++    // {
++    //   cout << bounds[j].first << "  " << bounds[j].second << endl;
++    // }
++
++    /*** Adjust segment length ***/
++    vector<std::pair<int, int>> final_segment_ids(segment_ids.size());
++    constexpr double MINIMUM_PERCENT = 0.0; // Each segment is guaranteed to have sufficient points to generate sufficient thrust
++    int minimum_points = round(init_points.cols() * MINIMUM_PERCENT), num_points;
++    for (size_t i = 0; i < segment_ids.size(); i++)
++    {
++      /*** Adjust segment length ***/
++      num_points = segment_ids[i].second - segment_ids[i].first + 1;
++      //cout << "i = " << i << " first = " << segment_ids[i].first << " second = " << segment_ids[i].second << endl;
++      if (num_points < minimum_points)
++      {
++        double add_points_each_side = (int)(((minimum_points - num_points) + 1.0f) / 2);
++
++        final_segment_ids[i].first = segment_ids[i].first - add_points_each_side >= bounds[i].first ? segment_ids[i].first - add_points_each_side : bounds[i].first;
++
++        final_segment_ids[i].second = segment_ids[i].second + add_points_each_side <= bounds[i].second ? segment_ids[i].second + add_points_each_side : bounds[i].second;
++      }
++      else
++      {
++        final_segment_ids[i].first = segment_ids[i].first;
++        final_segment_ids[i].second = segment_ids[i].second;
++      }
++
++      //cout << "final:" << "i = " << i << " first = " << final_segment_ids[i].first << " second = " << final_segment_ids[i].second << endl;
++    }
++
++    /*** Assign data to each segment ***/
++    for (size_t i = 0; i < segment_ids.size(); i++)
++    {
++      if (i >= a_star_paths.size() || a_star_paths[i].size() < 2)
++      {
++        RCLCPP_WARN(rclcpp::get_logger("bspline_opt"),
++                    "Skip invalid A-star path while assigning control point directions");
++        continue;
++      }
++
++      // step 1
++      for (int j = final_segment_ids[i].first; j <= final_segment_ids[i].second; ++j)
++        cps_.flag_temp[j] = false;
++
++      // step 2
++      int got_intersection_id = -1;
++      for (int j = segment_ids[i].first + 1; j < segment_ids[i].second; ++j)
++      {
++        Eigen::Vector3d ctrl_pts_law(cps_.points.col(j + 1) - cps_.points.col(j - 1)), intersection_point;
++        int Astar_id = a_star_paths[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
++        double val = (a_star_paths[i][Astar_id] - cps_.points.col(j)).dot(ctrl_pts_law), last_val = val;
++        while (Astar_id >= 0 && Astar_id < (int)a_star_paths[i].size())
++        {
++          last_Astar_id = Astar_id;
++
++          if (val >= 0)
++            --Astar_id;
++          else
++            ++Astar_id;
++
++          if (Astar_id < 0 || Astar_id >= (int)a_star_paths[i].size())
++            break;
++
++          val = (a_star_paths[i][Astar_id] - cps_.points.col(j)).dot(ctrl_pts_law);
++
++          if (val * last_val <= 0 && (abs(val) > 0 || abs(last_val) > 0)) // val = last_val = 0.0 is not allowed
++          {
++            const double denom = ctrl_pts_law.dot(a_star_paths[i][Astar_id] - a_star_paths[i][last_Astar_id]);
++            if (std::abs(denom) < 1e-8)
++              break;
++
++            intersection_point =
++                a_star_paths[i][Astar_id] +
++                ((a_star_paths[i][Astar_id] - a_star_paths[i][last_Astar_id]) *
++                 (ctrl_pts_law.dot(cps_.points.col(j) - a_star_paths[i][Astar_id]) / denom) // = t
++                );
++
++            //cout << "i=" << i << " j=" << j << " Astar_id=" << Astar_id << " last_Astar_id=" << last_Astar_id << " intersection_point = " << intersection_point.transpose() << endl;
++
++            got_intersection_id = j;
++            break;
++          }
++        }
++
++        if (got_intersection_id >= 0)
++        {
++          cps_.flag_temp[j] = true;
++          double length = (intersection_point - cps_.points.col(j)).norm();
++          if (length > 1e-5)
++          {
++            for (double a = length; a >= 0.0; a -= grid_map_->getResolution())
++            {
++              Eigen::Vector3d sample_pt = (a / length) * intersection_point + (1 - a / length) * cps_.points.col(j);
++              double sample_yaw = estimateControlPointYaw(cps_.points, j);
++              occ = grid_map_->getInflateOccupancy(sample_pt, sample_yaw);
++
++              if (occ || a < grid_map_->getResolution())
++              {
++                if (occ)
++                  a += grid_map_->getResolution();
++                cps_.base_point[j].push_back((a / length) * intersection_point + (1 - a / length) * cps_.points.col(j));
++                cps_.direction[j].push_back((intersection_point - cps_.points.col(j)).normalized());
++                break;
++              }
++            }
++          }
++        }
++      }
++
++      /* Corner case: the segment length is too short. Here the control points may outside the A* path, leading to opposite gradient direction. So I have to take special care of it */
++      if (segment_ids[i].second - segment_ids[i].first == 1)
++      {
++        Eigen::Vector3d ctrl_pts_law(cps_.points.col(segment_ids[i].second) - cps_.points.col(segment_ids[i].first)), intersection_point;
++        Eigen::Vector3d middle_point = (cps_.points.col(segment_ids[i].second) + cps_.points.col(segment_ids[i].first)) / 2;
++        int Astar_id = a_star_paths[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
++        double val = (a_star_paths[i][Astar_id] - middle_point).dot(ctrl_pts_law), last_val = val;
++        while (Astar_id >= 0 && Astar_id < (int)a_star_paths[i].size())
++        {
++          last_Astar_id = Astar_id;
++
++          if (val >= 0)
++            --Astar_id;
++          else
++            ++Astar_id;
++
++          if (Astar_id < 0 || Astar_id >= (int)a_star_paths[i].size())
++            break;
++
++          val = (a_star_paths[i][Astar_id] - middle_point).dot(ctrl_pts_law);
++
++          if (val * last_val <= 0 && (abs(val) > 0 || abs(last_val) > 0)) // val = last_val = 0.0 is not allowed
++          {
++            const double denom = ctrl_pts_law.dot(a_star_paths[i][Astar_id] - a_star_paths[i][last_Astar_id]);
++            if (std::abs(denom) < 1e-8)
++              break;
++
++            intersection_point =
++                a_star_paths[i][Astar_id] +
++                ((a_star_paths[i][Astar_id] - a_star_paths[i][last_Astar_id]) *
++                 (ctrl_pts_law.dot(middle_point - a_star_paths[i][Astar_id]) / denom) // = t
++                );
++
++            if ((intersection_point - middle_point).norm() > 0.01) // 1cm.
++            {
++              cps_.flag_temp[segment_ids[i].first] = true;
++              cps_.base_point[segment_ids[i].first].push_back(cps_.points.col(segment_ids[i].first));
++              cps_.direction[segment_ids[i].first].push_back((intersection_point - middle_point).normalized());
++
++              got_intersection_id = segment_ids[i].first;
++            }
++            break;
++          }
++        }
++      }
++
++      //step 3
++      if (got_intersection_id >= 0)
++      {
++        for (int j = got_intersection_id + 1; j <= final_segment_ids[i].second; ++j)
++          if (!cps_.flag_temp[j])
++          {
++            cps_.base_point[j].push_back(cps_.base_point[j - 1].back());
++            cps_.direction[j].push_back(cps_.direction[j - 1].back());
++          }
++
++        for (int j = got_intersection_id - 1; j >= final_segment_ids[i].first; --j)
++          if (!cps_.flag_temp[j])
++          {
++            cps_.base_point[j].push_back(cps_.base_point[j + 1].back());
++            cps_.direction[j].push_back(cps_.direction[j + 1].back());
++          }
++      }
++      else
++      {
++        // Just ignore, it does not matter ^_^.
++        // ROS_ERROR("Failed to generate direction! segment_id=%d", i);
++      }
++    }
++
++    return a_star_paths;
++  }
++
++  int BsplineOptimizer::earlyExit(void *func_data, const double *x, const double *g, const double fx, const double xnorm, const double gnorm, const double step, int n, int k, int ls)
++  {
++    BsplineOptimizer *opt = reinterpret_cast<BsplineOptimizer *>(func_data);
++    // cout << "k=" << k << endl;
++    // cout << "opt->flag_continue_to_optimize_=" << opt->flag_continue_to_optimize_ << endl;
++    return (opt->force_stop_type_ == STOP_FOR_ERROR || opt->force_stop_type_ == STOP_FOR_REBOUND);
++  }
++
++  double BsplineOptimizer::costFunctionRebound(void *func_data, const double *x, double *grad, const int n)
++  {
++    BsplineOptimizer *opt = reinterpret_cast<BsplineOptimizer *>(func_data);
++
++    double cost;
++    opt->combineCostRebound(x, grad, cost, n);
++
++    opt->iter_num_ += 1;
++    return cost;
++  }
++
++  double BsplineOptimizer::costFunctionRefine(void *func_data, const double *x, double *grad, const int n)
++  {
++    BsplineOptimizer *opt = reinterpret_cast<BsplineOptimizer *>(func_data);
++
++    double cost;
++    opt->combineCostRefine(x, grad, cost, n);
++
++    opt->iter_num_ += 1;
++    return cost;
++  }
++
++  void BsplineOptimizer::calcDistanceCostRebound(const Eigen::MatrixXd &q, double &cost,
++                                                 Eigen::MatrixXd &gradient, int iter_num, double smoothness_cost)
++  {
++    cost = 0.0;
++    int end_idx = q.cols() - order_;
++    double demarcation = cps_.clearance;
++    double a = 3 * demarcation, b = -3 * pow(demarcation, 2), c = pow(demarcation, 3);
++
++    force_stop_type_ = DONT_STOP;
++    if (iter_num > 3 && smoothness_cost / (cps_.size - 2 * order_) < 0.1) // 0.1 is an experimental value that indicates the trajectory is smooth enough.
++    {
++      check_collision_and_rebound();
++    }
++
++    /*** calculate distance cost and gradient ***/
++    for (auto i = order_; i < end_idx; ++i)
++    {
++      for (size_t j = 0; j < cps_.direction[i].size(); ++j)
++      {
++        double dist = (cps_.points.col(i) - cps_.base_point[i][j]).dot(cps_.direction[i][j]);
++        double dist_err = cps_.clearance - dist;
++        Eigen::Vector3d dist_grad = cps_.direction[i][j];
++
++        if (dist_err < 0)
++        {
++          /* do nothing */
++        }
++        else if (dist_err < demarcation)
++        {
++          cost += pow(dist_err, 3);
++          gradient.col(i) += -3.0 * dist_err * dist_err * dist_grad;
++        }
++        else
++        {
++          cost += a * dist_err * dist_err + b * dist_err + c;
++          gradient.col(i) += -(2.0 * a * dist_err + b) * dist_grad;
++        }
++      }
++    }
++  }
++
++  void BsplineOptimizer::calcFitnessCost(const Eigen::MatrixXd &q, double &cost, Eigen::MatrixXd &gradient)
++  {
++
++    cost = 0.0;
++
++    int end_idx = q.cols() - order_;
++
++    // def: f = |x*v|^2/a^2 + |x×v|^2/b^2
++    double a2 = 25, b2 = 1;
++    for (auto i = order_ - 1; i < end_idx + 1; ++i)
++    {
++      Eigen::Vector3d x = (q.col(i - 1) + 4 * q.col(i) + q.col(i + 1)) / 6.0 - ref_pts_[i - 1];
++      Eigen::Vector3d v = (ref_pts_[i] - ref_pts_[i - 2]).normalized();
++
++      double xdotv = x.dot(v);
++      Eigen::Vector3d xcrossv = x.cross(v);
++
++      double f = pow((xdotv), 2) / a2 + pow(xcrossv.norm(), 2) / b2;
++      cost += f;
++
++      Eigen::Matrix3d m;
++      m << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
++      Eigen::Vector3d df_dx = 2 * xdotv / a2 * v + 2 / b2 * m * xcrossv;
++
++      gradient.col(i - 1) += df_dx / 6;
++      gradient.col(i) += 4 * df_dx / 6;
++      gradient.col(i + 1) += df_dx / 6;
++    }
++  }
++
++  void BsplineOptimizer::calcSmoothnessCost(const Eigen::MatrixXd &q, double &cost,
++                                            Eigen::MatrixXd &gradient, bool falg_use_jerk /* = true*/)
++  {
++
++    cost = 0.0;
++
++    if (falg_use_jerk)
++    {
++      Eigen::Vector3d jerk, temp_j;
++
++      for (int i = 0; i < q.cols() - 3; i++)
++      {
++        /* evaluate jerk */
++        jerk = q.col(i + 3) - 3 * q.col(i + 2) + 3 * q.col(i + 1) - q.col(i);
++        cost += jerk.squaredNorm();
++        temp_j = 2.0 * jerk;
++        /* jerk gradient */
++        gradient.col(i + 0) += -temp_j;
++        gradient.col(i + 1) += 3.0 * temp_j;
++        gradient.col(i + 2) += -3.0 * temp_j;
++        gradient.col(i + 3) += temp_j;
++      }
++    }
++    else
++    {
++      Eigen::Vector3d acc, temp_acc;
++
++      for (int i = 0; i < q.cols() - 2; i++)
++      {
++        /* evaluate acc */
++        acc = q.col(i + 2) - 2 * q.col(i + 1) + q.col(i);
++        cost += acc.squaredNorm();
++        temp_acc = 2.0 * acc;
++        /* acc gradient */
++        gradient.col(i + 0) += temp_acc;
++        gradient.col(i + 1) += -2.0 * temp_acc;
++        gradient.col(i + 2) += temp_acc;
++      }
++    }
++  }
++
++  void BsplineOptimizer::calcFeasibilityCost(const Eigen::MatrixXd &q, double &cost,
++                                             Eigen::MatrixXd &gradient)
++  {
++
++    //#define SECOND_DERIVATIVE_CONTINOUS
++
++#ifdef SECOND_DERIVATIVE_CONTINOUS
++
++    cost = 0.0;
++    double demarcation = 1.0; // 1m/s, 1m/s/s
++    double ar = 3 * demarcation, br = -3 * pow(demarcation, 2), cr = pow(demarcation, 3);
++    double al = ar, bl = -br, cl = cr;
++
++    /* abbreviation */
++    double ts, ts_inv2, ts_inv3;
++    ts = bspline_interval_;
++    ts_inv2 = 1 / ts / ts;
++    ts_inv3 = 1 / ts / ts / ts;
++
++    /* velocity feasibility */
++    for (int i = 0; i < q.cols() - 1; i++)
++    {
++      Eigen::Vector3d vi = (q.col(i + 1) - q.col(i)) / ts;
++
++      for (int j = 0; j < 3; j++)
++      {
++        if (vi(j) > max_vel_ + demarcation)
++        {
++          double diff = vi(j) - max_vel_;
++          cost += (ar * diff * diff + br * diff + cr) * ts_inv3; // multiply ts_inv3 to make vel and acc has similar magnitude
++
++          double grad = (2.0 * ar * diff + br) / ts * ts_inv3;
++          gradient(j, i + 0) += -grad;
++          gradient(j, i + 1) += grad;
++        }
++        else if (vi(j) > max_vel_)
++        {
++          double diff = vi(j) - max_vel_;
++          cost += pow(diff, 3) * ts_inv3;
++          ;
++
++          double grad = 3 * diff * diff / ts * ts_inv3;
++          ;
++          gradient(j, i + 0) += -grad;
++          gradient(j, i + 1) += grad;
++        }
++        else if (vi(j) < -(max_vel_ + demarcation))
++        {
++          double diff = vi(j) + max_vel_;
++          cost += (al * diff * diff + bl * diff + cl) * ts_inv3;
++
++          double grad = (2.0 * al * diff + bl) / ts * ts_inv3;
++          gradient(j, i + 0) += -grad;
++          gradient(j, i + 1) += grad;
++        }
++        else if (vi(j) < -max_vel_)
++        {
++          double diff = vi(j) + max_vel_;
++          cost += -pow(diff, 3) * ts_inv3;
++
++          double grad = -3 * diff * diff / ts * ts_inv3;
++          gradient(j, i + 0) += -grad;
++          gradient(j, i + 1) += grad;
++        }
++        else
++        {
++          /* nothing happened */
++        }
++      }
++    }
++
++    /* acceleration feasibility */
++    for (int i = 0; i < q.cols() - 2; i++)
++    {
++      Eigen::Vector3d ai = (q.col(i + 2) - 2 * q.col(i + 1) + q.col(i)) * ts_inv2;
++
++      for (int j = 0; j < 3; j++)
++      {
++        if (ai(j) > max_acc_ + demarcation)
++        {
++          double diff = ai(j) - max_acc_;
++          cost += ar * diff * diff + br * diff + cr;
++
++          double grad = (2.0 * ar * diff + br) * ts_inv2;
++          gradient(j, i + 0) += grad;
++          gradient(j, i + 1) += -2 * grad;
++          gradient(j, i + 2) += grad;
++        }
++        else if (ai(j) > max_acc_)
++        {
++          double diff = ai(j) - max_acc_;
++          cost += pow(diff, 3);
++
++          double grad = 3 * diff * diff * ts_inv2;
++          gradient(j, i + 0) += grad;
++          gradient(j, i + 1) += -2 * grad;
++          gradient(j, i + 2) += grad;
++        }
++        else if (ai(j) < -(max_acc_ + demarcation))
++        {
++          double diff = ai(j) + max_acc_;
++          cost += al * diff * diff + bl * diff + cl;
++
++          double grad = (2.0 * al * diff + bl) * ts_inv2;
++          gradient(j, i + 0) += grad;
++          gradient(j, i + 1) += -2 * grad;
++          gradient(j, i + 2) += grad;
++        }
++        else if (ai(j) < -max_acc_)
++        {
++          double diff = ai(j) + max_acc_;
++          cost += -pow(diff, 3);
++
++          double grad = -3 * diff * diff * ts_inv2;
++          gradient(j, i + 0) += grad;
++          gradient(j, i + 1) += -2 * grad;
++          gradient(j, i + 2) += grad;
++        }
++        else
++        {
++          /* nothing happened */
++        }
++      }
++    }
++
++#else
++
++    cost = 0.0;
++    /* abbreviation */
++    double ts, /*vm2, am2, */ ts_inv2;
++    // vm2 = max_vel_ * max_vel_;
++    // am2 = max_acc_ * max_acc_;
++
++    ts = bspline_interval_;
++    ts_inv2 = 1 / ts / ts;
++
++    /* velocity feasibility */
++    for (int i = 0; i < q.cols() - 1; i++)
++    {
++      Eigen::Vector3d vi = (q.col(i + 1) - q.col(i)) / ts;
++
++      //cout << "temp_v * vi=" ;
++      for (int j = 0; j < 3; j++)
++      {
++        if (vi(j) > max_vel_)
++        {
++          // cout << "fuck VEL" << endl;
++          // cout << vi(j) << endl;
++          cost += pow(vi(j) - max_vel_, 2) * ts_inv2; // multiply ts_inv3 to make vel and acc has similar magnitude
++
++          gradient(j, i + 0) += -2 * (vi(j) - max_vel_) / ts * ts_inv2;
++          gradient(j, i + 1) += 2 * (vi(j) - max_vel_) / ts * ts_inv2;
++        }
++        else if (vi(j) < -max_vel_)
++        {
++          cost += pow(vi(j) + max_vel_, 2) * ts_inv2;
++
++          gradient(j, i + 0) += -2 * (vi(j) + max_vel_) / ts * ts_inv2;
++          gradient(j, i + 1) += 2 * (vi(j) + max_vel_) / ts * ts_inv2;
++        }
++        else
++        {
++          /* code */
++        }
++      }
++    }
++
++    /* acceleration feasibility */
++    for (int i = 0; i < q.cols() - 2; i++)
++    {
++      Eigen::Vector3d ai = (q.col(i + 2) - 2 * q.col(i + 1) + q.col(i)) * ts_inv2;
++
++      //cout << "temp_a * ai=" ;
++      for (int j = 0; j < 3; j++)
++      {
++        if (ai(j) > max_acc_)
++        {
++          // cout << "fuck ACC" << endl;
++          // cout << ai(j) << endl;
++          cost += pow(ai(j) - max_acc_, 2);
++
++          gradient(j, i + 0) += 2 * (ai(j) - max_acc_) * ts_inv2;
++          gradient(j, i + 1) += -4 * (ai(j) - max_acc_) * ts_inv2;
++          gradient(j, i + 2) += 2 * (ai(j) - max_acc_) * ts_inv2;
++        }
++        else if (ai(j) < -max_acc_)
++        {
++          cost += pow(ai(j) + max_acc_, 2);
++
++          gradient(j, i + 0) += 2 * (ai(j) + max_acc_) * ts_inv2;
++          gradient(j, i + 1) += -4 * (ai(j) + max_acc_) * ts_inv2;
++          gradient(j, i + 2) += 2 * (ai(j) + max_acc_) * ts_inv2;
++        }
++        else
++        {
++          /* code */
++        }
++      }
++      //cout << endl;
++    }
++
++#endif
++  }
++
++  bool BsplineOptimizer::check_collision_and_rebound(void)
++  {
++
++    int end_idx = cps_.size - order_;
++
++    /*** Check and segment the initial trajectory according to obstacles ***/
++    int in_id, out_id;
++    vector<std::pair<int, int>> segment_ids;
++    bool flag_new_obs_valid = false;
++    int i_end = end_idx - (end_idx - order_) / 3;
++    for (int i = order_ - 1; i <= i_end; ++i)
++    {
++
++      bool occ = grid_map_->getInflateOccupancy(cps_.points.col(i), estimateControlPointYaw(cps_.points, i));
++
++      /*** check if the new collision will be valid ***/
++      if (occ)
++      {
++        for (size_t k = 0; k < cps_.direction[i].size(); ++k)
++        {
++          cout.precision(2);
++          if ((cps_.points.col(i) - cps_.base_point[i][k]).dot(cps_.direction[i][k]) < 1 * grid_map_->getResolution()) // current point is outside all the collision_points.
++          {
++            occ = false; // Not really takes effect, just for better hunman understanding.
++            break;
++          }
++        }
++      }
++
++      if (occ)
++      {
++        flag_new_obs_valid = true;
++
++        int j;
++        for (j = i - 1; j >= 0; --j)
++        {
++          occ = grid_map_->getInflateOccupancy(cps_.points.col(j), estimateControlPointYaw(cps_.points, j));
++          if (!occ)
++          {
++            in_id = j;
++            break;
++          }
++        }
++        if (j < 0) // fail to get the obs free point
++        {
++          RCLCPP_ERROR(rclcpp::get_logger("bspline_opt"), "The robot is inside an obstacle");
++          in_id = 0;
++        }
++
++        for (j = i + 1; j < cps_.size; ++j)
++        {
++          occ = grid_map_->getInflateOccupancy(cps_.points.col(j), estimateControlPointYaw(cps_.points, j));
++
++          if (!occ)
++          {
++            out_id = j;
++            break;
++          }
++        }
++        if (j >= cps_.size) // fail to get the obs free point
++        {
++          RCLCPP_WARN(rclcpp::get_logger("bspline_opt"),
++                      "Trajectory terminal point is in an obstacle; skip this plan");
++
++          force_stop_type_ = STOP_FOR_ERROR;
++          return false;
++        }
++
++        i = j + 1;
++
++        segment_ids.push_back(std::pair<int, int>(in_id, out_id));
++      }
++    }
++
++    if (flag_new_obs_valid)
++    {
++      vector<vector<Eigen::Vector3d>> a_star_paths;
++      for (size_t i = 0; i < segment_ids.size(); ++i)
++      {
++        /*** a star search ***/
++        Eigen::Vector3d in(cps_.points.col(segment_ids[i].first)), out(cps_.points.col(segment_ids[i].second));
++        ASTAR_RET ret = a_star_->AstarSearch(grid_map_->getResolution(), in, out);
++        if (ret == ASTAR_RET::SUCCESS)
++        {
++          vector<Eigen::Vector3d> path = a_star_->getPath();
++          if (path.size() < 2)
++          {
++            RCLCPP_WARN(rclcpp::get_logger("bspline_opt"),
++                        "A-star path has fewer than 2 points; drop collision segment");
++            segment_ids.erase(segment_ids.begin() + i);
++            i--;
++            continue;
++          }
++          a_star_paths.push_back(path);
++        }
++        else if (ret == ASTAR_RET::SEARCH_ERR && i + 1 < segment_ids.size())
++        {
++          segment_ids[i].second = segment_ids[i + 1].second;
++          segment_ids.erase(segment_ids.begin() + i + 1);
++          --i;
++          RCLCPP_WARN(rclcpp::get_logger("bspline_opt"),
++                      "A-star failed on a collision segment; merge it with the next segment");
++        }
++        else
++        {
++          RCLCPP_ERROR(rclcpp::get_logger("bspline_opt"), "A-star error");
++          segment_ids.erase(segment_ids.begin() + i);
++          i--;
++        }
++      }
++
++      /*** Assign parameters to each segment ***/
++      for (size_t i = 0; i < segment_ids.size(); ++i)
++      {
++        if (i >= a_star_paths.size() || a_star_paths[i].size() < 2)
++        {
++          RCLCPP_WARN(rclcpp::get_logger("bspline_opt"),
++                      "Skip invalid A-star path while assigning rebound directions");
++          continue;
++        }
++
++        // step 1
++        for (int j = segment_ids[i].first; j <= segment_ids[i].second; ++j)
++          cps_.flag_temp[j] = false;
++
++        // step 2
++        int got_intersection_id = -1;
++        for (int j = segment_ids[i].first + 1; j < segment_ids[i].second; ++j)
++        {
++          Eigen::Vector3d ctrl_pts_law(cps_.points.col(j + 1) - cps_.points.col(j - 1)), intersection_point;
++          int Astar_id = a_star_paths[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
++          double val = (a_star_paths[i][Astar_id] - cps_.points.col(j)).dot(ctrl_pts_law), last_val = val;
++          while (Astar_id >= 0 && Astar_id < (int)a_star_paths[i].size())
++          {
++            last_Astar_id = Astar_id;
++
++            if (val >= 0)
++              --Astar_id;
++            else
++              ++Astar_id;
++
++            if (Astar_id < 0 || Astar_id >= (int)a_star_paths[i].size())
++              break;
++
++            val = (a_star_paths[i][Astar_id] - cps_.points.col(j)).dot(ctrl_pts_law);
++
++            // cout << val << endl;
++
++            if (val * last_val <= 0 && (abs(val) > 0 || abs(last_val) > 0)) // val = last_val = 0.0 is not allowed
++            {
++              const double denom = ctrl_pts_law.dot(a_star_paths[i][Astar_id] - a_star_paths[i][last_Astar_id]);
++              if (std::abs(denom) < 1e-8)
++                break;
++
++              intersection_point =
++                  a_star_paths[i][Astar_id] +
++                  ((a_star_paths[i][Astar_id] - a_star_paths[i][last_Astar_id]) *
++                   (ctrl_pts_law.dot(cps_.points.col(j) - a_star_paths[i][Astar_id]) / denom) // = t
++                  );
++
++              got_intersection_id = j;
++              break;
++            }
++          }
++
++          if (got_intersection_id >= 0)
++          {
++            cps_.flag_temp[j] = true;
++            double length = (intersection_point - cps_.points.col(j)).norm();
++            if (length > 1e-5)
++            {
++              for (double a = length; a >= 0.0; a -= grid_map_->getResolution())
++              {
++                Eigen::Vector3d sample_pt = (a / length) * intersection_point + (1 - a / length) * cps_.points.col(j);
++                double sample_yaw = estimateControlPointYaw(cps_.points, j);
++                bool occ = grid_map_->getInflateOccupancy(sample_pt, sample_yaw);
++
++                if (occ || a < grid_map_->getResolution())
++                {
++                  if (occ)
++                    a += grid_map_->getResolution();
++                  cps_.base_point[j].push_back((a / length) * intersection_point + (1 - a / length) * cps_.points.col(j));
++                  cps_.direction[j].push_back((intersection_point - cps_.points.col(j)).normalized());
++                  break;
++                }
++              }
++            }
++            else
++            {
++              got_intersection_id = -1;
++            }
++          }
++        }
++
++        //step 3
++        if (got_intersection_id >= 0)
++        {
++          for (int j = got_intersection_id + 1; j <= segment_ids[i].second; ++j)
++            if (!cps_.flag_temp[j])
++            {
++              cps_.base_point[j].push_back(cps_.base_point[j - 1].back());
++              cps_.direction[j].push_back(cps_.direction[j - 1].back());
++            }
++
++          for (int j = got_intersection_id - 1; j >= segment_ids[i].first; --j)
++            if (!cps_.flag_temp[j])
++            {
++              cps_.base_point[j].push_back(cps_.base_point[j + 1].back());
++              cps_.direction[j].push_back(cps_.direction[j + 1].back());
++            }
++        }
++        else
++          RCLCPP_WARN(rclcpp::get_logger("bspline_opt"), "Failed to generate rebound direction");
++      }
++
++      force_stop_type_ = STOP_FOR_REBOUND;
++      return true;
++    }
++
++    return false;
++  }
++
++  bool BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double ts)
++  {
++    setBsplineInterval(ts);
++
++    bool flag_success = rebound_optimize();
++
++    optimal_points = cps_.points;
++
++    return flag_success;
++  }
++
++  bool BsplineOptimizer::BsplineOptimizeTrajRefine(const Eigen::MatrixXd &init_points, const double ts, Eigen::MatrixXd &optimal_points)
++  {
++
++    setControlPoints(init_points);
++    setBsplineInterval(ts);
++
++    bool flag_success = refine_optimize();
++
++    optimal_points = cps_.points;
++
++    return flag_success;
++  }
++
++  bool BsplineOptimizer::rebound_optimize()
++  {
++    iter_num_ = 0;
++    int start_id = order_;
++    int end_id = this->cps_.size - order_;
++    variable_num_ = 3 * (end_id - start_id);
++    double final_cost;
++
++    auto t0 = std::chrono::steady_clock::now();
++    auto t1 = t0;
++    auto t2 = t0;
++    int restart_nums = 0, rebound_times = 0;
++    ;
++    bool flag_force_return, flag_occ, success;
++    new_lambda2_ = lambda2_;
++    constexpr int MAX_RESART_NUMS_SET = 3;
++    do
++    {
++      /* ---------- prepare ---------- */
++      min_cost_ = std::numeric_limits<double>::max();
++      iter_num_ = 0;
++      flag_force_return = false;
++      flag_occ = false;
++      success = false;
++
++      double q[variable_num_];
++      memcpy(q, cps_.points.data() + 3 * start_id, variable_num_ * sizeof(q[0]));
++
++      lbfgs::lbfgs_parameter_t lbfgs_params;
++      lbfgs::lbfgs_load_default_parameters(&lbfgs_params);
++      lbfgs_params.mem_size = 16;
++      lbfgs_params.max_iterations = 200;
++      lbfgs_params.g_epsilon = 0.01;
++
++      /* ---------- optimize ---------- */
++      t1 = std::chrono::steady_clock::now();
++      int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRebound, NULL, BsplineOptimizer::earlyExit, this, &lbfgs_params);
++      t2 = std::chrono::steady_clock::now();
++      double time_ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
++      double total_time_ms = std::chrono::duration<double, std::milli>(t2 - t0).count();
++
++      /* ---------- success temporary, check collision again ---------- */
++      if (result == lbfgs::LBFGS_CONVERGENCE ||
++          result == lbfgs::LBFGSERR_MAXIMUMITERATION ||
++          result == lbfgs::LBFGS_ALREADY_MINIMIZED ||
++          result == lbfgs::LBFGS_STOP)
++      {
++        //ROS_WARN("Solver error in planning!, return = %s", lbfgs::lbfgs_strerror(result));
++        flag_force_return = false;
++
++        UniformBspline traj = UniformBspline(cps_.points, 3, bspline_interval_);
++        double tm, tmp;
++        traj.getTimeSpan(tm, tmp);
++        double t_step = (tmp - tm) / ((traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution());
++        for (double t = tm; t < tmp * 2 / 3; t += t_step) // Only check the closest 2/3 partition of the whole trajectory.
++        {
++          Eigen::Vector3d pos = traj.evaluateDeBoorT(t);
++          Eigen::Vector3d pos_next = traj.evaluateDeBoorT(std::min(t + t_step, tmp));
++          flag_occ = grid_map_->getInflateOccupancy(pos, estimateSegmentYaw(pos, pos_next));
++          if (flag_occ)
++          {
++            //cout << "hit_obs, t=" << t << " P=" << traj.evaluateDeBoorT(t).transpose() << endl;
++
++            if (t <= bspline_interval_) // First 3 control points in obstacles!
++            {
++              cout << cps_.points.col(1).transpose() << "\n"
++                   << cps_.points.col(2).transpose() << "\n"
++                   << cps_.points.col(3).transpose() << "\n"
++                   << cps_.points.col(4).transpose() << endl;
++              RCLCPP_WARN(rclcpp::get_logger("bspline_opt"),
++                          "First three control points are in obstacles; t=%f", t);
++              return false;
++            }
++
++            break;
++          }
++        }
++
++        if (!flag_occ)
++        {
++          printf("\033[32miter(+1)=%d,time(ms)=%5.3f,total_t(ms)=%5.3f,cost=%5.3f\n\033[0m", iter_num_, time_ms, total_time_ms, final_cost);
++          success = true;
++        }
++        else // restart
++        {
++          restart_nums++;
++          initControlPoints(cps_.points, false);
++          new_lambda2_ *= 2;
++
++          printf("\033[32miter(+1)=%d,time(ms)=%5.3f,keep optimizing\n\033[0m", iter_num_, time_ms);
++        }
++      }
++      else if (result == lbfgs::LBFGSERR_CANCELED)
++      {
++        flag_force_return = true;
++        rebound_times++;
++        cout << "iter=" << iter_num_ << ",time(ms)=" << time_ms << ",rebound." << endl;
++      }
++      else
++      {
++        RCLCPP_WARN(rclcpp::get_logger("bspline_opt"),
++                    "Solver error. Return=%d, %s; skip this plan", result, lbfgs::lbfgs_strerror(result));
++        // while (ros::ok());
++      }
++
++    } while ((flag_occ && restart_nums < MAX_RESART_NUMS_SET) ||
++             (flag_force_return && force_stop_type_ == STOP_FOR_REBOUND && rebound_times <= 20));
++
++    return success;
++  }
++
++  bool BsplineOptimizer::refine_optimize()
++  {
++    iter_num_ = 0;
++    int start_id = order_;
++    int end_id = this->cps_.points.cols() - order_;
++    variable_num_ = 3 * (end_id - start_id);
++
++    double q[variable_num_];
++    double final_cost;
++
++    memcpy(q, cps_.points.data() + 3 * start_id, variable_num_ * sizeof(q[0]));
++
++    double origin_lambda4 = lambda4_;
++    bool flag_safe = true;
++    int iter_count = 0;
++    do
++    {
++      lbfgs::lbfgs_parameter_t lbfgs_params;
++      lbfgs::lbfgs_load_default_parameters(&lbfgs_params);
++      lbfgs_params.mem_size = 16;
++      lbfgs_params.max_iterations = 200;
++      lbfgs_params.g_epsilon = 0.001;
++
++      int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRefine, NULL, NULL, this, &lbfgs_params);
++      if (result == lbfgs::LBFGS_CONVERGENCE ||
++          result == lbfgs::LBFGSERR_MAXIMUMITERATION ||
++          result == lbfgs::LBFGS_ALREADY_MINIMIZED ||
++          result == lbfgs::LBFGS_STOP)
++      {
++        //pass
++      }
++      else
++      {
++        RCLCPP_ERROR(rclcpp::get_logger("bspline_opt"),
++                     "Solver error while refining: return=%d, %s", result, lbfgs::lbfgs_strerror(result));
++      }
++
++      UniformBspline traj = UniformBspline(cps_.points, 3, bspline_interval_);
++      double tm, tmp;
++      traj.getTimeSpan(tm, tmp);
++      double t_step = (tmp - tm) / ((traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution()); // Step size is defined as the maximum size that can passes through every grid.
++      for (double t = tm; t < tmp * 2 / 3; t += t_step)
++      {
++        Eigen::Vector3d pos = traj.evaluateDeBoorT(t);
++        Eigen::Vector3d pos_next = traj.evaluateDeBoorT(std::min(t + t_step, tmp));
++        if (grid_map_->getInflateOccupancy(pos, estimateSegmentYaw(pos, pos_next)))
++        {
++          // cout << "Refined traj hit_obs, t=" << t << " P=" << traj.evaluateDeBoorT(t).transpose() << endl;
++
++          Eigen::MatrixXd ref_pts(ref_pts_.size(), 3);
++          for (size_t i = 0; i < ref_pts_.size(); i++)
++          {
++            ref_pts.row(i) = ref_pts_[i].transpose();
++          }
++
++          flag_safe = false;
++          break;
++        }
++      }
++
++      if (!flag_safe)
++        lambda4_ *= 2;
++
++      iter_count++;
++    } while (!flag_safe && iter_count <= 0);
++
++    lambda4_ = origin_lambda4;
++
++    //cout << "iter_num_=" << iter_num_ << endl;
++
++    return flag_safe;
++  }
++
++  void BsplineOptimizer::combineCostRebound(const double *x, double *grad, double &f_combine, const int n)
++  {
++
++    memcpy(cps_.points.data() + 3 * order_, x, n * sizeof(x[0]));
++
++    /* ---------- evaluate cost and gradient ---------- */
++    double f_smoothness, f_distance, f_feasibility;
++
++    Eigen::MatrixXd g_smoothness = Eigen::MatrixXd::Zero(3, cps_.size);
++    Eigen::MatrixXd g_distance = Eigen::MatrixXd::Zero(3, cps_.size);
++    Eigen::MatrixXd g_feasibility = Eigen::MatrixXd::Zero(3, cps_.size);
++
++    calcSmoothnessCost(cps_.points, f_smoothness, g_smoothness);
++    calcDistanceCostRebound(cps_.points, f_distance, g_distance, iter_num_, f_smoothness);
++    calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);
++
++    f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility;
++    //printf("origin %f %f %f %f\n", f_smoothness, f_distance, f_feasibility, f_combine);
++
++    Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + new_lambda2_ * g_distance +
++                              lambda3_ * g_feasibility;
++    if (!optimize_height_) grad_3D.row(2).setZero();
++    memcpy(grad, grad_3D.data() + 3 * order_, n * sizeof(grad[0]));
++  }
++
++  void BsplineOptimizer::combineCostRefine(const double *x, double *grad, double &f_combine, const int n)
++  {
++
++    memcpy(cps_.points.data() + 3 * order_, x, n * sizeof(x[0]));
++
++    /* ---------- evaluate cost and gradient ---------- */
++    double f_smoothness, f_fitness, f_feasibility;
++
++    Eigen::MatrixXd g_smoothness = Eigen::MatrixXd::Zero(3, cps_.points.cols());
++    Eigen::MatrixXd g_fitness = Eigen::MatrixXd::Zero(3, cps_.points.cols());
++    Eigen::MatrixXd g_feasibility = Eigen::MatrixXd::Zero(3, cps_.points.cols());
++
++    //time_satrt = ros::Time::now();
++
++    calcSmoothnessCost(cps_.points, f_smoothness, g_smoothness);
++    calcFitnessCost(cps_.points, f_fitness, g_fitness);
++    calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);
++
++    /* ---------- convert to solver format...---------- */
++    f_combine = lambda1_ * f_smoothness + lambda4_ * f_fitness + lambda3_ * f_feasibility;
++    // printf("origin %f %f %f %f\n", f_smoothness, f_fitness, f_feasibility, f_combine);
++
++    Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + lambda4_ * g_fitness +
++                              lambda3_ * g_feasibility;
++    if (!optimize_height_) grad_3D.row(2).setZero();
++    memcpy(grad, grad_3D.data() + 3 * order_, n * sizeof(grad[0]));
++  }
++
++} // namespace scan_planner
+--- v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/building_planner.yaml
++++ v5/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/building_planner.yaml
+@@ -0,0 +1,71 @@
++# Native optimizer body XYZ: SCAN adds zero additional height. V12 remains at 0.35 m nominal.
++scan_planner_node:
++  ros__parameters:
++    grid_map.reactive_known_lite3_trunk: true
++    grid_map.reactive_body_clearance: 0.3
++    p2b_mode: true
++    use_sim_time: true
++    fsm.navi_mode: 3
++    fsm.thresh_replan: 1.0
++    fsm.thresh_no_replan: 0.1
++    fsm.planning_horizon: 3.5
++    fsm.goal_neighbor_tolerance: 1.0
++    fsm.emergency_time: 1.0
++    fsm.fail_safe: true
++    fsm.max_replan_fail_count: 1000
++    grid_map.resolution: 0.05
++    grid_map.sliding_map_size_x: 10.0
++    grid_map.sliding_map_size_y: 10.0
++    grid_map.sliding_map_size_z: 5.0
++    grid_map.local_update_range_x: 5.0
++    grid_map.local_update_range_y: 5.0
++    grid_map.local_update_range_z: 2.5
++    grid_map.map_sliding_en: true
++    grid_map.map_sliding_thresh: 0.2
++    grid_map.double_cylinder_radius: 0.35
++    grid_map.double_cylinder_offset: 0.18
++    grid_map.body_height: 0.0
++    grid_map.obstacles_inflation_z_up: 0.55
++    grid_map.obstacles_inflation_z_down: 0.35
++    grid_map.frame_id: world
++    grid_map.sliding_map_frame_id: sliding_map
++    grid_map.ground_height: 0.0
++    grid_map.sensor_type: lidar
++    grid_map.cloud_is_world: false
++    grid_map.need_extrinsic: false
++    grid_map.cx: 321.04638671875
++    grid_map.cy: 243.44969177246094
++    grid_map.fx: 387.229248046875
++    grid_map.fy: 387.229248046875
++    grid_map.depth_filter_maxdist: 3.0
++    grid_map.depth_filter_mindist: 0.3
++    grid_map.depth_filter_margin: 1
++    grid_map.k_depth_scaling_factor: 1000.0
++    grid_map.skip_pixel: 2
++    grid_map.p_hit: 0.85
++    grid_map.p_miss: 0.3
++    grid_map.p_min: 0.12
++    grid_map.p_max: 0.98
++    grid_map.p_occ: 0.8
++    grid_map.max_ray_length: 5.0
++    grid_map.vis_height: 0.3
++    grid_map.show_occ_time: false
++    manager.use_upstream_search_plane: true
++    manager.goal_approach_max_iterations: 50
++    manager.max_vel: 1.0
++    manager.max_acc: 0.5
++    manager.max_jerk: 4.0
++    manager.control_points_distance: 0.2
++    manager.feasibility_tolerance: 0.5
++    manager.planning_horizon: 3.5
++    optimization.lambda_smooth: 1.0
++    optimization.lambda_collision: 1.0
++    optimization.lambda_feasibility: 0.1
++    optimization.lambda_fitness: 1.0
++    optimization.dist0: 0.2
++    optimization.max_vel: 1.0
++    optimization.max_acc: 0.5
++    optimization.order: 3
++    optimization.optimize_height: true
++# P2B pilot remaps: body_pose:=/quad_0/body_pose, sensor_pose:=/quad_0/lidar_pose, cloud:=/quad_0/cloud.
++# P2B topics: /p2b/route, /p2b/scan_admission, /p2b/scan_cancel.
+--- v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/materialize_height_candidate.py
++++ v5/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/materialize_height_candidate.py
+@@ -0,0 +1,63 @@
++"""Create one hash-gated candidate with explicit optional Z optimization."""
++from pathlib import Path
++import difflib
++import hashlib
++import json
++import shutil
++
++BASE = Path(__file__).resolve().parents[2]
++HERE = Path(__file__).resolve().parent
++SOURCE = BASE / "runtime/scan43_prefix_diagnostic_v2"
++TARGET = BASE / "runtime/scan44_height_v5"
++
++
++def sha(path):
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def replace(data, old, new, count=1):
++    if data.count(old) != count:
++        raise ValueError("Pinned optimizer anchor mismatch")
++    return data.replace(old, new)
++
++
++def main():
++    for name in ("source_sha256.json", "install_sha256.json"):
++        for path, expected in json.loads((SOURCE / name).read_text()).items():
++            if sha(SOURCE / path) != expected:
++                raise ValueError("Parent identity changed: " + path)
++    TARGET.mkdir(exist_ok=False)
++    shutil.copytree(SOURCE / "src", TARGET / "src")
++    cpp = TARGET / "src/bspline_opt/src/bspline_optimizer.cpp"
++    header = TARGET / "src/bspline_opt/include/bspline_opt/bspline_optimizer.h"
++    data = cpp.read_bytes()
++    anchor = b'    order_ = static_cast<int>(node->get_parameter("optimization.order").as_int());'
++    addition = b'''
++    if (!node->has_parameter("optimization.optimize_height"))
++      node->declare_parameter<bool>("optimization.optimize_height", false);
++    optimize_height_ = node->get_parameter("optimization.optimize_height").as_bool();
++    RCLCPP_INFO(node->get_logger(), "height_optimization=%s; terrain and final trajectory gates retained",
++                optimize_height_ ? "enabled" : "fixed");'''
++    data = replace(data, anchor, anchor + addition)
++    data = replace(data, b"    grad_3D.row(2).setZero();",
++                   b"    if (!optimize_height_) grad_3D.row(2).setZero();", count=2)
++    cpp.write_bytes(data)
++    header.write_bytes(replace(header.read_bytes(), b"    int order_;",
++                              b"    bool optimize_height_ = false; // Explicit terrain-constrained profile only.\r\n    int order_;"))
++    manifest = {str(p.relative_to(TARGET)):sha(p) for p in (TARGET / "src").rglob("*") if p.is_file()}
++    (TARGET / "source_sha256.json").write_text(json.dumps(manifest, indent=2) + "\n")
++    identity = {"source_sha256":manifest,"baseline":str(SOURCE),"integration_version":"v5",
++                "change":"Optional Z optimization in existing rebound/refinement; false preserves fixed-height behavior"}
++    (BASE / "repairs/2026-09-26_generic_occupancy/candidate44_height_v5_identity.json").write_text(json.dumps(identity,indent=2)+"\n")
++    diff = []
++    for path in (cpp,header):
++        relative = path.relative_to(TARGET)
++        diff.extend(difflib.unified_diff((SOURCE/relative).read_text().splitlines(True),path.read_text().splitlines(True),
++                                       fromfile="v4/"+str(relative),tofile="v5/"+str(relative),n=0))
++    (HERE / "native_changes.patch").write_text("".join(diff))
++    shutil.copyfile(__file__, TARGET / "executed_materialize.py")
++    print(json.dumps({"candidate":str(TARGET),"source_files":len(manifest),"changed_files":[str(p.relative_to(TARGET)) for p in (cpp,header)]}))
++
++
++if __name__ == "__main__":
++    main()
+--- v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/regression_probe/CMakeLists.txt
++++ v5/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/regression_probe/CMakeLists.txt
+@@ -0,0 +1,13 @@
++cmake_minimum_required(VERSION 3.8)
++project(geometry_probe)
++set(CMAKE_CXX_STANDARD 17)
++find_package(ament_cmake REQUIRED)
++find_package(plan_env REQUIRED)
++find_package(bspline_opt REQUIRED)
++find_package(path_searching REQUIRED)
++find_package(rclcpp REQUIRED)
++find_package(rosgraph_msgs REQUIRED)
++add_executable(measured_cloud_probe src/measured_cloud_probe.cpp)
++ament_target_dependencies(measured_cloud_probe plan_env path_searching bspline_opt rclcpp rosgraph_msgs)
++install(TARGETS measured_cloud_probe DESTINATION lib/${PROJECT_NAME})
++ament_package()
+--- v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/regression_probe/package.xml
++++ v5/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/regression_probe/package.xml
+@@ -0,0 +1,14 @@
++<?xml version="1.0"?>
++<package format="3">
++  <name>geometry_probe</name>
++  <version>0.0.1</version>
++  <description>Bounded measured-cloud probe of native GridMap and AStar.</description>
++  <maintainer email="research@example.invalid">VLA research</maintainer>
++  <license>Apache-2.0</license>
++  <buildtool_depend>ament_cmake</buildtool_depend>
++  <depend>plan_env</depend>
++  <depend>path_searching</depend>
++  <depend>rclcpp</depend>
++  <depend>rosgraph_msgs</depend>
++  <export><build_type>ament_cmake</build_type></export>
++</package>
+--- v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/regression_probe/provenance.json
++++ v5/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/regression_probe/provenance.json
+@@ -0,0 +1,5 @@
++{
++  "parent": "audits/2026-09-27_v4_cause/probe_source",
++  "addition": "Read-only complete-curve and exact boundary-PVA checks using existing native APIs",
++  "cases": "Same frozen seed/map, default false versus optimize_height true"
++}
+--- v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/regression_probe/src/measured_cloud_probe.cpp
++++ v5/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v5/regression_probe/src/measured_cloud_probe.cpp
+@@ -0,0 +1,198 @@
++// Actual native subscriptions, ray updates, footprint queries and AStar.
++// Input files contain sensor measurements and ground support, not object labels.
++#include <path_searching/dyn_a_star.h>
++#include <bspline_opt/bspline_optimizer.h>
++#include <bspline_opt/timed_cubic_initialization.h>
++#include <plan_env/grid_map.h>
++#include <rosgraph_msgs/msg/clock.hpp>
++#include <chrono>
++#include <cstdlib>
++#include <filesystem>
++#include <fstream>
++#include <iomanip>
++#include <stdexcept>
++#include <thread>
++
++namespace fs = std::filesystem;
++
++sensor_msgs::msg::PointCloud2 read_cloud(const fs::path& path, bool ground) {
++  std::ifstream stream(path, std::ios::binary);
++  if (!stream) throw std::runtime_error("Missing measured cloud: " + path.string());
++  sensor_msgs::msg::PointCloud2 cloud;
++  cloud.data = std::vector<uint8_t>(std::istreambuf_iterator<char>(stream), {});
++  cloud.point_step = ground ? 16 : 12;
++  if (cloud.data.empty() || cloud.data.size() % cloud.point_step)
++    throw std::runtime_error("Invalid cloud layout");
++  cloud.width = cloud.data.size() / cloud.point_step;
++  cloud.height = 1;
++  cloud.row_step = cloud.width * cloud.point_step;
++  cloud.is_dense = true;
++  cloud.header.frame_id = ground ? "world" : "lidar";
++  for (size_t i = 0; i < (ground ? 4u : 3u); ++i) {
++    sensor_msgs::msg::PointField field;
++    field.name = std::vector<std::string>{"x", "y", "z", "intensity"}[i];
++    field.offset = i * 4;
++    field.datatype = sensor_msgs::msg::PointField::FLOAT32;
++    field.count = 1;
++    cloud.fields.push_back(field);
++  }
++  return cloud;
++}
++
++nav_msgs::msg::Odometry read_pose(const fs::path& path) {
++  std::ifstream stream(path);
++  nav_msgs::msg::Odometry pose;
++  auto &p = pose.pose.pose.position;
++  auto &q = pose.pose.pose.orientation;
++  stream >> p.x >> p.y >> p.z >> q.x >> q.y >> q.z >> q.w;
++  if (!stream) throw std::runtime_error("Invalid measured pose");
++  pose.header.frame_id = "world";
++  return pose;
++}
++
++int main(int argc, char **argv) {
++  const char* input = std::getenv("VLA_GEOMETRY_INPUT");
++  const char* output = std::getenv("VLA_GEOMETRY_OUTPUT");
++  if (!input || !output) throw std::runtime_error("Explicit input/output required");
++  const fs::path root(input);
++  rclcpp::init(argc, argv);
++  auto node = std::make_shared<rclcpp::Node>("scan_planner_node");
++  auto map = std::make_shared<GridMap>();
++  map->initMap(node.get());
++  auto clock_pub = node->create_publisher<rosgraph_msgs::msg::Clock>("/clock", 10);
++  auto body_pub = node->create_publisher<nav_msgs::msg::Odometry>("body_pose", rclcpp::SensorDataQoS());
++  auto pose_pub = node->create_publisher<nav_msgs::msg::Odometry>("sensor_pose", rclcpp::SensorDataQoS());
++  auto cloud_pub = node->create_publisher<sensor_msgs::msg::PointCloud2>("cloud", rclcpp::SensorDataQoS());
++  auto ground_pub = node->create_publisher<sensor_msgs::msg::PointCloud2>(
++      "/pct_tomogram", rclcpp::QoS(1).reliable().transient_local());
++  auto spin = [&](int ms) {
++    const auto end = std::chrono::steady_clock::now() + std::chrono::milliseconds(ms);
++    do { rclcpp::spin_some(node); std::this_thread::sleep_for(std::chrono::milliseconds(2)); }
++    while (std::chrono::steady_clock::now() < end);
++  };
++  auto clock = [&](int64_t ns) {
++    rosgraph_msgs::msg::Clock message;
++    message.clock = rclcpp::Time(ns);
++    clock_pub->publish(message);
++    spin(30);
++  };
++  spin(400);
++  int64_t now = 1000000000;
++  clock(now);
++  auto body = read_pose(root / "body_pose.txt");
++  auto sensor = read_pose(root / "sensor_pose.txt");
++  body.child_frame_id = "base";
++  sensor.child_frame_id = "lidar";
++  body.header.stamp = sensor.header.stamp = rclcpp::Time(now);
++  body_pub->publish(body);
++  pose_pub->publish(sensor);
++  spin(50);
++  auto ground = read_cloud(root / "ground.f32", true);
++  ground.header.stamp = rclcpp::Time(now);
++  ground_pub->publish(ground);
++  spin(100);
++  std::ifstream listing(root / "clouds.txt");
++  // Optional recorded poses retain the original sensor/body pairing while
++  // replaying continuous measurements through the existing native map.
++  std::ifstream poses(root / "poses.txt");
++  std::string file;
++  size_t scans = 0;
++  while (listing >> file) {
++    if (poses.is_open()) {
++      std::string body_file, sensor_file;
++      poses >> now >> body_file >> sensor_file;
++      if (!poses) throw std::runtime_error("Incomplete recorded pose sequence");
++      body = read_pose(root / body_file);
++      sensor = read_pose(root / sensor_file);
++      body.child_frame_id = "base";
++      sensor.child_frame_id = "lidar";
++    } else {
++      now += 100000000;
++    }
++    clock(now);
++    body.header.stamp = sensor.header.stamp = rclcpp::Time(now);
++    body_pub->publish(body);
++    pose_pub->publish(sensor);
++    spin(30);
++    auto cloud = read_cloud(root / file, false);
++    cloud.header.stamp = rclcpp::Time(now);
++    cloud_pub->publish(cloud);
++    spin(80);
++    ++scans;
++  }
++  if (!scans) throw std::runtime_error("No measured scans");
++  std::ifstream final_clock(root / "final_clock.txt");
++  final_clock >> now;
++  clock(now);
++  body = read_pose(root / "final_body.txt");
++  body.child_frame_id = "base";
++  body.header.stamp = rclcpp::Time(now);
++  body_pub->publish(body);
++  spin(50);
++  std::ofstream result(output);
++  result << std::setprecision(17) << "{\"clouds\":" << scans << ",\"semantic_messages\":0,\"queries\":[";
++  // These locations only score the map after all sensor inputs have been used.
++  std::ifstream queries(root / "queries.txt");
++  Eigen::Vector3d point;
++  double yaw;
++  std::string label;
++  size_t count = 0;
++  while (queries >> point.x() >> point.y() >> point.z() >> yaw >> label) {
++    if (count++) result << ",";
++    result << "{\"label\":" << std::quoted(label) << ",\"occupied\":"
++           << map->getInflateOccupancy(point, yaw) << "}";
++    if (std::getenv("VLA_QUERY_DIAGNOSTICS")) map->logInitialSplineCollision(point, yaw);
++  }
++  result << "],\"seed_audit\":{";
++  std::ifstream seed(root / "seed.txt");
++  size_t n; double interval; seed >> n >> interval;
++  std::vector<Eigen::Vector3d> points(n), derivatives(4);
++  for(auto &v : points) seed >> v.x() >> v.y() >> v.z();
++  for(auto &v : derivatives) seed >> v.x() >> v.y() >> v.z();
++  if(!seed) throw std::runtime_error("Invalid captured seed");
++  scan_planner::BsplineOptimizer optimizer;
++  optimizer.setParam(node.get()); optimizer.setEnvironment(map);
++  optimizer.a_star_.reset(new AStar);
++  optimizer.a_star_->initGridMap(map, Eigen::Vector3i(100,100,100));
++  optimizer.a_star_->use_upstream_search_plane = node->declare_parameter<bool>("manager.use_upstream_search_plane",false);
++  optimizer.a_star_->goal_approach_max_iterations = node->declare_parameter<int>("manager.goal_approach_max_iterations",1000);
++  auto status = optimizer.a_star_->AstarSearch(map->getResolution(),points.front(),points.back(),true);
++  result << "\"search_status\":" << int(status) << ",\"path_nodes\":" << optimizer.a_star_->getPath().size();
++  Eigen::MatrixXd controls;
++  if(!reactive_stair::fitCubicBoundaryPva(interval,points,derivatives,controls)) throw std::runtime_error("Native fit failed");
++  auto inspect = [&](const char* label) {
++    scan_planner::UniformBspline curve(controls,3,interval);
++    double start,end; curve.getTimeSpan(start,end);
++    double step=(end-start)/((curve.evaluateDeBoorT(end)-curve.evaluateDeBoorT(start)).norm()/map->getResolution());
++    const auto &q=body.pose.pose.orientation;
++    double body_yaw=std::atan2(2*(q.w*q.z+q.x*q.y),1-2*(q.y*q.y+q.z*q.z));
++    result << ",\"" << label << "\":[";
++    size_t index=0;
++    for(double t=start;t<end*2/3;t+=step){
++      auto p=curve.evaluateDeBoorT(t);auto next=curve.evaluateDeBoorT(std::min(t+step,end));
++      Eigen::Vector2d direction=next.head<2>()-p.head<2>();
++      double yaw=direction.squaredNorm()<1e-8?0.:std::atan2(direction.y(),direction.x());
++      if(index++)result << ",";
++      result << "{\"t\":" << t << ",\"xyz\":["<<p.x()<<","<<p.y()<<","<<p.z()<<"],\"yaw\":"<<yaw<<",\"occupied\":"<<map->getInflateOccupancy(p,yaw)<<",\"body_yaw_occupied\":"<<map->getInflateOccupancy(p,body_yaw)<<"}";
++      std::cout << "[AUDIT-v4-map] " << label << " index="<<index-1<<" t="<<t<<std::endl;
++      map->logInitialSplineCollision(p,yaw);
++    }
++    result << "]";
++  };
++  inspect("initial_curve");
++  auto guide=optimizer.initControlPoints(controls,true);
++  bool ok=optimizer.BsplineOptimizeTrajRebound(controls,interval);
++  result << ",\"optimizer_success\":" << (ok?"true":"false") << ",\"guide_paths\":"<<guide.size();
++  inspect("returned_curve");
++  scan_planner::UniformBspline final_curve(controls,3,interval);
++  const bool boundary_ok=reactive_stair::matchesBoundaryPva(final_curve,points.front(),points.back(),derivatives);
++  const auto full=reactive_stair::checkFullCubicTrajectory(final_curve,0.,map->getResolution(),GridMap::collision_heading_lookahead_s,
++    [&](const Eigen::Vector3d &p,const Eigen::Vector3d &ahead,const Eigen::Vector3d &vel){return map->collisionTrajectoryYaw(p,ahead,vel);},
++    [&](const Eigen::Vector3d &p,double yaw){return map->getInflateOccupancy(p,yaw)!=0;});
++  result << ",\"boundary_pva_pass\":" << (boundary_ok?"true":"false")
++         << ",\"full_curve_clear\":" << (full.clear()?"true":"false")
++         << ",\"full_curve_first_time_s\":" << full.first_time_s;
++  result << "}}\n";
++  result.close();
++  rclcpp::shutdown();
++}

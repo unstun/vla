@@ -1,0 +1,18 @@
+--- v4/src/bspline_opt/src/bspline_optimizer.cpp
++++ v5/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -25,0 +26,5 @@
++    if (!node->has_parameter("optimization.optimize_height"))
++      node->declare_parameter<bool>("optimization.optimize_height", false);
++    optimize_height_ = node->get_parameter("optimization.optimize_height").as_bool();
++    RCLCPP_INFO(node->get_logger(), "height_optimization=%s; terrain and final trajectory gates retained",
++                optimize_height_ ? "enabled" : "fixed");
+@@ -1169 +1174 @@
+-    grad_3D.row(2).setZero();
++    if (!optimize_height_) grad_3D.row(2).setZero();
+@@ -1197 +1202 @@
+-    grad_3D.row(2).setZero();
++    if (!optimize_height_) grad_3D.row(2).setZero();
+--- v4/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
++++ v5/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
+@@ -110,0 +111 @@
++    bool optimize_height_ = false; // Explicit terrain-constrained profile only.
