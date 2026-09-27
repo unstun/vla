@@ -101,6 +101,12 @@ source of truth for VLA code and project state.
 9. Do not hide research evidence with repository-wide extension ignores. Large
    local-only bytes require a reviewed path-specific ignore entry plus tracked
    provenance, SHA-256, storage location, and regeneration instructions.
+10. Local Newton navigation versions start from the user-designated `v3`
+    baseline (2026-09-27). Give each subsequent logical code/configuration
+    change its own integer version. Preserve the preceding source snapshot,
+    record the difference and bind tests/videos to the version. Never overwrite
+    a frozen version or treat a version increment as acceptance. The index is
+    `.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/README.md`.
 
 ## Project State Layout
 

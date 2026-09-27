@@ -1,0 +1,345 @@
+--- v3/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/native_graph.py
++++ v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/native_graph.py
+@@ -87 +87 @@
+-            if long_route:
++            if long_route or request.get("scene") == "building_full":
+--- v3/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/newton_episode.py
++++ v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/newton_episode.py
+@@ -47,0 +48,5 @@
++    elif request.get("scene") == "building_full":
++        robot = StairRobot(startup_mode=request["startup_mode"], stance_hold=True,
++                           automatic_contact_capacity=True,
++                           scenario=json.loads((out / "inputs/stair_scenario.json").read_text()))
++        human = None
+@@ -72,2 +77,2 @@
+-    if asynchronous and (human is not None or request.get("scene") != "flat_empty_long"):
+-        raise ValueError("Captured-state sensing is qualified only for the static empty scene")
++    if asynchronous and (human is not None or request.get("scene") not in ("flat_empty_long", "building_full")):
++        raise ValueError("Captured-state sensing requires a static scene without an animated actor")
+@@ -323 +328 @@
+-        if request.get("scene") == "flat_empty_long" and results.get("finish_request", {}).get("backend_terminal_status") != "FINISHED":
++        if request.get("scene") in ("flat_empty_long", "building_full") and results.get("finish_request", {}).get("backend_terminal_status") != "FINISHED":
+--- v3/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/probe_building_pd.py
++++ v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/probe_building_pd.py
+@@ -0,0 +1,76 @@
++"""Bounded factory/PD qualification in the complete archived Building."""
++import json
++import os
++from pathlib import Path
++
++import numpy as np
++import warp as wp
++
++wp.config.kernel_cache_dir = os.environ["WARP_CACHE_PATH"]
++wp.init()
++wp.set_device("cpu")
++
++from robot_scene import StairRobot
++from scene_assets import BASE, verify_inputs
++from factory_navigation_startup import initialize
++from run_local_episode import verify_integration_version
++
++
++def main():
++    out = Path(os.environ["NEWTON_RUN_DIR"])
++    version = verify_integration_version(out)
++    verify_inputs()
++    scenario = json.loads((BASE / "inputs/stair_scenario.json").read_text())
++    (out / "inputs").mkdir()
++    (out / "inputs/stair_scenario.json").write_text(json.dumps(scenario, indent=2) + "\n")
++    request = {"scene": "building_full", "startup_mode": "factory_pd", "stance_hold": True,
++               "physics_backend": "warp", "geometry_obstacles": True,
++               "integration_version": version, "control_qualification": True}
++    (out / "episode_request.json").write_text(json.dumps(request, indent=2) + "\n")
++    (out / "backend_states.jsonl").write_text("")
++    robot = StairRobot(startup_mode="factory_pd", stance_hold=True,
++                       automatic_contact_capacity=True, scenario=scenario)
++    rows, frames = [], []
++    result = {"passed": False, "version": version, "scope": "Factory and PD only; no navigation"}
++    try:
++        frames.extend(initialize(robot, out))
++        for _ in range(110):
++            robot.step([0., 0., 0.])
++            row = robot.telemetry()
++            rows.append(row)
++            if robot.steps % 80 == 0:
++                frames.append({"physics_time_s": robot.physics_time(), "body_q": robot.state.body_q.numpy().tolist(),
++                               "joint_q": row["joint_q"], "command": [0., 0., 0.],
++                               "controller_phase": row["controller_phase"], "stance_mode": row["stance_mode"],
++                               "policy_owns_joints": row["policy_owns_joints"], "policy_calls": robot.policy_calls})
++        checks = {
++            "final_pd_dwell_over_two_seconds": rows[-1]["physics_time_s"]-rows[0]["physics_time_s"] >= 2.,
++            "pd_owns_joints": all(r["stance_mode"] == "FIXED_STAND" and not r["policy_owns_joints"] for r in rows),
++            "original_hold_gains": all(np.all(np.asarray(r["motor_kp"]) == 60) and np.all(np.asarray(r["motor_kd"]) == 1) for r in rows),
++            "measured_foot_support": all(min(r["foot_forces_n"]) >= 10. for r in rows),
++            "upright": all(r["base_up_z"] >= .98 for r in rows),
++            "ground_relative_body_height": all(r["joint_q"][2]-scenario["spawn_ground_xyz_m"][2] >= .25 for r in rows),
++            "motor_force_mapping": robot.max_applied_torque_error < 1e-4,
++        }
++        result.update(checks={k:bool(v) for k,v in checks.items()}, passed=all(checks.values()),
++                      physics_s=robot.physics_time(), physics_steps=robot.steps,
++                      building_vertices=len(robot.building_vertices), building_triangles=len(robot.building_faces),
++                      building_bounds_m=[robot.building_vertices.min(axis=0).tolist(), robot.building_vertices.max(axis=0).tolist()],
++                      final_position=rows[-1]["joint_q"][:3], factory_calibration_validated=False)
++        if not result["passed"]:
++            raise RuntimeError("Building factory/PD qualification did not pass")
++    except BaseException as error:
++        result["error"] = repr(error)
++        raise
++    finally:
++        if not frames and (out / "factory_video_states.json").exists():
++            frames = json.loads((out / "factory_video_states.json").read_text())
++        (out / "video_states.json").write_text(json.dumps(frames) + "\n")
++        (out / "telemetry.jsonl").write_text("".join(json.dumps(r)+"\n" for r in rows))
++        (out / "stance_status.json").write_text(json.dumps(robot.stance.status(), indent=2) + "\n")
++        (out / "result.json").write_text(json.dumps(result, indent=2) + "\n")
++        print(json.dumps(result), flush=True)
++
++
++if __name__ == "__main__":
++    main()
+--- v3/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/render_episode.py
++++ v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/render_episode.py
+@@ -236,0 +237 @@
++    full_building = episode_request.get("scene") == "building_full"
+@@ -243,0 +245,5 @@
++    elif full_building:
++        robot = StairRobot(startup_mode=episode_request["startup_mode"], stance_hold=True,
++                           automatic_contact_capacity=True,
++                           scenario=json.loads((source / "inputs/stair_scenario.json").read_text()))
++        human = None
+@@ -248 +254,2 @@
+-    scene_caption = ("Empty flat floor | PCT global route + SCAN local curves" if long_route
++    scene_caption = ("Complete archived Building | PCT global route + SCAN local curves" if full_building
++                     else "Empty flat floor | PCT global route + SCAN local curves" if long_route
+@@ -274 +281 @@
+-        viewer.camera.fov = 50.0 if long_route else 45.0 if startup_view or args.view == "rear-right" else 60.0 if flat_view else 80.0
++        viewer.camera.fov = 60.0 if full_building else 50.0 if long_route else 45.0 if startup_view or args.view == "rear-right" else 60.0 if flat_view else 80.0
+@@ -300,0 +308,9 @@
++            if full_building:
++                right = np.array([math.sin(yaw), -math.cos(yaw), 0.])
++                position = base_position - 2. * forward + .9 * right + np.array([0., 0., 1.1])
++                target = base_position + .5 * forward
++                if t < 1.6:
++                    lower, upper = robot.building_vertices.min(axis=0), robot.building_vertices.max(axis=0)
++                    target = (lower + upper) / 2
++                    span = float(max(upper[0]-lower[0], upper[1]-lower[1]))
++                    position = target + np.array([0., -.6*span, .9*span])
+@@ -351 +367,2 @@
+-            draw.text((22, 12), f"Lite3 | Newton CPU | recorded physics  {t:05.2f} s" + view_label, font=font, fill=(242, 245, 250))
++            version_label = (" | " + episode_request["integration_version"]) if episode_request.get("integration_version") else ""
++            draw.text((22, 12), f"Lite3{version_label} | Newton CPU | recorded physics  {t:05.2f} s" + view_label, font=font, fill=(242, 245, 250))
+@@ -355 +372 @@
+-            if long_route:
++            if long_route or full_building:
+@@ -388,0 +406,2 @@
++            if episode_request.get("control_qualification"):
++                caption = "Factory / PD qualification | no navigation goal"
+@@ -417,2 +436,3 @@
+-        "display_camera_fov_degrees": 50.0 if long_route else 45.0 if startup_view or args.view == "rear-right" else 60.0 if flat_view else 80.0,
+-        "display_camera_mode": "long_route_follow" if long_route else "rear_right" if args.view == "rear-right" else "startup_close_side" if startup_view else "fixed_flat_side" if flat_view else "original_follow",
++        "display_camera_fov_degrees": 60.0 if full_building else 50.0 if long_route else 45.0 if startup_view or args.view == "rear-right" else 60.0 if flat_view else 80.0,
++        "display_camera_mode": "building_overview_then_follow" if full_building else "long_route_follow" if long_route else "rear_right" if args.view == "rear-right" else "startup_close_side" if startup_view else "fixed_flat_side" if flat_view else "original_follow",
++        "integration_version": episode_request.get("integration_version"),
+--- v3/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/review_building_episode.py
++++ v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/review_building_episode.py
+@@ -0,0 +1,71 @@
++"""Read actual Building outcome without promoting the empty-floor acceptance."""
++import argparse
++import hashlib
++import json
++from pathlib import Path
++
++import numpy as np
++
++BASE = Path(__file__).resolve().parents[1]
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--run-id", required=True)
++    args = parser.parse_args()
++    run = BASE / "runs" / args.run_id
++    if run.parent != BASE / "runs":
++        raise ValueError("Invalid run name")
++    common = json.loads((BASE / "validation" / (args.run_id + "_review.json")).read_text())
++    rows = [json.loads(line) for line in (run / "telemetry.jsonl").read_text().splitlines()]
++    scenario = json.loads((run / "inputs/stair_scenario.json").read_text())
++    original = json.loads((BASE / "inputs/stair_scenario.json").read_text())
++    driver = json.loads((run / "artifacts/stair_driver_result.json").read_text())
++    source = json.loads((run / "execution_sources.json").read_text())
++    handoff = json.loads((run / "factory_handoff.json").read_text())
++    factory = np.load(run / "factory_full_rate.npz")["records"]
++    expected, continuous = np.float32(0.), True
++    for row in factory:
++        continuous &= float(expected) == row[0]
++        expected = np.float32(expected + np.float32(.001))
++    for row in rows:
++        for _ in range(20):
++            expected = np.float32(expected + np.float32(.001))
++        continuous &= float(expected) == row["physics_time_s"]
++    held = []
++    for row in reversed(rows):
++        if row.get("stance_mode") != "FIXED_STAND" or row.get("policy_owns_joints") is not False:
++            break
++        held.append(row)
++    dwell = held[0]["physics_time_s"]-held[-1]["physics_time_s"] if held else 0.
++    goal = np.asarray(scenario["goal_ground_xyz_m"])
++    positions = np.asarray([r["joint_q"][:3] for r in rows])
++    checks = {
++        "common_interface": common["interface_checks_passed"],
++        "executed_sources": all(hashlib.sha256((run/p).read_bytes()).hexdigest()==h for p,h in source.items()),
++        "original_goal_and_spawn": all(scenario[k] == original[k] for k in ("goal_ground_xyz_m", "spawn_ground_xyz_m", "spawn_yaw_rad")),
++        "native_arrival": any(t["status"]=="arrived" for t in common["navigation_terminal_results"]),
++        "driver_arrival_and_pd": driver.get("route_arrived") is True,
++        "native_moving_curve": len(common["moving_curves"]) >= 1,
++        "actual_motion": np.linalg.norm(positions[-1,:2]-positions[0,:2]) >= 4.,
++        "goal_xy": np.linalg.norm(positions[-1,:2]-goal[:2]) <= .25,
++        "goal_floor_clearance": .20 <= positions[-1,2]-goal[2] <= .55,
++        "final_pd_two_seconds": dwell >= 2.,
++        "original_pd_gains": bool(held) and all(np.all(np.asarray(r["motor_kp"])==60.) and np.all(np.asarray(r["motor_kd"])==1.) for r in held),
++        "no_fall": min(r["base_up_z"] for r in rows) >= .5,
++        "continuous_physics": continuous,
++        "factory_pd_force_match": np.max(np.abs(np.asarray(handoff["new_force_nm"])-handoff["factory_force_nm"])) < 1e-10,
++        "motor_map": rows[-1]["applied_torque_max_abs"] <= 1e-4,
++    }
++    checks = {k:bool(v) for k,v in checks.items()}
++    result = {"checks":checks,"passed":all(checks.values()),"actual_navigation_path_m":float(np.linalg.norm(np.diff(positions,axis=0),axis=1).sum()),
++              "goal_xy_error_m":float(np.linalg.norm(positions[-1,:2]-goal[:2])),"final_pd_hold_s":dwell,
++              "physics_s":rows[-1]["physics_time_s"],"moving_curves":len(common["moving_curves"]),
++              "architectural_surface_contact_acceptance":"not assessed; no collision-free claim",
++              "scope":"One full Building simulation with fixed architecture; no added actor or physical-robot claim"}
++    (BASE / "validation" / (args.run_id + "_building.json")).write_text(json.dumps(result,indent=2)+"\n")
++    print(json.dumps(result,indent=2))
++
++
++if __name__ == "__main__":
++    main()
+--- v3/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/robot_scene.py
++++ v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/robot_scene.py
+@@ -44,2 +44,4 @@
+-    def __init__(self):
+-        self.building_vertices, self.building_faces, self.scenario = building_mesh()
++    def __init__(self, *, startup_mode="policy", stance_hold=False, scenario=None,
++                 automatic_contact_capacity=False):
++        self.building_vertices, self.building_faces, archived_scenario = building_mesh()
++        self.scenario = scenario if scenario is not None else archived_scenario
+@@ -55 +57 @@
+-        spawn[2] += self.scenario["spawn_body_height_m"]
++        spawn[2] += .14 if startup_mode == "factory_pd" else self.scenario["spawn_body_height_m"]
+@@ -57 +59,3 @@
+-                         spawn_yaw=self.scenario["spawn_yaw_rad"], newton_contacts=True)
++                         spawn_yaw=self.scenario["spawn_yaw_rad"], newton_contacts=True,
++                         startup_mode=startup_mode, stance_hold=stance_hold,
++                         automatic_contact_capacity=automatic_contact_capacity)
+--- v3/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/run_local_episode.py
++++ v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/run_local_episode.py
+@@ -61,0 +62,18 @@
++def verify_integration_version(out, version=None):
++    """Bind new runs to a frozen local integration snapshot, not a dirty Git tag."""
++    versions = BASE / "versions"
++    if version is None and (versions / "current.json").exists():
++        version = json.loads((versions / "current.json").read_text())["current"]
++    if version is None:
++        return None
++    if not (version.startswith("v") and version[1:].isdigit()):
++        raise ValueError("Expected an integer integration version such as v4")
++    manifest_path = versions / version / "manifest.json"
++    manifest = json.loads(manifest_path.read_text())
++    for name, expected in manifest["source_files"].items():
++        if hashlib.sha256((PROJECT / name).read_bytes()).hexdigest() != expected:
++            raise ValueError("Version source changed; register a new version before running: " + name)
++    shutil.copyfile(manifest_path, out / "integration_version.json")
++    return version
++
++
+@@ -71 +89,2 @@
+-    parser.add_argument("--scene", choices=("building", "flat_static", "flat_box", "flat_empty_long"), default="building")
++    parser.add_argument("--scene", choices=("building", "building_full", "flat_static", "flat_box", "flat_empty_long"), default="building")
++    parser.add_argument("--integration-version")
+@@ -78,0 +98,2 @@
++    full_building = args.scene == "building_full"
++    extended_route = long_route or full_building
+@@ -87 +108,3 @@
+-    if args.probe and long_route:
++    if full_building and not (args.geometry_obstacles and args.stance_hold and args.startup_mode == "factory_pd"):
++        parser.error("Full Building requires geometry-only planning and factory/PD stance control")
++    if args.probe and extended_route:
+@@ -91,2 +114,2 @@
+-    if args.startup_mode == "factory_pd" and not (long_route and args.stance_hold):
+-        parser.error("factory_pd requires the explicit empty long route and stance hold")
++    if args.startup_mode == "factory_pd" and not (extended_route and args.stance_hold):
++        parser.error("factory_pd requires an explicit extended route and stance hold")
+@@ -99 +122 @@
+-    if not 1.0 <= args.goal_wall_budget <= (1500.0 if long_route else 400.0):
++    if not 1.0 <= args.goal_wall_budget <= (1500.0 if extended_route else 400.0):
+@@ -104,0 +128 @@
++    integration_version = verify_integration_version(out, args.integration_version)
+@@ -132,0 +157,7 @@
++    if full_building:
++        scenario_path = out / "inputs/stair_scenario.json"
++        scenario = json.loads(scenario_path.read_text())
++        scenario.update(max_sim_seconds=90., max_wall_seconds=args.goal_wall_budget,
++                        navigation_input="native PCT map, actual geometric LiDAR and simulator body localization",
++                        scene_condition="Complete archived Building; fixed architecture; no added actor")
++        scenario_path.write_text(json.dumps(scenario, indent=2) + "\n")
+@@ -152,0 +184 @@
++        "integration_version": integration_version,
+@@ -155,2 +187,2 @@
+-        "body_publish_substeps": 5 if long_route else 20,
+-        "async_sensor_evidence": long_route,
++        "body_publish_substeps": 5 if extended_route else 20,
++        "async_sensor_evidence": extended_route,
+@@ -164,3 +196,4 @@
+-        "max_physics_s": (8 if args.startup_mode == "pd_stand" else 3) if args.probe else (150 if long_route else 35),
+-        "max_worker_wall_s": 1700 if long_route else 500,
+-        "source_condition": ("12 m empty flat scene / original sensor rig / native PCT + SCAN42 + controller / PD-RL switching"
++        "max_physics_s": (8 if args.startup_mode == "pd_stand" else 3) if args.probe else (150 if long_route else 90 if full_building else 35),
++        "max_worker_wall_s": 1700 if extended_route else 500,
++        "source_condition": ("Complete original Building / original map and sensor rig / PCT + SCAN / factory-PD-RL switching"
++                             if full_building else "12 m empty flat scene / original sensor rig / native PCT + SCAN42 + controller / PD-RL switching"
+@@ -171 +204,2 @@
+-        "sensor_condition": ("geometric emitter-owner exclusion and physical floor; no obstacle or human mesh; not RTX"
++        "sensor_condition": ("geometric emitter-owner exclusion and complete original Building triangles; no added actor; not RTX"
++                             if full_building else "geometric emitter-owner exclusion and physical floor; no obstacle or human mesh; not RTX"
+@@ -216 +250 @@
+-            worker = subprocess.run([sys.executable, str(BASE / "scripts/newton_episode.py")], timeout=1700 if long_route else 500)
++            worker = subprocess.run([sys.executable, str(BASE / "scripts/newton_episode.py")], timeout=1700 if extended_route else 500)
+--- v3/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/test_version_identity.py
++++ v4/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/test_version_identity.py
+@@ -0,0 +1,35 @@
++"""Prove a changed source cannot silently reuse a frozen version label."""
++import hashlib
++import json
++from pathlib import Path
++import tempfile
++import unittest
++from unittest.mock import patch
++
++import run_local_episode as launcher
++
++
++class VersionIdentityTest(unittest.TestCase):
++    def test_source_identity_and_mutation_rejection(self):
++        with tempfile.TemporaryDirectory() as directory:
++            root = Path(directory)
++            source = root / "controller.py"
++            source.write_text("original\n")
++            version = root / "versions/v4"
++            version.mkdir(parents=True)
++            manifest = {"version":"v4", "source_files":{"controller.py":hashlib.sha256(source.read_bytes()).hexdigest()}}
++            (version / "manifest.json").write_text(json.dumps(manifest))
++            out = root / "out"
++            out.mkdir()
++            with patch.object(launcher, "BASE", root), patch.object(launcher, "PROJECT", root):
++                self.assertEqual(launcher.verify_integration_version(out, "v4"), "v4")
++                self.assertEqual(json.loads((out / "integration_version.json").read_text()), manifest)
++                source.write_text("different controller\n")
++                with self.assertRaisesRegex(ValueError, "register a new version"):
++                    launcher.verify_integration_version(out, "v4")
++                with self.assertRaisesRegex(ValueError, "integer integration version"):
++                    launcher.verify_integration_version(out, "../../v3")
++
++
++if __name__ == "__main__":
++    unittest.main()
