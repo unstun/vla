@@ -1,0 +1,30 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--cpus=3",
+    "--memory=6g",
+    "--name",
+    "vla-v30-stop-candidates01",
+    "-e",
+    "ROS_DOMAIN_ID=232",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction:/archive:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan62_support_evidence_v30:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v30_stop_classes:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside_candidates.sh"
+  ],
+  "deadline_s": 3600,
+  "claim": "Same four frozen v30_historical_full01 stop states and v30 native sources. A read-only candidate probe derived from stop_probe rebuilds each candidate curve the delta-0 replan logged (controls and knots), reproduces its native full check at the fresh inputs, and breaks down the first colliding sample."
+}

@@ -253,12 +253,12 @@
       "version_index": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/README.md",
       "handoff": ".pipeline/handoffs/2026-09-27_newton_versioned_repair_progress.md",
       "latest_physical_run": "v30_historical_full01",
-      "latest_physical_outcome": "71.43s; landing stall gone (frontier 15.64s vs 8.645s; passed v29's stop at 34.97s); 17 moving curves; 13.44m path, +1.45m climb; ~15s pause at the corridor entry, then stationary from 57.5s in the upper corridor on invalid-curve holds (status=2, not yet diagnosed); odom_stale at 69.35s after a 0.264s wall gap in body-pose callbacks; goal XY error 4.15m; no arrival; no fall",
+      "latest_physical_outcome": "71.43s; landing stall gone (frontier 15.64s vs 8.645s; passed v29's stop at 34.97s); 17 moving curves; 13.44m path, +1.45m climb; ~15s pause at the corridor entry, then stationary from 57.5s in the upper corridor on invalid-curve holds (status=2; diagnosed afterwards in audits/2026-09-28_v30_stop_classes); odom_stale at 69.35s after a 0.264s wall gap in body-pose callbacks; goal XY error 4.15m; no arrival; no fall",
       "accepted_navigation_condition": "v3 single empty12m trial only",
       "full_building_validated": false,
       "original_isaac_A4_still_open": true,
-      "next_gate": "Dr Sun's choice after the v30 trial. Two open classes: (1) invalid-curve holds at the corridor entry and in the upper corridor, not yet diagnosed; (2) the wall-clock freshness class (odom_stale), which ended v28 and v30. v31 is not created.",
-      "mapped_low_protrusion_policy": "user clarification pending; original baseline already treats known13cm terrain as support",
+      "next_gate": "v31 (option 1) in progress: materialize from v30; keep SCAN's pose and scan inputs fresh while planning (own callback group on a multi-threaded executor) and bound planning callbacks; contract tests, frozen replays, full native regression, independent review and freeze before any physics. Basis: the v30 stop diagnosis (stops and status-2 holds most likely from the input-age gates while planning blocks the single-threaded executor; 48 of 53 'inside an obstacle' messages most likely the scan exceeding 0.25 s mid-callback, 5 unexplained; 109 of 112 reproduced collision rejections from one mis-mapped navigation cell). The wall-clock freshness class is separate.",
+      "mapped_low_protrusion_policy": "step_over (Dr Sun, 2026-09-28): a mapped low protrusion such as the known 13 cm terrain is stepped over, provided V12 can. Rule: legs may touch obstacles; only the main body must not collide. The step height, tall-box/thin-wall rejection and people handling are open design items for the collision-model version.",
       "latest_completed_run": "v30_historical_full01",
       "candidate_version": "v30",
       "candidate_native": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan62_support_evidence_v30",
@@ -287,11 +287,31 @@
           "date": "2026-09-28",
           "question": "v30 scope after the landing-stall diagnosis",
           "choice": "Option 1: evidence-backed neighbour check in the step score; commit the diagnosis first"
+        },
+        {
+          "date": "2026-09-28",
+          "question": "Mapped 13 cm protrusion: step over or detour",
+          "choice": "Step over, provided V12 can",
+          "condition": "Dr Sun's rule: legs may touch obstacles; only the main body must not collide"
+        },
+        {
+          "date": "2026-09-28",
+          "question": "Next step after the v30 trial and the replanning/collision discussion",
+          "choice": "Diagnose first from v30 saved inputs with a height-band breakdown of every blocking cell",
+          "condition": "then the collision model and continuous replanning as separate versions"
+        },
+        {
+          "date": "2026-09-28",
+          "question": "Next version after the v30 stop diagnosis",
+          "choice": "Option 1: keep pose and scan inputs fresh while planning (callback groups / multi-threaded executor, bounded planning)",
+          "condition": "commit v30 and the diagnosis first; continuous replanning after it; the collision model as its own later version"
         }
       ],
       "v29_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v29/RESULTS.md",
       "landing_stall_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v29_landing_stall/RESULT.md",
-      "v30_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v30/RESULTS.md"
+      "v30_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v30/RESULTS.md",
+      "stop_class_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v30_stop_classes/RESULT.md",
+      "v30_commit": "e00eb77a"
     }
   }
 }

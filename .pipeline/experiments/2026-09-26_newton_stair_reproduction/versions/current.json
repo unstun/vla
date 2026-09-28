@@ -32,8 +32,8 @@
   },
   "full_building_navigation_validated": false,
   "minimum_measured_body_speed_validated": false,
-  "next_version": "Not created. Two open classes after the v30 trial: (1) invalid-curve holds at the corridor entry and in the upper corridor, not yet diagnosed; (2) the wall-clock freshness class (odom_stale), which ended v28 and v30. Choosing the next step is Dr Sun's decision.",
-  "execution": "stopped_after_v30_physical_trial",
+  "next_version": "v31 in progress: Dr Sun chose option 1 on 2026-09-28 after the v30 stop diagnosis (audits/2026-09-28_v30_stop_classes). The stops and invalid-curve holds most likely come from SCAN's input-age gates (body pose > 0.1 s, processed scan > 0.25 s; the scan age at the stops is inferred, and one planning callback's own lines show the processed scan pass 0.25 s) while planning blocks its single-threaded executor. v31 keeps pose and scan inputs fresh while planning (their own callback group on a multi-threaded executor) and bounds planning callbacks. Continuous replanning follows; the collision model is a later version; the mis-mapped corridor cell and the wall-clock freshness class are separate.",
+  "execution": "stopped_after_v30_physical_trial_and_stop_diagnosis",
   "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md",
   "v28_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md",
   "start_thrash_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v28_start_thrash/RESULT.md",
@@ -43,5 +43,6 @@
   "landing_stall_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v29_landing_stall/RESULT.md",
   "v30_plan": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v30/PLAN.md",
   "v30_component_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v30/COMPONENT_RESULTS.md",
-  "v30_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v30/RESULTS.md"
+  "v30_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v30/RESULTS.md",
+  "stop_class_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v30_stop_classes/RESULT.md"
 }

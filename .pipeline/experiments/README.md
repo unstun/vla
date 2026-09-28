@@ -8,7 +8,11 @@
   third-round independent review pass. The live historical run crosses the upper landing (frontier 15.64 s,
   was 8.645 s) over a 13.44 m path. It then stops 4.15 m short in the upper corridor on invalid-curve holds
   and fails `odom_stale` at 69.35 s. No arrival; v3 remains accepted. On this map v30 leaves no Unknown
-  support, so the trial cannot test drops.
+  support, so the trial cannot test drops. The [stop diagnosis](2026-09-26_newton_stair_reproduction/audits/2026-09-28_v30_stop_classes/RESULT.md)
+  replays four frozen stops. With fresh inputs the curve's current point was clear at all four. The stops
+  and holds most likely come from SCAN's input-age gates (pose > 0.1 s, processed scan > 0.25 s; the scan
+  age at the stops is inferred) while planning blocks its single-threaded executor. 109 of 112 reproduced
+  collision rejections hit one navigation-ground cell recorded at the landing height.
 
 - [`2026-09-26_newton_stair_reproduction/versions/v29/`](2026-09-26_newton_stair_reproduction/versions/v29/RESULTS.md)
   — 2026-09-28 v29 (Dr Sun's choice): the known-footprint waiver is tested at the queried point, up to the

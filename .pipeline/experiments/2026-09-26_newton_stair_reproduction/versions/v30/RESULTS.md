@@ -91,6 +91,15 @@ Which condition makes these curves invalid is not yet diagnosed, and this
 record claims no cause. It is a different class from the v29 landing stall,
 and v30 did not change it.
 
+Update, 2026-09-28: diagnosed afterwards from saved inputs in
+[`audits/2026-09-28_v30_stop_classes`](../../audits/2026-09-28_v30_stop_classes/RESULT.md).
+Status 2 is a heading left undefined when the body pose is older than 0.1 s
+on a nearly stationary sample. The emergency stops at 0.000 s most likely
+follow a processed scan older than 0.25 s (inferred: no line logs the scan
+age at a stop, though one planning callback's own lines show the processed
+scan pass 0.25 s). Both ages grow while planning blocks SCAN's
+single-threaded executor.
+
 ## Planner statistics
 
 - **Replans:** 508 in total (v29: 6,002), with 17 committed.
