@@ -49,10 +49,22 @@ was never reached again.
 - After 1,000 failures the FSM raised the emergency stop, and the backend
   reported `native_replan_exhausted`.
 
-This is a different failure class from the start thrash. The frontier stops at
-never-observed space beyond a turn, outside the robot's footprint, where v29's
-waiver correctly does not apply. It has not been diagnosed from saved inputs
-yet.
+This is a different failure class from the start thrash.
+
+**Correction after the saved-input diagnosis**
+(`audits/2026-09-28_v29_landing_stall/RESULT.md`): the first reading above,
+that the frontier stops at never-observed space beyond the turn, was wrong
+about the near blocker.
+- **The logged point is the wrong one:** the logged UnknownObstacle point is
+  only the first in-map sample of the backward frontier walk.
+- **What blocks near the robot:** from t = 8.695 s the route samples fail
+  SCAN's static ground-support query without a log line. The PCT route runs on
+  the walkway's outer ring of cells, which the step score marks Unknown
+  because the neighbouring cells carry only other floors' surfaces.
+- **Where never-observed space starts:** after the turn (t ≥ 11.29 s).
+- **Causal test:** a probe-only relabel of those 39 walkway layers moves the
+  frontier to 11.04 s, and the native continuation then plans a moving
+  prefix. v29's waiver is not involved.
 
 ## Planner statistics
 
@@ -91,7 +103,7 @@ trial it removed the start thrash and climbed about 1.3 m of stairs, but it did
 not arrive. v3 remains the last accepted navigation condition.
 
 Still open:
-- the landing frontier stall;
+- the landing frontier stall (diagnosed; the fix scope needs Dr Sun's choice);
 - the unchanged wall-clock freshness class;
 - the emergency-hold feedback;
 - the 13 cm protrusion choice;

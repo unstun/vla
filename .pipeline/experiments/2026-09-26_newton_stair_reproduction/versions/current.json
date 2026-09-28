@@ -27,16 +27,17 @@
     "v26_historical_full02": "110.731simseconds; .056m netXY;1movingcurve thenhold; manual diagnostic abort;profile gatespass;noarrival;copyback verified",
     "v27_historical_full01": "13.24s, native SCAN segfault(exit245), no arrival or verified copyback",
     "v28_historical_full01": "17.68s; no native crash past v27's 13.24s point; odom_stale at15.563s after 0.344s control stall during clock-observation reconnect; 1 moving curve; 4.3cm net; no arrival; copyback verified",
-    "v29_historical_full01": "88.32s; start thrash gone (23 start replans, moving by 13.14s); 13 moving curves; 9.77m XY path, +1.31m climb; no odom_stale (24/7281 clock rejects, no reconnect); native_replan_exhausted: reference frontier stuck at the robot on the upper landing with UnknownObstacle beyond the turn; goal XY error 6.97m; no arrival; no fall"
+    "v29_historical_full01": "88.32s; start thrash gone (23 start replans, moving by 13.14s); 13 moving curves; 9.77m XY path, +1.31m climb; no odom_stale (24/7281 clock rejects, no reconnect); native_replan_exhausted: reference frontier stuck at 8.6446s on the upper landing because the PCT route runs on walkway cells SCAN scores as Unknown support (diagnosed from saved inputs); goal XY error 6.97m; no arrival; no fall"
   },
   "full_building_navigation_validated": false,
   "minimum_measured_body_speed_validated": false,
-  "next_version": "v30 not created. Next candidates for Dr Sun: diagnose the upper-landing frontier stall from the v29 run's saved inputs, or the unchanged wall-clock freshness class.",
-  "execution": "stopped_after_v28_physical_trial",
+  "next_version": "v30 in progress: Dr Sun chose option 1 on 2026-09-28 after the landing-stall diagnosis (a static mismatch between the PCT route and SCAN's step-score support). In the step score, a present neighbour without the walkway level counts as a possible drop only if the pinned surface evidence also lacks a surface near that level. The wall-clock freshness class is separate.",
+  "execution": "stopped_after_v29_physical_trial_and_landing_diagnosis",
   "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md",
   "v28_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md",
   "start_thrash_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v28_start_thrash/RESULT.md",
   "v29_plan": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v29/PLAN.md",
   "v29_component_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v29/COMPONENT_RESULTS.md",
-  "v29_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v29/RESULTS.md"
+  "v29_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v29/RESULTS.md",
+  "landing_stall_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v29_landing_stall/RESULT.md"
 }

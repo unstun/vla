@@ -5,7 +5,10 @@
   Mid-360 origin (+0.10854 m, pinned URDF). Red/green waiver contract, all 7 saved walking-start states,
   the full native regression and an independent re-review pass. The live historical run leaves the start,
   climbs 1.31 m of stairs over a 9.77 m path, then fails `native_replan_exhausted` at 88.3 s on the upper
-  landing (frontier stuck before never-observed space). No arrival; v3 remains accepted.
+  landing. No arrival; v3 remains accepted. The [landing-stall diagnosis](2026-09-26_newton_stair_reproduction/audits/2026-09-28_v29_landing_stall/RESULT.md)
+  replays the frozen states. The PCT route runs on the walkway's outer ring of cells, which SCAN's step score
+  marks Unknown support (neighbouring cells carry only other floors). A probe-only relabel of those layers
+  lets the continuation move. The v30 scope is Dr Sun's choice.
 
 - [`2026-09-26_newton_stair_reproduction/versions/v28/`](2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md)
   — 2026-09-28 v28: the saved-input replay isolates v27's crash (seed 269, `back()` on an empty
