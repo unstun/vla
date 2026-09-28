@@ -1,5 +1,12 @@
 # Experiment Records
 
+- [`2026-09-26_newton_stair_reproduction/versions/v28/`](2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md)
+  — 2026-09-28 v28: the saved-input replay isolates v27's crash (seed 269, `back()` on an empty
+  rebound-constraint list) and restores scan_27's lost guard. Red/green goes 10/13 -> 13/13;
+  96 seed replays and the full native regression pass, with an independent review. The live
+  historical run has no native crash but fails `odom_stale` at 15.56 s after a 0.344 s
+  control stall. The planner still thrashes at the start; no route progress. v3 remains accepted.
+
 - [`20260928_newton_v8_v27_archive.md`](20260928_newton_v8_v27_archive.md)
   — v24 short stair arrival without final PD; v26 automatic-layer loader repaired;
   v27 native seed regressions pass but full-route physics segfaults near13.24s.

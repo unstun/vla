@@ -32,7 +32,9 @@ Dr Sun designated the delivered empty-floor system as v3 on 2026-09-27 and reque
 
 | v27 | Reuse OMPL verified direct connection to simplify an already valid native seed | Eleven continuations pass; geometry outputs unchanged; live13.24s native segfault; no full-route acceptance |
 
-Current integration candidate: **v27**. Last accepted navigation condition: **v3, empty
+| v28 | Restore scan_27 finite paired rebound constraints lost in the scan_04 optimizer restore | Crash isolated (seed 269, empty `back()`); red/green 10/13 -> 13/13, 96 seed replays and full regression pass; live run has no crash but fails `odom_stale` at 15.56 s after a 0.344 s control stall; no route progress |
+
+Current integration candidate: **v28**. Last accepted navigation condition: **v3, empty
 12 m floor only**. Videos are ordinary files under
 `output/2026-09-27_lite3_versions/`: `v3_empty_12m.mp4` and
 `v4_building_test.mp4`, `v5_building_test.mp4`, `v5_empty_test.mp4`, and
@@ -41,4 +43,4 @@ A failed new version never replaces the older outcome.
 
 Before editing a new logical behavior or configuration, create the next integer version and state its scope. Preserve a hash-verified source snapshot and exact difference from the parent before running it. Keep immutable run IDs under runs/ and associate every attempt, including failures, with its version. Keep results separately from the frozen source manifest. A new version does not mean a successful version. Record the last validated condition explicitly. Do not put a release tag on unrelated dirty repository changes. Earlier v1/v2 are not reconstructed or relabeled. No automatic pre-edit commit is performed.
 
-Archived at user request on2026-09-28. [Current handoff](../../../handoffs/2026-09-28_newton_v27_archive/README.md); v28 not created.
+Archived at user request on 2026-09-28 at v27 ([handoff](../../../handoffs/2026-09-28_newton_v27_archive/README.md)). Resumed the same day for v28 at Dr Sun's request; see [v28 results](v28/RESULTS.md). v29 is not created.

@@ -1,0 +1,32 @@
+#0 [CRASH-SIGNAL] 6
+#1 /attempt/probe_build/crash_probe(+0x423b24)[0x555555977b24]
+      (anonymous namespace)::dumpStack(int) at /attempt/probe_source/src/abort_backtrace.cpp:21
+#2 /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7ffff5553520]
+#3 /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7ffff55a79fc]
+#4 /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7ffff5553476]
+#5 /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7ffff55397f3]
+#6 /attempt/probe_build/crash_probe(+0x2b3853)[0x555555807853]
+      std::__replacement_assert(char const*, int, char const*, char const*) at /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h:514
+#7 /attempt/probe_build/crash_probe(+0x4e5912)[0x555555a39912]
+      std::vector<Eigen::Matrix<double, 3, 1, 0, 3, 1>, std::allocator<Eigen::Matrix<double, 3, 1, 0, 3, 1> > >::back() at /usr/include/c++/11/bits/stl_vector.h:1145
+       (inlined by) scan_planner::BsplineOptimizer::check_collision_and_rebound() at /attempt/diagnostic_src/bspline_optimizer.cpp:950
+#8 /attempt/probe_build/crash_probe(+0x4e74e2)[0x555555a3b4e2]
+      scan_planner::BsplineOptimizer::calcDistanceCostRebound(Eigen::Matrix<double, -1, -1, 0, -1, -1> const&, double&, Eigen::Matrix<double, -1, -1, 0, -1, -1>&, int, double) at /attempt/diagnostic_src/bspline_optimizer.cpp:419
+#9 /attempt/probe_build/crash_probe(+0x4f3631)[0x555555a47631]
+      scan_planner::BsplineOptimizer::combineCostRebound(double const*, double*, double&, int) at /attempt/diagnostic_src/bspline_optimizer.cpp:1186
+#10 /attempt/probe_build/crash_probe(+0x4f3ec8)[0x555555a47ec8]
+      scan_planner::BsplineOptimizer::costFunctionRebound(void*, double const*, double*, int) at /attempt/diagnostic_src/bspline_optimizer.cpp:391
+#11 /attempt/probe_build/crash_probe(+0x52144e)[0x555555a7544e]
+      lbfgs::line_search_morethuente(int, double*, double*, double*, double*, double*, double const*, double const*, double const*, double const*, lbfgs::callback_data_t*, lbfgs::lbfgs_parameter_t const*) at /workspace/src/bspline_opt/include/bspline_opt/lbfgs.hpp:828
+#12 /attempt/probe_build/crash_probe(+0x52389a)[0x555555a7789a]
+      lbfgs::lbfgs_optimize(int, double*, double*, double (*)(void*, double const*, double*, int), double (*)(void*, double const*, double const*, int), int (*)(void*, double const*, double const*, double, double, double, double, int, int, int), void*, lbfgs::lbfgs_parameter_t*) at /workspace/src/bspline_opt/include/bspline_opt/lbfgs.hpp:1187
+#13 /attempt/probe_build/crash_probe(+0x517590)[0x555555a6b590]
+      scan_planner::BsplineOptimizer::rebound_optimize() at /attempt/diagnostic_src/bspline_optimizer.cpp:1025 (discriminator 3)
+#14 /attempt/probe_build/crash_probe(+0x51c180)[0x555555a70180]
+      scan_planner::BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, double) at /attempt/diagnostic_src/bspline_optimizer.cpp:969
+#15 /attempt/probe_build/crash_probe(+0x29129c)[0x5555557e529c]
+      main at /attempt/probe_source/src/crash_probe.cpp:191
+#16 /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7ffff553ad90]
+#17 /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7ffff553ae40]
+#18 /attempt/probe_build/crash_probe(+0x27cb75)[0x5555557d0b75]
+      _start at ??:?
