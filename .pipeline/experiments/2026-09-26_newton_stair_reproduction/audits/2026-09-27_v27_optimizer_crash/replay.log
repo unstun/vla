@@ -1,0 +1,37 @@
+=================================================================
+==467==ERROR: AddressSanitizer: new-delete-type-mismatch on 0x60700001cdb0 in thread T0:
+  object passed to delete has wrong type:
+  size of the allocated type:   72 bytes;
+  size of the deallocated type: 1 bytes.
+    #0 0x7ffffee7724f in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:172
+    #1 0x555555c8a1a1 in __gnu_cxx::new_allocator<char>::deallocate(char*, unsigned long) /usr/include/c++/11/ext/new_allocator.h:145
+    #2 0x555555c8a1a1 in std::allocator_traits<std::allocator<char> >::deallocate(std::allocator<char>&, char*, unsigned long) /usr/include/c++/11/bits/alloc_traits.h:496
+    #3 0x555555c8a1a1 in void rclcpp::allocator::retyped_deallocate<char, std::allocator<char> >(void*, void*) /opt/ros/humble/include/rclcpp/rclcpp/allocator/allocator_common.hpp:67
+    #4 0x7ffffea08dae in rcutils_string_map_fini (/opt/ros/humble/lib/librcutils.so+0x9dae)
+    #5 0x7ffff5f61de5  (/opt/ros/humble/lib/librcl.so+0x22de5)
+    #6 0x7ffff5f62107 in rcl_node_resolve_name (/opt/ros/humble/lib/librcl.so+0x23107)
+    #7 0x7ffff5f622d8 in rcl_publisher_init (/opt/ros/humble/lib/librcl.so+0x232d8)
+    #8 0x7ffffe8e74bd in rclcpp::PublisherBase::PublisherBase(rclcpp::node_interfaces::NodeBaseInterface*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, rosidl_message_type_support_t const&, rcl_publisher_options_s const&) (/opt/ros/humble/lib/librclcpp.so+0x1584bd)
+    #9 0x7ffffe8ab92b  (/opt/ros/humble/lib/librclcpp.so+0x11c92b)
+    #10 0x7ffffe8ac060 in std::_Function_handler<std::shared_ptr<rclcpp::PublisherBase> (rclcpp::node_interfaces::NodeBaseInterface*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, rclcpp::QoS const&), rclcpp::create_publisher_factory<rcl_interfaces::msg::ParameterEvent_<std::allocator<void> >, std::allocator<void>, rclcpp::Publisher<rcl_interfaces::msg::ParameterEvent_<std::allocator<void> >, std::allocator<void> > >(rclcpp::PublisherOptionsWithAllocator<std::allocator<void> > const&)::{lambda(rclcpp::node_interfaces::NodeBaseInterface*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, rclcpp::QoS const&)#1}>::_M_invoke(std::_Any_data const&, rclcpp::node_interfaces::NodeBaseInterface*&&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, rclcpp::QoS const&) (/opt/ros/humble/lib/librclcpp.so+0x11d060)
+    #11 0x7ffffe8a0933 in rclcpp::node_interfaces::NodeParameters::NodeParameters(std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface>, std::shared_ptr<rclcpp::node_interfaces::NodeLoggingInterface>, std::shared_ptr<rclcpp::node_interfaces::NodeTopicsInterface>, std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface>, std::shared_ptr<rclcpp::node_interfaces::NodeClockInterface>, std::vector<rclcpp::Parameter, std::allocator<rclcpp::Parameter> > const&, bool, bool, rclcpp::QoS const&, rclcpp::PublisherOptionsBase const&, bool, bool) (/opt/ros/humble/lib/librclcpp.so+0x111933)
+    #12 0x7ffffe88f87d in rclcpp::Node::Node(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, rclcpp::NodeOptions const&) (/opt/ros/humble/lib/librclcpp.so+0x10087d)
+    #13 0x7ffffe8900b7 in rclcpp::Node::Node(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, rclcpp::NodeOptions const&) (/opt/ros/humble/lib/librclcpp.so+0x1010b7)
+    #14 0x555555d63a6c in void __gnu_cxx::new_allocator<rclcpp::Node>::construct<rclcpp::Node, char const (&) [18]>(rclcpp::Node*, char const (&) [18]) (/attempt/probe_build/crash_probe+0x80fa6c)
+    #15 0x555555d64438 in std::shared_ptr<rclcpp::Node> std::make_shared<rclcpp::Node, char const (&) [18]>(char const (&) [18]) (/attempt/probe_build/crash_probe+0x810438)
+    #16 0x555555c75fc1 in main /attempt/probe_source/src/crash_probe.cpp:78
+    #17 0x7ffff4b56d8f  (/lib/x86_64-linux-gnu/libc.so.6+0x29d8f)
+    #18 0x7ffff4b56e3f in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e3f)
+    #19 0x555555c63ef4 in _start (/attempt/probe_build/crash_probe+0x70fef4)
+
+0x60700001cdb0 is located 0 bytes inside of 72-byte region [0x60700001cdb0,0x60700001cdf8)
+allocated by thread T0 here:
+    #0 0x7ffffee761e7 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:99
+    #1 0x555555c8a38f in __gnu_cxx::new_allocator<char>::allocate(unsigned long, void const*) /usr/include/c++/11/ext/new_allocator.h:127
+    #2 0x555555c8a38f in std::allocator_traits<std::allocator<char> >::allocate(std::allocator<char>&, unsigned long) /usr/include/c++/11/bits/alloc_traits.h:464
+    #3 0x555555c8a38f in void* rclcpp::allocator::retyped_allocate<std::allocator<char> >(unsigned long, void*) /opt/ros/humble/include/rclcpp/rclcpp/allocator/allocator_common.hpp:40
+    #4 0x7ffffea08bb2 in rcutils_string_map_init (/opt/ros/humble/lib/librcutils.so+0x9bb2)
+
+SUMMARY: AddressSanitizer: new-delete-type-mismatch ../../../../src/libsanitizer/asan/asan_new_delete.cpp:172 in operator delete(void*, unsigned long)
+==467==HINT: if you don't care about these errors you may set ASAN_OPTIONS=new_delete_type_mismatch=0
+==467==ABORTING

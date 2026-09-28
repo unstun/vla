@@ -1,0 +1,20 @@
+--- v11/src/plan_manage/src/scan_replan_fsm.cpp
++++ v12/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1144,7 +1144,7 @@
+           candidate_t > reference_frontier_time_) continue;
+       const Eigen::Vector3d candidate = planner_manager_->global_data_.getPosition(candidate_t);
+       if (!candidate.allFinite() || !planner_manager_->hasLocalTranslation(start_pt_, candidate)) continue;
+-      const double yaw = estimateYawFromSegment(odom_pos_, candidate);
++      const double yaw = estimateYawFromSegment(start_pt_, candidate);
+       RCLCPP_WARN(node_->get_logger(), "[DEBUG-prefix-01] candidate t=%.12f xyz=[%.12f,%.12f,%.12f] yaw=%.12f occ=%d", candidate_t,candidate.x(),candidate.y(),candidate.z(),yaw,planner_manager_->grid_map_->getInflateOccupancy(candidate,yaw));
+       if (candidate_t > 0.9 && candidate_t < 1.2) {
+         planner_manager_->grid_map_->logInitialSplineCollision(start_pt_, yaw);
+@@ -1309,7 +1309,7 @@
+ 
+     auto targetOccupancy = [&](const Eigen::Vector3d &pt) {
+       if (reference && !pt.allFinite()) return 1;
+-      const double yaw = estimateYawFromSegment(odom_pos_, pt);
++      const double yaw = estimateYawFromSegment(reference ? start_pt_ : odom_pos_, pt);
+       if (reference && !std::isfinite(yaw)) return 1;
+       return planner_manager_->grid_map_->getInflateOccupancy(pt, yaw);
+     };

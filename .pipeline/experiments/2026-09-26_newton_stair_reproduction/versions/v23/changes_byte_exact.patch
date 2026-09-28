@@ -1,0 +1,31 @@
+--- v22/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v23/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -115,11 +115,12 @@
+ }
+ 
+ bool GridMap::reactiveTerrainReturn(const Eigen::Vector3d &point) const {
+-  if (reactive_stair::selectedGroundReturn(reactive_ground_,
+-          point.x(), point.y(), point.z(), reactive_terrain_band_m_)) return true;
+-  return !reactive_surface_ground_topic_.empty() && reactiveSurfaceGroundReady() &&
+-      reactive_stair::selectedGroundReturn(reactive_surface_ground_,
+-          point.x(), point.y(), point.z(), reactive_terrain_band_m_, false);
++  if (!reactiveSurfaceGroundReady()) return false;
++  // A configured source replaces the classification evidence, not navigation support.
++  const auto &evidence = reactive_surface_ground_topic_.empty()
++      ? reactive_ground_ : reactive_surface_ground_;
++  return reactive_stair::selectedGroundReturn(evidence,
++      point.x(), point.y(), point.z(), reactive_terrain_band_m_);
+ }
+ 
+ int GridMap::reactiveOccupancy(const Eigen::Vector3d &point) {
+--- v22/src/plan_env/include/plan_env/grid_map.h
++++ v23/src/plan_env/include/plan_env/grid_map.h
+@@ -283,7 +283,7 @@
+   reactive_stair::CollisionDecision reactive_decision_{reactive_parameters_};
+   reactive_stair::TerrainSnapshot reactive_terrain_;
+   reactive_stair::TerrainSnapshot reactive_ground_; // Unscored positive ground evidence.
+-  // Broader floor evidence never authorizes risers or changes scored support.
++  // Explicit raw-return classification evidence; scored navigation support stays separate.
+   reactive_stair::TerrainSnapshot reactive_surface_ground_;
+   std::string reactive_surface_ground_topic_;
+   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr reactive_surface_ground_sub_;

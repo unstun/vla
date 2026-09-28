@@ -1,0 +1,42 @@
+test_actual_recorded_failure_then_controller_hold (__main__.ConsumerReplyTests.test_actual_recorded_failure_then_controller_hold) ... FAIL
+test_expected_consumer_rejection_and_identity_still_apply (__main__.ConsumerReplyTests.test_expected_consumer_rejection_and_identity_still_apply) ... ok
+test_route_wait_does_not_consume_controller_rejection (__main__.ConsumerReplyTests.test_route_wait_does_not_consume_controller_rejection) ... FAIL
+test_wrong_consumer_rejection_does_not_end_stop_wait (__main__.ConsumerReplyTests.test_wrong_consumer_rejection_does_not_end_stop_wait) ... FAIL
+
+======================================================================
+FAIL: test_actual_recorded_failure_then_controller_hold (__main__.ConsumerReplyTests.test_actual_recorded_failure_then_controller_hold)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v14/test_admission_consumer.py", line 36, in test_actual_recorded_failure_then_controller_hold
+    self.assertEqual(result.consumer, "controller")
+AssertionError: 'fsm' != 'controller'
+- fsm
++ controller
+
+
+======================================================================
+FAIL: test_route_wait_does_not_consume_controller_rejection (__main__.ConsumerReplyTests.test_route_wait_does_not_consume_controller_rejection)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v14/test_admission_consumer.py", line 53, in test_route_wait_does_not_consume_controller_rejection
+    self.assertEqual(result.status, "accepted")
+AssertionError: 'rejected' != 'accepted'
+- rejected
++ accepted
+
+
+======================================================================
+FAIL: test_wrong_consumer_rejection_does_not_end_stop_wait (__main__.ConsumerReplyTests.test_wrong_consumer_rejection_does_not_end_stop_wait)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v14/test_admission_consumer.py", line 45, in test_wrong_consumer_rejection_does_not_end_stop_wait
+    self.assertEqual(result.status, "pending")
+AssertionError: 'rejected' != 'pending'
+- rejected
++ pending
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.209s
+
+FAILED (failures=3)

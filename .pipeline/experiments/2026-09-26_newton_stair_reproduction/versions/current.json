@@ -1,9 +1,9 @@
 {
-  "current": "v7",
-  "status": "minimum_planned_cruise_validated_full_navigation_failed",
+  "current": "v27",
+  "status": "archived_native_crash_full_route_incomplete",
   "last_validated_trial_version": "v3",
   "last_validated_condition": "One empty 12 m trial; not general startup stability",
-  "validated_scope": "Native minimum planned cruise 0.6 m/s and unchanged short continuation; separate two direct 0.6 m/s walks with PD return",
+  "validated_scope": "v27 native component regressions pass; physical full-route crashes near13.24s; no full-route acceptance",
   "measured_06_command_forward_mean_mps": [
     0.566610550435978,
     0.5655182859929156
@@ -12,9 +12,24 @@
     "v7_empty_route01": "preflight_missing_identity_receipt_no_physics",
     "v7_empty_route02": "initial_heartbeat_missing_no_moving_curve",
     "v7_building_route01": "physics_bound_no_arrival_no_final_PD_no_cruise",
-    "v7_speed_06_control01": "direct_command_control_pass_no_navigation"
+    "v7_speed_06_control01": "direct_command_control_pass_no_navigation",
+    "v12_building_route01": "18.7 s partial physics; native scan killed by OOM; no arrival or verified copyback",
+    "v13_building_route01": "89.962 s physics; no OOM, native exhaustion, missed controller hold; no arrival",
+    "v15_building_route01": "89.962 s; 1.058 m forward; later local search/optimization blocks; no terminal or arrival; copyback verified",
+    "v17_building_route01": "35.252 s; 1.841 m forward, 0.210 m rise; failed odom_stale after 0.262 s wall callback gap; verified stop flow and copyback; no arrival",
+    "v18_building_route01": "37.431 s; 1.984 m forward; no command reconnect/protocol error; native_replan_exhausted; stop and copyback verified",
+    "v19_building_route01": "45.187 s; 2.159 m forward; new planning blockage before heartbeat_stale terminal; two clock TTL expiry reconnects; no arrival",
+    "v21_building_route01": "72.372 s; 2.558 m forward, .359 m rise; zero reconnect/protocol errors; native_replan_exhausted; verified stop and copyback; no arrival",
+    "v23_building_route01": "89.962s,1.208m forward,no transport errors,90s physics bound,no backend terminal,measured stillness and copyback verify",
+    "v24_building_route01": "89.962s;4.914m forward;arrived_after_quiescence;final goal XY error.200m;no final PD;copyback/stop verified",
+    "v25_historical_full01": "26.297s;.050m forward;wrong145-point17.244m layer1 route;odom_stale and2clock errors;no arrival",
+    "v26_historical_full01": "launch error before physical child; relative interpreter path",
+    "v26_historical_full02": "110.731simseconds; .056m netXY;1movingcurve thenhold; manual diagnostic abort;profile gatespass;noarrival;copyback verified",
+    "v27_historical_full01": "13.24s, native SCAN segfault(exit245), no arrival or verified copyback"
   },
   "full_building_navigation_validated": false,
   "minimum_measured_body_speed_validated": false,
-  "next_version": "v8 for a separate established short-window/early-stop or startup repair"
+  "next_version": "v28 proposed finite-constraint restoration; not created",
+  "execution": "stopped_at_user_archive_request",
+  "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md"
 }

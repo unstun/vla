@@ -1,0 +1,110 @@
+--- v21/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_core.py
++++ v22/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_core.py
+@@ -189,3 +189,17 @@
+             return None
+         self._published = True
+         return clock_ns
++
++
++DENSE_SURFACE_SHA = "97b16b3c6e8abb9700f65309fac7967bc1fb295ed6c1a55c7e52b042f8a219ce"
++
++
++def load_dense_surface_points(path: Path) -> np.ndarray:
++    """Read the pinned same-Building offline surface evidence payload."""
++    if hashlib.sha256(path.read_bytes()).hexdigest() != DENSE_SURFACE_SHA:
++        raise ValueError("Dense Building surface source SHA-256 mismatch")
++    points = np.load(path, allow_pickle=False)
++    if points.dtype != np.dtype("<f4") or points.shape != (126659, 4) or \
++       not np.isfinite(points).all() or np.any(points[:, 3] < 0.0) or np.any(points[:, 3] > 20.0):
++        raise ValueError("Invalid dense Building surface payload")
++    return points.copy()
+--- v21/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py
++++ v22/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py
+@@ -18,7 +18,7 @@
+ 
+ from pct_sim_clock_core import (DEFAULT_MAP, SimClockGate, cloud_payload,
+                                 load_pinned_map, load_paired_elevations, selected_ground_points,
+-                                load_surface_cost, surface_evidence_points)
++                                load_surface_cost, surface_evidence_points, load_dense_surface_points)
+ 
+ 
+ class PctSimClockPublisher(Node):
+@@ -46,14 +46,16 @@
+                 raise ValueError("Original precision is only supported for selected navigation terrain")
+             paired_elevations = load_paired_elevations(Path(elevation_path), source)
+         surface_path = str(self.declare_parameter("surface_cost_path", "").value)
++        dense_path = str(self.declare_parameter("dense_surface_path", "").value)
+         if mode == "surface_evidence":
+-            if not surface_path or paired_elevations is None or coord_mode != "identity" or visual_offset != 0.03:
+-                raise ValueError("Surface evidence requires paired pinned Building data")
+-            self._points = surface_evidence_points(source, paired_elevations,
+-                                                   load_surface_cost(Path(surface_path), source))
++            if bool(surface_path) == bool(dense_path) or paired_elevations is None or coord_mode != "identity" or visual_offset != 0.03:
++                raise ValueError("Surface evidence requires exactly one paired pinned Building source")
++            self._points = (load_dense_surface_points(Path(dense_path)) if dense_path else
++                            surface_evidence_points(source, paired_elevations,
++                                                    load_surface_cost(Path(surface_path), source)))
+         else:
+-            if surface_path:
+-                raise ValueError("Surface cost is only valid for the surface evidence topic")
++            if surface_path or dense_path:
++                raise ValueError("Surface sources are only valid for the surface evidence topic")
+             self._points = selected_ground_points(source, coord_mode, visual_offset,
+                                                   cost_limit=None if mode == "tracking_physical" else 20.0,
+                                                   paired_elevations=paired_elevations)
+--- v21/scripts/native_graph.py
++++ v22/scripts/native_graph.py
+@@ -58,8 +58,8 @@
+         launch("pct_support", ground_args)
+         if not flat:
+             launch("pct_surface_ground", ground_args + ["-r", "__node:=pct_surface_ground_publisher",
+-                "-p", "ground_mode:=surface_evidence", "-p", "surface_cost_path:=" +
+-                str(BASE / "inputs/new_building_uninflated_cost.npz")])
++                "-p", "ground_mode:=surface_evidence", "-p", "dense_surface_path:=" +
++                str(BASE / "inputs/new_building_dense_surface.npy")])
+         if not request.get("geometry_obstacles", False):
+             launch("tracking_ground", [py, pct_script, "--ros-args", "-r", "__node:=pct_tracking_ground_publisher",
+                   "-p", "map_path:=" + str(BASE / "inputs/new_building.pickle"), "-p", "ground_mode:=tracking_physical", "-p", "use_sim_time:=true"])
+--- v21/setup/runtime_sources.json
++++ v22/setup/runtime_sources.json
+@@ -299,18 +299,18 @@
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/bridge/lite3_sim_bridge/pct_sim_clock_core.py",
+       "path": "runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_core.py",
+-      "bytes": 8922,
+-      "sha256": "fc9f24956b957f644b87ece88ac891d5ae5863918e2fe760627a113b2a92dabe",
++      "bytes": 9607,
++      "sha256": "828056701228f7f24962e28255602e66006b895756b9b425f88503b67cf20ec2",
+       "archived_sha256": "78c490e98e38c6b333edd4238e11ade3664a358b70b34ba37a070e6bcfac42c7",
+-      "local_modification": "v21 separate broader surface evidence from original selected-tread riser inference"
++      "local_modification": "v22 explicit hash-pinned same-Building denser surface evidence; original navigation tensor and native rules unchanged"
+     },
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py",
+       "path": "runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py",
+-      "bytes": 5811,
+-      "sha256": "db511b2ad18eb61e3e5024de119eb11179e1639f5b889d67366a489a806591de",
++      "bytes": 6067,
++      "sha256": "e1245d53da9ee5a4c41692a27e31ffdea45806091ae8bb23da84803712fc41e0",
+       "archived_sha256": "af36eb4e1e262f2c8c832200df3fd745cd9e0e2f617458636a8d36b65a7e3def",
+-      "local_modification": "v21 separate broader surface evidence from original selected-tread riser inference"
++      "local_modification": "v22 explicit hash-pinned same-Building denser surface evidence; original navigation tensor and native rules unchanged"
+     },
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/bridge/lite3_sim_bridge/pointcloud_rays.py",
+--- v21/setup/source_identity.json
++++ v22/setup/source_identity.json
+@@ -208,6 +208,13 @@
+       "bytes": 955201,
+       "source": "Unchanged pinned PCT CPU generator 1cf45a1c12ca785ce533293302be09d51daf0ccb, observed pre-inflation cost; audits/2026-09-27_pct_raw_cost/reproduce.py",
+       "claim": "Original inflated cost/ground/ceiling exactly reproduce archived map; only raw cost consumed for separate floor evidence"
++    },
++    {
++      "path": "inputs/new_building_dense_surface.npy",
++      "sha256": "97b16b3c6e8abb9700f65309fac7967bc1fb295ed6c1a55c7e52b042f8a219ce",
++      "bytes": 2026672,
++      "source": "audits/2026-09-27_dense_static_sampling/prepare.py + observe_raw.py; pinned Trimesh all-surface sampling and unchanged PCT generator",
++      "scope": "Offline static Building evidence only; original PCD points retained; no actor truth; original navigation map unchanged"
+     }
+   ],
+   "newton_environment": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv",

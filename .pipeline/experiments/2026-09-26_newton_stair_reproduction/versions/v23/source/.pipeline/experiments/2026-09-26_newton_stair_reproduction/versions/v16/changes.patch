@@ -1,0 +1,70 @@
+--- v15/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
++++ v16/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
+@@ -19,6 +19,8 @@
+   class ControlPoints
+   {
+   public:
++    bool optimizesHeight() const { return optimize_height_; }
++    void setOptimizeHeight(bool enabled) { optimize_height_ = enabled; }
+     double clearance;
+     int size;
+     Eigen::MatrixXd points;
+--- v15/src/plan_manage/include/plan_manage/planner_manager.h
++++ v16/src/plan_manage/include/plan_manage/planner_manager.h
+@@ -44,6 +44,10 @@
+     GridMap::Ptr grid_map_;
+ 
+   private:
++    bool reboundReplanAttempt(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
++        Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
++        Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj,
++        bool &optimization_attempted);
+     rclcpp::Node *node_{nullptr};
+     bool resolution_aware_progress_{false};
+     double min_cruise_speed_{0.0};
+--- v15/src/plan_manage/src/planner_manager.cpp
++++ v16/src/plan_manage/src/planner_manager.cpp
+@@ -99,6 +99,33 @@
+                                         Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
+                                         Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj)
+   {
++    bool attempted = false;
++    const int failures_before = continuous_failures_count_;
++    if (reboundReplanAttempt(start_pt, start_vel, start_acc, local_target_pt,
++                            local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted)) return true;
++    if (!attempted || !bspline_optimizer_rebound_->optimizesHeight()) return false;
++    // Keep the configured three-axis behavior first. SCAN's existing fixed-Z
++    // mode can retain a feasible stair seed when smoothing lowers its height.
++    struct RestoreHeightMode {
++      BsplineOptimizer &optimizer;
++      bool enabled;
++      ~RestoreHeightMode() { optimizer.setOptimizeHeight(enabled); }
++    } restore{*bspline_optimizer_rebound_, bspline_optimizer_rebound_->optimizesHeight()};
++    bspline_optimizer_rebound_->setOptimizeHeight(false);
++    continuous_failures_count_ = failures_before;
++    RCLCPP_INFO(node_->get_logger(), "fixed_height_recovery_attempt; full planning gates retained");
++    const bool accepted = reboundReplanAttempt(start_pt, start_vel, start_acc, local_target_pt,
++        local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted);
++    RCLCPP_INFO(node_->get_logger(), "fixed_height_recovery_result accepted=%d", accepted);
++    return accepted;
++  }
++
++  bool SCANPlannerManager::reboundReplanAttempt(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
++                                        Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
++                                        Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj,
++                                        bool &optimization_attempted)
++  {
++    optimization_attempted = false;
+ 
+     static int count = 0;
+     std::cout << endl
+--- v15/src/plan_manage/src/planner_manager.cpp
++++ v16/src/plan_manage/src/planner_manager.cpp
+@@ -243,6 +243,7 @@
+     t_start = std::chrono::steady_clock::now();
+ 
+     /*** STEP 2: OPTIMIZE ***/
++    optimization_attempted = true;
+     bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
+     cout << "first_optimize_step_success=" << flag_step_1_success << endl;
+     if (!flag_step_1_success)

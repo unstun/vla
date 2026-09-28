@@ -1,0 +1,156 @@
+--- v12/src/plan_manage/src/planner_manager.cpp
++++ v13/src/plan_manage/src/planner_manager.cpp
+@@ -120,150 +120,9 @@
+     /*** STEP 1: INIT ***/
+     double ts = (start_pt - local_target_pt).norm() > 0.1 ? pp_.ctrl_pt_dist / pp_.max_vel_ * 1.2 : pp_.ctrl_pt_dist / pp_.max_vel_ * 5; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
+     vector<Eigen::Vector3d> point_set, start_end_derivatives;
+-    static bool flag_first_call = true, flag_force_polynomial = false;
+-    bool flag_regenerate = false;
+-    do
+-    {
+-      point_set.clear();
+-      start_end_derivatives.clear();
+-      flag_regenerate = false;
+-
+-      if (flag_first_call || flag_polyInit || flag_force_polynomial /*|| ( start_pt - local_target_pt ).norm() < 1.0*/) // Initial path generated from a min-snap traj by order.
+-      {
+-        flag_first_call = false;
+-        flag_force_polynomial = false;
+-
+-        PolynomialTraj gl_traj;
+-
+-        double dist = (start_pt - local_target_pt).norm();
+-        double time = pow(pp_.max_vel_, 2) / pp_.max_acc_ > dist ? sqrt(dist / pp_.max_acc_) : (dist - pow(pp_.max_vel_, 2) / pp_.max_acc_) / pp_.max_vel_ + 2 * pp_.max_vel_ / pp_.max_acc_;
+-
+-        if (!flag_randomPolyTraj)
+-        {
+-          gl_traj = PolynomialTraj::one_segment_traj_gen(start_pt, start_vel, start_acc, local_target_pt, local_target_vel, Eigen::Vector3d::Zero(), time);
+-        }
+-        else
+-        {
+-          Eigen::Vector3d horizon_dir = ((start_pt - local_target_pt).cross(Eigen::Vector3d(0, 0, 1))).normalized();
+-          Eigen::Vector3d vertical_dir = ((start_pt - local_target_pt).cross(horizon_dir)).normalized();
+-          Eigen::Vector3d random_inserted_pt = (start_pt + local_target_pt) / 2 +
+-                                               (((double)rand()) / RAND_MAX - 0.5) * (start_pt - local_target_pt).norm() * horizon_dir * 0.8 * (-0.978 / (continuous_failures_count_ + 0.989) + 0.989) +
+-                                               (((double)rand()) / RAND_MAX - 0.5) * (start_pt - local_target_pt).norm() * vertical_dir * 0.4 * (-0.978 / (continuous_failures_count_ + 0.989) + 0.989);
+-          Eigen::MatrixXd pos(3, 3);
+-          pos.col(0) = start_pt;
+-          pos.col(1) = random_inserted_pt;
+-          pos.col(2) = local_target_pt;
+-          Eigen::VectorXd t(2);
+-          t(0) = t(1) = time / 2;
+-          gl_traj = PolynomialTraj::minSnapTraj(pos, start_vel, local_target_vel, start_acc, Eigen::Vector3d::Zero(), t);
+-        }
+-
+-        double t;
+-        bool flag_too_far;
+-        ts *= 1.5; // ts will be divided by 1.5 in the next
+-        do
+-        {
+-          ts /= 1.5;
+-          point_set.clear();
+-          flag_too_far = false;
+-          Eigen::Vector3d last_pt = gl_traj.evaluate(0);
+-          for (t = 0; t < time; t += ts)
+-          {
+-            Eigen::Vector3d pt = gl_traj.evaluate(t);
+-            if ((last_pt - pt).norm() > pp_.ctrl_pt_dist * 1.5)
+-            {
+-              flag_too_far = true;
+-              break;
+-            }
+-            last_pt = pt;
+-            point_set.push_back(pt);
+-          }
+-        } while (flag_too_far || point_set.size() < 7); // To make sure the initial path has enough points.
+-        t -= ts;
+-        start_end_derivatives.push_back(gl_traj.evaluateVel(0));
+-        start_end_derivatives.push_back(local_target_vel);
+-        start_end_derivatives.push_back(gl_traj.evaluateAcc(0));
+-        start_end_derivatives.push_back(gl_traj.evaluateAcc(time));
+-      }
+-      else // Initial path generated from previous trajectory.
+-      {
+-
+-        double t;
+-        double t_cur = (node_->now() - local_data_.start_time_).seconds();
+-
+-        vector<double> pseudo_arc_length;
+-        vector<Eigen::Vector3d> segment_point;
+-        pseudo_arc_length.push_back(0.0);
+-        for (t = t_cur; t < local_data_.duration_ + 1e-3; t += ts)
+-        {
+-          segment_point.push_back(local_data_.position_traj_.evaluateDeBoorT(t));
+-          if (t > t_cur)
+-          {
+-            pseudo_arc_length.push_back((segment_point.back() - segment_point[segment_point.size() - 2]).norm() + pseudo_arc_length.back());
+-          }
+-        }
+-        t -= ts;
+-
+-        double poly_time = (local_data_.position_traj_.evaluateDeBoorT(t) - local_target_pt).norm() / pp_.max_vel_ * 2;
+-        if (poly_time > ts)
+-        {
+-          PolynomialTraj gl_traj = PolynomialTraj::one_segment_traj_gen(local_data_.position_traj_.evaluateDeBoorT(t),
+-                                                                        local_data_.velocity_traj_.evaluateDeBoorT(t),
+-                                                                        local_data_.acceleration_traj_.evaluateDeBoorT(t),
+-                                                                        local_target_pt, local_target_vel, Eigen::Vector3d::Zero(), poly_time);
+-
+-          for (t = ts; t < poly_time; t += ts)
+-          {
+-            if (!pseudo_arc_length.empty())
+-            {
+-              segment_point.push_back(gl_traj.evaluate(t));
+-              pseudo_arc_length.push_back((segment_point.back() - segment_point[segment_point.size() - 2]).norm() + pseudo_arc_length.back());
+-            }
+-            else
+-            {
+-              RCLCPP_ERROR(node_->get_logger(), "pseudo_arc_length is empty; aborting replan");
+-              continuous_failures_count_++;
+-              return false;
+-            }
+-          }
+-        }
+-
+-        double sample_length = 0;
+-        double cps_dist = pp_.ctrl_pt_dist * 1.5; // cps_dist will be divided by 1.5 in the next
+-        size_t id = 0;
+-        do
+-        {
+-          cps_dist /= 1.5;
+-          point_set.clear();
+-          sample_length = 0;
+-          id = 0;
+-          while ((id <= pseudo_arc_length.size() - 2) && sample_length <= pseudo_arc_length.back())
+-          {
+-            if (sample_length >= pseudo_arc_length[id] && sample_length < pseudo_arc_length[id + 1])
+-            {
+-              point_set.push_back((sample_length - pseudo_arc_length[id]) / (pseudo_arc_length[id + 1] - pseudo_arc_length[id]) * segment_point[id + 1] +
+-                                  (pseudo_arc_length[id + 1] - sample_length) / (pseudo_arc_length[id + 1] - pseudo_arc_length[id]) * segment_point[id]);
+-              sample_length += cps_dist;
+-            }
+-            else
+-              id++;
+-          }
+-          point_set.push_back(local_target_pt);
+-        } while (point_set.size() < 7); // If the start point is very close to end point, this will help
+-
+-        start_end_derivatives.push_back(local_data_.velocity_traj_.evaluateDeBoorT(t_cur));
+-        start_end_derivatives.push_back(local_target_vel);
+-        start_end_derivatives.push_back(local_data_.acceleration_traj_.evaluateDeBoorT(t_cur));
+-        start_end_derivatives.push_back(Eigen::Vector3d::Zero());
+-
+-        if (point_set.size() > pp_.planning_horizon_ / pp_.ctrl_pt_dist * 3) // The initial path is abnormally too long!
+-        {
+-          flag_force_polynomial = true;
+-          flag_regenerate = true;
+-        }
+-      }
+-    } while (flag_regenerate);
+-
++    // Native graph initialization below owns the points, interval and PVA.
++    // Do not evaluate a discarded legacy seed from an expired local curve.
++
+     // A stair seed must come from the same current collision model as its
+     // optimizer and final safety check. A single endpoint-height line is not
+     // a supported stair profile. No fallback bypasses a failed graph search.

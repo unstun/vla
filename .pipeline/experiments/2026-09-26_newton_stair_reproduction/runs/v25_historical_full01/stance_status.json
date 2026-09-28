@@ -1,0 +1,227 @@
+{
+  "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/stance_hold.py",
+  "source_sha256": "9a97879a5d5ed2f7c9c3e327c1193b1c42cf079eaaf073a855afad53a7dbc306",
+  "contact_api": "Newton SensorContact + SolverMuJoCo.update_contacts",
+  "boot": {
+    "time_s": 11.02082347869873,
+    "target": [
+      0.004639831835384967,
+      -0.668795953026957,
+      1.2508433217344626,
+      -0.003692030303032341,
+      -0.6677571198532162,
+      1.2498463969700448,
+      0.0011805779684404896,
+      -0.660226481731551,
+      1.2362769288471231,
+      -0.00019965384765475297,
+      -0.6594446670833262,
+      1.235968617307053
+    ]
+  },
+  "hold": {
+    "setting": "auto",
+    "entry_kd": "xfade1s",
+    "mode": "FIXED_STAND",
+    "reason": "fixed_stand_active",
+    "progress": 1.0,
+    "failure": null,
+    "counters": {
+      "updates": 764,
+      "settle_starts": 2,
+      "settle_cancels": 1,
+      "settle_timeouts": 0,
+      "support_balance_blocks": 7,
+      "entries": 1,
+      "entry_ramps_complete": 1,
+      "fixed_stand": 2,
+      "rejoins": 1,
+      "rejoin_complete": 1,
+      "disturbance_exits": 0
+    },
+    "mode_time_s": {
+      "RL": 4.460484504699707,
+      "STAND_SETTLING": 2.3190879821777344,
+      "STAND_TRANSITION": 2.018890380859375,
+      "FIXED_STAND": 6.197795867919922,
+      "REJOIN": 0.2601051330566406
+    },
+    "transition_counts": {
+      "RL->FIXED_STAND": 1,
+      "FIXED_STAND->REJOIN": 1,
+      "REJOIN->RL": 1,
+      "RL->STAND_SETTLING": 2,
+      "STAND_SETTLING->RL": 1,
+      "STAND_SETTLING->STAND_TRANSITION": 1,
+      "STAND_TRANSITION->FIXED_STAND": 1
+    },
+    "transitions": [
+      {
+        "t_s": 11.02082347869873,
+        "from": "RL",
+        "to": "FIXED_STAND",
+        "reason": "measured_factory_stand"
+      },
+      {
+        "t_s": 12.281332969665527,
+        "from": "FIXED_STAND",
+        "to": "REJOIN",
+        "reason": "new_command_rejoin"
+      },
+      {
+        "t_s": 12.541438102722168,
+        "from": "REJOIN",
+        "to": "RL",
+        "reason": "rejoin_complete"
+      },
+      {
+        "t_s": 14.142085075378418,
+        "from": "RL",
+        "to": "STAND_SETTLING",
+        "reason": "waiting_for_quiet_four_contact"
+      },
+      {
+        "t_s": 14.522238731384277,
+        "from": "STAND_SETTLING",
+        "to": "RL",
+        "reason": "fixed_stand_cancelled:new_command"
+      },
+      {
+        "t_s": 17.382076263427734,
+        "from": "RL",
+        "to": "STAND_SETTLING",
+        "reason": "waiting_for_quiet_four_contact"
+      },
+      {
+        "t_s": 19.32101058959961,
+        "from": "STAND_SETTLING",
+        "to": "STAND_TRANSITION",
+        "reason": "quiet_four_contact_confirmed"
+      },
+      {
+        "t_s": 21.339900970458984,
+        "from": "STAND_TRANSITION",
+        "to": "FIXED_STAND",
+        "reason": "fixed_stand_active"
+      }
+    ],
+    "transitions_dropped": 0,
+    "last_entry": {
+      "t_s": 19.32101058959961,
+      "support_shares": [
+        0.5874286104886738,
+        0.46971912982061204,
+        0.43631659175363413
+      ],
+      "dwell_samples": 14,
+      "foot_forces_n": [
+        36.48992156982422,
+        42.067867279052734,
+        25.128250122070312,
+        28.974485397338867
+      ],
+      "entry_ramp_s": 1.0,
+      "entry_ramp_complete_t_s": 20.340450286865234,
+      "entry_kd": "xfade1s",
+      "q0": [
+        -0.12849444150924683,
+        -0.9776343703269958,
+        1.5918831825256348,
+        0.12000730633735657,
+        -0.8390552401542664,
+        1.7368109226226807,
+        0.07210297137498856,
+        -1.053019642829895,
+        1.6728426218032837,
+        -0.05768720433115959,
+        -1.1060433387756348,
+        1.736270785331726
+      ],
+      "applied_target_t0": [
+        0.03726327046751976,
+        -0.8896860480308533,
+        1.3929744958877563,
+        -0.07212084531784058,
+        -0.8414983153343201,
+        1.4233037233352661,
+        0.22837167978286743,
+        -0.946031391620636,
+        1.5763156414031982,
+        -0.15456661581993103,
+        -1.114276647567749,
+        1.519649624824524
+      ],
+      "kp0_mean": 20.0,
+      "kd0_mean": 0.5,
+      "t0_minus_q0_max_abs": 0.31350719928741455,
+      "seed_minus_t0_max_abs": 0.2090047995249431,
+      "stiffness_torque_max_abs_nm": 6.270143985748291
+    },
+    "joint_limits_applied": true,
+    "constants": {
+      "base_kp": 20.0,
+      "base_kd": 0.5,
+      "hold_kp": 60.0,
+      "hold_kd": 1.0,
+      "command_deadband": 0.001,
+      "settle_linear_speed_max_mps": 0.15,
+      "settle_angular_speed_max_radps": 0.5,
+      "tilt_max_deg": 10.0,
+      "entry_foot_force_n": 10.0,
+      "settle_dwell_s": 0.25,
+      "balance_band": [
+        0.35,
+        0.65
+      ],
+      "balance_shares": [
+        "FL+FR",
+        "FL+HL",
+        "FL+HR"
+      ],
+      "transition_s": 2.0,
+      "rejoin_s": 0.25,
+      "rejoin_blend": "smoothstep",
+      "hold_contact_n": 1.0,
+      "disturbance_dwell_s": 0.25,
+      "reentry_lockout_s": 0.5,
+      "settle_timeout_s": 10.0,
+      "foot_order": [
+        "FL",
+        "FR",
+        "HL",
+        "HR"
+      ],
+      "seed": "q + (applied_kp / HOLD_KP) * (applied_target - q)",
+      "entry_ramp_s": 0.5,
+      "entry_ramp_blend": "smoothstep",
+      "entry_ramp_rule": "u = smoothstep((t - t_entry) / entry_ramp_s); Kp = Kp0 + (HOLD_KP - Kp0) u; Kd = Kd0 + (HOLD_KD - Kd0) u; target = q0 + (Kp0 / Kp) (T0 - q0); q0, T0, Kp0, Kd0 = joint_pos, applied_target, applied_kp, applied_kd at entry (PRD D4)",
+      "entry_kd_modes": {
+        "ramp": "Kd follows the Kp ramp (entry_ramp_rule)",
+        "step1": "Kd = HOLD_KD from the entry step on",
+        "step2p5": "Kd = entry_landing_kd from the entry step until entry_ramp_s, then entry_landing_kd + (HOLD_KD - entry_landing_kd) smoothstep((t - t_entry - entry_ramp_s) / (transition_s - entry_ramp_s)); exactly HOLD_KD from FIXED_STAND on",
+        "xfade1s": "crossfade entry over 1.0 s (entry_crossfade_rule); Kd = HOLD_KD from the entry step on",
+        "xfade2s": "crossfade entry over 2.0 s (entry_crossfade_rule); Kd = HOLD_KD from the entry step on",
+        "precedent": "MJ BOOT_LANDING_KD 2.5 over FIXED_STAND_BOOT_GRACE_S 1.0 s (PRD D5)"
+      },
+      "entry_ramp_variants": [
+        "ramp",
+        "step1",
+        "step2p5"
+      ],
+      "entry_landing_kd": 2.5,
+      "entry_crossfade_s": {
+        "xfade1s": 1.0,
+        "xfade2s": 2.0
+      },
+      "entry_crossfade_blend": "smoothstep",
+      "entry_crossfade_rule": "w = smoothstep((t - t_entry) / T_x); Kp = (1 - w) Kp0 + w HOLD_KP; target = ((1 - w) Kp0 P + w HOLD_KP H) / Kp; Kd = HOLD_KD from the entry step on; P = this step's policy target, H = the torque-matched seed at entry, Kp0 = applied_kp at entry; w = 0 gives P with Kp0; t - t_entry >= T_x gives exactly H with HOLD_KP and HOLD_KD (PRD D6)",
+      "entry_grace_s": 1.0,
+      "entry_grace_variants": [
+        "xfade1s",
+        "xfade2s"
+      ],
+      "entry_grace_rule": "automatic arming (RL -> STAND_SETTLING) needs now_s >= entry_grace_s (episode sim time) for the listed variants; before that the mode stays RL with reason entry_grace (PRD D6; precedent MJ FIXED_STAND_BOOT_GRACE_S 1.0 s)",
+      "reference": "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py LocalMotionFSM stand path (commit fd751b8b)"
+    }
+  }
+}

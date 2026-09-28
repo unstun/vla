@@ -1,0 +1,37 @@
+--- v8/src/plan_env/include/plan_env/grid_map.h
++++ v10/src/plan_env/include/plan_env/grid_map.h
+@@ -279,6 +279,7 @@
+   reactive_stair::Parameters reactive_parameters_;
+   reactive_stair::CollisionDecision reactive_decision_{reactive_parameters_};
+   reactive_stair::TerrainSnapshot reactive_terrain_;
++  reactive_stair::TerrainSnapshot reactive_ground_; // Unscored positive ground evidence.
+   reactive_stair::StepScoreResult reactive_step_result_;
+   std::set<std::tuple<int, int, int>> reactive_terrain_hits_;
+   std::set<std::tuple<int, int, int>> reactive_nonterrain_hits_;
+--- v8/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v10/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -10,6 +10,7 @@
+ #include <plan_env/motion_heading.h>
+ 
+ void GridMap::reactiveTomogramCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {
++  reactive_ground_ = reactive_stair::TerrainSnapshot{};
+   reactive_cloud_ready_ = false;
+   reactive_pending_cloud_ = false;
+   reactive_terrain_hits_.clear();
+@@ -75,6 +76,7 @@
+   reactive_stair::StepScoreResult scored =
+       reactive_stair::precomputeEthStyleStepScores(terrain);
+   if (reactive_decision_.acceptTerrain(scored.support)) {
++    reactive_ground_ = terrain; // Preserve source elevations independently of step scores.
+     reactive_terrain_ = scored.support;
+     reactive_step_result_ = std::move(scored);
+   }
+@@ -82,7 +84,7 @@
+ 
+ bool GridMap::reactiveTerrainReturn(const Eigen::Vector3d &point) const {
+   return reactive_stair::selectedGroundReturn(
+-      reactive_terrain_, point.x(), point.y(), point.z(), reactive_terrain_band_m_);
++      reactive_ground_, point.x(), point.y(), point.z(), reactive_terrain_band_m_);
+ }
+ 
+ int GridMap::reactiveOccupancy(const Eigen::Vector3d &point) {

@@ -1,0 +1,11 @@
+--- v13/runtime_sources/backend_ros/p2b_backend_ros/node.py
++++ v14/runtime_sources/backend_ros/p2b_backend_ros/node.py
+@@ -145,7 +145,7 @@
+         deadline = time.monotonic() + timeout_s
+         while True:
+             for idx, admission in enumerate(list(self._admissions)):
+-                if admission.identity.matches(identity) and admission.status in statuses and (admission.consumer in consumers or admission.status == "rejected"):
++                if admission.identity.matches(identity) and admission.status in statuses and admission.consumer in consumers:
+                     self._admissions.pop(idx)
+                     return admission
+             remaining = deadline - time.monotonic()

@@ -1,0 +1,36 @@
+--- v17/scripts/clock_sync.py
++++ v18/scripts/clock_sync.py
+@@ -161,15 +161,22 @@
+                             rtt = received - sent
+                             with self.lock:
+                                 accepted = self.filter.observe(offset, rtt)
+-                                self.error = None if accepted else "rejected_clock_observation"
++                                # MAVROS rejects a bad sample without renewing or
++                                # discarding the last converged estimate. Its age
++                                # still has to satisfy the original strict TTL.
+                                 if accepted:
++                                    self.error = None
+                                     margin = math.ceil(rtt / 2 + abs(offset - self.filter.offset) + MAX_DEVIATION_NS)
+                                     self.estimate_value = ClockEstimate(round(self.filter.offset), margin, received,
+                                                                        self.filter.sequence, identity, rtt)
++                                elif self.filter.sequence == 0:
++                                    self.estimate_value = None
++                                    self.error = "clock_filter_reset"
+                                 row = {"seq": seq, "sent": sent, "remote": remote, "received": received,
+                                        "rtt_ns": rtt, "observed_offset_ns": offset, "filtered_offset_ns": self.filter.offset,
+                                        "samples": self.filter.sequence, "accepted": accepted,
+-                                       "responder": identity, "error": self.error}
++                                       "responder": identity, "error": self.error,
++                                       "observation_rejection": None if accepted else "rejected_clock_observation"}
+                             log.write(json.dumps(row) + "\n")
+                             log.flush()
+                             self.stop_event.wait(max(0., .02 - (time.monotonic_ns() - sent) / 1e9))
+@@ -183,7 +190,7 @@
+     def estimate(self):
+         with self.lock:
+             estimate = self.estimate_value
+-            if self.error or estimate is None or estimate.samples < 500:
++            if self.error or estimate is None or estimate.samples < 500 or self.filter.sequence < 500:
+                 raise ClockUnavailable(self.error or "clock_not_converged")
+             if not 0 <= time.monotonic_ns() - estimate.sampled_local_ns <= SYNC_TTL_NS:
+                 raise ClockUnavailable("clock_observation_stale")

@@ -1,0 +1,132 @@
+--- v18/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_core.py
++++ v19/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_core.py
+@@ -35,9 +35,29 @@
+     return data
+ 
+ 
++ELEVATION_SOURCE_SHA = "9adbbaf3754fc1a488ada560775407d4c684d57e19a6caea7075fa907b5c0c2d"
++
++
++def load_paired_elevations(path: Path, source: dict) -> np.ndarray:
++    """Read original ground precision only after exact map-pair verification."""
++    if hashlib.sha256(path.read_bytes()).hexdigest() != ELEVATION_SOURCE_SHA:
++        raise ValueError("PCT original-precision source SHA-256 mismatch")
++    with np.load(path, allow_pickle=False) as original:
++        data = np.asarray(original["data"])
++        stored = np.asarray(source["data"])
++        if data.dtype != np.float32 or data.shape != stored.shape or stored.dtype != np.float16 or \
++           not np.array_equal(data.astype(np.float16), stored, equal_nan=True):
++            raise ValueError("Original precision data does not round to the pinned map")
++        for name in ("center", "resolution", "slice_h0", "slice_dh"):
++            if not np.array_equal(np.asarray(original[name]), np.asarray(source[name])):
++                raise ValueError("Original precision map metadata mismatch: " + name)
++        return data[3].copy()
++
++
+ def selected_ground_points(
+     source: dict, coord_mode: str = "identity",
+     visual_z_offset_m: float = 0.03, cost_limit: Optional[float] = 20.0,
++    paired_elevations: Optional[np.ndarray] = None,
+ ) -> np.ndarray:
+     if coord_mode not in ("identity", "sim_to_pct_180deg") or \
+        not math.isfinite(visual_z_offset_m) or (cost_limit is not None and not math.isfinite(cost_limit)):
+@@ -69,7 +89,15 @@
+                       dtype=np.int32)
+     x = (grid_x - offset[0]) * resolution + center[0]
+     y = (grid_y - offset[1]) * resolution + center[1]
+-    z = ground[layers, grid_x, grid_y] + visual_z_offset_m
++    # Selection, layer deduplication and cost remain the original float16 map.
++    # Only the already-selected ground heights may retain generation precision.
++    if paired_elevations is not None:
++        paired_elevations = np.asarray(paired_elevations)
++        if paired_elevations.shape != elevation_raw.shape or paired_elevations.dtype != np.float32 or \
++           not np.array_equal(paired_elevations.astype(np.float16), elevation_raw.astype(np.float16), equal_nan=True):
++            raise ValueError("Ground elevations do not match the stored map")
++    height_source = ground if paired_elevations is None else paired_elevations
++    z = height_source[layers, grid_x, grid_y] + visual_z_offset_m
+     planner_points = np.column_stack((x, y, z)).astype(np.float32)
+     world_points = planner_points.copy()
+     if coord_mode == "sim_to_pct_180deg":
+--- v18/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py
++++ v19/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py
+@@ -17,7 +17,7 @@
+ from sensor_msgs.msg import PointCloud2, PointField
+ 
+ from pct_sim_clock_core import (DEFAULT_MAP, SimClockGate, cloud_payload,
+-                                load_pinned_map, selected_ground_points)
++                                load_pinned_map, load_paired_elevations, selected_ground_points)
+ 
+ 
+ class PctSimClockPublisher(Node):
+@@ -37,8 +37,15 @@
+         if mode == "tracking_physical" and (coord_mode != "identity" or visual_offset != 0.03):
+             raise ValueError("physical ground must use the pinned raw Building frame and offset")
+         source = load_pinned_map(map_path)
++        elevation_path = str(self.declare_parameter("elevation_path", "").value)
++        paired_elevations = None
++        if elevation_path:
++            if mode != "navigation_selected":
++                raise ValueError("Original precision is only supported for selected navigation terrain")
++            paired_elevations = load_paired_elevations(Path(elevation_path), source)
+         self._points = selected_ground_points(source, coord_mode, visual_offset,
+-                                              cost_limit=None if mode == "tracking_physical" else 20.0)
++                                              cost_limit=None if mode == "tracking_physical" else 20.0,
++                                              paired_elevations=paired_elevations)
+         self._point_sha = hashlib.sha256(self._points.astype("<f4").tobytes()).hexdigest()
+         self._frame = frame
+         self._topic = topic
+--- v18/scripts/native_graph.py
++++ v19/scripts/native_graph.py
+@@ -52,7 +52,10 @@
+         if long_route:
+             map_path = BASE / "repairs/2026-09-27_pd_long_route/inputs/flat_floor.pickle"
+             pct_script = str(BASE / "scripts/long_support_publisher.py")
+-        launch("pct_support", [py, pct_script, "--ros-args", "-p", "map_path:=" + str(map_path), "-p", "use_sim_time:=true"])
++        ground_args = [py, pct_script, "--ros-args", "-p", "map_path:=" + str(map_path), "-p", "use_sim_time:=true"]
++        if not flat:
++            ground_args += ["-p", "elevation_path:=" + str(BASE / "inputs/new_building_original_precision.npz")]
++        launch("pct_support", ground_args)
+         if not request.get("geometry_obstacles", False):
+             launch("tracking_ground", [py, pct_script, "--ros-args", "-r", "__node:=pct_tracking_ground_publisher",
+                   "-p", "map_path:=" + str(BASE / "inputs/new_building.pickle"), "-p", "ground_mode:=tracking_physical", "-p", "use_sim_time:=true"])
+--- v18/setup/runtime_sources.json
++++ v19/setup/runtime_sources.json
+@@ -299,14 +299,18 @@
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/bridge/lite3_sim_bridge/pct_sim_clock_core.py",
+       "path": "runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_core.py",
+-      "bytes": 5500,
+-      "sha256": "78c490e98e38c6b333edd4238e11ade3664a358b70b34ba37a070e6bcfac42c7"
++      "bytes": 7279,
++      "sha256": "b272910f624dc918e481510ebd26eb3c0a1f23cd175a3cc94691e1759db17c14",
++      "archived_sha256": "78c490e98e38c6b333edd4238e11ade3664a358b70b34ba37a070e6bcfac42c7",
++      "local_modification": "v19 preserve original heights for unchanged selected terrain; preimage in versions/v19/parent_source"
+     },
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py",
+       "path": "runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py",
+-      "bytes": 4513,
+-      "sha256": "af36eb4e1e262f2c8c832200df3fd745cd9e0e2f617458636a8d36b65a7e3def"
++      "bytes": 4997,
++      "sha256": "3179608191daea11da6d00bee8e85284b7875dd6638dc9bd1fd95610030fbe69",
++      "archived_sha256": "af36eb4e1e262f2c8c832200df3fd745cd9e0e2f617458636a8d36b65a7e3def",
++      "local_modification": "v19 preserve original heights for unchanged selected terrain; preimage in versions/v19/parent_source"
+     },
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/bridge/lite3_sim_bridge/pointcloud_rays.py",
+--- v18/setup/source_identity.json
++++ v19/setup/source_identity.json
+@@ -194,6 +194,13 @@
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/p2b_execution/reactive_stair/pct_sim_clock_core.py",
+       "sha256": "78c490e98e38c6b333edd4238e11ade3664a358b70b34ba37a070e6bcfac42c7",
+       "bytes": 5500
++    },
++    {
++      "path": "inputs/new_building_original_precision.npz",
++      "source": "Archived original generation: machine-dog-nav/.pipeline/experiments/2026-09-08_new_building_pct/runs/preflight03/tomogram_float32.npz",
++      "sha256": "9adbbaf3754fc1a488ada560775407d4c684d57e19a6caea7075fa907b5c0c2d",
++      "bytes": 1482752,
++      "pairing": "Full tensor rounds exactly to existing pinned float16 map; metadata equal; only selected terrain heights consumed"
+     }
+   ],
+   "newton_environment": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv",

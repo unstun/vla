@@ -1,5 +1,10 @@
 # Experiment Records
 
+- [`20260928_newton_v8_v27_archive.md`](20260928_newton_v8_v27_archive.md)
+  — v24 short stair arrival without final PD; v26 automatic-layer loader repaired;
+  v27 native seed regressions pass but full-route physics segfaults near13.24s.
+  Execution archived/stopped; v28 not created. [未门控] Inline main-session archive.
+
 - [`2026-09-16_pi_cortex_harnessvln/stance_hold_qualification/`](2026-09-16_pi_cortex_harnessvln/stance_hold_qualification/RESULT.md)
   — Isaac runner PD stance hold (task `.trellis/tasks/archive/2026-09/09-17-isaac-runner-stance-hold/`), Isaac Lab on
   gpu5070ti with V12 `model_149999.pt`; selected entry `xfade1s`. 60 s stand in FIXED_STAND: yaw rate
