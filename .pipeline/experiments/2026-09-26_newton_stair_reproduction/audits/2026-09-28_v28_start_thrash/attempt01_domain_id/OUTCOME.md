@@ -1,0 +1,1 @@
+attempt01 failed before any replay: ROS_DOMAIN_ID=233 exceeds the DDS limit (232), so gen_probe exited 1 in RTPS port setup. The frozen inputs it prepared are reused unchanged (see each input_manifest.json).
