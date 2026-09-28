@@ -1,5 +1,15 @@
 # Experiment Records
 
+- [`2026-09-26_newton_stair_reproduction/versions/v30/`](2026-09-26_newton_stair_reproduction/versions/v30/RESULTS.md)
+  — 2026-09-28 v30 (Dr Sun's option 1 after the landing-stall diagnosis): in SCAN's step score, a present
+  neighbour without the walkway level is a possible drop only if the pinned surface evidence also lacks a
+  surface near that level. The red/green support contract (17 cases, a node real-drop negative, a mutation
+  check), the frozen landing and onset states, the saved start states, the full native regression and a
+  third-round independent review pass. The live historical run crosses the upper landing (frontier 15.64 s,
+  was 8.645 s) over a 13.44 m path. It then stops 4.15 m short in the upper corridor on invalid-curve holds
+  and fails `odom_stale` at 69.35 s. No arrival; v3 remains accepted. On this map v30 leaves no Unknown
+  support, so the trial cannot test drops.
+
 - [`2026-09-26_newton_stair_reproduction/versions/v29/`](2026-09-26_newton_stair_reproduction/versions/v29/RESULTS.md)
   — 2026-09-28 v29 (Dr Sun's choice): the known-footprint waiver is tested at the queried point, up to the
   Mid-360 origin (+0.10854 m, pinned URDF). Red/green waiver contract, all 7 saved walking-start states,

@@ -1,0 +1,82 @@
+{
+  "passed": true,
+  "reviewer": "trellis-check subagent, read-only",
+  "physical_route_validated": false,
+  "date": "2026-09-28",
+  "review_round": "third review; supersedes both earlier verdicts. 'passed' means the pre-freeze component review passed. It is not validation: v30 stays unvalidated, and v3 remains the last accepted condition until a physical run passes.",
+  "previous_verdicts": [
+    {
+      "round": 1,
+      "date": "2026-09-28",
+      "passed": false,
+      "failed_checks": ["regression", "records_consistent", "claim_boundary_and_risk"],
+      "code_defect_found": false,
+      "blocking_items": [
+        "COMPONENT_RESULTS.md claimed onset equals the audit oracle 'exactly'; start_occupied differs (v30 0, oracle 1).",
+        "COMPONENT_RESULTS.md said the robot's own cell was 'no longer occupied in either state'; onset's v29 baseline was already 0.",
+        "Regression log differences were neither compared nor explained, although v29 had compared logs: the v23 pair, v18, expired/original and v26. 'The only differences are v26 and its repeat' was too broad.",
+        "Risk statement omitted that v30 leaves 0 Unknown and 0 Unsupported layers on the pinned Building, so the trial cannot test drops.",
+        "Risk statement omitted that nothing at runtime binds the surface evidence to the navigation ground beyond frame and resolution."
+      ],
+      "resolved": "All five, verified in round 2 and still true in round 3."
+    },
+    {
+      "round": 2,
+      "date": "2026-09-28",
+      "passed": false,
+      "failed_checks": ["records_consistent"],
+      "code_defect_found": false,
+      "blocking_items": [
+        "Saved-state difference_explanations.json (z_0p3600, z_0p3650 v29 part, z_0p3700, z_0p3800) and COMPONENT_RESULTS.md:135-137 called the 1.925 s reference-prefix attempts 'full-target' attempts. COMPONENT_RESULTS.md:145-146 and :220-221 overstated the log comparison (landing/onset logs are not compared line by line)."
+      ],
+      "non_blocking_items_raised": [
+        "Both review scripts could pass vacuously with the v29 counterpart logs absent.",
+        "The regression review did not reject stale output explanations."
+      ],
+      "resolved": "The blocking item and both non-blocking guards, verified in round 3 (see records_consistent, saved_states and regression)."
+    }
+  ],
+  "checks": {
+    "only_two_files_changed": {
+      "ok": true,
+      "evidence": "Re-verified in round 3. Since the second verdict, only the two review.py scripts (plus their regenerated review.json and log_differences_vs_v29.json), runs/v30_saved_states01/difference_explanations.json, COMPONENT_RESULTS.md and PLAN.md changed (find -newer). Nothing native changed. Both source manifests equal disk (97/97), and both install manifests equal disk (515/515). Exactly eth_step_score_adaptation.h and scan_reactive_grid_methods.inc differ. changes.patch equals a fresh diff. All 1,978 v29 frozen-manifest files match disk."
+    },
+    "change_matches_plan_and_is_correct": {
+      "ok": true,
+      "evidence": "The code is unchanged since round 1. Round-1 analysis (the rule, the lattice mapping, the guards, the rescoring wiring, fail-closed behaviour, the single-threaded executor) and round-2 checks (the node real-drop checkpoint reproduced independently: exactly 10 layers turn Unknown; the restored digest equals the v30 digest) still hold."
+    },
+    "build_identity": {
+      "ok": true,
+      "evidence": "Unchanged since round 1: build passed with source unchanged in image sha256:f7363cc3...; install 515/515 matches disk; identity JSON equals the native manifest; no warnings from the changed files; 7 recompiled translation units."
+    },
+    "contract_sound_and_discriminating": {
+      "ok": true,
+      "evidence": "Unchanged since round 2. contract_results, mutation_results and runtime_input_identity all report passed. The label dumps still hash to red 90a45e29... and green 28c27015.... Round 2 verified 17 cases against my own implementation (0 mismatches), independent mutations each caught by at least one case, check.py and mutation_check.py reproduced byte for byte, and the live-publisher payload hashes equal to the contract inputs."
+    },
+    "saved_states": {
+      "ok": true,
+      "evidence": "review.py was rerun on a fresh scratch copy and reproduces review.json and log_differences_vs_v29.json byte for byte: passed, 8 logs compared (7 probe logs + execution.log), 8 explained differences, none unexplained or stale. The 4 landing/onset logs are the only exempt logs. New guard (review.py:82-99): a compared log is required, no v29 log may be missing, and only landing/ or onset/ logs may lack a v29 counterpart. Scratch mutations: every v29 log deleted -> fails with 0 compared, including last round's vacuous case where the log explanations were also removed. One v29 probe log deleted -> fails. One v30 probe log deleted -> fails. An extra control/ log -> fails. An extra landing/ log -> passes (by design; documented). The rewritten explanations were checked stage by stage against the raw logs (split at each reference_prefix_proposal; full window local=3.85 s). stopped: full-window seed search status 2 in both; at 1.925 s, v29 has 1 'A-star error' + 1 'A-star failed' and v30 has 3 'A-star failed', fixed height accepted=0; at 0.9625 s, connector 1.0327/tried 1, 317->444, spline 2.516 s/253, commit 0.9625. z_0p35490: full window 'A-star error' + 3 'A-star failed' in both; at 1.925 s, v29 has error+failed and v30 1 failed; pool warnings 5->7; 318->445; commit 0.9625. z_0p3600: full window fails in the optimizer in both; at 1.925 s, v29 connector 2.0355/24/201, 22 iterations/cost 0.510, gate rejects at t=2.326; v30 1.7784/14/294, 'A-star error' + rebound_no_valid; 319->446; commit 0.9625. z_0p3650: v29 full window seed status 2; v30 full window connector 2.821/122/369 then abort, fixed height 0; at 1.925 s, v29 2.0349/24/201 cost 0.510 4.105 s/412 and v30 1.7778/14/294 cost 0.564 4.083 s/410; both commit 1.925. z_0p3700: full window seed status 2 in both; at 1.925 s, v29 2.0342/24/201, gate rejects at t=2.3255, and v30 1.9321/5/294 with 2 'A-star error'; 227->325; commit 0.9625. z_0p3800: full window seed status 2 in both; at 1.925 s, v29 2.0330/5/73 cost 0.517, gate rejects at t=1.4798, then a fixed-height 'A-star error', and v30 1.9308/5/109 'A-star error'; 76->112; commit 0.9625. control: full window and 1.925 s seed status 2 in both; commit 0.48125; seed shortcut 16->12 nodes; spline 2.295 s/231. Every number in these texts matches."
+    },
+    "regression": {
+      "ok": true,
+      "evidence": "review.py was rerun on a fresh scratch copy and reproduces review.json and log_differences_vs_v29.json byte for byte: component_scope_passed true, logs_compared 27, no log without a v29 counterpart, no v29 log missing, no stale output or log explanation, no unexplained output or log difference. New guard (review.py:60-75) fails on an empty comparison, on a log present in only one run, and on a stale output explanation. Scratch mutations: every v29 log deleted, with or without the log explanations -> fails with 0 compared. A stale 'v19' output explanation -> fails. An extra v30-only log -> fails. The top of review.py (lines 1-39: output, negatives and query comparisons) is unchanged. The log explanations are unchanged since round 2, where each was checked against the raw logs."
+    },
+    "records_consistent": {
+      "ok": true,
+      "evidence": "The round-2 blocking item is fixed. COMPONENT_RESULTS.md now gives the planner sequence (full 3.85 s window, then the 1.925 s and 0.9625 s prefixes). It attributes v29's gate-rejected curves and v30's optimizer aborts at z_0p3600, z_0p3700 and z_0p3800 to the 1.925 s prefix, with both versions committing 0.9625 s, and says z_0p3650 adds a failed full-window attempt and accepts a different spline to the 1.925 s target. It states that the saved-state review does not compare the landing/onset logs line by line, and the claim boundary does the same. It describes both scripts' failure conditions as I observed them, and section 6 summarises the second verdict accurately. The saved-state explanations follow the logged stages (see saved_states). PLAN.md's original lines are intact (faithful form at :49-52, 7,513 at :91, freeze step at :112). Its planner-path bullet now says 'a failed attempt on the full 3.85 s window, then a different spline to the same 1.925 s prefix target' and adds the v18 figure of 0.107-0.109 s per failed rebound search (verified: 6 warnings, iteration 267). Earlier sections are unchanged (69 s, 58/56 s, 79,745 Flat, 71.8 ms, 10 layers). No label promotion. Four small wording points remain; they are listed as non-blocking concerns."
+    },
+    "claim_boundary_and_risk": {
+      "ok": true,
+      "evidence": "Unchanged from round 2 except the corrected planner-path bullet with the v18 latency data point. It covers 0 Unknown and 0 Unsupported layers (no drop testable in the trial), the lack of evidence-to-map binding, the corrected provenance, the planner-path changes and untested latency, and the measured rescoring cost with its exposure. It closes with 'Only a physical run can support a navigation claim. v3 remains the last accepted condition'."
+    }
+  },
+  "concerns": [
+    "Non-blocking (z_0p3700 explanation): 'One v30 exact-endpoint terminal recovery hit the 0.2 s wall budget' sits in the 1.925 s paragraph, but the log places it in the full-window stage. Line 149 reads 'time limit exceeded during terminal recovery', then line 150 'reactive_stair_seed_search_failed status=2'. That timeout ends v30's full-window seed search, whereas v29's full-window A* failed after 0.188 s without a timeout ('took 0.188s, iter=381'). So v30's full-window outcome there depends on wall time; on a faster host it might find the seed, as at z_0p3650. Move the sentence and say so. This bears on PLAN's untested-latency risk.",
+    "Non-blocking (COMPONENT_RESULTS.md 'The planner's sequence'): it says '1.925 s and 0.9625 s', but control goes 1.925 s -> 0.48125 s. The control explanation states the 0.481 s commit.",
+    "Non-blocking (PLAN.md planner-path bullet): 'no committed saved-state or regression result changed' should say 'start-state'. Landing and onset change by design.",
+    "Non-blocking (COMPONENT_RESULTS.md review paragraph): 'compares every recorded file ... or the oracle (landing and onset)'. The landing/onset breakdown CSVs are checked against the native functions and the probe's own result, not against the oracle.",
+    "By design: the saved-state review exempts any log under landing/ or onset/ from counterpart checking (a scratch copy with an extra landing/extra.log still passes). This is documented in review.json and COMPONENT_RESULTS.",
+    "Carried, already stated in PLAN: the 71.8 ms scoring time was measured under emulation in the Mac Docker VM; v30 changes planner paths, and live replan latency is untested until the trial; the node real-drop negative covers one drop configuration offline, and the trial cannot exercise drops.",
+    "No code defect was found in any of the three rounds. Nothing here validates navigation: after freeze the status should be 'frozen_unvalidated', and v3 remains the last accepted condition until a physical run passes."
+  ]
+}

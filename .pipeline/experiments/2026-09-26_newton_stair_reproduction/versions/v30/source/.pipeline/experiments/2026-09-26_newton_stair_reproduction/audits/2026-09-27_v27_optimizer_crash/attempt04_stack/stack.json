@@ -1,0 +1,135 @@
+{
+  "exit_code": 134,
+  "signal": "[CRASH-SIGNAL] 6",
+  "assertion": [
+    "/usr/include/c++/11/bits/stl_vector.h:1145: std::vector<_Tp, _Alloc>::reference std::vector<_Tp, _Alloc>::back() [with _Tp = Eigen::Matrix<double, 3, 1>; _Alloc = std::allocator<Eigen::Matrix<double, 3, 1> >; std::vector<_Tp, _Alloc>::reference = Eigen::Matrix<double, 3, 1>&]: Assertion '!this->empty()' failed."
+  ],
+  "last_replay": "[CRASH-REPLAY] id=269 height=0 age_ms=0",
+  "frames": [
+    {
+      "index": 0,
+      "raw": "[CRASH-SIGNAL] 6"
+    },
+    {
+      "index": 1,
+      "raw": "/attempt/probe_build/crash_probe(+0x422b04)[0x555555976b04]",
+      "address": "0x422b03",
+      "source": [
+        "(anonymous namespace)::dumpStack(int) at /attempt/probe_source/src/abort_backtrace.cpp:21"
+      ]
+    },
+    {
+      "index": 2,
+      "raw": "/lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7ffff5553520]"
+    },
+    {
+      "index": 3,
+      "raw": "/lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7ffff55a79fc]"
+    },
+    {
+      "index": 4,
+      "raw": "/lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7ffff5553476]"
+    },
+    {
+      "index": 5,
+      "raw": "/lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7ffff55397f3]"
+    },
+    {
+      "index": 6,
+      "raw": "/attempt/probe_build/crash_probe(+0x2b2833)[0x555555806833]",
+      "address": "0x2b2832",
+      "source": [
+        "std::__replacement_assert(char const*, int, char const*, char const*) at /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h:514"
+      ]
+    },
+    {
+      "index": 7,
+      "raw": "/attempt/probe_build/crash_probe(+0x4e375d)[0x555555a3775d]",
+      "address": "0x4e375c",
+      "source": [
+        "std::vector<Eigen::Matrix<double, 3, 1, 0, 3, 1>, std::allocator<Eigen::Matrix<double, 3, 1, 0, 3, 1> > >::back() at /usr/include/c++/11/bits/stl_vector.h:1145",
+        " (inlined by) scan_planner::BsplineOptimizer::check_collision_and_rebound() at /workspace/src/bspline_opt/src/bspline_optimizer.cpp:930"
+      ]
+    },
+    {
+      "index": 8,
+      "raw": "/attempt/probe_build/crash_probe(+0x4e533c)[0x555555a3933c]",
+      "address": "0x4e533b",
+      "source": [
+        "scan_planner::BsplineOptimizer::calcDistanceCostRebound(Eigen::Matrix<double, -1, -1, 0, -1, -1> const&, double&, Eigen::Matrix<double, -1, -1, 0, -1, -1>&, int, double) at /workspace/src/bspline_opt/src/bspline_optimizer.cpp:418"
+      ]
+    },
+    {
+      "index": 9,
+      "raw": "/attempt/probe_build/crash_probe(+0x4f146b)[0x555555a4546b]",
+      "address": "0x4f146a",
+      "source": [
+        "scan_planner::BsplineOptimizer::combineCostRebound(double const*, double*, double&, int) at /workspace/src/bspline_opt/src/bspline_optimizer.cpp:1166"
+      ]
+    },
+    {
+      "index": 10,
+      "raw": "/attempt/probe_build/crash_probe(+0x4f1d0c)[0x555555a45d0c]",
+      "address": "0x4f1d0b",
+      "source": [
+        "scan_planner::BsplineOptimizer::costFunctionRebound(void*, double const*, double*, int) at /workspace/src/bspline_opt/src/bspline_optimizer.cpp:390"
+      ]
+    },
+    {
+      "index": 11,
+      "raw": "/attempt/probe_build/crash_probe(+0x51f3c0)[0x555555a733c0]",
+      "address": "0x51f3bf",
+      "source": [
+        "lbfgs::line_search_morethuente(int, double*, double*, double*, double*, double*, double const*, double const*, double const*, double const*, lbfgs::callback_data_t*, lbfgs::lbfgs_parameter_t const*) at /workspace/src/bspline_opt/include/bspline_opt/lbfgs.hpp:828"
+      ]
+    },
+    {
+      "index": 12,
+      "raw": "/attempt/probe_build/crash_probe(+0x52180c)[0x555555a7580c]",
+      "address": "0x52180b",
+      "source": [
+        "lbfgs::lbfgs_optimize(int, double*, double*, double (*)(void*, double const*, double*, int), double (*)(void*, double const*, double const*, int), int (*)(void*, double const*, double const*, double, double, double, double, int, int, int), void*, lbfgs::lbfgs_parameter_t*) at /workspace/src/bspline_opt/include/bspline_opt/lbfgs.hpp:1187"
+      ]
+    },
+    {
+      "index": 13,
+      "raw": "/attempt/probe_build/crash_probe(+0x515502)[0x555555a69502]",
+      "address": "0x515501",
+      "source": [
+        "scan_planner::BsplineOptimizer::rebound_optimize() at /workspace/src/bspline_opt/src/bspline_optimizer.cpp:1005 (discriminator 3)"
+      ]
+    },
+    {
+      "index": 14,
+      "raw": "/attempt/probe_build/crash_probe(+0x51a0f2)[0x555555a6e0f2]",
+      "address": "0x51a0f1",
+      "source": [
+        "scan_planner::BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::Matrix<double, -1, -1, 0, -1, -1>&, double) at /workspace/src/bspline_opt/src/bspline_optimizer.cpp:949"
+      ]
+    },
+    {
+      "index": 15,
+      "raw": "/attempt/probe_build/crash_probe(+0x29027c)[0x5555557e427c]",
+      "address": "0x29027b",
+      "source": [
+        "main at /attempt/probe_source/src/crash_probe.cpp:191"
+      ]
+    },
+    {
+      "index": 16,
+      "raw": "/lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7ffff553ad90]"
+    },
+    {
+      "index": 17,
+      "raw": "/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7ffff553ae40]"
+    },
+    {
+      "index": 18,
+      "raw": "/attempt/probe_build/crash_probe(+0x27bb55)[0x5555557cfb55]",
+      "address": "0x27bb54",
+      "source": [
+        "_start at ??:?"
+      ]
+    }
+  ]
+}

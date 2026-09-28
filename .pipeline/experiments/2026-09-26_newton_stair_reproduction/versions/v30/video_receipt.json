@@ -1,0 +1,39 @@
+{
+  "physical_run": "v30_historical_full01",
+  "physics_version": "v30",
+  "render_run": "v30_historical_full01_video01",
+  "renderer_source_version": "unchanged render_episode.py (v20 Building camera); executed_render_episode.py and appearance.json byte-identical to v29's render",
+  "video": "output/2026-09-27_lite3_versions/v30_historical_full_odom_stale.mp4",
+  "bytes": 2817746,
+  "sha256": "6a98b17ec29e5efaf0f6eec5a936c0c49c3cc7a19324b657c867297716401b17",
+  "matches_render_output": true,
+  "ordinary_file": true,
+  "probe": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1280,
+        "height": 720,
+        "r_frame_rate": "25/2",
+        "nb_frames": "892"
+      }
+    ],
+    "format": {
+      "duration": "71.360000"
+    }
+  },
+  "full_decode_passed": true,
+  "visually_checked_frames": [
+    437,
+    560,
+    655,
+    670,
+    719,
+    890
+  ],
+  "visual_check": "Frame 437 (35.09 s): on the upper landing past v29's stop, walking the orange route at command +0.68 m/s, 20 curve messages, goal distance 6.93 m. Frame 560 (44.93 s): standing at the corridor entry in STAND_SETTLING, 56 curve messages. Frame 655: walking into the corridor, robot at the left edge of the view. Frame 670 (about 53.6 s) onwards: the follow camera is behind the corridor wall. Frame 719 (57.64 s): wall only; overlay RL, goal distance 4.19 m, 86 curve messages. Frame 890 (71.31 s): wall only; overlay STAND_TRANSITION, goal distance 4.15 m, 119 curve messages, 'Navigation: failed (odom_stale)'.",
+  "camera_limitation": "From about frame 665-670 (53.2-53.6 s) to the end, the unchanged v20 follow camera sits behind the upper-corridor wall and the robot is not visible. The overlay still reports the recorded state. This is a render limitation, not a physics event; the final 18 s cannot be checked visually from this video.",
+  "outcome_label": "odom_stale fault at 69.35 s sim (a 0.264 s wall-clock gap in body-pose callbacks, limit 0.25 s); the robot had been stationary since 57.5 s at (-1.99, -4.25, body z 1.85) in the upper corridor, 4.15 m from the goal; 13.44 m actual path; no arrival; no fall"
+}
