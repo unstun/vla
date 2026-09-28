@@ -1,0 +1,18 @@
+{
+  "command": [
+    "docker", "run", "--rm", "--pull=never", "--platform=linux/amd64", "--network=none",
+    "--cpus=3", "--memory=6g",
+    "-e", "CMAKE_BUILD_PARALLEL_LEVEL=3", "-e", "MAKEFLAGS=-j3",
+    "--name", "vla-v28-optimizer-trace01",
+    "-e", "ROS_DOMAIN_ID=232", "-e", "ROS_LOCALHOST_ONLY=1",
+    "-v", "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction:/archive:ro",
+    "-v", "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v28_start_thrash/optimizer_trace/workspace:/workspace:rw",
+    "-v", "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28:/version:ro",
+    "-v", "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v28_start_thrash/optimizer_trace:/attempt:rw",
+    "--entrypoint", "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside.sh"
+  ],
+  "deadline_s": 2400,
+  "claim": "Diagnostic trace only: the point-semantics counterfactual tree plus VLA_TRACE-gated tracing (diagnostic_source.json), replaying the frozen stopped state, the body-z variants 0.3549/0.360/0.365/0.370/0.380 and the control state. Recorded prediction before running: if the remaining optimizer failure comes from never-observed cells above the waiver band (local z > 0.07 in the 0.40-0.45 m layer), point semantics fails from 0.3517 up to about 0.37 m and passes near 0.38 m, where the band top reaches 0.45 m; the control state stays accepted at 0.5641 m. Not a version or production candidate."
+}

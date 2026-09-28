@@ -34,7 +34,9 @@ Dr Sun designated the delivered empty-floor system as v3 on 2026-09-27 and reque
 
 | v28 | Restore scan_27 finite paired rebound constraints lost in the scan_04 optimizer restore | Crash isolated (seed 269, empty `back()`); red/green 10/13 -> 13/13, 96 seed replays and full regression pass; live run has no crash but fails `odom_stale` at 15.56 s after a 0.344 s control stall; no route progress |
 
-Current integration candidate: **v28**. Last accepted navigation condition: **v3, empty
+| v29 | Known-footprint waiver tested at the queried point, up to the Mid-360 origin (+0.10854 m, pinned URDF) | Red/green waiver contract passes; all 7 saved walking-start states plan (v28 failed the stopped one); full regression outputs identical except 3 explained query-CSV rows; independent re-review passed; live run leaves the start (23 replans, not 806), climbs 1.31 m of stairs over a 9.77 m path, then `native_replan_exhausted` at 88.3 s on the upper landing; no arrival |
+
+Current integration candidate: **v29**. Last accepted navigation condition: **v3, empty
 12 m floor only**. Videos are ordinary files under
 `output/2026-09-27_lite3_versions/`: `v3_empty_12m.mp4` and
 `v4_building_test.mp4`, `v5_building_test.mp4`, `v5_empty_test.mp4`, and
@@ -43,4 +45,4 @@ A failed new version never replaces the older outcome.
 
 Before editing a new logical behavior or configuration, create the next integer version and state its scope. Preserve a hash-verified source snapshot and exact difference from the parent before running it. Keep immutable run IDs under runs/ and associate every attempt, including failures, with its version. Keep results separately from the frozen source manifest. A new version does not mean a successful version. Record the last validated condition explicitly. Do not put a release tag on unrelated dirty repository changes. Earlier v1/v2 are not reconstructed or relabeled. No automatic pre-edit commit is performed.
 
-Archived at user request on 2026-09-28 at v27 ([handoff](../../../handoffs/2026-09-28_newton_v27_archive/README.md)). Resumed the same day for v28 at Dr Sun's request; see [v28 results](v28/RESULTS.md). v29 is not created.
+Archived at user request on 2026-09-28 at v27 ([handoff](../../../handoffs/2026-09-28_newton_v27_archive/README.md)). Resumed the same day for v28 at Dr Sun's request; see [v28 results](v28/RESULTS.md). v29 follows Dr Sun's 2026-09-28 choice after the [start-thrash diagnosis](../audits/2026-09-28_v28_start_thrash/RESULT.md); see [v29 plan](v29/PLAN.md), [component results](v29/COMPONENT_RESULTS.md) and [physical results](v29/RESULTS.md).

@@ -1,0 +1,126 @@
+"""Launch pinned native ROS components and explicit selected variants."""
+import argparse
+import json
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
+
+BASE = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BASE / "references"))
+from archived_pilot_driver import get_json
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    out = args.output
+    request = json.loads((out / "episode_request.json").read_text())
+    epoch = request["run_epoch_ns"]
+    sources = BASE / "runtime_sources"
+    cfg = BASE / "config_archived"
+    py = sys.executable
+    children, handles = [], []
+    commands = {}
+    stopping = False
+
+    def stop(*_):
+        nonlocal stopping
+        stopping = True
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+
+    def launch(name, command):
+        log = (out / (name + ".log")).open("w")
+        handles.append(log)
+        commands[name] = command
+        children.append((name, subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)))
+
+    try:
+        launch("clock_responder", [py, str(BASE / "scripts/clock_sync.py")])
+        if request["applied_transport"] == "zmq":
+            launch("applied_receiver", [py, str(BASE / "scripts/applied_channel.py"), "--output", str(out)])
+        flat = request.get("scene") in ("flat_static", "flat_box", "flat_empty_long")
+        long_route = request.get("scene") == "flat_empty_long"
+        map_path = (BASE / "repairs/2026-09-26_generic_occupancy/flat_inputs_v2/flat_floor.pickle"
+                    if flat else BASE / "inputs/new_building.pickle")
+        pct_script = str(BASE / "repairs/2026-09-26_generic_occupancy/flat_support_publisher.py"
+                         if flat else sources / "bridge/lite3_sim_bridge/pct_sim_clock_publisher.py")
+        if long_route:
+            map_path = BASE / "repairs/2026-09-27_pd_long_route/inputs/flat_floor.pickle"
+            pct_script = str(BASE / "scripts/long_support_publisher.py")
+        ground_args = [py, pct_script, "--ros-args", "-p", "map_path:=" + str(map_path), "-p", "use_sim_time:=true"]
+        if not flat:
+            ground_args += ["-p", "elevation_path:=" + str(BASE / "inputs/new_building_original_precision.npz")]
+        launch("pct_support", ground_args)
+        if not flat:
+            launch("pct_surface_ground", ground_args + ["-r", "__node:=pct_surface_ground_publisher",
+                "-p", "ground_mode:=surface_evidence", "-p", "surface_cost_path:=" +
+                str(BASE / "inputs/new_building_uninflated_cost.npz")])
+        if not request.get("geometry_obstacles", False):
+            launch("tracking_ground", [py, pct_script, "--ros-args", "-r", "__node:=pct_tracking_ground_publisher",
+                  "-p", "map_path:=" + str(BASE / "inputs/new_building.pickle"), "-p", "ground_mode:=tracking_physical", "-p", "use_sim_time:=true"])
+        launch("pct_worker", [py, "-m", "backend_adapter.pct_worker", "--host", "127.0.0.1", "--port", "47651",
+              "--pct-source-root", str(sources / "pct_runtime/python"), "--rsg-root", str(BASE / "inputs"),
+              "--tomogram-path", str(map_path), "--reference-height-m", "0.30"])
+        launch("scan", ["ros2", "run", "scan_planner", "scan_planner_node", "--ros-args", "--params-file", str(out / "planner.yaml"),
+              "-r", "body_pose:=/quad_0/body_pose", "-r", "sensor_pose:=/quad_0/lidar_pose", "-r", "cloud:=/quad_0/cloud"])
+        launch("controller", ["ros2", "run", "scan_planner", "closed_loop_controller", "--ros-args", "--params-file", str(cfg / "controller.yaml"), "-r", "body_pose:=/quad_0/body_pose"])
+        if not request.get("geometry_obstacles", False):
+            launch("tracker", ["ros2", "run", "scan_reactive_tracker", "moving_cluster_tracker", "--ros-args", "-p", "use_sim_time:=true",
+                  "-p", "static_background_pcd:=" + str(BASE / "inputs/static_background/building2_9.pcd")])
+        launch("health", [py, str(BASE / "scripts/native_observer.py"), "--output", str(out / "artifacts/runtime_health.json"),
+              "--run-id", out.name, "--epoch", str(epoch), "--ros-args", "-p", "use_sim_time:=true"])
+        launch("bridge", [py, "-c", "from lite3_sim_bridge.foxy_bridge_node import main; main()", "--ros-args", "--params-file", str(cfg / "bridge.yaml"),
+              "-p", "telemetry_host:=host.docker.internal", "-p", "telemetry_port:=46200",
+              "-p", "command_host:=host.docker.internal", "-p", "command_port:=46201",
+              "-p", "scan_audit_path:=" + str(out / "bridge_scan_audit.jsonl")])
+        backend = json.loads((cfg / "p2b_backend_ros.two_goal.json").read_text())
+        backend.update(run_id=out.name, run_epoch_ns=epoch)
+        backend["service"]["command_timeout_s"] = request.get("goal_wall_budget_s", 35.0)
+        backend["applied_evidence"].update(current_command_path=str(out / "artifacts/external_episode/current_command.json"),
+                                           finish_request_path=str(out / "artifacts/external_episode/finish_request.json"))
+        (out / "backend_config.json").write_text(json.dumps(backend, indent=2) + "\n")
+        launch("backend", [py, str(BASE / "scripts/native_backend_entry.py"), "--config", str(out / "backend_config.json"),
+                            "--executor", request["backend_executor"]])
+        if not request["probe"]:
+            driver = (BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+                      if request.get("geometry_obstacles", False) else BASE / "references/archived_pilot_driver.py")
+            if request.get("startup_mode", "policy") == "pd_stand":
+                driver = out / "executed_pd_geometry_driver.py"
+            if long_route or request.get("scene") == "building_full":
+                driver = out / "executed_long_route_driver.py"
+            launch("driver", [py, str(driver),
+                               "--run-root", str(out), "--run-id", out.name, "--http-port", "8785"])
+        (out / "native_commands.json").write_text(json.dumps(commands, indent=2) + "\n")
+        while not stopping:
+            for name, process in children:
+                if name != "driver" and process.poll() is not None:
+                    (out / "native_failure.json").write_text(json.dumps({"component": name, "exit_code": process.returncode}))
+                    raise RuntimeError(f"Native component {name} exited {process.returncode}")
+            try:
+                state = get_json("http://127.0.0.1:8785", "/state")
+                tmp = out / "backend_latest.tmp"
+                tmp.write_text(json.dumps(state) + "\n")
+                tmp.replace(out / "backend_latest.json")
+            except (OSError, ValueError):
+                pass
+            time.sleep(.1)
+    finally:
+        for _, process in children:
+            if process.poll() is None:
+                process.terminate()
+        for _, process in children:
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+        for handle in handles:
+            handle.close()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,5 +1,12 @@
 # Experiment Records
 
+- [`2026-09-26_newton_stair_reproduction/versions/v29/`](2026-09-26_newton_stair_reproduction/versions/v29/RESULTS.md)
+  — 2026-09-28 v29 (Dr Sun's choice): the known-footprint waiver is tested at the queried point, up to the
+  Mid-360 origin (+0.10854 m, pinned URDF). Red/green waiver contract, all 7 saved walking-start states,
+  the full native regression and an independent re-review pass. The live historical run leaves the start,
+  climbs 1.31 m of stairs over a 9.77 m path, then fails `native_replan_exhausted` at 88.3 s on the upper
+  landing (frontier stuck before never-observed space). No arrival; v3 remains accepted.
+
 - [`2026-09-26_newton_stair_reproduction/versions/v28/`](2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md)
   — 2026-09-28 v28: the saved-input replay isolates v27's crash (seed 269, `back()` on an empty
   rebound-constraint list) and restores scan_27's lost guard. Red/green goes 10/13 -> 13/13;

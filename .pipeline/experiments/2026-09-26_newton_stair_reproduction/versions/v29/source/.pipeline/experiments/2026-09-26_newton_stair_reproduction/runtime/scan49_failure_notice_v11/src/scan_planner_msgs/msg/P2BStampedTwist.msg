@@ -1,0 +1,12 @@
+string run_id
+int64 epoch
+string request_id
+string goal_id
+string route_id
+string command_id
+int64 generation
+string map_epoch
+int64 map_revision
+builtin_interfaces/Time stamp
+int64 traj_id
+geometry_msgs/Twist twist

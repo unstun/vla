@@ -1,9 +1,9 @@
 {
-  "current": "v28",
-  "status": "v28_frozen_no_native_crash_route_failed_odom_stale",
+  "current": "v29",
+  "status": "v29_frozen_no_start_thrash_route_failed_replan_exhausted",
   "last_validated_trial_version": "v3",
   "last_validated_condition": "One empty 12 m trial; not general startup stability",
-  "validated_scope": "v28 component scope passed (red/green 13/13, 96 saved-seed replays, full native regression identical to v27); physical full route failed odom_stale at 15.56 s with no native crash; no full-route acceptance",
+  "validated_scope": "v29 component scope passed (red/green waiver contract, 7 saved walking-start states plan, full native regression outputs identical to v28 except 3 explained query-CSV rows, independent re-review 8/8); physical full route failed native_replan_exhausted at 88.3 s on the upper stair landing after 9.77 m of path and 1.31 m of climb; no full-route acceptance",
   "measured_06_command_forward_mean_mps": [
     0.566610550435978,
     0.5655182859929156
@@ -26,13 +26,17 @@
     "v26_historical_full01": "launch error before physical child; relative interpreter path",
     "v26_historical_full02": "110.731simseconds; .056m netXY;1movingcurve thenhold; manual diagnostic abort;profile gatespass;noarrival;copyback verified",
     "v27_historical_full01": "13.24s, native SCAN segfault(exit245), no arrival or verified copyback",
-    "v28_historical_full01": "17.68s; no native crash past v27's 13.24s point; odom_stale at15.563s after 0.344s control stall during clock-observation reconnect; 1 moving curve; 4.3cm net; no arrival; copyback verified"
+    "v28_historical_full01": "17.68s; no native crash past v27's 13.24s point; odom_stale at15.563s after 0.344s control stall during clock-observation reconnect; 1 moving curve; 4.3cm net; no arrival; copyback verified",
+    "v29_historical_full01": "88.32s; start thrash gone (23 start replans, moving by 13.14s); 13 moving curves; 9.77m XY path, +1.31m climb; no odom_stale (24/7281 clock rejects, no reconnect); native_replan_exhausted: reference frontier stuck at the robot on the upper landing with UnknownObstacle beyond the turn; goal XY error 6.97m; no arrival; no fall"
   },
   "full_building_navigation_validated": false,
   "minimum_measured_body_speed_validated": false,
-  "next_version": "v29 not created. Start-thrash diagnosis: the voxel-centre known-footprint band leaves never-observed cells beside the lowered walking body Unknown; the point-semantics counterfactual fixes the seed search, but an optimizer-stage failure remains. The v29 scope needs Dr Sun's choice.",
+  "next_version": "v30 not created. Next candidates for Dr Sun: diagnose the upper-landing frontier stall from the v29 run's saved inputs, or the unchanged wall-clock freshness class.",
   "execution": "stopped_after_v28_physical_trial",
   "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md",
   "v28_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md",
-  "start_thrash_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v28_start_thrash/RESULT.md"
+  "start_thrash_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v28_start_thrash/RESULT.md",
+  "v29_plan": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v29/PLAN.md",
+  "v29_component_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v29/COMPONENT_RESULTS.md",
+  "v29_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v29/RESULTS.md"
 }
