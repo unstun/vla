@@ -1,5 +1,22 @@
 # Experiment Records
 
+- [`2026-09-26_newton_stair_reproduction/versions/v32/`](2026-09-26_newton_stair_reproduction/versions/v32/RESULTS.md)
+  — 2026-09-29 v32 (Dr Sun: fix the clock fault). The [wall-clock chain diagnosis](2026-09-26_newton_stair_reproduction/audits/2026-09-29_wall_clock_chain/RESULT.md)
+  split the `odom_stale` gaps into two mechanisms:
+  - **A:** full cyclic garbage collections in the Mac worker that hold the GIL for 99–176 ms.
+  - **B:** CPU-starvation slowdowns under host load, plus poses superseded after publishing.
+
+  v32 collects and then freezes the worker's heap before the loop and every simulated second. Only
+  `scripts/newton_episode.py` changes, with three insertions. It passed a byte-exact check, an AST scope check,
+  a three-schedule replay and five independent review rounds.
+  - **Instrumented run (L1):** inconclusive by its exposure rule (2,818 of 7,100 steps). It had no automatic
+    full collection, no process-wide hold and no collection over 16.4 ms. It ended on `odom_stale` after the
+    bridge held a pose for 254.5 ms in a 288.5 ms publish callback while the host was starved.
+  - **Trial (L2):** failed. It climbed both flights, then stood at the upper corridor entry from 39.3 s. Every
+    curve from there was rejected at v30's wrong-height navigation cell (47, 41). After 286 s of physics it
+    ended on `odom_stale`: a 320 ms worker-side stall during a burst of another session's `git diff` runs in
+    `machine-dog`.
+  - **Status:** mechanism A is gone where measured and B remains. v3 remains accepted.
 - [`2026-09-26_newton_stair_reproduction/versions/v31/`](2026-09-26_newton_stair_reproduction/versions/v31/RESULTS.md)
   — 2026-09-28/29 v31 (Dr Sun's option 1 after the stop diagnosis, with the narrower means he kept after the
   first independent review): SCAN takes the pending pose and scan messages at safe points on its

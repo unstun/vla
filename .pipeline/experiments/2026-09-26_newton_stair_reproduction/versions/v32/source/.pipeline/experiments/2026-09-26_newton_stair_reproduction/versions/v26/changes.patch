@@ -1,0 +1,45 @@
+--- v25/runtime_sources/backend_ros/p2b_backend_ros/config.py
++++ v26/runtime_sources/backend_ros/p2b_backend_ros/config.py
+@@ -146,7 +146,11 @@
+             "pct_layer": pilot.get("pct_layer"),
+         },
+     }
+-    return _drop_none(normalized)
++    normalized = _drop_none(normalized)
++    # Explicit null selects native automatic layers; omission keeps the default.
++    if "pct_layer" in pilot:
++        normalized["map"]["pct_layer"] = pilot["pct_layer"]
++    return normalized
+ 
+ 
+ def _drop_none(value: Any) -> Any:
+@@ -155,11 +159,11 @@
+     return value
+ 
+ 
+-def _deep_update(base: Dict[str, Any], incoming: Mapping[str, Any]) -> None:
++def _deep_update(base: Dict[str, Any], incoming: Mapping[str, Any], path: tuple = ()) -> None:
+     for key, value in incoming.items():
+         if isinstance(value, Mapping) and isinstance(base.get(key), dict):
+-            _deep_update(base[key], value)
+-        elif value is not None:
++            _deep_update(base[key], value, path + (key,))
++        elif value is not None or path + (key,) == ("map", "pct_layer"):
+             base[key] = value
+ 
+ 
+--- v25/setup/runtime_sources.json
++++ v26/setup/runtime_sources.json
+@@ -99,8 +99,10 @@
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/backend_ros/p2b_backend_ros/config.py",
+       "path": "runtime_sources/backend_ros/p2b_backend_ros/config.py",
+-      "bytes": 6515,
+-      "sha256": "ff4428479892c0cd4b31d211a26c2ca0b4917372f3e40d565be4a8712a777cd3"
++      "bytes": 6787,
++      "sha256": "2ff50af070f8f9c7a5d0b1e1efc22a9459a63d4d9c14f0c214aae339b4eea080",
++      "archived_sha256": "ff4428479892c0cd4b31d211a26c2ca0b4917372f3e40d565be4a8712a777cd3",
++      "local_modification": "v26 preserves explicit map.pct_layer null in ROS and adapter configs; preimage and patch in versions/v26"
+     },
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/backend_ros/p2b_backend_ros/node.py",

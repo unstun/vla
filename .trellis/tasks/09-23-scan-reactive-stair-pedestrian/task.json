@@ -248,20 +248,20 @@
     },
     "newton_versioned_repair": {
       "stage": "experiment + analysis",
-      "current_version": "v31",
-      "status": "v31_frozen_component_passed_no_stale_input_stops_route_failed_odom_stale",
+      "current_version": "v32",
+      "status": "v32_frozen_worker_gc_stall_absent_where_measured_route_failed_corridor_entry_then_odom_stale",
       "version_index": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/README.md",
       "handoff": ".pipeline/handoffs/2026-09-27_newton_versioned_repair_progress.md",
-      "latest_physical_run": "v31_historical_full01",
-      "latest_physical_outcome": "29.94s physics; no stale-input stop (0 conflict stops, 0 invalidations, 0 final-curve rejections, 9/9 final checks clear; v30 had 8/5/42 in the same 29.9 s); climbed both flights faster than v30 (0.90 m at 19.34 s, 1.40 m at 25.82 s); odom_stale at about 27.7 s after a 0.288 s wall pause in body-pose callbacks (sim moved 5 ms), with 3 clock_observation_stale reconnects; stood on the upper stair flight at (-4.99,-1.40,1.53), goal XY error 7.12 m, 7.78 m path, 9 moving curves; no arrival; no fall; the corridor was not reached",
+      "latest_physical_run": "v32_historical_full01",
+      "latest_physical_outcome": "286.48 s physics (13,721 steps, 721 s wall); climbed both flights (1.80 m at 35.17 s); stood from 39.3 s at the upper corridor entry (-4.91,-3.45,1.84) while all 2,130 curves checked there were rejected at the west edge of wrong-height PCT cell (47,41); odom_stale at 284.4 s after a 0.320 s worker-side body-pose gap (consecutive stamps, 0.326 s step) at the start of a burst of machine-dog git processes; 0 clock-client pauses over 150 ms; goal XY error 6.88 m, 9.92 m path; no arrival; no fall. Instrumented L1 (diag_v32_clock01): inconclusive by exposure (2,818 of 7,100 steps), no automatic full collection, no process-wide hold; ended on odom_stale from a 254.5 ms bridge hold",
       "accepted_navigation_condition": "v3 single empty12m trial only",
       "full_building_validated": false,
       "original_isaac_A4_still_open": true,
-      "next_gate": "v32 (Dr Sun, 2026-09-29): diagnose the wall-clock freshness chain (clock-observation rejections -> command reconnects -> stalled control step -> physics stall -> 0.25 s body-pose gate -> odom_stale) from the saved v28, v30 and v31 records, then build v32 against it; component checks, independent review and freeze before one physical trial. v31 is committed first.",
+      "next_gate": "v33 (Dr Sun, 2026-09-29): the backend odom gate judges body-pose freshness by simulation-time age in the simulator only (real-robot wall-time semantics unchanged; handle MuJoCo-Warp float32 time drift); then v34 fixes the corridor entry's wrong-height PCT cell (47,41). Trials on a quiet host. v32 is committed first.",
       "mapped_low_protrusion_policy": "step_over (Dr Sun, 2026-09-28): a mapped low protrusion such as the known 13 cm terrain is stepped over, provided V12 can. Rule: legs may touch obstacles; only the main body must not collide. The step height, tall-box/thin-wall rejection and people handling are open design items for the collision-model version.",
-      "latest_completed_run": "v31_historical_full01",
-      "candidate_version": "v31",
-      "candidate_native": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan64_input_refresh_v31",
+      "latest_completed_run": "v32_historical_full01",
+      "candidate_version": "v32",
+      "candidate_native": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan64_input_refresh_v31 (unchanged in v32; v32 changes only scripts/newton_episode.py)",
       "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md",
       "crash_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_v27_optimizer_crash/RESULT.md",
       "v28_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md",
@@ -317,6 +317,12 @@
           "question": "Next step after the v31 trial (the wall-clock freshness chain ended v28, v30 and v31; the v31 run ended before the corridor)",
           "choice": "Fix the clock fault: diagnose the wall-clock freshness chain from the saved v28, v30 and v31 records, then build v32 against the diagnosis with the usual component checks, independent review, freeze and one physical trial",
           "condition": "commit v31 first"
+        },
+        {
+          "date": "2026-09-29",
+          "question": "Next version after the v32 trials (worker GC stalls gone where measured; host-load starvation stalls still end runs, worker-side in L2 and bridge-side in L1; the trial stood at the corridor entry's wrong-height cell (47,41))",
+          "choice": "Simulation-time freshness for the odom gate first (v33, in the simulator only; the real-robot wall-time gate unchanged), then the wrong-height cell (v34); trials run with the other machine-dog session's git load paused",
+          "condition": "commit v32, the wall-clock audit and the run records first"
         }
       ],
       "v29_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v29/RESULTS.md",
@@ -324,7 +330,10 @@
       "v30_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v30/RESULTS.md",
       "stop_class_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v30_stop_classes/RESULT.md",
       "v30_commit": "e00eb77a",
-      "v31_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v31/RESULTS.md"
+      "v31_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v31/RESULTS.md",
+      "v31_commit": "37a55cbc",
+      "wall_clock_chain_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-29_wall_clock_chain/RESULT.md",
+      "v32_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v32/RESULTS.md"
     }
   }
 }
