@@ -1,0 +1,38 @@
+{
+  "physical_run": "v30_historical_full01",
+  "physics_version": "v30",
+  "render_run": "v30_historical_full01_video02",
+  "renderer": "scripts/render_episode.py, unchanged and imported by scripts/render_heading_view.py (executed copy: executed_render_heading_view.py)",
+  "display_camera": "heading-follow: 1.4 m behind the robot along its own yaw (0.5 s smoothing), 1.0 m above the base, looking 0.6 m ahead and 0.1 m down, from 1.6 s; the renderer's building overview before that. Every camera used is in heading_camera.json. frames.json and result.json still name the renderer's own camera (building_overview_then_follow); that field does not describe these frames.",
+  "why": "The standard video (v30_historical_full_odom_stale.mp4) keeps the camera 2 m behind along the spawn heading, which put it behind the upper-corridor wall from about 53 s; this view shows the robot to the end.",
+  "video": "output/2026-09-27_lite3_versions/v30_historical_full_odom_stale_heading_view.mp4",
+  "bytes": 3424802,
+  "sha256": "667340e04533f4743dde33b4fa4dc962358b2ae0ce346f459d79f26943da30c9",
+  "matches_render_output": true,
+  "ordinary_file": true,
+  "probe": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1280,
+        "height": 720,
+        "r_frame_rate": "25/2",
+        "nb_frames": "892"
+      }
+    ],
+    "format": {
+      "duration": "71.360000"
+    }
+  },
+  "full_decode_passed": true,
+  "render_only_no_physics_steps": true,
+  "visually_checked_frames": [
+    60,
+    720,
+    890
+  ],
+  "visual_check": "Frame 60 (4.88 s): robot seen from behind at the foot of the stairs, factory_zero_return. Frame 720 (57.72 s): standing in the upper corridor on the orange PCT route, RL control, goal 4.19 m, 86 curve messages, corridor clear ahead. Frame 890 (71.31 s): same place, STAND_TRANSITION, goal 4.15 m, 119 curve messages, 'Navigation: failed (odom_stale)'.",
+  "outcome_label": "odom_stale fault at 69.35 s sim; stationary since 57.5 s at (-1.99, -4.25, body z 1.85) in the upper corridor, 4.15 m from the goal; no arrival; no fall (unchanged from v30's RESULTS.md)"
+}

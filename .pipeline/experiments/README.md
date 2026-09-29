@@ -1,5 +1,16 @@
 # Experiment Records
 
+- [`2026-09-26_newton_stair_reproduction/versions/v31/`](2026-09-26_newton_stair_reproduction/versions/v31/RESULTS.md)
+  — 2026-09-28/29 v31 (Dr Sun's option 1 after the stop diagnosis, with the narrower means he kept after the
+  first independent review): SCAN takes the pending pose and scan messages at safe points on its
+  single-threaded executor and applies them in stamp order through the unchanged callbacks; the FSM refreshes
+  its own odometry at its timers. The first candidate (scan63) failed its review and is kept in `attempt01/`;
+  the second (scan64) is byte-exact. The red/green contract (mid-call and split-batch cases included) passes
+  after one recorded analyzer correction; saved states and the full native regression give v30's outputs; a
+  round-2 independent review passes. The live run climbs both stair flights with none of the stale-input
+  stops v30 had there (8 conflict stops in the same 29.9 s) and ends on `odom_stale` (a 0.288 s wall pause
+  after three clock-observation reconnects) before the upper landing, 7.12 m short. No arrival; v3 remains
+  accepted. The corridor, where most v30 stops were, was not reached.
 - [`2026-09-26_newton_stair_reproduction/versions/v30/`](2026-09-26_newton_stair_reproduction/versions/v30/RESULTS.md)
   — 2026-09-28 v30 (Dr Sun's option 1 after the landing-stall diagnosis): in SCAN's step score, a present
   neighbour without the walkway level is a possible drop only if the pinned surface evidence also lacks a

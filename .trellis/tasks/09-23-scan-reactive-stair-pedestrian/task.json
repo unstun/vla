@@ -248,20 +248,20 @@
     },
     "newton_versioned_repair": {
       "stage": "experiment + analysis",
-      "current_version": "v30",
-      "status": "v30_frozen_component_passed_live_landing_crossed_route_failed_odom_stale",
+      "current_version": "v31",
+      "status": "v31_frozen_component_passed_no_stale_input_stops_route_failed_odom_stale",
       "version_index": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/README.md",
       "handoff": ".pipeline/handoffs/2026-09-27_newton_versioned_repair_progress.md",
-      "latest_physical_run": "v30_historical_full01",
-      "latest_physical_outcome": "71.43s; landing stall gone (frontier 15.64s vs 8.645s; passed v29's stop at 34.97s); 17 moving curves; 13.44m path, +1.45m climb; ~15s pause at the corridor entry, then stationary from 57.5s in the upper corridor on invalid-curve holds (status=2; diagnosed afterwards in audits/2026-09-28_v30_stop_classes); odom_stale at 69.35s after a 0.264s wall gap in body-pose callbacks; goal XY error 4.15m; no arrival; no fall",
+      "latest_physical_run": "v31_historical_full01",
+      "latest_physical_outcome": "29.94s physics; no stale-input stop (0 conflict stops, 0 invalidations, 0 final-curve rejections, 9/9 final checks clear; v30 had 8/5/42 in the same 29.9 s); climbed both flights faster than v30 (0.90 m at 19.34 s, 1.40 m at 25.82 s); odom_stale at about 27.7 s after a 0.288 s wall pause in body-pose callbacks (sim moved 5 ms), with 3 clock_observation_stale reconnects; stood on the upper stair flight at (-4.99,-1.40,1.53), goal XY error 7.12 m, 7.78 m path, 9 moving curves; no arrival; no fall; the corridor was not reached",
       "accepted_navigation_condition": "v3 single empty12m trial only",
       "full_building_validated": false,
       "original_isaac_A4_still_open": true,
-      "next_gate": "v31 (option 1) in progress: materialize from v30; keep SCAN's pose and scan inputs fresh while planning (own callback group on a multi-threaded executor) and bound planning callbacks; contract tests, frozen replays, full native regression, independent review and freeze before any physics. Basis: the v30 stop diagnosis (stops and status-2 holds most likely from the input-age gates while planning blocks the single-threaded executor; 48 of 53 'inside an obstacle' messages most likely the scan exceeding 0.25 s mid-callback, 5 unexplained; 109 of 112 reproduced collision rejections from one mis-mapped navigation cell). The wall-clock freshness class is separate.",
+      "next_gate": "v32 (Dr Sun, 2026-09-29): diagnose the wall-clock freshness chain (clock-observation rejections -> command reconnects -> stalled control step -> physics stall -> 0.25 s body-pose gate -> odom_stale) from the saved v28, v30 and v31 records, then build v32 against it; component checks, independent review and freeze before one physical trial. v31 is committed first.",
       "mapped_low_protrusion_policy": "step_over (Dr Sun, 2026-09-28): a mapped low protrusion such as the known 13 cm terrain is stepped over, provided V12 can. Rule: legs may touch obstacles; only the main body must not collide. The step height, tall-box/thin-wall rejection and people handling are open design items for the collision-model version.",
-      "latest_completed_run": "v30_historical_full01",
-      "candidate_version": "v30",
-      "candidate_native": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan62_support_evidence_v30",
+      "latest_completed_run": "v31_historical_full01",
+      "candidate_version": "v31",
+      "candidate_native": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan64_input_refresh_v31",
       "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md",
       "crash_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_v27_optimizer_crash/RESULT.md",
       "v28_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md",
@@ -305,13 +305,26 @@
           "question": "Next version after the v30 stop diagnosis",
           "choice": "Option 1: keep pose and scan inputs fresh while planning (callback groups / multi-threaded executor, bounded planning)",
           "condition": "commit v30 and the diagnosis first; continuous replanning after it; the collision model as its own later version"
+        },
+        {
+          "date": "2026-09-28",
+          "question": "v31 means after the first independent review (B4: the build kept the single-threaded executor and deferred bounded planning instead of option 1's callback groups on a multi-threaded executor and time-bounded planning)",
+          "choice": "Keep the narrower design: take pending pose and scan messages at safe points on the single-threaded executor and apply them through the unchanged callbacks; bounded planning is left to a later version",
+          "condition": "fix all review findings (B1-B3, N1-N9), then continue to freeze, one physical trial and videos"
+        },
+        {
+          "date": "2026-09-29",
+          "question": "Next step after the v31 trial (the wall-clock freshness chain ended v28, v30 and v31; the v31 run ended before the corridor)",
+          "choice": "Fix the clock fault: diagnose the wall-clock freshness chain from the saved v28, v30 and v31 records, then build v32 against the diagnosis with the usual component checks, independent review, freeze and one physical trial",
+          "condition": "commit v31 first"
         }
       ],
       "v29_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v29/RESULTS.md",
       "landing_stall_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v29_landing_stall/RESULT.md",
       "v30_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v30/RESULTS.md",
       "stop_class_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v30_stop_classes/RESULT.md",
-      "v30_commit": "e00eb77a"
+      "v30_commit": "e00eb77a",
+      "v31_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v31/RESULTS.md"
     }
   }
 }

@@ -1,9 +1,9 @@
 {
-  "current": "v30",
-  "status": "v30_frozen_landing_stall_gone_route_failed_odom_stale",
+  "current": "v31",
+  "status": "v31_frozen_no_stale_input_stops_on_stairs_route_failed_odom_stale_early",
   "last_validated_trial_version": "v3",
   "last_validated_condition": "One empty 12 m trial; not general startup stability",
-  "validated_scope": "v30 component scope passed (red/green support contract with 17 cases, node real-drop negative and mutation check; frozen landing/onset states plan past the 8.645 s frontier; 7 start states byte-identical to v29 with explained planner-path changes; full native regression outputs identical except the explained v26 pair; independent review passed on the third round). Physical full route failed: odom_stale at 69.35 s after the robot crossed the upper landing and stopped in the upper corridor; no full-route acceptance",
+  "validated_scope": "v31 component scope passed on the second candidate scan64 (byte-exact materialization; red/green input-refresh contract incl. mid-call C6 and split-batch C7, after one recorded analyzer correction; saved states and full native regression outputs identical to v30 with explained timing/build-order log differences; round-2 independent review passed). Physical full route failed: odom_stale at about 27.7 s on the upper stair flight; no full-route acceptance",
   "measured_06_command_forward_mean_mps": [
     0.566610550435978,
     0.5655182859929156
@@ -28,12 +28,13 @@
     "v27_historical_full01": "13.24s, native SCAN segfault(exit245), no arrival or verified copyback",
     "v28_historical_full01": "17.68s; no native crash past v27's 13.24s point; odom_stale at15.563s after 0.344s control stall during clock-observation reconnect; 1 moving curve; 4.3cm net; no arrival; copyback verified",
     "v29_historical_full01": "88.32s; start thrash gone (23 start replans, moving by 13.14s); 13 moving curves; 9.77m XY path, +1.31m climb; no odom_stale (24/7281 clock rejects, no reconnect); native_replan_exhausted: reference frontier stuck at 8.6446s on the upper landing because the PCT route runs on walkway cells SCAN scores as Unknown support (diagnosed from saved inputs); goal XY error 6.97m; no arrival; no fall",
-    "v30_historical_full01": "71.43s; landing stall gone (reference frontier 15.64 s vs v29's 8.645 s; passed v29's stop at 34.97 s); 13.44m XY path, +1.45m climb, 17 moving curves; ~15 s pause at the corridor entry, then stationary from 57.5 s at (-1.99,-4.25,1.85) on invalid-curve holds (final_spline_rejected/remaining_spline_invalid status=2, 100 3-s hold trajectories); odom_stale at 69.35 s after a 0.264 s wall gap in body-pose callbacks (143/7656 clock rejects, 1 reconnect); goal XY error 4.15m; no arrival; no fall"
+    "v30_historical_full01": "71.43s; landing stall gone (reference frontier 15.64 s vs v29's 8.645 s; passed v29's stop at 34.97 s); 13.44m XY path, +1.45m climb, 17 moving curves; ~15 s pause at the corridor entry, then stationary from 57.5 s at (-1.99,-4.25,1.85) on invalid-curve holds (final_spline_rejected/remaining_spline_invalid status=2, 100 3-s hold trajectories); odom_stale at 69.35 s after a 0.264 s wall gap in body-pose callbacks (143/7656 clock rejects, 1 reconnect); goal XY error 4.15m; no arrival; no fall",
+    "v31_historical_full01": "29.94s physics; no stale-input stop (0 conflict stops, 0 invalidations, 0 final-curve rejections, 9/9 final checks clear; v30 had 8/5/42 in the same 29.9 s); climbed both flights faster than v30 (0.90 m at 19.34 s, 1.40 m at 25.82 s); odom_stale at about 27.7 s after a 0.288 s wall pause in body-pose callbacks (sim moved 5 ms), with 3 clock_observation_stale reconnects; stood on the upper stair flight at (-4.99,-1.40,1.53), goal XY error 7.12 m, 7.78 m path, 9 moving curves; no arrival; no fall; the corridor was not reached"
   },
   "full_building_navigation_validated": false,
   "minimum_measured_body_speed_validated": false,
-  "next_version": "v31 in progress: Dr Sun chose option 1 on 2026-09-28 after the v30 stop diagnosis (audits/2026-09-28_v30_stop_classes). The stops and invalid-curve holds most likely come from SCAN's input-age gates (body pose > 0.1 s, processed scan > 0.25 s; the scan age at the stops is inferred, and one planning callback's own lines show the processed scan pass 0.25 s) while planning blocks its single-threaded executor. v31 keeps pose and scan inputs fresh while planning (their own callback group on a multi-threaded executor) and bounds planning callbacks. Continuous replanning follows; the collision model is a later version; the mis-mapped corridor cell and the wall-clock freshness class are separate.",
-  "execution": "stopped_after_v30_physical_trial_and_stop_diagnosis",
+  "next_version": "v32 in progress (Dr Sun, 2026-09-29: fix the clock fault): diagnose the wall-clock freshness chain (clock-observation rejections -> command reconnects -> stalled control step -> physics stall -> 0.25 s body-pose gate) from the saved v28, v30 and v31 records, then build v32 against the diagnosis. v31 removed the stale-input stops over the stretch its trial covered; the corridor is untested. Continuous replanning and the collision model remain later versions; the mis-mapped corridor cell is separate.",
+  "execution": "v31_committed_wall_clock_chain_diagnosis_started",
   "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md",
   "v28_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md",
   "start_thrash_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v28_start_thrash/RESULT.md",
@@ -44,5 +45,8 @@
   "v30_plan": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v30/PLAN.md",
   "v30_component_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v30/COMPONENT_RESULTS.md",
   "v30_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v30/RESULTS.md",
-  "stop_class_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v30_stop_classes/RESULT.md"
+  "stop_class_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v30_stop_classes/RESULT.md",
+  "v31_plan": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v31/PLAN.md",
+  "v31_component_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v31/COMPONENT_RESULTS.md",
+  "v31_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v31/RESULTS.md"
 }
