@@ -1,0 +1,53 @@
+=== 1 normal
+exit=0
+=== 2 abort via SIGTERM to the runner
+=== 3 abort via SIGTERM to the episode's process group
+=== 4 lock
+second runner exit=1
+=== results
+--- runner_dry04
+runner pid 41510
+launcher started 2026-09-29T20:05:05.181556418Z
+launcher returned 0 at 2026-09-29T20:05:08.250870905Z
+finishing (normal) at 2026-09-29T20:05:08.251343462Z
+host sampler alive at the end
+runner finished 2026-09-29T20:05:09.266374439Z (normal), launcher status 0
+manifest: 6 files
+manifest self-check passed
+{"pid": 41634, "exit_code": 0}
+--- runner_dry05
+runner pid 41704
+launcher started 2026-09-29T20:05:13.612080285Z
+SIGTERM received at 2026-09-29T20:05:17.271139103Z: aborting the trial
+forwarding SIGTERM to the episode's process group 41820, as run_bounded's own deadline does
+launcher returned 1 after the abort at 2026-09-29T20:05:17.294691397Z
+finishing (aborted) at 2026-09-29T20:05:17.295161389Z
+host sampler alive at the end
+runner finished 2026-09-29T20:05:17.695366091Z (aborted), launcher status 1
+manifest: 6 files
+manifest self-check passed
+{"pid": 41820, "exit_code": -15}
+--- runner_dry06
+runner pid 41906
+launcher started 2026-09-29T20:05:22.642776796Z
+launcher returned 1 at 2026-09-29T20:05:26.313168213Z
+finishing (normal) at 2026-09-29T20:05:26.313656510Z
+host sampler alive at the end
+runner finished 2026-09-29T20:05:26.722853060Z (normal), launcher status 1
+manifest: 6 files
+manifest self-check passed
+{"pid": 42025, "exit_code": -15}
+--- runner_dry07
+runner pid 42104
+launcher started 2026-09-29T20:05:31.673505109Z
+launcher returned 0 at 2026-09-29T20:05:43.715440365Z
+finishing (normal) at 2026-09-29T20:05:43.716078326Z
+host sampler alive at the end
+runner finished 2026-09-29T20:05:43.790337705Z (normal), launcher status 0
+manifest: 6 files
+manifest self-check passed
+{"pid": 42250, "exit_code": 0}
+--- refusals
+2026-09-29T20:05:29.316646141Z runner_dry08 refusing: another runner holds /home/sun/vla_exec/port/runner_dry3/v33_trial.lock
+--- leftover sleep episodes:
+none

@@ -1,0 +1,62 @@
+{
+  "round": 3,
+  "passed": false,
+  "blocking": [
+    {
+      "id": "B7",
+      "finding": "New in round 3. The documented abort would not stop the trial, and would damage its record. The runner header (lines 18-19) and HOST_NOTE:37 both say 'To abort: stop the launcher, scripts/run_bounded.py; the runner then records the end as usual.' run_bounded.py has no signal handler. It starts run_local_episode.py in a new session (start_new_session=True) and signals that session only on its own deadline. Stopping run_bounded.py therefore ends only the supervisor. It writes no process.json, while run_local_episode.py, the worker and the podman clients keep running. The runner's 'wait' then returns and 'finish normal' runs. That step stops the sampler, finds the main container still running, tars and stops it, and removes it under a live worker. It then hashes a run directory that the orphaned launcher and worker go on writing, until the worker hits its own wall or physics limit. This matters only if an abort is needed, but then it would leave the single trial's record inconsistent.",
+      "evidence": "2026-09-26_newton_macos_policy/scripts/run_bounded.py:45-57 (start_new_session=True; os.killpg only on its deadline; no handler); scripts/run_local_episode.py:269-271 (container client and worker in the launcher's process group); v33_trial_run.sh:18-20,74-89,142-145; versions/v33/HOST_NOTE_gpu5070ti.md:37",
+      "suggestion": "Abort by signalling the launcher's process group, as run_bounded's own deadline does: kill -TERM -- -<pid of scripts/run_local_episode.py>, which leads its session. run_bounded then records the exit in process.json and the runner finishes normally. Alternatively, make the runner's TERM trap forward TERM to that process group and then take the normal path. Correct the header and the note to match."
+    }
+  ],
+  "non_blocking": [
+    {
+      "id": "N21",
+      "finding": "Wording only. The runner traps only SIGTERM in practice. Started as 'setsid nohup bash ... &' from a non-interactive shell, the runner starts with SIGHUP ignored (by nohup) and SIGINT and SIGQUIT ignored (as an asynchronous command). Bash cannot trap or reset signals that were ignored on entry, so 'trap ... INT HUP' has no effect. The sampler, run_bounded, the launcher, the worker and the podman clients inherit these ignored signals. No component relies on INT or HUP, and native_graph.py installs its own handlers, so nothing changes in function.",
+      "evidence": "v33_trial_run.sh:7,66,103; bash manual: signals ignored on entry to a non-interactive shell cannot be trapped or reset; scripts/native_graph.py:33-34",
+      "suggestion": "Write 'SIGTERM' in the runner header and in HOST_NOTE:38-40."
+    },
+    {
+      "id": "N22",
+      "finding": "After a SIGTERM to the runner alone, the manifest describes a run still in progress. The launcher keeps writing into runs/<ID>, and run_bounded later appends its final record to the runner log, which is its stdout. The manifest therefore cannot verify the final copy, the host record ends at the signal, and no post-run cleanup follows. A smaller edge case: a TERM that arrives during the 3-5 s snapshot block runs the trap while stdout is still redirected to _prerun.txt, so the 'finishing' lines land there instead of in the runner log. HOST_NOTE:38-40 says the manifest covers 'what exists', which is true only at that instant.",
+      "evidence": "v33_trial_run.sh:55,91-101,105-123,135-141; 2026-09-26_newton_macos_policy/scripts/run_bounded.py:63",
+      "suggestion": "State that after a runner-only kill the launcher group must also be ended (as in B7), and that the manifest is then recomputed once it has stopped. Alternatively, forward TERM to the launcher group in the trap, which also removes this case."
+    },
+    {
+      "id": "N23",
+      "finding": "The uid check, not redaction, is what protects other users. The check holds in the new dry runs: none of 29 other-user sampler entries and none of 610 other-user snapshot rows carry a command line. The only theoretical bypass is pid reuse between reading /proc/<pid> ownership and reading its cmdline, which is impractical with pid_max 4,194,304. For the invoking user's own processes, redaction is best effort. In synthetic tests it caught keyword flags, their '=' form and long mixed-case runs. It missed flags without a keyword (-p), URL user:password@ credentials, values quoted inside 'bash -c' strings (the value class excludes quotes), and tokens shorter than 32 characters or split by '/'. The snapshot's top section shows names only because this host has no toprc. A saved toprc with command-line display would print every user's command line.",
+      "evidence": "host_sampler_linux.py:38-43,60,109-117,132; checks_out/runner_dry2/*_host.jsonl and *_prerun.txt (counts only); no ~/.toprc or ~/.config/procps/toprc on gpu5070ti; /proc mounted without hidepid",
+      "suggestion": "Optional hardening: open /proc/<pid>/cmdline, then compare fstat(fd).st_uid with the uid. Add patterns for '://user:pass@' and quoted values. Run top with an empty HOME and XDG_CONFIG_HOME. Also state these limits in the note."
+    },
+    {
+      "id": "N24",
+      "finding": "Nothing stops two runner instances from running at once. If full01 and full02 are started seconds apart, both can pass the quiet-host checks before either starts its container or binds its ports. Low risk; it needs an operator error.",
+      "evidence": "v33_trial_run.sh:37-53",
+      "suggestion": "Take an flock on a lock file in versions/v33/host before the checks, and exclude the lock file from the manifest."
+    },
+    {
+      "id": "N25",
+      "finding": "Record-only. The round-1 dry-run snapshot (checks_out/runner_dry_attempt01/runner_dry01_prerun.txt) still carries 29 other-user command lines with arguments. They have no credential remnants by count, but the new rule would show names only. A stray __pycache__/host_sampler_linux.cpython-312.pyc (12:43; not the reviewer's) now sits in hosts/2026-09-29_gpu5070ti on both hosts. REVIEW_RESPONSE_round2's synthetic redaction test has no saved output; my own synthetic run agrees on the caught cases.",
+      "evidence": "count-only scans of checks_out/; ls of hosts/2026-09-29_gpu5070ti/__pycache__",
+      "suggestion": "Optionally reduce the round-1 dry-run table to names, remove the stray bytecode, and save the synthetic redaction test with its output."
+    },
+    {
+      "id": "N26",
+      "finding": "Reviewer disclosure, for Dr Sun's rotation decision. My round-2 session's tool output displayed part of the tunnel token, from a grep of the round-1 dry-run files before they were redacted. It sits in that session's transcript only; it is in no report and no repository file. My round-2 and round-3 reports contain none of it. This round printed counts only.",
+      "evidence": "round-2 session transcript; review_round2.json and this report contain no token characters",
+      "suggestion": "Include it in what Dr Sun weighs; no change to the port."
+    }
+  ],
+  "verified": [
+    "B5 is closed. On the normal path the runner writes its last log line, switches output to _manifest.log, then hashes. The manifest excludes itself, its log and the refusals file. The manifests of both dry runs verify locally, 6 of 6 each with the runner log included, and each manifest.log reports 'manifest self-check passed'.",
+    "B6 is closed. Command lines are recorded only for uid 1000, after redaction; other users get null in the sampler and '[name]' in the snapshot. The new dry runs have 29 other-user sampler entries and 610 other-user snapshot rows, none with a command line. Count-only scans found 0 unredacted token-flag values and 0 long base64 runs after 'token' on either host. They covered 105 local port text files and, on gpu5070ti, ~/vla_exec/port, ~/vla_exec/logs, the execution copy's hosts/ and versions/v33. The one flagged line is a file path in my round-2 report. The response discloses the synced folder and the transcript, and Dr Sun was told.",
+    "N13 is closed. HOST_NOTE:31 now says 'if it still exists', explains why usually nothing remains, and has a recovered archive verified the way return_linux_state does.",
+    "N14 is closed. The allow-list v33_historical_full0[1-9] refused both a bogus ID and a reused ID in the dry run, and each ID writes its own host files. The evidence rule is at least one record in runs/<ID>/factory_full_rate.npz. That file is written by the startup's finally block, and the scene constructors take no physics step before the factory startup. Dr Sun's approval is recorded.",
+    "N15 is closed apart from B7, N21 and N22. TERM is trapped while the launcher runs under wait; dry run 03 finished 4.65 s after its launcher started. The ports check uses an ss filter, which I confirmed matches a real listener (port 22) and currently finds nothing on 46200-46203. The start line has the absolute path, and the note keeps monitoring light.",
+    "N16 is closed: the snapshot records Linger=no and the sessions, and the note states the dependence.",
+    "N17, N18 and N19 are closed. PORT.md:174-175 now gives 1.5e-6 rad at replay step 1 and 2.7e-6 over steps 1-66. The note lists the busiest idle processes. The regenerated manifest (19:49:49Z) has 9,550 entries: 9,546 equal the local files, 4 are remote-only port copies, and none differ.",
+    "The rest of the runner is sound. It is safe under set -u: RUN=${1:-}, refuse uses ${RUN:-?}, SAMPLER, LAUNCHER and LAUNCHER_STATUS are set before the trap, and the fallbacks use ':-'. The find expression selects every file under runs/<ID> plus this ID's host files. It excludes the manifest, its log, the refusals file and other IDs' files, with no glob metacharacters in E or the ID. sort -zu is harmless, and the paths are made relative to E and self-checked from E. The exit status is the launcher's status, or 143 when signalled. The launch command and flags are identical to rounds 1 and 2, and bash -n passes.",
+    "The sampler compiles, and its field indices are unchanged: utime, stime and starttime are fields 14, 15 and 22. git_processes() reads other users' cmdline only to test the basename and records only the pid and cwd; cwd is unreadable for other users.",
+    "Both hosts match. The runner, the sampler, the dry copy, the shim (installed copy equals the repository copy) and HOST_NOTE_gpu5070ti.md are identical, and so is PORT.md. On gpu5070ti there is no versions/v33/host, no v33 run and no vla- container."
+  ]
+}

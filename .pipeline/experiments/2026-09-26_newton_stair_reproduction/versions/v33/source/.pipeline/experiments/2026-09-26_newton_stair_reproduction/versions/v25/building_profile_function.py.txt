@@ -1,0 +1,17 @@
+HISTORICAL_PROFILE_SHA256 = "PINNED_PROFILE_SHA"
+
+
+def building_scenario(profile, wall_budget):
+    """Select an explicit immutable route profile within the same Building."""
+    if profile not in ("short_stair", "historical_full"):
+        raise ValueError("Unknown Building route profile")
+    historical = profile == "historical_full"
+    path = BASE / "inputs" / ("historical_full_building.json" if historical else "stair_scenario.json")
+    if historical and hashlib.sha256(path.read_bytes()).hexdigest() != HISTORICAL_PROFILE_SHA256:
+        raise ValueError("Historical Building profile SHA-256 mismatch")
+    scenario = json.loads(path.read_text())
+    scenario.update(max_sim_seconds=600. if historical else 90., max_wall_seconds=wall_budget,
+                    navigation_input="native PCT map, actual geometric LiDAR and simulator body localization",
+                    scene_condition=("Complete archived Building; historical full-floor route; no added actor" if historical else
+                                     "Complete archived Building; fixed architecture; no added actor"))
+    return scenario

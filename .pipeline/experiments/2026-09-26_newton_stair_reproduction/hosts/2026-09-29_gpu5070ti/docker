@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# docker CLI shim for Newton runs on gpu5070ti (Dr Sun, 2026-09-29): every call goes to rootless podman 4.9.3.
+# It is installed as ~/vla_exec/bin/docker on the host and put first on PATH for a run; no pinned file changes.
+# Three translations, all for differences between Docker Desktop on macOS and rootless podman on Linux (PORT.md):
+#  1. Docker Desktop's containerd store names each pinned image by its index digest, which podman does not accept
+#     as an image ID. The amd64 SCAN image is referenced by that same index digest, pulled from Docker Hub; the
+#     arm64 factory image, which is private and was loaded from the Mac, by the config digest behind its index.
+#  2. A `run` without its own --network gets slirp4netns with host-loopback access, and host.docker.internal is
+#     mapped to that host loopback (10.0.2.2), as Docker Desktop provides; the worker's servers listen on 127.0.0.1.
+#  3. A `run` or `create` whose --user is the invoking host user gets --userns=keep-id, so that user inside the
+#     container is the owner of the bind-mounted files, as with Docker Desktop's file sharing (added after P5
+#     attempt 01: the factory container could not open its owner-only libraries).
+# With VLA_SHIM_LOG set, every call appends its incoming and outgoing argument lists, shell-quoted, to that file
+# (port review round 1, N4: a run's container_command.json keeps the Docker form).
+set -euo pipefail
+original=("$@")
+log_and_exec() {
+  if [ -n "${VLA_SHIM_LOG:-}" ]; then
+    printf '%s in: docker %s\n%s out: podman %s\n' "$(date -u +%FT%T.%NZ)" "$(printf '%q ' "${original[@]}")" \
+      "$(date -u +%FT%T.%NZ)" "$(printf '%q ' "$@")" >> "$VLA_SHIM_LOG"
+  fi
+  exec podman "$@"
+}
+AMD64_PIN=sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb
+ARM64_PIN=sha256:1c102582b40d5305e310788c79e963e4b6cde13aea2bc5db3b7c1800e821935d
+uid=$(id -u)
+args=()
+for a in "$@"; do
+  case "$a" in
+    "$AMD64_PIN") args+=("docker.io/koide3/direct_visual_lidar_calibration@$AMD64_PIN") ;;
+    "$ARM64_PIN") args+=("ea7f3ad4b1ad4687d6b1ed3a8e6e8342954d1936c8f895e49987e41c41e161be") ;;
+    *) args+=("$a") ;;
+  esac
+done
+case "${args[0]:-}" in
+  run|create)
+    extra=()
+    network=0
+    for ((i = 1; i < ${#args[@]}; i++)); do
+      case "${args[i]}" in
+        --network|--network=*|--net|--net=*) network=1 ;;
+        --user) case "${args[i + 1]:-}" in "$uid"|"$uid":*) extra+=(--userns=keep-id) ;; esac ;;
+        --user=*) case "${args[i]#--user=}" in "$uid"|"$uid":*) extra+=(--userns=keep-id) ;; esac ;;
+      esac
+    done
+    if [ "${args[0]}" = run ] && [ "$network" = 0 ]; then
+      extra+=(--network slirp4netns:allow_host_loopback=true --add-host host.docker.internal:10.0.2.2)
+    fi
+    log_and_exec "${args[0]}" "${extra[@]}" "${args[@]:1}"
+    ;;
+esac
+log_and_exec "${args[@]}"

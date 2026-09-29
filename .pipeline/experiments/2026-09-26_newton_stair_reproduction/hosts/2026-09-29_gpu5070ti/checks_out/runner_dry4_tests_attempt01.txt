@@ -1,0 +1,137 @@
+=== positive control for the descriptor record: a podman call made while holding descriptor 9
+=== 1 normal
+exit=0
+=== 2 abort through the runner's pid
+=== 3 abort 0.5 s after the launch, before the episode starts
+=== 4 abort of an episode that ignores SIGTERM, then a hanging stand-in
+=== 5 lock
+processes holding the lock file on descriptor 9 (name, script):
+  bash runner_dry4.sh
+  python host_sampler_linux.py
+  python standin_run_bounded2.py
+second runner exit=1
+=== 6 control for N27: abort as in test 2, runner log opened without append mode
+=== results (the stand-in's 2,000-character padding is shown as <2000 x>, only when intact)
+--- runner_dry01 runner log
+runner pid 45258
+runner started 2026-09-29T20:30:33.635799758Z for runner_dry01, 86813fad6b84ccdaff9fe0fdaaf861f41c28677fd3ce69f14376bba5065adb5a  /home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/checks/runner_dry4.sh, 1-minute load 0.07
+launcher started 2026-09-29T20:30:37.970068156Z
+{
+  "pid": 45385,
+  "exit_code": 0,
+  "padding": "<2000 x>"
+}
+launcher returned 0 at 2026-09-29T20:30:41.014868761Z
+finishing (normal) at 2026-09-29T20:30:41.015460241Z
+host sampler alive at the end
+runner finished 2026-09-29T20:30:42.050652148Z (normal), launcher status 0
+--- runner_dry01: 'SIGTERM received' lines 0, 'forwarding SIGTERM' lines 0, intact records 1
+manifest: 6 files
+manifest self-check passed
+process.json exit_code: 0
+--- runner_dry02 runner log
+runner pid 45457
+runner started 2026-09-29T20:30:42.102606204Z for runner_dry02, 86813fad6b84ccdaff9fe0fdaaf861f41c28677fd3ce69f14376bba5065adb5a  /home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/checks/runner_dry4.sh, 1-minute load 0.06
+launcher started 2026-09-29T20:30:46.429112430Z
+SIGTERM received at 2026-09-29T20:30:49.527558785Z: aborting the trial
+forwarding SIGTERM to the episode's process group 45754, as run_bounded's own deadline does
+{
+  "pid": 45754,
+  "exit_code": -15,
+  "padding": "<2000 x>"
+}
+launcher returned 1 after the abort at 2026-09-29T20:30:50.536634604Z
+finishing (aborted) at 2026-09-29T20:30:50.537334147Z
+host sampler alive at the end
+runner finished 2026-09-29T20:30:51.522629251Z (aborted), launcher status 1
+--- runner_dry02: 'SIGTERM received' lines 1, 'forwarding SIGTERM' lines 1, intact records 1
+manifest: 6 files
+manifest self-check passed
+process.json exit_code: -15
+--- runner_dry03 runner log
+runner pid 45854
+runner started 2026-09-29T20:30:51.593197734Z for runner_dry03, 86813fad6b84ccdaff9fe0fdaaf861f41c28677fd3ce69f14376bba5065adb5a  /home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/checks/runner_dry4.sh, 1-minute load 0.05
+launcher started 2026-09-29T20:30:55.920321514Z
+SIGTERM received at 2026-09-29T20:30:56.503618933Z: aborting the trial
+forwarding SIGTERM to the episode's process group 46098, as run_bounded's own deadline does
+{
+  "pid": 46098,
+  "exit_code": -15,
+  "padding": "<2000 x>"
+}
+launcher returned 1 after the abort at 2026-09-29T20:31:00.051108413Z
+finishing (aborted) at 2026-09-29T20:31:00.051847761Z
+host sampler alive at the end
+runner finished 2026-09-29T20:31:01.008882643Z (aborted), launcher status 1
+--- runner_dry03: 'SIGTERM received' lines 1, 'forwarding SIGTERM' lines 1, intact records 1
+manifest: 6 files
+manifest self-check passed
+process.json exit_code: -15
+--- runner_dry04 runner log
+runner pid 46187
+runner started 2026-09-29T20:31:01.573436032Z for runner_dry04, 86813fad6b84ccdaff9fe0fdaaf861f41c28677fd3ce69f14376bba5065adb5a  /home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/checks/runner_dry4.sh, 1-minute load 0.04
+launcher started 2026-09-29T20:31:05.931505606Z
+SIGTERM received at 2026-09-29T20:31:08.987964074Z: aborting the trial
+forwarding SIGTERM to the episode's process group 46396, as run_bounded's own deadline does
+run_bounded still running 5 s later: SIGKILL to the process group 46396
+{
+  "pid": 46396,
+  "exit_code": -9,
+  "padding": "<2000 x>"
+}
+run_bounded still running 5 s after that SIGKILL: SIGKILL to run_bounded 46395
+/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/checks/runner_dry4.sh: line 150: 46395 Killed                  "$PY" "$E/hosts/2026-09-29_gpu5070ti/checks/standin_run_bounded2.py" "$V/runs/$RUN" < /dev/null
+launcher returned 137 after the abort at 2026-09-29T20:31:19.005488315Z
+finishing (aborted) at 2026-09-29T20:31:19.006089494Z
+host sampler alive at the end
+runner finished 2026-09-29T20:31:20.053286787Z (aborted), launcher status 137
+--- runner_dry04: 'SIGTERM received' lines 1, 'forwarding SIGTERM' lines 1, intact records 1
+manifest: 6 files
+manifest self-check passed
+process.json exit_code: -9
+--- runner_dry05 runner log
+runner pid 46529
+runner started 2026-09-29T20:31:21.071288202Z for runner_dry05, 86813fad6b84ccdaff9fe0fdaaf861f41c28677fd3ce69f14376bba5065adb5a  /home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/checks/runner_dry4.sh, 1-minute load 0.03
+launcher started 2026-09-29T20:31:25.406078745Z
+{
+  "pid": 46742,
+  "exit_code": 0,
+  "padding": "<2000 x>"
+}
+launcher returned 0 at 2026-09-29T20:31:37.448087630Z
+finishing (normal) at 2026-09-29T20:31:37.448651227Z
+host sampler alive at the end
+runner finished 2026-09-29T20:31:37.530702685Z (normal), launcher status 0
+--- runner_dry05: 'SIGTERM received' lines 0, 'forwarding SIGTERM' lines 0, intact records 1
+manifest: 6 files
+manifest self-check passed
+process.json exit_code: 0
+--- runner_dry07 runner log
+runner pid 47669
+runner started 2026-09-29T20:31:37.711312382Z for runner_dry07, 523f1273749d161846fab634fbee76ea2860b320253dcc7a3873a2ebf533c151  /home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/checks/runner_dry4_oldlog.sh, 1-minute load 0.02
+launcher started 2026-09-29T20:31:42.048809356Z
+{
+  "pid": 47879,
+  "exit_code": -15,
+  "padding": "<2000 x>"
+}
+launcher returned 1 after the abort at 2026-09-29T20:31:46.129182060Z
+finishing (aborted) at 2026-09-29T20:31:46.129872586Z
+host sampler alive at the end
+runner finished 2026-09-29T20:31:47.134955364Z (aborted), launcher status 1
+--- runner_dry07: 'SIGTERM received' lines 0, 'forwarding SIGTERM' lines 0, intact records 1
+manifest: 6 files
+manifest self-check passed
+process.json exit_code: -15
+--- refusals
+2026-09-29T20:31:26.625588414Z runner_dry06 refusing: another runner holds /home/sun/vla_exec/port/runner_dry4/v33_trial.lock
+--- podman calls recorded: 43; with descriptor 9:
+  0 1 2 255 3 9 :: --version
+--- leftover processes (stand-ins, episodes, containers):
+  no stand-in
+  no episode sleep
+  containers: [machine-dog-nav-foxy-rviz-install
+office-rviz-gui-probe01
+scan-native-rviz-office_crowd_review_preflight36
+scan-native-rviz-office_crowd_review_preflight37
+scan-foxy-office_crowd_review_native_rviz_preflight12]

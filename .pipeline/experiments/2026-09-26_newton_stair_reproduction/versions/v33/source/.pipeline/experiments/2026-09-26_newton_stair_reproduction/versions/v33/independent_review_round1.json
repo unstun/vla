@@ -1,0 +1,83 @@
+{
+  "round": 1,
+  "passed": false,
+  "blocking": [
+    {
+      "id": "B1",
+      "finding": "v33 changes three files that setup/runtime_sources.json pins (contracts.py, control_gate.py, node.py), but neither materialize.py nor freeze.py updates that record. The planned trial therefore cannot start: before any physics, run_local_episode.py re-hashes every record and raises 'Archived runtime source changed'. The local review would also record source_identity=false. The provenance statements in the documents are also false. node.py has been in every version manifest since v11 (v11, v14, v31, v32) and was modified by v11 and v14. Each of those versions updated setup/runtime_sources.json, as v26 did for config.py. COMPONENT_RESULTS' own count of 2,971 other v32 files (2,973 - 2) shows that node.py is in v32's manifest.",
+      "evidence": "scripts/run_local_episode.py:163-165 (unconditional record check); scripts/review_local_episode.py:39-42,88. The current setup/runtime_sources.json (mtime 2026-09-27) mismatches exactly contracts.py (record a404bed4.. vs file 6d7a8590..), control_gate.py (60359710.. vs 75fbfe27..) and node.py (c7cc60de.. vs c94c9010..). Its node.py record carries local_modification 'v11 fault propagation; v14 consumer-scoped replies'. versions/v11 and versions/v14 manifest.json changed_files list both node.py and setup/runtime_sources.json. v32/manifest.json source_files contains runtime_sources/backend_ros/p2b_backend_ros/node.py and setup/runtime_sources.json. freeze.py:36 snapshots the stale record unchanged. False statements: PLAN.md:40-41 ('put under a version manifest for the first time here'), COMPONENT_RESULTS.md:12-13 ('had not changed since their import ... none had been in a version manifest before'), materialize.py:131 ('not in v32's manifest'). PHYSICAL_RUN_PLAN.md:17-18 omits this check.",
+      "required_fix": "Follow the v11/v14/v26 precedent and make setup/runtime_sources.json a fifth changed file. Put its preimage in parent_source/setup/. Give the three records their new sha256 and bytes plus a local_modification note. Record the edit in materialize.py, prepared.json and changes.patch. Re-run K1/K2; the count of other v32 files becomes 2,970. Show with a read-only hash comparison that run_local_episode.py's record check passes on the v33 bytes. Correct PLAN.md:40-41, COMPONENT_RESULTS.md:12-13, materialize.py:131 and PHYSICAL_RUN_PLAN.md:17-18."
+    },
+    {
+      "id": "B2",
+      "finding": "The claim boundary misstates what the simulation base gives up. /clock reaches the backend through the same bridge publish callback and DDS path as the poses. The rule therefore cannot tell a stopped simulator from a stalled delivery path. L1's measured mechanism was exactly such a delivery stall: the bridge held a pose for 254.5 ms while the worker kept publishing. If the telemetry or delivery path stalls while physics and the command path keep running, the backend's /clock freezes along with the pose, and only the 2.0 s backstop trips. Three things let commands through during that time. In this profile the bridge does not zero commands on a STALLED feedback verdict. SCAN's controller keeps publishing commands computed from its last pose on a 10 ms wall timer. The Mac-side staleness rule zeroes only commands that stop arriving. Commands computed from a frozen pose can therefore reach running physics for up to 2.0 s of wall time, where v32 limited this to 0.25 s. The documents claim otherwise. PLAN.md:18 says a host stall stops simulated time. PLAN.md:94 says the only loss is a delay 'that leaves simulated time frozen. That is exactly the host stall v33 means to tolerate'. PHYSICAL_RUN_PLAN.md:57-58 says the run ends on odom_stale 'only if a pose stream truly stops, or the simulator stops for more than 2.0 s'. The recorded rationale for the backstop (PLAN.md:35-36) covers only a stopped simulator, not the converse. The case has been benign so far: simulated time advanced <= 0.08 s across all 128 recorded gaps over 0.25 s. The frozen statement is still wrong in principle.",
+      "evidence": "foxy_bridge_node.py:481-499 and 577-599 (/clock and the pose come from one 10 ms timer callback of one single-threaded spin, main at 772-776). foxy_bridge_node.py:426: the 0.25 s source timeout applies to command receipt only. foxy_bridge_node.py:431-437 with config_archived/bridge.yaml:21 (require_fresh_simulation_feedback: false): STALLED does not block commands. runtime/scan64_input_refresh_v31/src/plan_manage/src/closed_loop_controller.cpp:48: create_wall_timer 10 ms, with no pose-age check. command_state.py:80: 250 ms timeout on command receipt. versions/v32/RESULTS.md:53-66: L1 was a delivery-side stall while the worker kept publishing.",
+      "required_fix": "Correct 'What the simulation base means' (PLAN.md:87-95), PLAN.md:18 and PHYSICAL_RUN_PLAN.md 'How the run ends'. They must state that a delivery-side stall (bridge publish path, TCP telemetry or DDS delivery) with physics still running looks the same as a stopped simulator. They must state that only the 2.0 s backstop or the unchanged heartbeat catches it, and what does and does not zero commands in that case. They must cite the recorded bound: <= 0.08 s of simulated time advanced across recorded gaps. Put this case in front of Dr Sun together with the 2.0 s decision. No code change is required unless he asks for one."
+    }
+  ],
+  "non_blocking": [
+    {
+      "id": "N1",
+      "finding": "K4's M1 cannot fail on the recorded data. With /clock set to the newest received stamp, the age is always 0, so only the 2.0 s backstop can trip, and the longest recorded gap is 0.66 s. M2 is not a strict upper bound. It equals the survey's consecutive-stamp gap and ignores two effects. The single-threaded executor takes one pose per wait cycle from a depth-5 sensor-QoS queue, while the depth-1 /clock jumps to the newest value. M2 also ignores the burst of poses after a gap. The survey's docstring argument (pose_gap_survey.py:11-13) has the same gap. The conclusion still holds with margin by my independent measurement.",
+      "evidence": "replay_gate.py:56-63; node.py:56 and 67. Scratch measurements: simulated-time advance including the 50 ms post-gap burst is <= 0.08 s over 128 gaps (v12_building_route01). The observer's /clock minus the backend's newest delivered stamp is <= 0.08 s over 1,708,086 samples.",
+      "suggestion": "Call M2 an approximation, not an upper bound. Add the direct observer-based measurement: artifacts/reactive_observations.jsonl clock_ns against backend_body_callbacks.jsonl."
+    },
+    {
+      "id": "N2",
+      "finding": "K5 does not exercise the trial's configuration. It runs MultiThreadedExecutor(num_threads=2) with a hand-built config, not the trial's SingleThreadedExecutor through native_backend_entry.py/build_runtime with a backend_config.json generated by native_graph. The failed attempts cannot be audited: they wrote to the same fixed ros_smoke.json and tee log, so their outputs were overwritten. The claim that 'PLAN.md K5 was revised to match before the passing run' cannot be verified: PLAN.md's mtime (06:58:37) is after ros_smoke.json's (06:57:48). The pass criteria were changed after a failing attempt.",
+      "evidence": "ros_smoke.py:53-57 and 73; run_ros_smoke.sh:16; COMPONENT_RESULTS.md:71-77; file mtimes.",
+      "suggestion": "State that K5 covers the multi-threaded executor only, or add a single-executor variant through build_runtime. Keep each attempt's output under an attempt-numbered name. Record the K5 revision as a post-failure change, not as pre-registered."
+    },
+    {
+      "id": "N3",
+      "finding": "The new cross-field check (odom_wall_backstop_s >= odom_stale_s) also applies under the wall base. A wall-base configuration with odom_stale_s > 2.0 that v32 accepted is therefore now rejected. C1 uses only the default GateConfig, so it cannot see this. No configuration in the repository is affected: every odom_stale_s is 0.25 or 0.001.",
+      "evidence": "contracts.py:333-338; repository-wide grep of odom_stale_s values.",
+      "suggestion": "Qualify 'wall base unchanged' as holding for odom_stale_s <= 2.0, or apply the cross-field check only under the simulation base."
+    },
+    {
+      "id": "N4",
+      "finding": "The live-run claims lack an exposure condition and a way to attribute the cause. A run without odom_stale says something about the gate only if the pose stream had wall gaps over 0.25 s while an owner was admitted and the heartbeat was fresh. The quiet-host condition may remove such gaps entirely. /clock receipts at the backend are not logged, because native_backend_entry.py wraps only _on_body_pose. The status fields are sampled at about 10 Hz. So 'simulation age vs backstop' can only be inferred: the backstop fired if and only if the wall gap exceeded 2.0 s.",
+      "evidence": "PLAN.md:202; PHYSICAL_RUN_PLAN.md:35-42; native_graph.py:112-118; newton_episode.py:242; scripts/native_backend_entry.py:45-54.",
+      "suggestion": "Pre-register an exposure count from backend_body_callbacks.jsonl: pose wall gaps over 0.25 s while an owner was admitted. Name the in-container observer's clock_ns as the /clock proxy."
+    },
+    {
+      "id": "N5",
+      "finding": "The heartbeat risk named in the plan is real and can be quantified. The observer's gated-command gaps show that 2 of the 17 historical runs with pose gaps had a backend-side stall of at least 0.2 s. Under v33 those stalls end on heartbeat_stale: v12_building_route01 (0.439 s inside a 0.483 s pose gap) and empty_long_route03 (0.231 s inside a 0.359 s gap). In the historical_full trials v25, v28, v30, v31 and v32, the gated-command gaps were <= 0.05 s, so v33 would have kept those gates open.",
+      "evidence": "artifacts/reactive_observations.jsonl gated_command and raw_command timestamps compared with backend_body_callbacks.jsonl (scratch analysis). Timers run before subscriptions in rclpy, so a backend stall trips heartbeat_stale at resume.",
+      "suggestion": "Add these figures to the heartbeat note, so that a heartbeat_stale end is read as a backend-side stall and not as a v33 regression."
+    },
+    {
+      "id": "N6",
+      "finding": "run_local_episode.py writes the hard-coded string 'original sensor/command freshness watchdogs' into every episode_request.json. That is inaccurate for v33 runs.",
+      "evidence": "scripts/run_local_episode.py:230",
+      "suggestion": "Note the deviation in v33's RESULTS; no code change is needed."
+    },
+    {
+      "id": "N7",
+      "finding": "The lost-pose detection latency is quantized by whichever /clock source keeps advancing. If only sensor frames advance /clock (every 0.1 s of simulated time), the trip comes at the first sample past stamp + 0.25, which can be up to about 0.35 s. In the trial's async-scan profile, scan capture stamps lag the newest pose and the bridge drops them as backward.",
+      "evidence": "newton_episode.py:222-234; foxy_bridge_node.py:462-472.",
+      "suggestion": "State the quantization in PLAN.md's 'Losing poses while physics runs'."
+    },
+    {
+      "id": "N8",
+      "finding": "snapshot()'s last_body_pose_sim_age_s is not clamped. Negative values are normal: the observer proxy shows values down to -0.025 s.",
+      "evidence": "node.py:157-158",
+      "suggestion": "Clamp at 0, as the gate does, when building the planned distributions."
+    }
+  ],
+  "verified": [
+    "K1 recomputed in scratch: all four files equal parent_source plus materialize.EDITS, their hashes equal prepared.json, and changes.patch equals a fresh unified diff. Of v32's 2,973 manifest files, only node.py and native_graph.py differ now.",
+    "check_change.json's changed definitions match PLAN.md:102's allow-list (check_change.py:20-30).",
+    "K3 re-run from a scratch copy under Python 3.12.13: all 8 cases pass. The case results equal gate_contract_mac.json and gate_contract_container.json, including C1's tally (odom_stale 7,824, ok 1,686, measured_map_mismatch 1,150).",
+    "C1 is not vacuous: scratch mutants of the wall branch were all detected. The mutants were >= in place of > (sequence 787), a threshold +10 ms higher (56), the backstop used in the wall branch (5) and a pose without a stamp treated as fresh (5).",
+    "The K4 re-run reproduces replay_gate.json exactly: 48 runs, 84 wall-base episodes in 16 runs, M1 = M2 = 0, and 48/48 synthetic losses detected. The survey re-run reproduces pose_gap_survey.json exactly (0.6596 s, 0.065 s, 17 runs, 0.0352 s).",
+    "Independent check: across 48 runs, the in-container observer's /clock minus the backend's newest delivered pose stamp never exceeded 0.08 s (<= 0.0403 s outside v12). No recorded run would have tripped the simulation base falsely.",
+    "The wall branch equals v32's expression (control_gate.py:161-162 vs the preimage's line 138). A missing measurement, stamp or clock fails closed (159-165). A negative age is clamped, and the backstop uses the same monotonic clock (166-167). Latching and check order are unchanged (135-150).",
+    "The /clock subscription QoS (node.py:65-67) equals the bridge's CLOCK_QOS (foxy_bridge_node.py:51-56). /clock and the pose header carry the same nanosecond value from one state sample (588-590). The bridge is the only /clock publisher in the graph; pct_sim_clock_publisher.py:69 and reactive_health.py:33 only subscribe.",
+    "Poses and scans are stamped from physics_time() (lite3_newton.py:160-163 and 283; newton_episode.py:97 and 177-180), so float32 drift is common to both.",
+    "Thread safety: RosScanPort's callbacks share the node's default mutually exclusive group. _sim_clock_ns is one attribute, read once per sim_now(). The HTTP and monitor threads only read.",
+    "Scope: native_graph.py:90 is the only place that selects the simulation base, and the archived backend config is untouched. ros_node.py:367 and run_adapter.py:37-42 keep the wall default. pct_start_from_body_pose (runtime.py:134) drops stamp_s but never feeds the gate. No consumer reads the new snapshot keys. No path outside this experiment imports its runtime_sources.",
+    "SCAN's controller publishes raw commands on a 10 ms wall timer (scan64 closed_loop_controller.cpp:48). No raw-command gap over 0.2 s overlapped any of the 118 recorded pose gaps that had owner commands. This is why the historical runs ended on odom_stale and not heartbeat_stale.",
+    "PLAN.md's cited lines (control_gate.py:138, node.py:226) match the v32 preimages. v33's planner YAMLs are byte-identical to v32's. All reviewed files were re-checked against their current bytes at 07:57 (prepared.json hashes still match)."
+  ]
+}

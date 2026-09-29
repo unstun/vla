@@ -1,9 +1,9 @@
 {
-  "current": "v32",
-  "status": "v32_frozen_no_worker_gc_stall_measured_route_failed_corridor_entry_then_odom_stale",
+  "current": "v33",
+  "status": "v33_frozen_trial_on_gpu5070ti_no_pose_gap_route_failed_corridor_entry_native_replan_exhausted",
   "last_validated_trial_version": "v3",
   "last_validated_condition": "One empty 12 m trial; not general startup stability",
-  "validated_scope": "v32 checks passed: K1 byte-exact (three insertions in scripts/newton_episode.py), K2 AST scope, K3 three-schedule GC replay on v31_historical_full01's commands (no in-loop collection over 20 ms; 0 frozen garbage; identical joint states) and K4 independent review (passed round 4, confirmed round 5). Instrumented L1 inconclusive by its exposure rule (2,818 of 7,100 steps) with neither criterion violated. Physical full route failed; no full-route acceptance",
+  "validated_scope": "v33 checks passed: K1-K5 (simulation-time odom gate in the simulator only; K4 reproduces 10 of 12 recorded odom_stale ends) and independent review (passed round 2, confirmed rounds 3 and 4). The trial ran on gpu5070ti after the port's validation (P1-P6) and five review rounds; no pose gap over 0.25 s occurred, so it says nothing about the gate's stall tolerance. Physical full route failed; no full-route acceptance",
   "measured_06_command_forward_mean_mps": [
     0.566610550435978,
     0.5655182859929156
@@ -31,12 +31,13 @@
     "v30_historical_full01": "71.43s; landing stall gone (reference frontier 15.64 s vs v29's 8.645 s; passed v29's stop at 34.97 s); 13.44m XY path, +1.45m climb, 17 moving curves; ~15 s pause at the corridor entry, then stationary from 57.5 s at (-1.99,-4.25,1.85) on invalid-curve holds (final_spline_rejected/remaining_spline_invalid status=2, 100 3-s hold trajectories); odom_stale at 69.35 s after a 0.264 s wall gap in body-pose callbacks (143/7656 clock rejects, 1 reconnect); goal XY error 4.15m; no arrival; no fall",
     "v31_historical_full01": "29.94s physics; no stale-input stop (0 conflict stops, 0 invalidations, 0 final-curve rejections, 9/9 final checks clear; v30 had 8/5/42 in the same 29.9 s); climbed both flights faster than v30 (0.90 m at 19.34 s, 1.40 m at 25.82 s); odom_stale at about 27.7 s after a 0.288 s wall pause in body-pose callbacks (sim moved 5 ms), with 3 clock_observation_stale reconnects; stood on the upper stair flight at (-4.99,-1.40,1.53), goal XY error 7.12 m, 7.78 m path, 9 moving curves; no arrival; no fall; the corridor was not reached",
     "diag_v32_clock01": "L1 instrumented diagnostic run (not the trial): 67.35 s physics, 2,818 control steps, 156 s wall; no automatic full collection in the worker loop (longest collection 16.39 ms, explicit), 0 process-wide holds, 11 scheduling-type intervals (runnable wait 171-977 ms); outcome inconclusive by the exposure rule; went through the corridor entry (its curves missed the wrong-height cell's row by 1.8 cm) and stopped by about 60 s at (7.42,-4.29,1.85); odom_stale at 65.2 s during a 376.9 ms gap in which the bridge held a pose 254.5 ms (288.5 ms publish callback) while the host was starved; 3 clock_observation_stale reconnects",
-    "v32_historical_full01": "286.48 s physics, 13,721 control steps, 721 s wall; climbed both flights (0.90 m at 19.26 s, 1.80 m at 35.17 s); stood from 39.3 s at the upper corridor entry (-4.91,-3.45,1.84) while all 2,130 curves checked there were rejected as collisions at the west edge of wrong-height navigation cell (47,41); FIXED_STAND final PD 238 s; odom_stale at 284.4 s after a 0.320 s body-pose gap inside a 0.326 s worker step with consecutive stamps (worker-side stall, inferred) at the start of a burst of machine-dog git processes; 0 clock-client pauses over 150 ms; 5 reconnects; goal XY error 6.88 m, 9.92 m path; no arrival; no fall"
+    "v32_historical_full01": "286.48 s physics, 13,721 control steps, 721 s wall; climbed both flights (0.90 m at 19.26 s, 1.80 m at 35.17 s); stood from 39.3 s at the upper corridor entry (-4.91,-3.45,1.84) while all 2,130 curves checked there were rejected as collisions at the west edge of wrong-height navigation cell (47,41); FIXED_STAND final PD 238 s; odom_stale at 284.4 s after a 0.320 s body-pose gap inside a 0.326 s worker step with consecutive stamps (worker-side stall, inferred) at the start of a burst of machine-dog git processes; 0 clock-client pauses over 150 ms; 5 reconnects; goal XY error 6.88 m, 9.92 m path; no arrival; no fall",
+    "v33_historical_full01": "gpu5070ti (execution copy, numerically different physics from the Mac): 461.81 s physics, 22,425 control steps, 951 s wall; climbed both flights (0.90 m at 19.34 s, 1.80 m at 31.97 s); stood from 32.61 s at the upper corridor entry (-4.865,-3.422,1.848), 0.05 m from v32's stand; FIXED_STAND final PD 426 s; SCAN logged 6,000 'robot is inside an obstacle' with A* start/end errors (v32: 10) and 7 final-check rejections (v32: 2,138), none at cell (47,41); SCAN's replan limit (1,000 failures) ended the stand: native_replan_exhausted stop flow at 459.71 s; no pose gap over 0.25 s (max 69.7 ms), odom_time_base simulation throughout, sim age max 10.1 ms; no odom_stale/heartbeat_stale/applied_evidence_stale; 1 clock TTL window (259 ms) at the control loop's start; 0 reconnects; goal XY error 6.83 m, 9.82 m path; no arrival; no fall; copy verified (4,597 files)"
   },
   "full_building_navigation_validated": false,
   "minimum_measured_body_speed_validated": false,
-  "next_version": "v33 (Dr Sun, 2026-09-29): simulation-time freshness for the backend odom gate in the simulator only (real-robot wall-time gate unchanged; handle float32 time drift), then v34 for the corridor entry's wrong-height PCT cell (47,41); trials with the other machine-dog session's git load paused.",
-  "execution": "v32_committed_next_v33_sim_time_odom_gate",
+  "next_version": "v34 (Dr Sun, 2026-09-29): the corridor entry's wrong-height PCT cell (47,41); v33's trial adds SCAN's inside-obstacle failures and the replan limit at the corridor entry to its diagnosis.",
+  "execution": "v33_trial_done_on_gpu5070ti_next_v34_corridor_cell",
   "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md",
   "v28_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md",
   "start_thrash_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v28_start_thrash/RESULT.md",
@@ -53,5 +54,10 @@
   "v31_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v31/RESULTS.md",
   "wall_clock_chain_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-29_wall_clock_chain/RESULT.md",
   "v32_plan": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v32/PLAN.md",
-  "v32_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v32/RESULTS.md"
+  "v32_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v32/RESULTS.md",
+  "v33_plan": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v33/PLAN.md",
+  "v33_component_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v33/COMPONENT_RESULTS.md",
+  "v33_host_note": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v33/HOST_NOTE_gpu5070ti.md",
+  "v33_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v33/RESULTS.md",
+  "gpu5070ti_port": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/PORT.md"
 }

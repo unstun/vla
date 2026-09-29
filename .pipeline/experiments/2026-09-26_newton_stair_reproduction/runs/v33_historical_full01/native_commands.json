@@ -1,0 +1,132 @@
+{
+  "clock_responder": [
+    "/usr/bin/python3",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/clock_sync.py"
+  ],
+  "applied_receiver": [
+    "/usr/bin/python3",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/applied_channel.py",
+    "--output",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/v33_historical_full01"
+  ],
+  "pct_support": [
+    "/usr/bin/python3",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py",
+    "--ros-args",
+    "-p",
+    "map_path:=/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/new_building.pickle",
+    "-p",
+    "use_sim_time:=true",
+    "-p",
+    "elevation_path:=/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/new_building_original_precision.npz"
+  ],
+  "pct_surface_ground": [
+    "/usr/bin/python3",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py",
+    "--ros-args",
+    "-p",
+    "map_path:=/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/new_building.pickle",
+    "-p",
+    "use_sim_time:=true",
+    "-p",
+    "elevation_path:=/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/new_building_original_precision.npz",
+    "-r",
+    "__node:=pct_surface_ground_publisher",
+    "-p",
+    "ground_mode:=surface_evidence",
+    "-p",
+    "dense_surface_path:=/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/new_building_dense_surface.npy"
+  ],
+  "pct_worker": [
+    "/usr/bin/python3",
+    "-m",
+    "backend_adapter.pct_worker",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "47651",
+    "--pct-source-root",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime_sources/pct_runtime/python",
+    "--rsg-root",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs",
+    "--tomogram-path",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/new_building.pickle",
+    "--reference-height-m",
+    "0.30"
+  ],
+  "scan": [
+    "ros2",
+    "run",
+    "scan_planner",
+    "scan_planner_node",
+    "--ros-args",
+    "--params-file",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/v33_historical_full01/planner.yaml",
+    "-r",
+    "body_pose:=/quad_0/body_pose",
+    "-r",
+    "sensor_pose:=/quad_0/lidar_pose",
+    "-r",
+    "cloud:=/quad_0/cloud"
+  ],
+  "controller": [
+    "ros2",
+    "run",
+    "scan_planner",
+    "closed_loop_controller",
+    "--ros-args",
+    "--params-file",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/config_archived/controller.yaml",
+    "-r",
+    "body_pose:=/quad_0/body_pose"
+  ],
+  "health": [
+    "/usr/bin/python3",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/native_observer.py",
+    "--output",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/v33_historical_full01/artifacts/runtime_health.json",
+    "--run-id",
+    "v33_historical_full01",
+    "--epoch",
+    "1790715067084436362",
+    "--ros-args",
+    "-p",
+    "use_sim_time:=true"
+  ],
+  "bridge": [
+    "/usr/bin/python3",
+    "-c",
+    "from lite3_sim_bridge.foxy_bridge_node import main; main()",
+    "--ros-args",
+    "--params-file",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/config_archived/bridge.yaml",
+    "-p",
+    "telemetry_host:=host.docker.internal",
+    "-p",
+    "telemetry_port:=46200",
+    "-p",
+    "command_host:=host.docker.internal",
+    "-p",
+    "command_port:=46201",
+    "-p",
+    "scan_audit_path:=/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/v33_historical_full01/bridge_scan_audit.jsonl"
+  ],
+  "backend": [
+    "/usr/bin/python3",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/native_backend_entry.py",
+    "--config",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/v33_historical_full01/backend_config.json",
+    "--executor",
+    "single"
+  ],
+  "driver": [
+    "/usr/bin/python3",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/v33_historical_full01/executed_long_route_driver.py",
+    "--run-root",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/v33_historical_full01",
+    "--run-id",
+    "v33_historical_full01",
+    "--http-port",
+    "8785"
+  ]
+}

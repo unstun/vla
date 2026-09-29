@@ -1,0 +1,112 @@
+{
+  "variant": "trial",
+  "attempt": 1,
+  "python": "3.10.12",
+  "setup": {
+    "loaded_gate": {
+      "odom_time_base": "simulation",
+      "odom_wall_backstop_s": 2.0,
+      "odom_stale_s": 0.25
+    },
+    "gate_update_from_native_graph": {
+      "odom_time_base": "simulation",
+      "odom_wall_backstop_s": 2.0
+    }
+  },
+  "checks": {
+    "1_streaming": {
+      "odom_time_base": "simulation",
+      "sim_clock_s": 51.0,
+      "sim_age_s": 0.0,
+      "provider": "fresh",
+      "passed": true
+    },
+    "2_host_stall": {
+      "wall_age_s": 1.056,
+      "wall_rule_would_be_stale": true,
+      "provider": "fresh",
+      "gate": {
+        "closed_reason": "open",
+        "block_reason": "ok"
+      },
+      "max_raw_command_gap_s": 0.021,
+      "passed": true
+    },
+    "3_lost_poses": {
+      "sim_age_s": 0.29999999999999716,
+      "provider": "body_pose_stale",
+      "gate": {
+        "closed_reason": "odom_stale",
+        "block_reason": "odom_stale"
+      },
+      "max_raw_command_gap_s": 0.021,
+      "passed": true
+    },
+    "4_stopped_simulator": {
+      "at_1p9_s": {
+        "provider": "fresh",
+        "gate": {
+          "closed_reason": "open",
+          "block_reason": "ok"
+        }
+      },
+      "at_2p1_s": {
+        "provider": "body_pose_stale",
+        "gate": {
+          "closed_reason": "odom_stale",
+          "block_reason": "odom_stale"
+        }
+      },
+      "max_raw_command_gap_s": 0.021,
+      "passed": true
+    },
+    "5_backward_clock": {
+      "sim_now_before": 51.7,
+      "sim_now_after": 51.7,
+      "backward_events": 1,
+      "passed": true
+    }
+  },
+  "all_passed": true,
+  "gate_events": [
+    {
+      "seq": 1,
+      "monotonic_s": 4123.385407321,
+      "kind": "admit",
+      "data": {
+        "identity": {
+          "run_id": "smoke",
+          "epoch": 1,
+          "request_id": "req",
+          "goal_id": "goal",
+          "route_id": "route",
+          "command_id": "cmd",
+          "generation": 1,
+          "map_epoch": "stair_reactive",
+          "map_revision": 1
+        }
+      }
+    },
+    {
+      "seq": 48,
+      "monotonic_s": 4125.251212997,
+      "kind": "admit",
+      "data": {
+        "identity": {
+          "run_id": "smoke",
+          "epoch": 1,
+          "request_id": "req",
+          "goal_id": "goal",
+          "route_id": "route",
+          "command_id": "cmd",
+          "generation": 1,
+          "map_epoch": "stair_reactive",
+          "map_revision": 1
+        }
+      }
+    }
+  ],
+  "blocked_commands_by_reason": {
+    "odom_stale": 71
+  }
+}

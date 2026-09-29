@@ -1,0 +1,18 @@
+{
+  "purpose": "gpu5070ti port (Dr Sun, 2026-09-29): the Linux worker runs Python 3.12, and scripts/applied_channel.py loads pyzmq from runtime/zmq_linux on any non-macOS host; that copy held only the Python 3.10 backend used inside the container.",
+  "wheel": {
+    "filename": "pyzmq-26.4.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+    "url": "https://files.pythonhosted.org/packages/41/59/56bbdc5689be5e13727491ad2ba5efd7cd564365750514f9bc8f212eef82/pyzmq-26.4.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+    "pypi_sha256": "66c760d0226ebd52f1e6b644a9e839b5db1e107a23f2fcd46ec0569a4fdd4e63",
+    "sha256": "66c760d0226ebd52f1e6b644a9e839b5db1e107a23f2fcd46ec0569a4fdd4e63",
+    "bytes": 859814,
+    "stored_at": "runtime/zmq_wheels/pyzmq-26.4.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (local-only; runtime/ is ignored)"
+  },
+  "added_file": {
+    "path": "runtime/zmq_linux/zmq/backend/cython/_zmq.cpython-312-x86_64-linux-gnu.so",
+    "sha256": "dd820aaffaed4acc4f25b1c9ac0eb9a24d02b407216ceea5e570802be0d7ff64",
+    "bytes": 284257
+  },
+  "comparison_with_existing_cp310_copy": "every other file of the cp312 wheel is byte-identical to runtime/zmq_linux (pure-Python sources, pyzmq.libs/libzmq-47dc3393.so.5.2.5 and libsodium-53576c4c.so.26.2.0) except dist-info RECORD and WHEEL, which were not copied; the container's Python 3.10 ignores the cp312 module.",
+  "regenerate": "download the wheel from the URL, check its SHA-256, and extract zmq/backend/cython/_zmq.cpython-312-x86_64-linux-gnu.so into runtime/zmq_linux/"
+}

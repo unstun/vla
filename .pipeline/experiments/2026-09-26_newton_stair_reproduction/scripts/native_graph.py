@@ -85,6 +85,10 @@ def main():
                 raise ValueError("Historical profile requires the full Building geometry")
             backend["map"]["pct_layer"] = None  # Existing native multi-floor selection.
         backend["service"]["command_timeout_s"] = request.get("goal_wall_budget_s", 35.0)
+        # v33: in this simulator the backend judges body-pose freshness by simulation time, with a 2.0 s wall-time
+        # backstop for a stopped simulator or a stalled pose path (Dr Sun, 2026-09-29). Every other gate keeps
+        # wall time.
+        backend["gate"].update(odom_time_base="simulation", odom_wall_backstop_s=2.0)
         backend["applied_evidence"].update(current_command_path=str(out / "artifacts/external_episode/current_command.json"),
                                            finish_request_path=str(out / "artifacts/external_episode/finish_request.json"))
         (out / "backend_config.json").write_text(json.dumps(backend, indent=2) + "\n")

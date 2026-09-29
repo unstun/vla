@@ -1,0 +1,79 @@
+{
+  "round": 2,
+  "passed": false,
+  "blocking": [
+    {
+      "id": "B5",
+      "finding": "New in round 2. The runner's SHA-256 manifest cannot verify the runner's own log. v33_trial_run.sh hashes ${P}_runner.log together with the other host files (lines 100-101). Line 102 then appends 'runner finished ...' to that same log, because stdout has pointed at it since line 40. Any error from find, xargs or sha256sum would also land in the log after it was hashed. HOST_NOTE says the MacBook copy 'is verified against it before any analysis', but after this single run the check will fail on _runner.log. The author's own dry run already shows the mismatch.",
+      "evidence": "v33_trial_run.sh:40,100-102; versions/v33/HOST_NOTE_gpu5070ti.md:25; checks_out/runner_dry_attempt01/runner_dry01_SHA256SUMS.txt lists runner_dry01_runner.log as bf5dd208..., but the saved file hashes to 81db2834... (all other entries match)",
+      "suggestion": "Write the final log line, then redirect stdout and stderr away from the runner log before computing the manifest (e.g. 'exec >/dev/null 2>&1', or append to a file the manifest excludes). Alternatively, exclude the runner log and record its hash after its last write. Re-run the dry test and check the dry manifest with 'sha256sum -c'."
+    },
+    {
+      "id": "B6",
+      "finding": "New in round 2. The rewrite records other processes' full command lines, and on this host one of them carries a credential. cloudflared runs as root with its tunnel token on the command line. The pre-run snapshot's 'ps ... args | cut -c1-220' kept 124 characters of that token in the dry run. They decode to the account tag, the tunnel ID and the start of the secret field. The sampler's new 'cmd' field (first 120 characters of /proc/<pid>/cmdline for the ten busiest processes) kept 64 characters in the dry run: the account tag and part of the tunnel ID. The trial writes the same two records to versions/v33/host/, which are meant to return to the repository, and cloudflared will enter the top-ten list in quiet intervals. Redacting afterwards would break the runner's SHA-256 manifest for those files. This is not a physics-validity problem, but it has to be fixed before the one-shot run.",
+      "evidence": "v33_trial_run.sh:49; host_sampler_linux.py:90-95,137; fragments present in checks_out/runner_dry_attempt01/runner_dry01_prerun.txt ('== all processes' section, cloudflared line) and runner_dry01_host.jsonl, and on gpu5070ti in ~/vla_exec/port/runner_dry/runner_dry01_{prerun.txt,host.jsonl} and the execution copy's checks_out/runner_dry_attempt01/; the remote_logs/ and the other checks_out files contain none",
+      "suggestion": "Redact secret-bearing arguments in both writers before the run. For example, apply sed -E 's/(--?[A-Za-z_-]*(token|passw|secret|key)[A-Za-z_-]*[= ])[^ ]+/\\1<redacted>/Ig' to the ps output, apply the same regex to the sampler's cmd, or record only the executable path. Redact the four existing dry-run files on both hosts and note that their dry-run hashes change. Tell Dr Sun that a fragment of the tunnel token reached disk, so he can decide whether to rotate it."
+    }
+  ],
+  "non_blocking": [
+    {
+      "id": "N13",
+      "finding": "Wording, plus one caveat. HOST_NOTE says that if the 1800 s deadline kills the launcher, the runner recovers the container's tmpfs state. In that case run_bounded sends SIGTERM to the launcher's process group, which includes the attached 'podman run' client. With --sig-proxy on by default, podman forwards the signal to the container. native_graph.py stops cleanly on SIGTERM, and --rm then removes the container along with its tmpfs. The recovery therefore usually finds nothing, and works only if the container still exists. The runner does check that first, so it is safe, and Docker Desktop behaves the same way. The same SIGTERM also skips the worker's finally block, so result.json and video_states.json are missing. That was pinned behaviour on the Mac too.",
+      "evidence": "HOST_NOTE_gpu5070ti.md:26; v33_trial_run.sh:88-94; scripts/native_graph.py:29-34; scripts/run_local_episode.py:257,269; 2026-09-26_newton_macos_policy/scripts/run_bounded.py:46,52",
+      "suggestion": "Say 'if the container still exists'. If recovery happens, verify the recovered tar the way run_local_episode.py:return_linux_state does, against the last acknowledged sha256 in applied_sent.jsonl."
+    },
+    {
+      "id": "N14",
+      "finding": "The proposed infrastructure-failure rule moves the trial to v33_historical_full02 after a failure before physics. The runner, however, hard-codes RUN=v33_historical_full01, and PHYSICAL_RUN_PLAN pre-registers the host-log path for full01. A pre-physics failure after line 40 also leaves runner files behind that block any restart. The note does not define what evidence shows that the first physics step happened.",
+      "evidence": "HOST_NOTE_gpu5070ti.md:51-58; v33_trial_run.sh:19-28; PHYSICAL_RUN_PLAN.md:36-37",
+      "suggestion": "If Dr Sun approves the rule, take the run ID as a whitelisted argument, or state that the runner copy is edited and recorded. Name the evidence for the first physics step, e.g. at least one row in factory_full_rate.npz. The file is written by the finally block even when empty."
+    },
+    {
+      "id": "N15",
+      "finding": "Runner robustness, all minor. There is no signal trap: if the runner itself is killed, the sampler keeps appending to the host log and the post-run and manifest steps never run. Ports 46200-46203 are not checked, so a stale holder would fail the run before physics. The start line 'setsid nohup bash v33_trial_run.sh' only works from the host directory, and with all output sent to /dev/null a wrong working directory fails silently. The load gate covers only the start, so heavy monitoring during the run (hashing or find over the run directory, podman stats) would show up as host contention.",
+      "evidence": "v33_trial_run.sh:7,14,61-64,77-82",
+      "suggestion": "Add 'trap' cleanup for TERM and INT that stops the sampler and still writes the post-run record. Refuse if ss -ltn shows :46200-46203 in use. Give the absolute path in the start line. State in HOST_NOTE that monitoring stays light, e.g. tail of the runner log and a check for process.json."
+    },
+    {
+      "id": "N16",
+      "finding": "Low risk, record only. Linger is off for user sun, and rootless podman with the systemd cgroup manager puts container scopes under user@1000.service. The run therefore depends on a session of sun staying alive. The runner's own ssh session scope stays 'closing' while its processes run, and the desktop session is logged in, so a logout alone should not stop the containers. This has not been tested.",
+      "evidence": "loginctl show-user sun: Linger=no; podman info: cgroup manager systemd, cgroups v2; who: seat0, :0, pts/1",
+      "suggestion": "Record 'loginctl show-user sun' and 'loginctl list-sessions' in the pre-run snapshot. Optionally ask Dr Sun about 'loginctl enable-linger' for the run."
+    },
+    {
+      "id": "N17",
+      "finding": "Wording-only. PORT.md:172 says joint angles 'differ by at most 1.5e-6 rad' after the startup. That holds at replay step 1 (1.49e-6). Over the standing steps 1-66 the maximum is 2.7e-6 rad.",
+      "evidence": "rows.jsonl of versions/v32/gc_schedule_check/none and p5_replay_none_attempt03, joint_q[7:]",
+      "suggestion": "Say 'at the first replay step', or give 2.7e-6 for the standing period."
+    },
+    {
+      "id": "N18",
+      "finding": "Wording-only. HOST_NOTE lists the blackbox recorder, x11vnc and the desktop session as processes left running. The busiest idle process is clash-verge's WebKitWebProcess, at 2-5% of a CPU per interval in both dry runs, and verge-mihomo, cloudflared and frpc also run.",
+      "evidence": "HOST_NOTE_gpu5070ti.md:46-47; checks_out/host_sampler_dryrun_attempt01.jsonl top lists; runner_dry01_prerun.txt top frame",
+      "suggestion": "Add them to the list shown to Dr Sun."
+    },
+    {
+      "id": "N19",
+      "finding": "Record-only. checks_out/execution_copy_manifest.txt, taken at 12:14, is called the execution copy's 'final' list, but it predates the final PORT.md, HOST_NOTE_gpu5070ti.md and v33_trial_run.sh. Its entries for those three files match neither host's current copy. Both hosts' current copies are identical to each other, and the runner records its own hash at run time.",
+      "evidence": "execution_copy_manifest.txt: 9,502 of 9,509 entries equal the local files, 4 are remote-only port copies, and 3 are the edited documents",
+      "suggestion": "State the snapshot time, or regenerate the manifest just before the run."
+    },
+    {
+      "id": "N20",
+      "finding": "Reviewer disclosure; no action needed. While syntax-checking, 'python3 -m py_compile host_sampler_linux.py' wrote hosts/2026-09-29_gpu5070ti/__pycache__/host_sampler_linux.cpython-312.pyc at 12:31:39 PDT. I deleted that file and the empty directory at once, so only the directory's mtime changed. Nothing else was written outside my scratch directory, and nothing at all on gpu5070ti.",
+      "evidence": "stat of the created file (birth 12:31:39) and its removal at 12:32",
+      "suggestion": "None."
+    }
+  ],
+  "verified": [
+    "Round-1 B1 is closed. PORT.md:129-138, 156-165 and 243 now name the ray-intersection closure (hash 14d5500, 1,128 ms on the scanner thread) and the 26 modules compiled during startup, and limit force_load to modules registered at that point. They also record the 49-module comparison after P5. All of it matches the logs.",
+    "Round-1 B2 is closed. remote_logs/ holds the 8 logs and p1_scratch/integration_version.json. Each matches SHA256SUMS_remote.txt and the copy still on gpu5070ti; the JSON equals the v33 manifest. checks_out/ holds three saved checks. P1 passes in both attempts: 3,061 files, 99 records, 97 + 515 native files, 36 inputs, 49.4 GiB free. The network test shows host.docker.internal resolving to 10.0.2.2, host loopback reached, the published port reached, and aarch64 with g++ 9.4.0. The keep-id test shows uid 1000, an ELF header read, libtorch readable, and a read-only mount. PORT.md discloses that the 'Exec format error' result cannot be repeated.",
+    "Round-1 B3 is closed. The runner refuses before writing any run file on any of five conditions: a podman failure, a running container of this user, a qemu-aarch64 entry that is not 'enabled', a 1-minute load above 1.0, or a GPU compute process. HOST_NOTE_gpu5070ti.md:23 describes exactly that, and Dr Sun's confirmation is restored and listed among his decisions.",
+    "Round-1 B4 is closed in substance; B6 concerns the new cmd field. The sampler now takes per-interval CPU from /proc/<pid>/stat: rest[11] and rest[12] are fields 14 and 15 (utime, stime), and rest[19] is field 22 (starttime), used against pid reuse. It adds per-CPU busy fractions from /proc/stat, excluding idle and iowait, and PSI. The docstring and HOST_NOTE state every difference. The dry run shows the 81.7% and 99.7% burst, with per-CPU peaks of 0.71 and 1.0.",
+    "The remaining round-1 findings are closed: N1, N2, N3, N4 (a in PORT.md, b-d in HOST_NOTE), N5, N9, N10, N11 and N12. For N9, P4b attempt 02 compared raw 64-bit patterns and found 0 mismatches in 11,020 replies. For N12, the host shows 68 files and 253,890,132 bytes. N6 is implemented apart from B5. N7 and N8 are correctly put to Dr Sun as decisions, and the v26 precedent holds: v26_historical_full01 has launch_failure.json, and full02 was the trial.",
+    "Shim: the translation logic is unchanged. Logging goes only to $VLA_SHIM_LOG, never to stdout, which carries container IDs and the copy-back tar stream. The installed copy equals the repository copy (b83b0d56...), and keepid_test_attempt02 ran with it.",
+    "Runner: the launch command (lines 68-73) keeps round 1's flags, run ID and host-log path exactly. The dry-run copy differs only in RUN, the paths and the stand-in launcher, and it exercised the refusal, snapshot, sampler, shim-log, post-run and manifest steps. bash -n passes on the runner and the shim.",
+    "Current state of gpu5070ti: every changed file is identical on both hosts. The v33 manifest (3,061), the 99 records, both native manifests and the 36 scene inputs still match, with 0 mismatches. The manifest's SHA-256 equals the local file's. The Warp cache is unchanged since round 1 and holds all 49 modules the Mac's historical trials loaded. There is no versions/v33/host, no v33 run and no leftover port container. Load is 0.03, qemu-aarch64 is enabled, ports 46200-46203 are free, and 50 GB is free.",
+    "The copied-back remote logs and the other check outputs contain no credentials; only the two dry-run files named in B6 do."
+  ]
+}

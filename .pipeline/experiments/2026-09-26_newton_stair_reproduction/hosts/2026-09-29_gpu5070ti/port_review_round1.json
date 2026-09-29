@@ -1,0 +1,124 @@
+{
+  "round": 1,
+  "passed": false,
+  "blocking": [
+    {
+      "id": "B1",
+      "finding": "PORT.md names the wrong Warp module as P5 attempt 02's cause and overstates the warm-up. It says wp_geometric_lidar (hash fd8ffc5) was missing because the warm-up never ran a scan. The warm-up had in fact compiled geometric_lidar fd8ffc5, and the module appears in the cache listing taken before P5. The module that compiled on the scanner thread in attempt 02, taking 1128 ms, was Newton's ray-intersection closure intersect_ray__locals___intersect_ray_kernel_962a4840 (hash 14d5500). In the same attempt, 26 other runtime-generated modules compiled lazily during the factory startup. They include the solver's __locals__ closures, _next_time_builder, export_reduced_contacts_write_contact 2049828 and narrow_phase_primitive_write_contact 'b8baf6c' (1185 ms). 'Every module compiled' (:107) is therefore true only of modules registered at force_load time. The summary bullet 'must include the lidar module' (:197) names the wrong module. The practical lesson, to warm up with a real scan, still holds, and the cache is now complete (see verified).",
+      "evidence": "PORT.md:107,113,130,132,197; checks/warm_kernels_run4.log:104 'Module geometric_lidar fd8ffc5 ... (compiled)'; checks/gpu5070ti_warp_cache_dirs.txt:3 lists wp_geometric_lidar_fd8ffc5 before P5; p5_replay_none_attempt02_stdout.log:64 'Module intersect_ray__locals___intersect_ray_kernel_962a4840 14d5500 ... took 1128.31 ms (compiled)'; the same log's lines 20-55 hold 26 other '(compiled)' modules",
+      "suggestion": "Correct the attempt-02 cause, the hash and the summary bullet. State that force_load cannot build runtime-generated closure and variant modules, and that the first real run built them. Record the post-P5 module comparison promised at :112-113; my version of it is in verified."
+    },
+    {
+      "id": "B2",
+      "finding": "PORT.md:47 says every file written on the 5070ti for this port was copied back. It was not. ~/vla_exec/logs holds pull_images.log, worker_env.log, warm_kernels.log, warm_kernels2.log, warm_kernels3.log, p6_flat_run.log and p6_flat_run_attempt02.log, and ~/vla_exec/port holds p1_scratch/. None of them is in the repository; only warm-up run 4 came back, as checks/warm_kernels_run4.log. These logs are the only evidence for three narratives in PORT.md: the missing-import failures (:37-41), the block_dim-256 narrow_phase compile error (:104-106), and the amd64 pull with config 54b333bb. P1's JSON result was never saved either, because checks/p1_gates.py only prints. Nor was the output of checks/net_test.sh or of the keep-id test. 'P1 passed' (:96, :168) and the 'Tested:' items (:72-76, :123-124) therefore have no evidence file. This includes the 'Exec format error' result and the read-only snapshot mount.",
+      "evidence": "ssh gpu5070ti ls ~/vla_exec/logs lists the 7 logs; warm_kernels.log ends in 'No module named lite3_reference'; warm_kernels2.log shows 'FileNotFoundError ... stance_hold.py'; warm_kernels3.log:60-116 shows the narrow_phase_3519ebf compile error; pull_images.log shows 'Copying config sha256:54b333bb...' and the arm64 pull 'requested access to the resource is denied'; hosts/2026-09-29_gpu5070ti/ holds no P1, net-test or keep-id output",
+      "suggestion": "Copy the logs back into hosts/2026-09-29_gpu5070ti/ with their SHA-256s; the image tarball can stay on the host. Re-run checks/p1_gates.py and the read-only parts of the network and keep-id tests with their output saved to files. If that is not done, narrow :47 and mark the 'Tested' items as unrecorded. My re-hash of the execution copy (verified) confirms P1's facts as of this review."
+    },
+    {
+      "id": "B3",
+      "finding": "HOST_NOTE's quiet-host row says 'no container (podman ps empty) and no other experiment process, checked by the runner and before the start'. The runner checks less than that. v33_trial_run.sh checks that the run ID and host log do not exist, that qemu-aarch64 is registered, and that this user has no running podman container. It checks no processes, no load, no other users' or rootful containers, and no GPU jobs. The note also drops PHYSICAL_RUN_PLAN's 'The run starts only after he confirms' and PLAN.md's decision that trials run with the other session paused, without saying what replaces them. gpu5070ti is shared: a machine-dog-nav blackbox recorder runs there, and the host holds an isaaclab env and MIP/HarnessVLN execution directories. During the ~25-30 min trial, nothing would detect or deter another session starting CPU-heavy work. That is the confound the Mac plan's pause existed to prevent.",
+      "evidence": "versions/v33/HOST_NOTE_gpu5070ti.md:22; hosts/2026-09-29_gpu5070ti/v33_trial_run.sh:11-14; PHYSICAL_RUN_PLAN.md:31-35; PLAN.md:8; ps on gpu5070ti shows /home/sun/machine-dog-nav-runs/2026-09-15_5070ti_blackbox/src/recorder.py and follow.py, the clash-verge WebKitWebProcess and x11vnc",
+      "suggestion": "Either add the checks or reword the row. For the checks: refuse the run when the 1-minute load average is above a stated threshold, and save a pre-run snapshot to versions/v33/host/: uptime, processes ranked by current CPU, podman ps -a, nvidia-smi, df, who, 'command -v docker' and the shim's SHA-256. Ask Dr Sun to confirm that no other session will use gpu5070ti during the run. State whether his go-ahead is still required; AGENTS.md engineering rule 6 applies to long remote runs."
+    },
+    {
+      "id": "B4",
+      "finding": "host_sampler_linux.py does not produce 'the same record'. Its 'ten busiest processes' come from procps %CPU, which is lifetime CPU time divided by elapsed time. host_sampler.py uses macOS ps, whose %CPU is a decaying average over up to a minute. On Linux, a long-lived process that bursts during the trial barely moves in this ranking. Examples here are gnome-shell, x11vnc, slirp4netns/rootlessport, the blackbox recorder and clash-verge. Under the stop rule, this record is what attributes an odom_stale or a flagged gap to host contention, and a one-shot run cannot record it again. The docstring states only the vm_stat and 'ps -r' differences. It omits two more: `comm` is the 15-character process name on Linux but the executable path on macOS, and the git matcher also accepts a bare 'git' (:45, against endswith('/git') on the Mac).",
+      "evidence": "hosts/2026-09-29_gpu5070ti/host_sampler_linux.py:1-8,40-45; audits/2026-09-29_wall_clock_chain/host_sampler.py:21,28; HOST_NOTE_gpu5070ti.md:23 'the same record from /proc'; gpu5070ti procps-ng 4.0.4 man ps: '%CPU ... CPU time used divided by the time the process has been running'; a live sample shows WebKitWebProcess at %CPU 3.5 = 270 s TIME / 7601 s ELAPSED; macOS man ps: 'a decaying average over up to a minute'",
+      "suggestion": "Before the run, compute per-process CPU over each 1 s interval from /proc/<pid>/stat utime+stime deltas, or use the second frame of 'top -b -d 1 -n 2'. Add /proc/pressure/cpu (PSI is available on this host) and per-CPU deltas from /proc/stat as direct contention measures. Document every semantic difference in the docstring and in HOST_NOTE. Dry-run the sampler to a scratch path, not the pre-registered one."
+    }
+  ],
+  "non_blocking": [
+    {
+      "id": "N1",
+      "finding": "Wording and units in PORT.md. :140 says 'joint states differ by about 9e-6 rad', but the 9.06e-6 maximum is joint_q[0], the base x-position in metres; the 12 joint angles differ by at most 1.3e-6 rad. :145-146 says 'two near-zero gyro values differ in their last bits'. They are measured[42:44], the specific-force entries of gyro(): 1.07e-16/2.40e-16 on the Mac against 8.9e-17/-6.8e-17 here, one with a flipped sign, so rounding residues rather than last-bit differences. :55 still says emulation is 'pending Dr Sun's install'. :120 says the container runs as '--user 1000:1000', but the flag is os.getuid():os.getgid(), and it was 501:20 on the Mac. :200 says '19 s of walking', but walking commands start at replay step 67, which leaves about 17.6 s. All wording-only.",
+      "evidence": "scratch recomputation from p5 factory_full_rate.npz and rows.jsonl; versions/v32/gc_schedule_check/none/factory_process/process.json create_command '--user','501:20'; 2026-09-27_lite3_factory_runtime_audit/factory_process.py:34",
+      "suggestion": "Reword, and name the P5 metric 'max |delta joint_q| over base position (m), quaternion and joint angles (rad)'."
+    },
+    {
+      "id": "N2",
+      "finding": "Wording-only. PORT.md:180 '(0.35-0.4x on the Mac)' sets P6's flat-floor rate against Mac building runs. Recent Mac building_full runs span 0.347 to 0.481 (v31 0.347, v30 0.399, v32 0.402, diag_v31_clock03/04 0.474/0.475, v29 0.481). The controlled comparison, P5 on the same scene with the same commands, shows this host about 16% slower, so the parenthetical implies the opposite.",
+      "evidence": "runs/*/result.json physics_duration_s / wall_s; checks/compare_p4_p5_attempt03.json loop_wall_s [31.71, 36.75]",
+      "suggestion": "Remove it or cite the P5 comparison."
+    },
+    {
+      "id": "N3",
+      "finding": "The record of what was copied is incomplete. PORT.md:28 lists runtime/zmq_linux and runtime/matplotlib as part of checks/sync_list.txt (7,585 paths), but the list contains neither. The later additions appear in no list: lite3_reference and friends, stance_hold.py, 18 build .pyc files and v31_historical_full01. The execution copy's versions/v33 lacks its 3,061-file source/ snapshot. Nothing reads it at run time, but :31 implies the whole directory was copied. The execution copy now holds 10,135 files outside the worker venv.",
+      "evidence": "grep of checks/sync_list.txt; remote versions/v33 has 81 files and no source/",
+      "suggestion": "Save a final remote file and SHA-256 manifest and cite it from PORT.md."
+    },
+    {
+      "id": "N4",
+      "finding": "Several host differences are not recorded. (a) In P5 mode none, this host ran one automatic gen-2 collection of 241.6 ms inside the loop, with 234 gen-0 and 21 gen-1 collections against 174 and 16 on the Mac, which had none in gen 2. v33's collect+freeze every 50 steps should bound this, but it matters for attributing stalls. (b) ru_maxrss is in KiB on Linux: child_peak_rss_bytes 911948 (process.json) and peak_rss_bytes 923348 (bench) are KiB, about 890-900 MiB. (c) input_identity.json's newton_environment will name the Mac venv path in a 5070ti run. (d) container_command.json keeps the Docker-form command; the effective podman arguments (slirp4netns, --add-host, keep-id) are recorded nowhere per run.",
+      "evidence": "p5_replay_none_attempt03/summary.json against versions/v32/gc_schedule_check/none/summary.json; runs/port5070_v33_flat02/process.json and input_identity.json; hosts/2026-09-29_gpu5070ti/docker",
+      "suggestion": "List (b)-(d) in HOST_NOTE as known record inaccuracies, like PHYSICAL_RUN_PLAN's episode_request note, and mention (a) in PORT.md. Optionally have the shim log its translated argv, or save 'podman inspect' of both containers during the trial."
+    },
+    {
+      "id": "N5",
+      "finding": "The host's claim boundary covers physics numerics and timing but misses three things. (a) The container now shares the host's CLOCK_MONOTONIC, and round trips are about 11x shorter. P6's initial_clock shows local_minus_remote 26.7 us and RTT 54 us, against 155,507 s and 598 us for v32 on the Mac. Clock-sync rejections, TTL windows and an applied_evidence_stale end caused by a sync outage are therefore not comparable with v32. (b) SCAN, PCT and numpy/OpenBLAS in foreground_py310 now run natively on an AVX-512 CPU instead of under Rosetta, so runtime-dispatched library numerics may differ in the navigation stack too. (c) Whether the 600 s physics bound or the 1500 s goal budget ends the run depends on host speed.",
+      "evidence": "runs/port5070_v33_flat02/initial_clock.json against runs/v32_historical_full01/initial_clock.json; scripts/clock_sync.py:20-22; /proc/cpuinfo avx512f",
+      "suggestion": "Add these three points to 'Claim boundary added by the host'."
+    },
+    {
+      "id": "N6",
+      "finding": "Launching and recovering the run is not specified. v33_trial_run.sh does not capture its own stdout and stderr, which would hold run_bounded's final record and any sampler traceback. It does not say to run detached: a foreground ssh session of 25-30 min, or an agent Bash call capped at 10 min, can kill the supervisor, which loses the deadline and process.json. It does not check that the sampler stays alive. It has no post-run step for a killed launcher: run_bounded's SIGTERM skips run_local_episode.py's finally block, which does the tmpfs copy-back, stop and rm. The deadline arithmetic makes a kill unlikely: the goal budget ends the worker at about started+1540 s, and the launcher finishes at about 1590 s, against 1800 s. Copy-back verification is not scripted either.",
+      "evidence": "v33_trial_run.sh:16-24; scripts/run_local_episode.py:268-283; 2026-09-26_newton_macos_policy/scripts/run_bounded.py:45-57; scripts/newton_episode.py:163-164; tmux is installed on the host, and Linger=no",
+      "suggestion": "Run it under tmux or setsid with 'exec > log 2>&1'. After run_bounded returns, record 'podman ps -a'. If the launcher was killed, 'podman exec' tar artifacts/external_episode before 'podman rm -f', and record each step. Before copying back, write a remote SHA-256 manifest of runs/v33_historical_full01 and the host log, and keep it with the run."
+    },
+    {
+      "id": "N7",
+      "finding": "On this host the trial probably cannot answer v33's question. P6's largest pose gap was 21 ms, so the exposure set is expected to be empty. v33's only pre-registered trial may then say nothing about stall tolerance, which is what PLAN.md:331 says it can show. HOST_NOTE says this openly, but Dr Sun chose the host before P6 produced this evidence.",
+      "evidence": "HOST_NOTE_gpu5070ti.md:33-35; PORT.md:185-188; PLAN.md:331",
+      "suggestion": "Put the trade-off to Dr Sun explicitly before the run. The options are to spend the single trial here, keep it for a host that stalls, or pre-register a separate host-specific trial."
+    },
+    {
+      "id": "N8",
+      "finding": "No building_full run has gone through the real launcher on this host. P6 used flat_empty_long, and P5 exercises only the worker. The container's building components have never run on gpu5070ti: pct_sim_clock_publisher with elevation, pct_surface_ground, and multi-floor PCT with pct_layer None. Their inputs exist with exact case and match the local copies, so the risk is low. Still, an infrastructure failure there would use up the single run ID.",
+      "evidence": "scripts/native_graph.py:48-62,83-87; checks/p6_flat_run.sh:15-18; PHYSICAL_RUN_PLAN.md:147",
+      "suggestion": "Before the run, state in HOST_NOTE how an infrastructure failure before physics or before the goal is handled, for example a new, recorded attempt ID that does not count as an outcome."
+    },
+    {
+      "id": "N9",
+      "finding": "Wording-only. P4b calls the replies 'bit-identical' but compares them with np.array_equal, which is value equality: +0 and -0 compare equal. PORT.md labels P4b's post-hoc addition honestly.",
+      "evidence": "hosts/2026-09-29_gpu5070ti/checks/p4b_request_replay.py:43",
+      "suggestion": "Say 'value-identical', or compare .view('<u8')."
+    },
+    {
+      "id": "N10",
+      "finding": "setup/LOCAL_ONLY_BYTES.json lists 96 runtime/zmq_linux files. The added cp312 module is the 97th, present locally and on the remote, and only hosts/.../zmq_linux_cp312.json records it.",
+      "evidence": "setup/LOCAL_ONLY_BYTES.json zmq_linux entries: 96; runtime/zmq_linux: 97 files",
+      "suggestion": "Cross-reference it or update the local-only inventory (AGENTS.md rule 9)."
+    },
+    {
+      "id": "N11",
+      "finding": "The runner's `test -z \"$(docker ps ...)\"` also passes when podman fails with empty output, and it sees only this user's running containers. `test -e /proc/sys/fs/binfmt_misc/qemu-aarch64` does not check that the entry is 'enabled'.",
+      "evidence": "v33_trial_run.sh:13-14",
+      "suggestion": "Check podman's exit status separately, and require that the first line of the binfmt entry reads 'enabled'."
+    },
+    {
+      "id": "N12",
+      "finding": "Private bytes now sit on gpu5070ti: the private_snapshot (mode 600) and ~/vla_exec/port/ddsrouter_arm64.tar (mode 600, sha256 905b317d...). No record says how long they stay.",
+      "evidence": "ls/stat on gpu5070ti",
+      "suggestion": "Record their location, hashes and a removal plan under Dr Sun's approval."
+    }
+  ],
+  "verified": [
+    "v33 manifest: all 3,061 source_files match on the execution copy and locally; status is frozen_unvalidated.",
+    "setup/runtime_sources.json (99/99), source_sha256.json (97/97) and install_sha256.json (515/515, 17 .pyc) all match on gpu5070ti. build_result reports passed, source_identity lists 36 scene inputs, and 49.4 GiB is free.",
+    "I re-hashed the whole execution copy (10,135 files). All 8,867 files outside the Warp cache and port outputs are byte-identical to local, except one regenerated __pycache__/run_bounded.cpython-312.pyc. Every run-read local file is present on the remote, except __pycache__ files and versions/v33/source. That covers inputs, references, setup, config_archived, runtime_sources, scripts, repairs, the native build, foreground_py310, zmq_linux, matplotlib, the factory audit with its private_snapshot, the Mac-policy directories, stance_hold.py and the archived bridge run without returned_artifacts. The building inputs exist with exact case, and no names collide by case.",
+    "Port run outputs (flat01: 4 files; flat02: 388 files) and all hosts/ files are identical on both hosts. The remote-only hosts files equal local p3/ copies, v33's ros_smoke.py and the Mac's factory_full_rate.npz.",
+    "The added _zmq.cpython-312 .so (dd820aaf...) is identical on both hosts and equals the wheel member. The wheel (66c760d0...) is present locally. 94 of the wheel's 96 members equal the existing zmq_linux files; only WHEEL and RECORD differ, as zmq_linux_cp312.json states. applied_channel.py:15 selects zmq_linux on any host that is not darwin.",
+    "Worker environments: all 105 package names and versions are identical. requirements_linux.lock is a hashed uv compile, consistent with the Linux record.",
+    "Image identity: for amd64, podman's Digest and RepoDigest equal the pinned index f7363cc3, with arch amd64 and image ID 54b333bb, as pull_images.log shows. For arm64, the transferred archive's index blob hashes to 1c102582 and lists manifest cd044354, which names config ea7f3ad4, podman's image ID. Both blobs hash to their own digests, and the 7 diff_ids equal podman's RootFS.Layers.",
+    "The installed shim is identical to the repository copy (23d577ef...). Its translations fit every call site. run_local_episode.py:257-266 runs without --network or --user, so it gets slirp4netns and host.docker.internal:10.0.2.2. factory_process.py:30-46 creates with --network none and --user uid:gid, so it gets keep-id. exec, start, stop, rm, inspect, kill and ps pass through. The translations change neither image content nor pinned logic, only the uid mapping and network and clock timing.",
+    "Host readiness: cgroup v2 delegates cpu, memory and pids, so --cpus, --memory and --pids-limit take effect. qemu-aarch64 (qemu 8.2.2) is enabled with flags POF. Nothing listens on ports 46200-46203, no container is running, no GPU compute job is running, and load is about 0.1. Private libraries are mode 600 on both hosts.",
+    "P3: every check's decision equals the Mac's attempt 03. The longest raw command gap was 0.021 s against 0.027 s. The harness is byte-identical, and the container command matches run_ros_smoke.sh's except for the root path and the writable mount.",
+    "Re-running compare_p4_p5.py locally with the Mac worker python reproduces checks/compare_p4_p5_attempt03.json exactly.",
+    "P4's descriptive claims hold. Replies are equal for the first 7,502 steps (to t = 7.5016 s). All 56 steps with identical inputs have identical replies. Phase times equal the Mac's, and attempt 02's events file is byte-identical to the Mac's. Attempts 02 and 03 produced bit-identical records. P4's vacuity and P4b's later addition are both stated honestly.",
+    "P4b rebuilds the requests exactly as factory_navigation_startup.py:26-35 packs them. The record layout is [t, phase, zero, measured(45) = row[3:48], motor(72) = row[48:120], ...]. SIM_DT 0.001 equals lite3_reference's value, and storing float32 values as float64 loses nothing. The npz P4b used equals the Mac's file. Result: 11,020 requests, 0 mismatches.",
+    "P5's figures reproduce. Minimum base height is 0.347 m on both hosts and minimum up-vector 0.944 against 0.959, over 946 steps on each. Walking begins at replay step 67. The divergence exceeds 1e-3 at step 131, reaches 0.251 at step 250 and peaks at 1.294 rad on a joint at step 451. The bases are 0.131 m apart at step 250 and 0.626 m at step 946. The loop took 36.7 s against 31.7 s. Joints first diverge by more than 1e-7 at factory step 97.",
+    "P6 claims hold. The wrapper exited 0 after 94.6 s, the copy-back verified, cleanup exited 0, and integration_version.json equals the v33 manifest. The robot went from x = -0.096 m to 11.832 m. The only stop flow was arrived_hold, with terminal result arrived_after_quiescence. The gate used simulation time with a largest simulation age of 5 ms. The largest callback wall gap was 20.5 ms, none over 0.25 s. The telemetry link had no reconnect, protocol error or I/O error, and 1,094 of 1,398 steps had nonzero commands. Attempt 01's cause is confirmed: install_sha256.json covers 17 .pyc files, and 18 files were added.",
+    "Warp cache: all 49 modules the Mac's v29-v32 historical trials loaded are cached on gpu5070ti with identical names and hashes. P5 attempt 03 and P6 loaded exactly those 49 and compiled nothing. All 35 cached C++ files whose bytes differ between hosts have equivalent forward code. The differences are path and line comments, disabled adjoint bodies, overload suffix numbering, and one float64 literal that rounds to the same float32.",
+    "Trial runner: its flags equal v32_historical_full01's recorded command, except the interpreter, the root prefix, the planner-copy path and the version. v33's building_planner.yaml equals v32's (ec120d81...). The host log goes to the pre-registered path, and the runner refuses to reuse the run ID or the host log. The remote runner, sampler, HOST_NOTE, shim and PORT.md are identical to local, and neither host has any v33 trial output yet.",
+    "Deadlines: the goal wall budget (the backend's command_timeout_s = 1500) ends the worker by about started+1540 s. That is before the worker's own 1670 s limit and the launcher's 1700 s timeout, and the launcher's total of about 1590 s stays under the 1800 s deadline."
+  ]
+}

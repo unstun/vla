@@ -1,0 +1,39 @@
+{
+  "physical_run": "v33_historical_full01",
+  "physics_version": "v33",
+  "physics_host": "gpu5070ti (execution copy; versions/v33/HOST_NOTE_gpu5070ti.md)",
+  "render_run": "v33_historical_full01_video01",
+  "render_host": "this MacBook, after the copy was verified against the run's manifest",
+  "renderer_source_version": "unchanged render_episode.py (v20 Building camera); executed_render_episode.py, appearance.json and the executed scene scripts identical to v32's render",
+  "video": "output/2026-09-27_lite3_versions/v33_historical_full_native_replan_exhausted.mp4",
+  "bytes": 4553291,
+  "sha256": "fe5de5bb6b4a32fb701f601e45e06ab3fb462149b9dae649e7a645cbd629be7c",
+  "matches_render_output": true,
+  "ordinary_file": true,
+  "probe": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1280,
+        "height": 720,
+        "r_frame_rate": "25/2",
+        "nb_frames": "5743"
+      }
+    ],
+    "format": {
+      "duration": "459.440000"
+    }
+  },
+  "full_decode_passed": true,
+  "render_only_no_physics_steps": true,
+  "visually_checked_frames": [
+    240,
+    406,
+    1872,
+    5742
+  ],
+  "visual_check": "Frame 240 (19.34 s): climbing the first flight under RL at command +0.74 m/s, 4 curve messages, goal 9.25 m. Frame 406 (32.61 s): at the upper corridor entry, command +0.27 m/s, 12 curve messages, goal 6.81 m, the orange PCT route turning left into the corridor. Frame 1872 (150.00 s): standing in FIXED_STAND at the same place, command 0, 12 curve messages, goal 6.83 m, 'Navigation: active goal'. Frame 5742 (461.79 s): the same place, 14 curve messages, goal 6.83 m, 'Navigation: failed (native_replan_exhausted)'. The robot is visible throughout.",
+  "outcome_label": "native_replan_exhausted at 459.7 s sim: SCAN's 1,000th failed replan in a row while standing (no pose gap over 0.25 s in the run); physics ended at 461.81 s. The robot climbed both flights (body z 1.8 m at 31.97 s), stopped at the upper corridor entry at 32.6 s at (-4.865, -3.422, body z 1.848), 0.05 m from v32's stand, and stood there 6.83 m from the goal while SCAN reported the robot inside an obstacle 6,000 times; 9.82 m actual path; no arrival; no fall. Run on gpu5070ti, whose physics is numerically different from the MacBook's"
+}

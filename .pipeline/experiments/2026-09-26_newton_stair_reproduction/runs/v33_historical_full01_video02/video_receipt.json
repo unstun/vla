@@ -1,0 +1,37 @@
+{
+  "physical_run": "v33_historical_full01",
+  "physics_version": "v33",
+  "render_run": "v33_historical_full01_video02",
+  "renderer_source_version": "scripts/render_episode.py, unchanged and imported by scripts/render_heading_view.py (display camera only; every camera used is in heading_camera.json; frames.json and result.json still name the renderer's own camera); both executed scripts and appearance.json identical to v32's heading-view render; heading_camera.json differs from v32's only in its run-derived frame count and per-frame cameras",
+  "video": "output/2026-09-27_lite3_versions/v33_historical_full_native_replan_exhausted_heading_view.mp4",
+  "bytes": 4359280,
+  "sha256": "fde4586e87dbae3ceeac69b25a7bf16bf2159661ebf9f7bbaf2c358274b3b020",
+  "matches_render_output": true,
+  "ordinary_file": true,
+  "probe": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1280,
+        "height": 720,
+        "r_frame_rate": "25/2",
+        "nb_frames": "5743"
+      }
+    ],
+    "format": {
+      "duration": "459.440000"
+    }
+  },
+  "full_decode_passed": true,
+  "render_only_no_physics_steps": true,
+  "visually_checked_frames": [
+    240,
+    406,
+    1872,
+    5742
+  ],
+  "visual_check": "The camera follows the robot's heading from behind. Frame 240 (19.34 s): climbing the first flight under RL, command +0.74 m/s, goal 9.25 m, 4 curve messages. Frame 406 (32.61 s): at the upper corridor entry, command +0.27 m/s, goal 6.81 m, 12 curve messages, the orange PCT route turning left into the corridor. Frame 1872 (150.00 s): FIXED_STAND at the same place, command 0, goal 6.83 m, 'Navigation: active goal'. Frame 5742 (461.79 s): the same place, 14 curve messages, 'Navigation: failed (native_replan_exhausted)'. The robot is visible throughout.",
+  "outcome_label": "native_replan_exhausted at 459.7 s sim: SCAN's 1,000th failed replan in a row while standing (no pose gap over 0.25 s in the run); physics ended at 461.81 s. The robot climbed both flights (body z 1.8 m at 31.97 s), stopped at the upper corridor entry at 32.6 s at (-4.865, -3.422, body z 1.848), 0.05 m from v32's stand, and stood there 6.83 m from the goal while SCAN reported the robot inside an obstacle 6,000 times; 9.82 m actual path; no arrival; no fall. Run on gpu5070ti, whose physics is numerically different from the MacBook's"
+}

@@ -1,0 +1,32 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--cpus=2",
+    "--memory=4g",
+    "--name",
+    "vla-v28-constraint-red-v27",
+    "-e",
+    "ROS_DOMAIN_ID=232",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction:/archive:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan59_seed_shortcut_v27:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28:/version:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/constraint_red_v27:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside.sh"
+  ],
+  "deadline_s": 300,
+  "claim": "Unchanged 13-case constraint contract from audits/2026-09-27_v27_optimizer_crash/constraint_contract against v27 (red) native blocks extracted verbatim; map/search are test doubles"
+}

@@ -1,0 +1,43 @@
+{
+  "round": 4,
+  "passed": true,
+  "blocking": [],
+  "non_blocking": [
+    {
+      "id": "N27",
+      "finding": "New in round 4. On the abort path, the runner log loses its abort lines. Line 60 opens the log with '>', which is not append mode, and run_bounded and the sampler inherit that descriptor. abort (line 109) and finish (line 73) reopen the log with '>>', so their lines go to the end of the file, while the inherited descriptor keeps its old offset. When the aborted episode ends, run_bounded prints its record, about 2 KB of JSON (run_bounded.py:63), through the old descriptor. That print overwrites 'SIGTERM received ...' and 'forwarding SIGTERM to the episode's process group ...'. A scratch reproduction of this descriptor pattern kept 0 of the 2 abort lines; with '>>' at line 60, both survive. The dry test missed it because the stand-in prints nothing. The normal path is not affected, and the manifest stays self-consistent. A sampler traceback during finish would clobber lines the same way.",
+      "evidence": "v33_trial_run.sh:60,73,109; 2026-09-26_newton_macos_policy/scripts/run_bounded.py:45,63 (stdout inherited, print at exit); checks/standin_run_bounded.py (no print); scratch reproduction in my port_review directory",
+      "suggestion": "Change line 60 to 'exec >> \"${P}_runner.log\" 2>&1' (the file cannot pre-exist, since the runner refuses if it does). Every inherited copy then appends. Worth doing before the run, because an abort record cannot be redone."
+    },
+    {
+      "id": "N28",
+      "finding": "Small edge cases in the abort handler; each window is short or needs an unusual action. (a) Before 'trap abort TERM' (lines 60-131), SIGTERM stops the runner with the default action. Nothing has started by then, so under the rule it is a pre-physics failure, but the note does not say so. (b) For about 0.1 s after the launch, before run_bounded has spawned the episode, 'pgrep -P' finds nothing. The handler then skips the kill and waits for the whole trial, which runs to its end and is labelled 'aborted'. (c) A SIGTERM between the main 'wait' returning and 'LAUNCHER_STATUS=$?' replaces the real status with 1. (d) After the group SIGKILL, the final 'wait \"$LAUNCHER\"' has no bound if run_bounded itself hangs. (e) 'Send SIGTERM to the runner' must mean its pid, not its process group. A group signal would also kill run_bounded, which has no handler, and the sampler. The handler would then take the still-running episode for finished and remove its container, which is B7's failure mode.",
+      "evidence": "v33_trial_run.sh:107-132,169-172; HOST_NOTE_gpu5070ti.md:37-44",
+      "suggestion": "Optional hardening: retry pgrep for a few seconds while run_bounded is alive; in the else branch, use 'wait \"$LAUNCHER\"' when LAUNCHER is set, since bash remembers the status; bound the final wait and SIGKILL run_bounded as a last resort; and write 'the runner's pid (first log line), not its process group' in the note."
+    },
+    {
+      "id": "N29",
+      "finding": "Low risk. Lock descriptor 9 is inherited by every process the runner starts, including its own podman calls. If one of them had to recreate podman's rootless pause process, for example after a reboot, that long-lived process would keep the lock, and every later runner would be refused. Today no process holds any v33_trial.lock, and the existing pause process (catatonit, running since 13:25 EDT) holds no lock file.",
+      "evidence": "v33_trial_run.sh:38-39,50,68,86-94; read-only /proc fd inspection on gpu5070ti",
+      "suggestion": "Optionally close the descriptor for podman calls ('9>&-'), and keep it only in run_bounded and the sampler."
+    },
+    {
+      "id": "N30",
+      "finding": "Wording only. An abort ends the episode the way the 1800 s deadline does: the worker dies without its finally block. result.json, video_states.json, stance_status.json and sensor_manifest.json are then missing, and the analysis should expect that. The host note does not say so.",
+      "evidence": "scripts/newton_episode.py:341-353; HOST_NOTE_gpu5070ti.md:37-44",
+      "suggestion": "Add one sentence to the note's abort bullet."
+    }
+  ],
+  "verified": [
+    "B7 is closed. A SIGTERM to the runner runs abort(). It finds run_bounded's only child with 'pgrep -P'. That child is the episode leader, which leads its own session and process group; the podman clients and the worker are its children, reached through the group signal and never matched themselves. abort() then signals the group, waits up to 60 s, escalates to SIGKILL, and waits for run_bounded. Finally it takes the normal post-run path, which also stops and removes a container the SIGKILL leaves behind. The header and note now warn against stopping run_bounded alone. In the dry test, the stand-in with run_bounded's process structure recorded exit -15, run_bounded returned within 23 ms, the manifest self-check passed and no episode process was left.",
+    "Semantics the coordinator asked about. 'local episode' is assigned before any use, so it is safe under set -u; SAMPLER, LAUNCHER and LAUNCHER_STATUS are set before the trap. 'wait' on a background child that has already been reaped returns bash's remembered status (the dry test got status 1). A SIGTERM during abort or finish is ignored ('trap \"\" TERM' first). A SIGTERM that lands before finish's first statement is handled by abort, which exits through its own finish, so there is no double finish. Commands started after 'trap \"\"' inherit the ignored TERM, but the sampler and run_bounded were started earlier and keep their handlers.",
+    "N21 is closed: the header and note say only SIGTERM reaches the runner, and the trap now covers TERM alone.",
+    "N22 is closed apart from N27. A runner-only SIGTERM now ends the episode before the manifest is computed, and finish and abort point their output at the runner log first.",
+    "N23 is closed. The ownership test fstat()s the opened /proc/<pid>/cmdline. URL credentials and quoted flag values are now redacted. top runs without any user configuration, and the host has no ~/.toprc, ~/.config/procps/toprc, /etc/topdefaultrc or /etc/toprc. The limits are stated in the docstring and the note. The saved synthetic test (sys.dont_write_bytecode set) reports 7 cases redacted, 2 kept, 2 known misses and 'all intended cases: True'.",
+    "N24 is closed: flock is taken before the checks; in the dry test a second runner was refused while one ran; and the manifest's find does not select the lock file.",
+    "N25 is closed. All three copies of the round-1 dry-run snapshot hold 317 other-user rows, 0 with arguments. Neither host has a __pycache__ in the port directory.",
+    "Credential checks, counts only. Locally, 146 port text files; on gpu5070ti, 303 files across the port, logs, hosts and versions/v33 trees. Neither host has any 'token' mention followed by a long base64-like run. Sampler entries from other users: 101 locally and 202 remotely, none with a command line. Snapshot rows from other users: 2,135 locally and 4,270 remotely, none with arguments.",
+    "The four round-3 dry-run manifests (dry04-07) each verify locally, 6 of 6. bash -n passes on the runner, and the sampler compiles. The launch command and flags are unchanged since round 1.",
+    "The regenerated manifest (20:07:52Z) has 9,592 entries: 9,588 equal the local files, 4 are remote-only port copies, and none differ. The runner, sampler, dry copy, stand-in, redaction test, host note and PORT.md are identical on both hosts, and the installed shim equals the repository copy. On gpu5070ti there is no versions/v33/host, no v33 run, no vla- container and no listener on 46200-46203, and the load is 0.04."
+  ]
+}

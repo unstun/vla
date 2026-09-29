@@ -1,0 +1,30 @@
+Warp 1.17.0 initialized:
+   CUDA Toolkit 12.9, Driver 13.0
+   Devices:
+     "cpu"      : "x86_64"
+     "cuda:0"   : "NVIDIA GeForce RTX 5070 Ti" (15 GiB, sm_120, mempool enabled)
+   Kernel cache:
+     /home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/warp-cache/1.17.0
+Module newton._src.geometry.inertia f6b4bd8 load on device 'cpu' took 0.94 ms  (cached)
+Module validate_and_correct_inertia_kernel_1ff2ac62 6ad45b8 load on device 'cpu' took 0.20 ms  (cached)
+Module newton._src.geometry.bvh 4a1c07f load on device 'cpu' took 0.15 ms  (cached)
+Module newton._src.solvers.mujoco.kernels 90c0c67 load on device 'cpu' took 0.27 ms  (cached)
+Module mujoco_warp._src.io 66a94ae load on device 'cpu' took 0.17 ms  (cached)
+Module mujoco_warp._src.smooth 15aab42 load on device 'cpu' took 0.19 ms  (cached)
+Module _tile_cholesky_factorize_block__locals__kernel_b26c508a e2a541f load on device 'cpu' took 0.13 ms  (cached)
+Module _tile_cholesky_solve_block__locals__kernel_fcaeb5dd 60f1c27 load on device 'cpu' took 0.11 ms  (cached)
+Module newton._src.sim.articulation 2e73608 load on device 'cpu' took 0.25 ms  (cached)
+Traceback (most recent call last):
+  File "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v32/gc_schedule_check/bench_gc.py", line 178, in <module>
+    main()
+  File "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v32/gc_schedule_check/bench_gc.py", line 78, in main
+    initialize(robot, out)
+  File "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/factory_navigation_startup.py", line 25, in initialize
+    with FactoryProcess(out / "factory_process", wall_limit=240) as actor:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-27_lite3_factory_runtime_audit/factory_process.py", line 55, in __init__
+    if self.read(8, timeout=45) != b"VLAFACT1":
+       ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-27_lite3_factory_runtime_audit/factory_process.py", line 75, in read
+    raise RuntimeError("factory actor closed its output; inspect stderr.log")
+RuntimeError: factory actor closed its output; inspect stderr.log
