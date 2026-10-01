@@ -1,0 +1,24 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--memory=2g",
+    "--cpus=1",
+    "--name",
+    "vla-full-route-profile25",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction:/base:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_full_route_preflight/attempt03_profile_v25:/audit:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/audit/inside.sh"
+  ],
+  "deadline_s": 90,
+  "purpose": "Actual native PCT uses new pinned v25 historical profile file and existing automatic layer selection; no physical movement"
+}

@@ -1,0 +1,146 @@
+{
+  "variant": "trial",
+  "attempt": 2,
+  "python": "3.10.12",
+  "setup": {
+    "loaded_gate": {
+      "odom_time_base": "simulation",
+      "odom_wall_backstop_s": 2.0,
+      "odom_stale_s": 0.25
+    },
+    "gate_update_from_native_graph": {
+      "odom_time_base": "simulation",
+      "odom_wall_backstop_s": 2.0
+    }
+  },
+  "checks": {
+    "1_streaming": {
+      "odom_time_base": "simulation",
+      "sim_clock_s": 51.0,
+      "sim_age_s": 0.0,
+      "provider": "fresh",
+      "passed": true
+    },
+    "2_host_stall": {
+      "wall_age_s": 1.058,
+      "wall_rule_would_be_stale": true,
+      "provider": "fresh",
+      "gate": {
+        "closed_reason": "open",
+        "block_reason": "ok"
+      },
+      "passed": true
+    },
+    "3_lost_poses": {
+      "sim_age_s": 0.29999999999999716,
+      "provider": "body_pose_stale",
+      "gate": {
+        "closed_reason": "odom_stale",
+        "block_reason": "odom_stale"
+      },
+      "passed": true
+    },
+    "4_stopped_simulator": {
+      "at_1p9_s": {
+        "provider": "fresh",
+        "gate": {
+          "closed_reason": "open",
+          "block_reason": "ok"
+        }
+      },
+      "at_2p1_s": {
+        "provider": "body_pose_stale",
+        "gate": {
+          "closed_reason": "odom_stale",
+          "block_reason": "odom_stale"
+        }
+      },
+      "gate_events": [
+        {
+          "seq": 63,
+          "monotonic_s": 496.978733934,
+          "kind": "blocked_command",
+          "data": {
+            "reason": "odom_stale",
+            "identity": {
+              "run_id": "smoke",
+              "epoch": 1,
+              "request_id": "req",
+              "goal_id": "goal",
+              "route_id": "route",
+              "command_id": "cmd",
+              "generation": 1,
+              "map_epoch": "stair_reactive",
+              "map_revision": 1
+            }
+          }
+        },
+        {
+          "seq": 64,
+          "monotonic_s": 496.983147184,
+          "kind": "blocked_command",
+          "data": {
+            "reason": "odom_stale",
+            "identity": {
+              "run_id": "smoke",
+              "epoch": 1,
+              "request_id": "req",
+              "goal_id": "goal",
+              "route_id": "route",
+              "command_id": "cmd",
+              "generation": 1,
+              "map_epoch": "stair_reactive",
+              "map_revision": 1
+            }
+          }
+        },
+        {
+          "seq": 65,
+          "monotonic_s": 496.998820142,
+          "kind": "blocked_command",
+          "data": {
+            "reason": "odom_stale",
+            "identity": {
+              "run_id": "smoke",
+              "epoch": 1,
+              "request_id": "req",
+              "goal_id": "goal",
+              "route_id": "route",
+              "command_id": "cmd",
+              "generation": 1,
+              "map_epoch": "stair_reactive",
+              "map_revision": 1
+            }
+          }
+        },
+        {
+          "seq": 66,
+          "monotonic_s": 497.005925642,
+          "kind": "blocked_command",
+          "data": {
+            "reason": "odom_stale",
+            "identity": {
+              "run_id": "smoke",
+              "epoch": 1,
+              "request_id": "req",
+              "goal_id": "goal",
+              "route_id": "route",
+              "command_id": "cmd",
+              "generation": 1,
+              "map_epoch": "stair_reactive",
+              "map_revision": 1
+            }
+          }
+        }
+      ],
+      "passed": true
+    },
+    "5_backward_clock": {
+      "sim_now_before": 51.7,
+      "sim_now_after": 51.7,
+      "backward_events": 1,
+      "passed": true
+    }
+  },
+  "all_passed": true
+}

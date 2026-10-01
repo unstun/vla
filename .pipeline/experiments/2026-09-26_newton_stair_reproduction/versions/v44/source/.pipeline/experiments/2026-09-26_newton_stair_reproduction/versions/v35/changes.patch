@@ -1,0 +1,114 @@
+--- v34/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ v35/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -69,6 +69,8 @@
+     /* parameters */
+     int navi_mode_; // 1 manual select, 2 hard code
+     double no_replan_thresh_, replan_thresh_;
++    double replan_frequency_{0.0}; // Zero preserves legacy distance scheduling.
++    double last_nominal_replan_s_{-1.0}; // ROS clock; attempt start, not completion.
+     std::vector<Eigen::Vector3d> preset_waypoints_;
+     int waypoint_num_;
+     double planning_horizon_;
+@@ -152,6 +154,7 @@
+     void updateLocalTrajTimeFreeze();
+ 
+     /* ROS functions */
++    bool nominalReplanDue(bool mark_attempt);
+     void execFSMCallback();
+     void checkCollisionCallback();
+     void rvizGoalCallback(geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
+--- v34/src/plan_manage/src/scan_replan_fsm.cpp
++++ v35/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -65,6 +65,12 @@
+ 
+     /*  fsm param  */
+     navi_mode_ = load_parameter<int>(node_, "fsm.navi_mode", -1);
++    replan_frequency_ = load_parameter<double>(node_, "fsm.replan_frequency", 0.0);
++    if (!std::isfinite(replan_frequency_) || replan_frequency_ < 0.0 ||
++        replan_frequency_ > 100.0 ||
++        (replan_frequency_ > 0.0 && !std::isfinite(1.0 / replan_frequency_)))
++      throw std::runtime_error("fsm.replan_frequency must be zero or a finite frequency in (0, 100] Hz");
++    last_nominal_replan_s_ = -1.0;
+     replan_thresh_ = load_parameter<double>(node_, "fsm.thresh_replan", -1.0);
+     no_replan_thresh_ = load_parameter<double>(node_, "fsm.thresh_no_replan", -1.0);
+     planning_horizon_ = load_parameter<double>(node_, "fsm.planning_horizon", -1.0);
+@@ -793,6 +799,29 @@
+     cout << "[FSM]: state: " + state_str[int(exec_state_)] << endl;
+   }
+ 
++  bool SCANReplanFSM::nominalReplanDue(bool mark_attempt)
++  {
++    if (replan_frequency_ <= 0.0) return true;
++    const double now_s = node_->now().seconds();
++    // A reset starts a fresh interval. Paused time and missed periods never
++    // create a catch-up queue; each actual attempt records its current start.
++    if (last_nominal_replan_s_ >= 0.0 && now_s < last_nominal_replan_s_)
++    {
++      last_nominal_replan_s_ = now_s;
++      return false;
++    }
++    if (last_nominal_replan_s_ >= 0.0 &&
++        now_s - last_nominal_replan_s_ + 1e-9 < 1.0 / replan_frequency_)
++      return false;
++    if (mark_attempt)
++    {
++      last_nominal_replan_s_ = now_s;
++      RCLCPP_INFO(node_->get_logger(), "nominal_replan frequency_hz=%.6f start_ros_s=%.9f state=%d",
++                  replan_frequency_, now_s, static_cast<int>(exec_state_));
++    }
++    return true;
++  }
++
+   void SCANReplanFSM::execFSMCallback()
+   {
+     // v31: start each planning-timer callback from the newest received inputs,
+@@ -843,6 +872,7 @@
+ 
+     case GEN_NEW_TRAJ:
+     {
++      if (!nominalReplanDue(true)) break;
+       setStartStateFromOdomOrCurrentTraj();
+ 
+       // Eigen::Vector3d rot_x = odom_orient_.toRotationMatrix().block(0, 0, 3, 1);
+@@ -873,6 +903,7 @@
+ 
+     case REPLAN_TRAJ:
+     {
++      if (!nominalReplanDue(true)) break;
+ 
+       if (planFromCurrentTraj())
+       {
+@@ -963,6 +994,13 @@
+       {
+         // cout << "near end" << endl;
+         return;
++      }
++      else if (replan_frequency_ > 0.0)
++      {
++        // Periodic scheduling replaces the displacement trigger. The controller
++        // continues the accepted curve; safety replanning has its own callback.
++        if (!go2_execution_frozen_ && nominalReplanDue(false))
++          changeFSMExecState(REPLAN_TRAJ, "PERIODIC");
+       }
+       else if ((info->start_pos_ - pos).norm() < replan_thresh_)
+       {
+--- v34/building_planner.yaml
++++ v35/building_planner.yaml
+@@ -8,6 +8,7 @@
+     use_sim_time: true
+     fsm.navi_mode: 3
+     fsm.thresh_replan: 1.0
++    fsm.replan_frequency: 2.0
+     fsm.thresh_no_replan: 0.1
+     fsm.planning_horizon: 3.5
+     fsm.goal_neighbor_tolerance: 1.0
+--- v34/flat_planner.yaml
++++ v35/flat_planner.yaml
+@@ -7,6 +7,7 @@
+     use_sim_time: true
+     fsm.navi_mode: 3
+     fsm.thresh_replan: 1.0
++    fsm.replan_frequency: 2.0
+     fsm.thresh_no_replan: 0.1
+     fsm.planning_horizon: 3.5
+     fsm.goal_neighbor_tolerance: 1.0

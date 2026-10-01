@@ -1,0 +1,70 @@
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v37/physics/lite3_newton_v37.py
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v37/physics/lite3_newton_v37.py
+@@ -1,4 +1,4 @@
+-"""Pinned Lite3 controller on Newton's supported native MuJoCo CPU solver."""
++"""Pinned Lite3 controller with explicit CPU/CUDA physics model selection."""
+ import hashlib
+ import json
+ from pathlib import Path
+@@ -10,7 +10,7 @@
+ import warp as wp
+ import newton
+ 
+-BASE = Path(__file__).resolve().parents[1]
++BASE = Path(__file__).resolve().parents[4] / "2026-09-26_newton_macos_policy"
+ sys.path.insert(0, str(BASE / "references"))
+ from lite3_reference.robots.lite3 import (
+     EFFORT, History, JOINT_NAMES, POLICY_DT, POLICY_SHA256, Q0, SIM_DT, SPEED, rotation_matrix,
+@@ -41,7 +41,12 @@
+ class Lite3Newton:
+     def __init__(self, *, robot_source=None, scene_builder=None, spawn_xyz=(0., 0., .35),
+                  spawn_yaw=0.0, newton_contacts=False, automatic_contact_capacity=False,
+-                 contact_observer=None, startup_mode="policy", stance_hold=False):
++                 contact_observer=None, startup_mode="policy", stance_hold=False,
++                 model_device="cpu"):
++        if model_device not in ("cpu", "cuda:0"):
++            raise ValueError("model_device must be cpu or cuda:0")
++        if model_device != "cpu" and not newton_contacts:
++            raise ValueError("CUDA requires the selected MuJoCo-Warp/Newton-contact path")
+         if startup_mode not in ("policy", "pd_stand", "factory_pd"):
+             raise ValueError("Unknown startup mode: " + str(startup_mode))
+         self.startup_mode = startup_mode
+@@ -92,7 +97,7 @@
+         builder.joint_q[:7] = [*spawn_xyz, 0.0, 0.0, float(np.sin(spawn_yaw / 2)), float(np.cos(spawn_yaw / 2))]
+         for index, value in zip(self.q_indices, initial_q, strict=True):
+             builder.joint_q[index] = float(value)
+-        self.model = builder.finalize(device="cpu")
++        self.model = builder.finalize(device=model_device)
+         self.model.set_gravity((0, 0, -9.81))
+         # This is an explicit solver choice, distinct from the Go2 MuJoCo-Warp trial.
+         self.solver = newton.solvers.SolverMuJoCo(self.model, use_mujoco_cpu=not newton_contacts,
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v37/physics/robot_scene_v37.py
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v37/physics/robot_scene_v37.py
+@@ -13,7 +13,7 @@
+ 
+ QUALIFIED = BASE.parent / "2026-09-26_newton_macos_policy"
+ sys.path.insert(0, str(QUALIFIED / "scripts"))
+-from lite3_newton import Lite3Newton
++from lite3_newton_v37 import Lite3Newton
+ 
+ 
+ def fixed_frame_transform(urdf, frame):
+@@ -42,7 +42,7 @@
+ 
+ class StairRobot(Lite3Newton):
+     def __init__(self, *, startup_mode="policy", stance_hold=False, scenario=None,
+-                 automatic_contact_capacity=False):
++                 automatic_contact_capacity=False, model_device="cpu"):
+         self.building_vertices, self.building_faces, archived_scenario = building_mesh()
+         self.scenario = scenario if scenario is not None else archived_scenario
+         source = BASE / "inputs/sensor_rig/lite3_pro_sensor_rig_real_with_interface.urdf"
+@@ -58,7 +58,8 @@
+         super().__init__(robot_source=source, scene_builder=add_scene, spawn_xyz=spawn,
+                          spawn_yaw=self.scenario["spawn_yaw_rad"], newton_contacts=True,
+                          startup_mode=startup_mode, stance_hold=stance_hold,
+-                         automatic_contact_capacity=automatic_contact_capacity)
++                         automatic_contact_capacity=automatic_contact_capacity,
++                         model_device=model_device)
+ 
+     def body_and_sensor(self):
+         q, qd = self.native_array("qpos"), self.native_array("qvel")

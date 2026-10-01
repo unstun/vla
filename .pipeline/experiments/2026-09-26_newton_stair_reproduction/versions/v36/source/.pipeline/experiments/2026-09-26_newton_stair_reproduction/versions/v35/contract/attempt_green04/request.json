@@ -1,0 +1,43 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--cpus=3",
+    "--memory=6g",
+    "--name",
+    "vla-v35-periodic-green04",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-e",
+    "ROS_DOMAIN_ID=232",
+    "-e",
+    "V35_LEGACY_PARENT=OFF",
+    "-v",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan66_periodic_replan_v35:/workspace:ro",
+    "-v",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract:/contract:ro",
+    "-v",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract/attempt_green04:/attempt:rw",
+    "-v",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/building_planner.yaml:/config/planner.yaml:ro",
+    "-v",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/parent_source/building_planner.yaml:/config/parent.yaml:ro",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/contract/inside.sh"
+  ],
+  "started_utc": "2026-09-30T11:52:34.322325+00:00",
+  "deadline_s": 900,
+  "passed": false,
+  "scope": "Compiled native FSM; no physics or actuation",
+  "test_source_sha256": {
+    "CMakeLists.txt": "df62154f43ad095c729936f92f6db388a1933bed61e1270a82e8b57443dce831",
+    "periodic_probe.cpp": "07e17c2da504700b642f4c18534e6111b778abad5734f5678578a1f05fc0c1c9",
+    "inside.sh": "e108e199d28e7a6292287a0b9050e2dcfb08df3ab600c49eb8ed58df8625f13c"
+  }
+}

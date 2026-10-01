@@ -1,0 +1,56 @@
+test_actual_v25_live_configuration (__main__.ConfigTests.test_actual_v25_live_configuration) ... FAIL
+test_adapter_omitted_null_and_integer (__main__.ConfigTests.test_adapter_omitted_null_and_integer) ... 
+  test_adapter_omitted_null_and_integer (__main__.ConfigTests.test_adapter_omitted_null_and_integer) (fields={'pct_layer': None}) ... FAIL
+test_default_not_mutated_by_prior_load (__main__.ConfigTests.test_default_not_mutated_by_prior_load) ... ok
+test_overrides_respect_presence (__main__.ConfigTests.test_overrides_respect_presence) ... 
+  test_overrides_respect_presence (__main__.ConfigTests.test_overrides_respect_presence) (initial=1, override={'pct_layer': None}) ... FAIL
+  test_overrides_respect_presence (__main__.ConfigTests.test_overrides_respect_presence) (initial=None, override={}) ... FAIL
+test_ros_omitted_null_and_integer (__main__.ConfigTests.test_ros_omitted_null_and_integer) ... 
+  test_ros_omitted_null_and_integer (__main__.ConfigTests.test_ros_omitted_null_and_integer) (fields={'pct_layer': None}) ... FAIL
+test_top_level_map_null_keeps_default (__main__.ConfigTests.test_top_level_map_null_keeps_default) ... ok
+test_unrelated_null_values_keep_old_semantics (__main__.ConfigTests.test_unrelated_null_values_keep_old_semantics) ... ok
+
+======================================================================
+FAIL: test_actual_v25_live_configuration (__main__.ConfigTests.test_actual_v25_live_configuration)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v26/test_config.py", line 73, in test_actual_v25_live_configuration
+    self.assertIsNone(CONFIG.load_runtime_config(path)["map"]["pct_layer"])
+AssertionError: 1 is not None
+
+======================================================================
+FAIL: test_adapter_omitted_null_and_integer (__main__.ConfigTests.test_adapter_omitted_null_and_integer) (fields={'pct_layer': None})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v26/test_config.py", line 37, in test_adapter_omitted_null_and_integer
+    self.assertEqual(actual["map"]["pct_layer"], expected)
+AssertionError: 1 != None
+
+======================================================================
+FAIL: test_overrides_respect_presence (__main__.ConfigTests.test_overrides_respect_presence) (initial=1, override={'pct_layer': None})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v26/test_config.py", line 46, in test_overrides_respect_presence
+    self.assertEqual(actual["map"]["pct_layer"], expected)
+AssertionError: 1 != None
+
+======================================================================
+FAIL: test_overrides_respect_presence (__main__.ConfigTests.test_overrides_respect_presence) (initial=None, override={})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v26/test_config.py", line 46, in test_overrides_respect_presence
+    self.assertEqual(actual["map"]["pct_layer"], expected)
+AssertionError: 1 != None
+
+======================================================================
+FAIL: test_ros_omitted_null_and_integer (__main__.ConfigTests.test_ros_omitted_null_and_integer) (fields={'pct_layer': None})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v26/test_config.py", line 30, in test_ros_omitted_null_and_integer
+    self.assertEqual(actual["map"]["pct_layer"], expected)
+AssertionError: 1 != None
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.006s
+
+FAILED (failures=5)

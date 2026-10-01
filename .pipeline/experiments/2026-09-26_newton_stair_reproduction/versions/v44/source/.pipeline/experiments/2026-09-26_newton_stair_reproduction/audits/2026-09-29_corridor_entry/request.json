@@ -1,0 +1,30 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--cpus=3",
+    "--memory=6g",
+    "--name",
+    "vla-corridor-entry01",
+    "-e",
+    "ROS_DOMAIN_ID=232",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction:/archive:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan64_input_refresh_v31:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-29_corridor_entry:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside.sh"
+  ],
+  "deadline_s": 3600,
+  "claim": "v32_historical_full01 and v33_historical_full01 frozen at their first replan at the corridor-entry stand (original scans and paired poses, the completed executing curve, the original route and last committed window; scan64 native sources, which both trials ran). A read-only probe derived from the v31 regression gen_probe reproduces the REPLAN_TRAJ entry, breaks down its first attempt and sweeps the start's headings, with the pinned navigation ground and three counterfactual navigation grounds (probe inputs only); no live scheduling claim."
+}

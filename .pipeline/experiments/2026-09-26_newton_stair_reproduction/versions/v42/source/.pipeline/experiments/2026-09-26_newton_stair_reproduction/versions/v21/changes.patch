@@ -1,0 +1,330 @@
+--- parent/runtime/scan55_surface_ground_v21/src/plan_env/include/plan_env/raw_return_classification.h
++++ v21/runtime/scan55_surface_ground_v21/src/plan_env/include/plan_env/raw_return_classification.h
+@@ -13,7 +13,7 @@
+ // itself, and a nonterrain return at the same voxel wins.
+ inline bool selectedGroundReturn(const TerrainSnapshot &terrain,
+                                  double x_m, double y_m, double z_m,
+-                                 double band_m) {
++                                 double band_m, bool allow_risers = true) {
+   if (terrain.cells.empty() || !std::isfinite(terrain.resolution_m) ||
+       terrain.resolution_m <= 0.0 || !std::isfinite(x_m) || !std::isfinite(y_m) ||
+       !std::isfinite(z_m) || !std::isfinite(band_m) || band_m < 0.0) return false;
+@@ -27,6 +27,7 @@
+   for (const SurfaceCell &surface : found->second)
+     if ((surface.support == Support::Flat || surface.support == Support::Stair) &&
+         std::abs(z_m - surface.elevation_m) <= band_m) return true;
++  if (!allow_risers) return false;
+   // Ground-relative height is signed. A mapped riser lies below its upper
+   // tread and above an associated lower neighbor; it is not an object above
+   // that floor. Reuse the existing ETH layer association and step capability.
+--- parent/runtime/scan55_surface_ground_v21/src/plan_env/include/plan_env/grid_map.h
++++ v21/runtime/scan55_surface_ground_v21/src/plan_env/include/plan_env/grid_map.h
+@@ -238,6 +238,9 @@
+   int reactiveOccupancy(const Eigen::Vector3d &point);
+   bool reactiveTerrainReturn(const Eigen::Vector3d &point) const;
+   void reactiveTomogramCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);
++  reactive_stair::TerrainSnapshot decodeReactiveGround(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) const;
++  void reactiveSurfaceGroundCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);
++  bool reactiveSurfaceGroundReady() const;
+   inline int getLocalIndex(int id, int dim) const;
+   inline int toAddressLocal(const Eigen::Vector3i& id_l) const;
+   inline int toAddressLocal(int x, int y, int z) const;
+@@ -280,6 +283,10 @@
+   reactive_stair::CollisionDecision reactive_decision_{reactive_parameters_};
+   reactive_stair::TerrainSnapshot reactive_terrain_;
+   reactive_stair::TerrainSnapshot reactive_ground_; // Unscored positive ground evidence.
++  // Broader floor evidence never authorizes risers or changes scored support.
++  reactive_stair::TerrainSnapshot reactive_surface_ground_;
++  std::string reactive_surface_ground_topic_;
++  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr reactive_surface_ground_sub_;
+   reactive_stair::StepScoreResult reactive_step_result_;
+   std::set<std::tuple<int, int, int>> reactive_terrain_hits_;
+   std::set<std::tuple<int, int, int>> reactive_nonterrain_hits_;
+--- parent/runtime/scan55_surface_ground_v21/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v21/runtime/scan55_surface_ground_v21/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -9,12 +9,7 @@
+ #include <plan_env/known_lite3_trunk.h>
+ #include <plan_env/motion_heading.h>
+ 
+-void GridMap::reactiveTomogramCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {
+-  reactive_ground_ = reactive_stair::TerrainSnapshot{};
+-  reactive_cloud_ready_ = false;
+-  reactive_pending_cloud_ = false;
+-  reactive_terrain_hits_.clear();
+-  reactive_nonterrain_hits_.clear();
++reactive_stair::TerrainSnapshot GridMap::decodeReactiveGround(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) const {
+   reactive_stair::TerrainSnapshot terrain;
+   terrain.frame = msg->header.frame_id;
+   terrain.stamp_s = rclcpp::Time(msg->header.stamp).seconds();
+@@ -24,18 +19,23 @@
+       terrain.resolution_m <= 0.0 || !std::isfinite(reactive_tomogram_z_offset_m_) ||
+       !std::isfinite(reactive_cost_limit_) || reactive_cost_limit_ < 0.0 ||
+       !std::isfinite(reactive_terrain_band_m_) || reactive_terrain_band_m_ < 0.0) {
+-    reactive_decision_.acceptTerrain(terrain);
+-    return;
+-  }
++    return {};
++  }
++  // Exact existing publisher layout; reject malformed metadata before PCL.
++  if (msg->height != 1 || msg->width == 0 || msg->is_bigendian ||
++      msg->point_step != 16 || msg->fields.size() != 4 ||
++      uint64_t(msg->width) * 16 != msg->row_step ||
++      uint64_t(msg->row_step) != msg->data.size()) return {};
++  uint32_t expected_offset = 0;
+   for (const char *field_name : {"x", "y", "z", "intensity"}) {
+     bool found = false;
+     for (const auto &field : msg->fields)
+       if (field.name == field_name && field.datatype == sensor_msgs::msg::PointField::FLOAT32 &&
+-          field.count == 1) found = true;
++          field.count == 1 && field.offset == expected_offset) found = true;
+     if (!found) {
+-      reactive_decision_.acceptTerrain(terrain);
+-      return;
++      return {};
+     }
++    expected_offset += 4;
+   }
+   pcl::PointCloud<pcl::PointXYZI> points;
+   pcl::fromROSMsg(*msg, points);
+@@ -48,8 +48,7 @@
+     min_y = std::min(min_y, static_cast<double>(point.y));
+   }
+   if (!std::isfinite(min_x) || !std::isfinite(min_y)) {
+-    reactive_decision_.acceptTerrain(terrain);
+-    return;
++    return {};
+   }
+   terrain.origin_x_m = min_x - terrain.resolution_m / 2.0;
+   terrain.origin_y_m = min_y - terrain.resolution_m / 2.0;
+@@ -73,6 +72,19 @@
+     terrain.cells[{static_cast<int>(ix), static_cast<int>(iy)}].push_back(
+         {reactive_stair::Support::Stair, point.z - reactive_tomogram_z_offset_m_});
+   }
++  return terrain;
++}
++
++void GridMap::reactiveTomogramCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {
++  reactive_ground_ = reactive_stair::TerrainSnapshot{};
++  reactive_cloud_ready_ = false;
++  reactive_pending_cloud_ = false;
++  reactive_terrain_hits_.clear();
++  auto terrain = decodeReactiveGround(msg);
++  if (terrain.cells.empty()) {
++    reactive_decision_.acceptTerrain(terrain);
++    return;
++  }
+   reactive_stair::StepScoreResult scored =
+       reactive_stair::precomputeEthStyleStepScores(terrain);
+   if (reactive_decision_.acceptTerrain(scored.support)) {
+@@ -82,12 +94,36 @@
+   }
+ }
+ 
++void GridMap::reactiveSurfaceGroundCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {
++  reactive_surface_ground_ = decodeReactiveGround(msg);
++  // A changed source must not retain positive labels from an older source.
++  // Historical nonterrain evidence remains conservative and is not cleared.
++  reactive_terrain_hits_.clear();
++  reactive_cloud_ready_ = false;
++  reactive_pending_cloud_ = false;
++}
++
++bool GridMap::reactiveSurfaceGroundReady() const {
++  if (reactive_surface_ground_topic_.empty()) return true;
++  const double now = node_->now().seconds();
++  const auto fresh = [&](const reactive_stair::TerrainSnapshot &surface) {
++    return !surface.cells.empty() && surface.frame == mp_.frame_id_ &&
++        std::isfinite(surface.stamp_s) && surface.stamp_s > 0.0 &&
++        surface.stamp_s <= now && now - surface.stamp_s <= reactive_parameters_.terrain_max_age_s;
++  };
++  return fresh(reactive_ground_) && fresh(reactive_surface_ground_);
++}
++
+ bool GridMap::reactiveTerrainReturn(const Eigen::Vector3d &point) const {
+-  return reactive_stair::selectedGroundReturn(
+-      reactive_ground_, point.x(), point.y(), point.z(), reactive_terrain_band_m_);
++  if (reactive_stair::selectedGroundReturn(reactive_ground_,
++          point.x(), point.y(), point.z(), reactive_terrain_band_m_)) return true;
++  return !reactive_surface_ground_topic_.empty() && reactiveSurfaceGroundReady() &&
++      reactive_stair::selectedGroundReturn(reactive_surface_ground_,
++          point.x(), point.y(), point.z(), reactive_terrain_band_m_, false);
+ }
+ 
+ int GridMap::reactiveOccupancy(const Eigen::Vector3d &point) {
++  if (!reactiveSurfaceGroundReady()) return 1;
+   if (!point.allFinite()) return 1;
+   const double radius = mp_.double_cylinder_radius_;
+   if (!std::isfinite(radius) || radius < 0.0 ||
+--- parent/runtime/scan55_surface_ground_v21/src/plan_env/src/grid_map.cpp
++++ v21/runtime/scan55_surface_ground_v21/src/plan_env/src/grid_map.cpp
+@@ -67,6 +67,7 @@
+   load_parameter(node_, "grid_map.reactive_tomogram_z_offset", reactive_tomogram_z_offset_m_, 0.03);
+   load_parameter(node_, "grid_map.reactive_terrain_band", reactive_terrain_band_m_, 0.05);
+   load_parameter(node_, "grid_map.reactive_cost_limit", reactive_cost_limit_, 20.0);
++  load_parameter(node_, "grid_map.reactive_surface_ground_topic", reactive_surface_ground_topic_, string(""));
+   load_parameter(node_, "grid_map.reactive_cloud_max_age", reactive_parameters_.obstacle_max_age_s, 0.25);
+   load_parameter(node_, "grid_map.reactive_tomogram_max_age", reactive_parameters_.terrain_max_age_s, 86400.0);
+   load_parameter(node_, "grid_map.reactive_body_clearance", reactive_parameters_.body_clearance_m, 0.35);
+@@ -173,6 +174,10 @@
+   reactive_tomogram_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+       "/pct_tomogram", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
+       std::bind(&GridMap::reactiveTomogramCallback, this, std::placeholders::_1));
++  if (!reactive_surface_ground_topic_.empty())
++    reactive_surface_ground_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
++        reactive_surface_ground_topic_, rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
++        std::bind(&GridMap::reactiveSurfaceGroundCallback, this, std::placeholders::_1));
+   occ_timer_ = node_->create_wall_timer(std::chrono::milliseconds(50),
+                                         std::bind(&GridMap::updateOccupancyCallback, this));
+   vis_timer_ = node_->create_wall_timer(std::chrono::milliseconds(50),
+@@ -913,6 +918,7 @@
+ 
+ void GridMap::cloudCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr img)
+ {
++  if (!reactiveSurfaceGroundReady()) return;
+   if (mp_.sensor_type_ != "lidar")
+     return;
+   reactive_cloud_ready_ = false;
+--- parent/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_core.py
++++ v21/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_core.py
+@@ -52,6 +52,37 @@
+             if not np.array_equal(np.asarray(original[name]), np.asarray(source[name])):
+                 raise ValueError("Original precision map metadata mismatch: " + name)
+         return data[3].copy()
++
++
++
++SURFACE_COST_SHA = "bb2906b26788096866b303465f6e54aa3fdaaa71af72cd5b41d7baf3d01aa7f8"
++
++
++def load_surface_cost(path: Path, source: dict) -> np.ndarray:
++    """Read pinned uninflated PCT costs; preserve original navigation tensor."""
++    if hashlib.sha256(path.read_bytes()).hexdigest() != SURFACE_COST_SHA:
++        raise ValueError("PCT surface-cost source SHA-256 mismatch")
++    with np.load(path, allow_pickle=False) as observed:
++        generated = np.asarray(observed["generated"])
++        stored = np.asarray(source["data"])
++        raw = np.asarray(observed["raw_cost"])
++        if generated.shape != stored.shape or generated.dtype != np.float16 or \
++           not np.array_equal(generated[[0, 3, 4]], stored[[0, 3, 4]], equal_nan=True) or \
++           not np.array_equal(observed["idx_simp"], [0, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13]) or \
++           raw.dtype != np.float32 or raw.shape != stored[0].shape or \
++           not np.isfinite(raw).all() or np.any(raw < 0.0) or np.any(raw > 50.0):
++            raise ValueError("Uninflated costs do not match the original PCT generation")
++        return raw.copy()
++
++
++def surface_evidence_points(source: dict, elevations: np.ndarray, raw_cost: np.ndarray) -> np.ndarray:
++    """Use original PCT cost/dedup selection before obstacle-distance inflation."""
++    if raw_cost.shape != source["data"][0].shape or raw_cost.dtype != np.float32:
++        raise ValueError("Invalid original PCT surface cost")
++    shadow = dict(source)
++    shadow["data"] = source["data"].copy()
++    shadow["data"][0] = raw_cost.astype(np.float16)
++    return selected_ground_points(shadow, paired_elevations=elevations)
+ 
+ 
+ def selected_ground_points(
+--- parent/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py
++++ v21/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py
+@@ -17,7 +17,8 @@
+ from sensor_msgs.msg import PointCloud2, PointField
+ 
+ from pct_sim_clock_core import (DEFAULT_MAP, SimClockGate, cloud_payload,
+-                                load_pinned_map, load_paired_elevations, selected_ground_points)
++                                load_pinned_map, load_paired_elevations, selected_ground_points,
++                                load_surface_cost, surface_evidence_points)
+ 
+ 
+ class PctSimClockPublisher(Node):
+@@ -27,7 +28,8 @@
+         frame = str(self.declare_parameter("frame_id", "world").value)
+         coord_mode = str(self.declare_parameter("coord_mode", "identity").value)
+         mode = str(self.declare_parameter("ground_mode", "navigation_selected").value)
+-        topics = {"navigation_selected": "/pct_tomogram", "tracking_physical": "/tracker_ground"}
++        topics = {"navigation_selected": "/pct_tomogram", "tracking_physical": "/tracker_ground",
++                  "surface_evidence": "/pct_ground_surface"}
+         if mode not in topics:
+             raise ValueError("unsupported ground publication mode")
+         topic = str(self.declare_parameter("tomogram_topic", topics[mode]).value)
+@@ -40,12 +42,21 @@
+         elevation_path = str(self.declare_parameter("elevation_path", "").value)
+         paired_elevations = None
+         if elevation_path:
+-            if mode != "navigation_selected":
++            if mode not in ("navigation_selected", "surface_evidence"):
+                 raise ValueError("Original precision is only supported for selected navigation terrain")
+             paired_elevations = load_paired_elevations(Path(elevation_path), source)
+-        self._points = selected_ground_points(source, coord_mode, visual_offset,
+-                                              cost_limit=None if mode == "tracking_physical" else 20.0,
+-                                              paired_elevations=paired_elevations)
++        surface_path = str(self.declare_parameter("surface_cost_path", "").value)
++        if mode == "surface_evidence":
++            if not surface_path or paired_elevations is None or coord_mode != "identity" or visual_offset != 0.03:
++                raise ValueError("Surface evidence requires paired pinned Building data")
++            self._points = surface_evidence_points(source, paired_elevations,
++                                                   load_surface_cost(Path(surface_path), source))
++        else:
++            if surface_path:
++                raise ValueError("Surface cost is only valid for the surface evidence topic")
++            self._points = selected_ground_points(source, coord_mode, visual_offset,
++                                                  cost_limit=None if mode == "tracking_physical" else 20.0,
++                                                  paired_elevations=paired_elevations)
+         self._point_sha = hashlib.sha256(self._points.astype("<f4").tobytes()).hexdigest()
+         self._frame = frame
+         self._topic = topic
+--- parent/scripts/native_graph.py
++++ v21/scripts/native_graph.py
+@@ -56,6 +56,10 @@
+         if not flat:
+             ground_args += ["-p", "elevation_path:=" + str(BASE / "inputs/new_building_original_precision.npz")]
+         launch("pct_support", ground_args)
++        if not flat:
++            launch("pct_surface_ground", ground_args + ["-r", "__node:=pct_surface_ground_publisher",
++                "-p", "ground_mode:=surface_evidence", "-p", "surface_cost_path:=" +
++                str(BASE / "inputs/new_building_uninflated_cost.npz")])
+         if not request.get("geometry_obstacles", False):
+             launch("tracking_ground", [py, pct_script, "--ros-args", "-r", "__node:=pct_tracking_ground_publisher",
+                   "-p", "map_path:=" + str(BASE / "inputs/new_building.pickle"), "-p", "ground_mode:=tracking_physical", "-p", "use_sim_time:=true"])
+--- parent/setup/runtime_sources.json
++++ v21/setup/runtime_sources.json
+@@ -299,18 +299,18 @@
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/bridge/lite3_sim_bridge/pct_sim_clock_core.py",
+       "path": "runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_core.py",
+-      "bytes": 7279,
+-      "sha256": "b272910f624dc918e481510ebd26eb3c0a1f23cd175a3cc94691e1759db17c14",
++      "bytes": 8922,
++      "sha256": "fc9f24956b957f644b87ece88ac891d5ae5863918e2fe760627a113b2a92dabe",
+       "archived_sha256": "78c490e98e38c6b333edd4238e11ade3664a358b70b34ba37a070e6bcfac42c7",
+-      "local_modification": "v19 preserve original heights for unchanged selected terrain; preimage in versions/v19/parent_source"
++      "local_modification": "v21 separate broader surface evidence from original selected-tread riser inference"
+     },
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py",
+       "path": "runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py",
+-      "bytes": 4997,
+-      "sha256": "3179608191daea11da6d00bee8e85284b7875dd6638dc9bd1fd95610030fbe69",
++      "bytes": 5811,
++      "sha256": "db511b2ad18eb61e3e5024de119eb11179e1639f5b889d67366a489a806591de",
+       "archived_sha256": "af36eb4e1e262f2c8c832200df3fd745cd9e0e2f617458636a8d36b65a7e3def",
+-      "local_modification": "v19 preserve original heights for unchanged selected terrain; preimage in versions/v19/parent_source"
++      "local_modification": "v21 separate broader surface evidence from original selected-tread riser inference"
+     },
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/bridge/lite3_sim_bridge/pointcloud_rays.py",
+--- parent/setup/source_identity.json
++++ v21/setup/source_identity.json
+@@ -201,6 +201,13 @@
+       "sha256": "9adbbaf3754fc1a488ada560775407d4c684d57e19a6caea7075fa907b5c0c2d",
+       "bytes": 1482752,
+       "pairing": "Full tensor rounds exactly to existing pinned float16 map; metadata equal; only selected terrain heights consumed"
++    },
++    {
++      "path": "inputs/new_building_uninflated_cost.npz",
++      "sha256": "bb2906b26788096866b303465f6e54aa3fdaaa71af72cd5b41d7baf3d01aa7f8",
++      "bytes": 955201,
++      "source": "Unchanged pinned PCT CPU generator 1cf45a1c12ca785ce533293302be09d51daf0ccb, observed pre-inflation cost; audits/2026-09-27_pct_raw_cost/reproduce.py",
++      "claim": "Original inflated cost/ground/ceiling exactly reproduce archived map; only raw cost consumed for separate floor evidence"
+     }
+   ],
+   "newton_environment": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv",

@@ -1,0 +1,19 @@
+--- v26/src/plan_manage/src/planner_manager.cpp
++++ v27/src/plan_manage/src/planner_manager.cpp
+@@ -176,6 +176,16 @@
+         continuous_failures_count_++;
+         return false;
+       }
++    }
++    // OMPL 1.7.0 eabb4d0 reduceVertices: simplify only after checkMotion.
++    // Source/license: references/upstream/2026-09-27_ompl_seed_shortcut.
++    // The original native search and every returned edge have already passed.
++    // A failed direct connector keeps that original graph path unchanged.
++    if (seed_path.size() > 2 &&
++        grid_map_->collisionFreeSegment(seed_path.front(), seed_path.back())) {
++      RCLCPP_INFO(node_->get_logger(), "verified_direct_seed_shortcut original_nodes=%zu", seed_path.size());
++      const Eigen::Vector3d first = seed_path.front(), last = seed_path.back();
++      seed_path = {first, last};
+     }
+     // SCAN-Planner 348e8a5 planner_manager.cpp:210-231 (Apache-2.0):
+     // use its control-point arc-length sampler, not the local quintic quota sampler.

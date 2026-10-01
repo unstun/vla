@@ -1,0 +1,70 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v43/render_episode_v43.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v46/render_episode_v46.py
+@@ -215,15 +215,14 @@
+ 
+ 
+ def load_recorded_rows(source):
+-    """Display-only 30 FPS sampling; retain actual logged poses without interpolation."""
++    """30 FPS causal replay on actual wall timestamps, with no pose interpolation."""
+     original = json.loads((source / "video_states.json").read_text())
+-    times = np.asarray([row["physics_time_s"] for row in original])
++    times = np.asarray([row["wall_monotonic_s"] for row in original])
+     if len(times) < 2 or not np.isfinite(times).all() or np.any(np.diff(times) <= 0.):
+-        raise ValueError("Expected strictly increasing actual recorded native times")
++        raise ValueError("Expected strictly increasing actual recorded wall times")
+     display = times[0] + np.arange(int(np.floor((times[-1]-times[0])*30.))+1) / 30.
+-    indices = np.searchsorted(times, display).clip(1, len(times)-1)
+-    indices -= np.abs(times[indices-1]-display) <= np.abs(times[indices]-display)
+-    return [dict(original[int(i)], display_time_s=float(t)) for i,t in zip(indices,display)]
++    indices = np.maximum(0, np.searchsorted(times, display, side="right")-1)
++    return [dict(original[int(i)], display_time_s=float(t-times[0])) for i,t in zip(indices,display)]
+ 
+ 
+ def main():
+@@ -380,7 +379,7 @@
+             draw.rectangle((0, 0, frame.width, 96), fill=(15, 20, 29))
+             view_label = " | rear-right view" if args.view == "rear-right" else ""
+             version_label = (" | " + episode_request["integration_version"]) if episode_request.get("integration_version") else ""
+-            draw.text((22, 12), f"Lite3{version_label} | Newton CPU | recorded physics  {t:05.2f} s" + view_label, font=font, fill=(242, 245, 250))
++            draw.text((22, 12), f"Lite3{version_label} | wall 1:1 {row['display_time_s']:05.2f}s | native {t:05.2f}s" + view_label, font=font, fill=(242, 245, 250))
+             command = row["command"]
+             detail = (f"Phase: {row['controller_phase']} | body height: {row['joint_q'][2]:.3f} m | policy calls: {row['policy_calls']}"
+                       if startup_view else f"Applied vx/vy/wz: {command[0]:+.3f} / {command[1]:+.3f} / {command[2]:+.3f}   |   native curve messages: {len(available)}")
+@@ -454,7 +453,7 @@
+         "integration_version": episode_request.get("integration_version"),
+         "appearance_sha256": digest(out / "appearance.json"),
+         "render_only_no_physics_steps": robot.steps == 0,
+-        "claim": "30 FPS display-only nearest sampling of actual recorded physical states; 1 native second per video second; runtime timing is measured separately"}, indent=2) + "\n")
++        "claim": "30 FPS display-only causal sampling of actual physical states by original wall timestamps; 1 actual wall second per video second; no simulated-time speedup and no pose interpolation"}, indent=2) + "\n")
+ 
+ 
+ if __name__ == "__main__":
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v43/render_heading_v43.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v46/render_heading_v46.py
+@@ -31,7 +31,7 @@
+ args, _ = parser.parse_known_args()
+ sys.path.insert(0, str(SCRIPTS))
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+-import render_episode_v43 as render_episode
++import render_episode_v46 as render_episode
+ rows = render_episode.load_recorded_rows(EXPERIMENT / "runs" / args.source_run)
+ 
+ # Newton free joint: joint_q = [x, y, z, qx, qy, qz, qw, ...].
+@@ -58,7 +58,7 @@
+                     "position_m": position.tolist(), "target_m": target.tolist()})
+ 
+ sys.path.insert(0, str(SCRIPTS))
+-# Renderer is the version-owned 30 FPS actual-state replay imported above.
++# Renderer is the version-owned 30 FPS wall-time causal replay imported above.
+ Base = render_episode.newton.viewer.ViewerGL
+ 
+ 
+@@ -88,7 +88,7 @@
+ out = Path(os.environ["NEWTON_RUN_DIR"])
+ (out / "executed_render_heading_view.py").write_bytes(Path(__file__).read_bytes())
+ (out / "heading_camera.json").write_text(json.dumps({
+-    "wrapper": "render_heading_view.py", "renderer": "versions/v43/render_episode_v43.py (30 FPS actual-state replay)",
++    "wrapper": "render_heading_view.py", "renderer": "versions/v46/render_episode_v46.py (30 FPS wall-time causal replay)",
+     "overview_until_s": OVERVIEW_S, "trail_m": TRAIL_M, "height_m": HEIGHT_M, "ahead_m": AHEAD_M, "down_m": DOWN_M,
+     "yaw_time_constant_s": TAU_S, "frames": len(cameras), "cameras": cameras}, indent=1) + "\n")
+ print(json.dumps({"heading_view": str(out), "frames": len(cameras)}))

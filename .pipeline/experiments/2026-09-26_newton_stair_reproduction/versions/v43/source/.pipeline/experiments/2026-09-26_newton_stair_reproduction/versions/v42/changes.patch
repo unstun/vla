@@ -1,0 +1,195 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v41/navigation_contract.json
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v42/navigation_contract.json
+@@ -1,6 +1,6 @@
+ {
+   "schema": "lite3_nav2_alignment_v1",
+-  "version": "v41",
++  "version": "v42",
+   "global_planner_frequency": 1.0,
+   "local_planner_frequency": 30.0,
+   "controller_frequency": 30.0,
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v41/newton_episode.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v42/newton_episode.py
+@@ -17,7 +17,8 @@
+ wp.set_device("cpu")
+ 
+ import sys
+-sys.path[:0] = [str(Path(__file__).resolve().parents[1] / "v40/physics"),
++sys.path[:0] = [str(Path(__file__).resolve().parent),
++                str(Path(__file__).resolve().parents[1] / "v40/physics"),
+                 str(Path(__file__).resolve().parents[2] / "scripts")]
+ 
+ from bridge_adapter import DomainCommandState
+@@ -58,6 +59,16 @@
+     else:
+         robot = StairRobot()
+         human = OfficialHuman(out)
++    from realtime_pacer import NativeClockPacer
++    pacer = None
++    original_motor_substep = robot._motor_substep
++    def paced_motor_substep(*args, **kwargs):
++        value = original_motor_substep(*args, **kwargs)
++        if robot.solver._step != robot.steps:
++            raise RuntimeError("Captured solver counter differs from actual physical integrations")
++        pacer.wait(robot.physics_time())
++        return value
++    robot._motor_substep = paced_motor_substep
+     lidar = GeometricLidar(robot, human, emitter_self_exclusion=True,
+                            visible_human_only=request.get("geometry_obstacles", False))
+     (out / "clouds").mkdir()
+@@ -101,6 +112,7 @@
+             publish_body(current_robot.body_and_sensor(), round(current_robot.physics_time()*1e9), current_robot.steps)
+ 
+     try:
++        pacer = NativeClockPacer(robot.physics_time())
+         if robot.startup_mode == "factory_pd":
+             from factory_navigation_startup import initialize
+             video_states.extend(initialize(robot, out))
+@@ -172,6 +184,7 @@
+                 robot.step(command)
+                 physics_finished = time.monotonic_ns()
+                 row = robot.telemetry()
++                row["realtime_pacing"] = pacer.snapshot(robot.physics_time())
+                 requested_command = command
+                 command = tuple(row["effective_command"])
+                 if hasattr(robot, "actor_contact_count"):
+@@ -246,8 +259,8 @@
+                         record(save_line, backend_log, {"sim_time_s": sim_time, "data": last_backend})
+                     except Exception as error:
+                         last_http_error = str(error)
+-                if (step + 1) % 4 == 0:
+-                    video_states.append({"physics_time_s": sim_time, "body_q": robot.state.body_q.numpy().tolist(),
++                if (step + 1) % 1 == 0:
++                    video_states.append({"wall_monotonic_s": time.monotonic(), "physics_time_s": sim_time, "body_q": robot.state.body_q.numpy().tolist(),
+                         "joint_q": row["joint_q"], "command": list(command), "command_reason": snapshot.reason,
+                         "controller_phase": row["controller_phase"], "policy_calls": robot.policy_calls,
+                         "stance_mode": row.get("stance_mode", "OFF"),
+@@ -284,13 +297,15 @@
+                         if sim_time - failed_driver_at < 1.:
+                             continue
+                     break
+-                if request.get("pace_physics_wall", False):
+-                    time.sleep(max(0., .02/request.get("real_time_factor", 1.)-(time.monotonic()-control_loop_started)))
++                # Every real 1 ms integration was already paced against the
++                # absolute native-clock deadline; no relative policy sleep.
+             if pending_scan is not None:
+                 future, index, captured_pose, captured_time = pending_scan
+                 publish_scan(future.result(timeout=2.), index, captured_pose, captured_time)
+             for future in io_jobs:
+                 future.result(timeout=10.)
++        results["realtime_pacing"] = pacer.snapshot(robot.physics_time())
++        results["recording_preview"] = bool(request.get("recording_preview"))
+         results.update(physics_duration_s=rows[-1]["physics_time_s"], policy_steps=robot.policy_calls,
+             control_steps=len(rows), physics_steps=robot.steps, startup_mode=robot.startup_mode,
+             goal_sent=goal_sent, sensor_frames=len(clouds), wall_s=time.monotonic() - started,
+@@ -340,9 +355,11 @@
+         print(json.dumps({k: v for k, v in results.items() if k != "last_backend"}, indent=2), flush=True)
+         if request["probe"] and not results["probe_passed"]:
+             raise RuntimeError("Native bridge probe did not meet its data/freshness gate")
+-        if request.get("scene") in ("flat_empty_long", "building_full") and results.get("finish_request", {}).get("backend_terminal_status") != "FINISHED":
++        if not request.get("recording_preview") and request.get("scene") in ("flat_empty_long", "building_full") and results.get("finish_request", {}).get("backend_terminal_status") != "FINISHED":
+             raise RuntimeError("Long route did not finish; original outcome is retained in result.json")
+     finally:
++        if pacer is not None:
++            atomic_json(out / "realtime_pacing.json", pacer.snapshot(robot.physics_time()))
+         if robot.startup is not None:
+             (out / "startup_events.json").write_text(json.dumps(robot.startup.events, indent=2) + "\n")
+         if robot.stance is not None:
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v41/native_graph.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v42/native_graph.py
+@@ -19,8 +19,8 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v41":
+-        raise ValueError("v41 graph requires the frozen v41 integration identity")
++    if request.get("integration_version") != "v42":
++        raise ValueError("v42 graph requires the frozen v42 integration identity")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+@@ -44,6 +44,7 @@
+         children.append((name, subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)))
+ 
+     try:
++        launch("frequency_observer", [py, str(VERSION / "frequency_observer.py"), "--output", str(out)])
+         launch("clock_responder", [py, str(BASE / "scripts/clock_sync.py")])
+         if request["applied_transport"] == "zmq":
+             launch("applied_receiver", [py, str(BASE / "scripts/applied_channel.py"), "--output", str(out)])
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v41/run_local_episode.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v42/run_local_episode.py
+@@ -79,9 +79,9 @@
+ 
+ 
+ def verify_native_build(build, frozen):
+-    """Reject installation drift or a build outside the frozen v41 path."""
++    """Reject installation drift or a build outside the frozen v42 path."""
+     if build.resolve() != BUILD.resolve():
+-        raise ValueError("v41 requires its frozen native build path")
++        raise ValueError("v42 requires its frozen native build path")
+     for filename, key in (("source_sha256.json", "native_source_sha256"),
+                           ("install_sha256.json", "native_install_sha256")):
+         actual = json.loads((build / filename).read_text())
+@@ -131,7 +131,12 @@
+     parser.add_argument("--stance-hold", action="store_true")
+     parser.add_argument("--physics-backend", choices=("warp", "native"), default="warp")
+     parser.add_argument("--real-time-factor", type=float, default=1.)
++    parser.add_argument("--recording-sim-seconds", type=float, default=120.)
+     args = parser.parse_args()
++    if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
++        parser.error("v42 records the complete Building with the qualified CPU graph at target RTF 1")
++    if not 20. <= args.recording_sim_seconds <= 600.:
++        parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+     full_building = args.scene == "building_full"
+     historical_full = full_building and args.building_route == "historical_full"
+@@ -167,8 +172,8 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v41":
+-        raise ValueError("This entry point requires frozen integration version v41")
++    if integration_version != "v42":
++        raise ValueError("This entry point requires frozen integration version v42")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+@@ -184,7 +189,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v41 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v42 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -225,14 +230,15 @@
+         "body_publish_substeps": 5 if extended_route else 20,
+         "async_sensor_evidence": extended_route,
+         "physics_backend": args.physics_backend,
+-        "pace_physics_wall": args.physics_backend == "native",
++        "pace_physics_wall": True,
++        "recording_preview": True,
+         "real_time_factor": args.real_time_factor,
+         "static_human": args.static_human,
+         "goal_wall_budget_s": args.goal_wall_budget,
+         "planner_config_source": str(planner_config),
+         "planner_config_sha256": hashlib.sha256((out / "planner.yaml").read_bytes()).hexdigest(),
+-        "max_physics_s": (8 if args.startup_mode == "pd_stand" else 3) if args.probe else (150 if long_route else 600 if historical_full else 90 if full_building else 35),
+-        "max_worker_wall_s": 1700 if extended_route else 500,
++        "max_physics_s": args.recording_sim_seconds if full_building else (8 if args.startup_mode == "pd_stand" else 3) if args.probe else (150 if long_route else 600 if historical_full else 90 if full_building else 35),
++        "max_worker_wall_s": args.recording_sim_seconds + 120.,
+         "source_condition": ("Complete original Building / original map and sensor rig / PCT + SCAN / factory-PD-RL switching"
+                              if full_building else "12 m empty flat scene / original sensor rig / native PCT + SCAN42 + controller / PD-RL switching"
+                              if long_route else "flat scene / unclassified box / original sensor rig; native PCT/SCAN/controller; no obstacle metadata"
+@@ -248,8 +254,8 @@
+         "sensor_preprocessing": "unfiltered planner cloud, as archived unfiltered_planner_cloud=true"}, indent=2) + "\n")
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
+-    for name in ("run_local_episode.py", "native_graph.py", "native_backend_entry.py", "navigation_contract.json", "newton_episode.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v41_" + name))
++    for name in ("run_local_episode.py", "native_graph.py", "native_backend_entry.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py"):
++        shutil.copyfile(VERSION / name, out / ("executed_v42_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")

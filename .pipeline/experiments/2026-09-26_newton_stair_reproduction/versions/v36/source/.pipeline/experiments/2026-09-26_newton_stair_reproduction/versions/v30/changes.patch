@@ -1,0 +1,117 @@
+--- v29/src/plan_env/include/plan_env/eth_step_score_adaptation.h
++++ v30/src/plan_env/include/plan_env/eth_step_score_adaptation.h
+@@ -96,8 +96,33 @@
+       1.0 - effective_step / critical_height_m : 0.0;
+ }
+ 
++// Surface evidence (the pinned /pct_ground_surface cells) only decides whether
++// a present navigation neighbour that lacks this level is a possible drop. If
++// the evidence cell under that neighbour's centre has an unambiguous surface
++// within the step capability, the neighbour is measured ground at that height.
++// Evidence never adds or scores a navigation cell.
++inline bool evidenceSurfaceHeight(const TerrainSnapshot *evidence, const TerrainSnapshot &input,
++                                  const Cell2 &cell, double elevation_m,
++                                  double maximum_layer_distance_m, double &height_m) {
++  if (!evidence) return false;
++  const double x = input.origin_x_m + (static_cast<double>(cell.x) + 0.5) * input.resolution_m;
++  const double y = input.origin_y_m + (static_cast<double>(cell.y) + 0.5) * input.resolution_m;
++  const double ix = std::floor((x - evidence->origin_x_m) / evidence->resolution_m);
++  const double iy = std::floor((y - evidence->origin_y_m) / evidence->resolution_m);
++  if (!std::isfinite(ix) || !std::isfinite(iy) ||
++      ix < std::numeric_limits<int>::min() || ix > std::numeric_limits<int>::max() ||
++      iy < std::numeric_limits<int>::min() || iy > std::numeric_limits<int>::max()) return false;
++  const auto found = evidence->cells.find({static_cast<int>(ix), static_cast<int>(iy)});
++  if (found == evidence->cells.end()) return false;
++  const int nearest = nearestSurface(found->second, elevation_m, maximum_layer_distance_m);
++  if (nearest < 0) return false;
++  height_m = found->second[nearest].elevation_m;
++  return true;
++}
++
+ inline StepScoreResult precomputeEthStyleStepScores(
+-    const TerrainSnapshot &input, const StepScoreParameters &parameters = {}) {
++    const TerrainSnapshot &input, const StepScoreParameters &parameters = {},
++    const TerrainSnapshot *evidence = nullptr) {
+   StepScoreResult result;
+   result.support = input;
+   const bool parameters_valid = valid(input) &&
+@@ -113,10 +138,16 @@
+       for (auto &surface : entry.second) surface.support = Support::Unknown;
+     return result;
+   }
++  // Unusable evidence scores exactly as without evidence.
++  const TerrainSnapshot *usable_evidence =
++      evidence && valid(*evidence) && evidence->frame == input.frame &&
++      std::abs(evidence->resolution_m - input.resolution_m) <= 1e-9 ? evidence : nullptr;
+ 
+   // ETH pass 1: maximum minus minimum elevation in the first circle.
+   // ETH skips missing neighbors. A present multilevel neighbor still needs
+   // an unambiguous nearby surface; do not join different building floors.
++  // Without one, the neighbour is a possible drop unless the surface evidence
++  // shows ground at this level there; that evidence height then counts.
+   for (const auto &entry : input.cells) {
+     auto &out = result.scores[entry.first];
+     out.resize(entry.second.size());
+@@ -131,8 +162,14 @@
+         const auto cell = input.cells.find(neighbor);
+         if (cell == input.cells.end()) continue; // ETH skips absent measurements.
+         const int nearest = nearestSurface(cell->second, surface.elevation_m, parameters.critical_height_m);
+-        if (nearest < 0) { complete = false; break; }
+-        const double height = cell->second[nearest].elevation_m;
++        double height = 0.0;
++        if (nearest >= 0) {
++          height = cell->second[nearest].elevation_m;
++        } else if (!evidenceSurfaceHeight(usable_evidence, input, neighbor, surface.elevation_m,
++                                          parameters.critical_height_m, height)) {
++          complete = false;
++          break;
++        }
+         minimum = std::min(minimum, height);
+         maximum = std::max(maximum, height);
+       }
+@@ -163,7 +200,14 @@
+         const auto cell = input.cells.find(neighbor);
+         if (cell == input.cells.end()) continue; // ETH skips absent measurements.
+         const int nearest = nearestSurface(cell->second, original[layer].elevation_m, parameters.critical_height_m);
+-        if (nearest < 0) { complete = false; break; }
++        if (nearest < 0) {
++          // Measured evidence ground has no score; ETH skips missing scores.
++          double evidence_height = 0.0;
++          if (evidenceSurfaceHeight(usable_evidence, input, neighbor, original[layer].elevation_m,
++                                    parameters.critical_height_m, evidence_height)) continue;
++          complete = false;
++          break;
++        }
+         const auto &neighbor_score = result.scores.at(neighbor)[nearest];
+         if (!std::isfinite(neighbor_score.first_pass_height_m)) continue;
+         maximum = std::max(maximum, neighbor_score.first_pass_height_m);
+--- v29/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v30/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -85,8 +85,9 @@
+     reactive_decision_.acceptTerrain(terrain);
+     return;
+   }
++  // The surface evidence decides whether a neighbour without this level is a drop.
+   reactive_stair::StepScoreResult scored =
+-      reactive_stair::precomputeEthStyleStepScores(terrain);
++      reactive_stair::precomputeEthStyleStepScores(terrain, {}, &reactive_surface_ground_);
+   if (reactive_decision_.acceptTerrain(scored.support)) {
+     reactive_ground_ = terrain; // Preserve source elevations independently of step scores.
+     reactive_terrain_ = scored.support;
+@@ -101,6 +102,16 @@
+   reactive_terrain_hits_.clear();
+   reactive_cloud_ready_ = false;
+   reactive_pending_cloud_ = false;
++  // The step score consults this evidence, so rescore the accepted navigation
++  // ground. Unusable evidence scores exactly as without evidence.
++  if (!reactive_ground_.cells.empty()) {
++    reactive_stair::StepScoreResult scored = reactive_stair::precomputeEthStyleStepScores(
++        reactive_ground_, {}, &reactive_surface_ground_);
++    if (reactive_decision_.acceptTerrain(scored.support)) {
++      reactive_terrain_ = scored.support;
++      reactive_step_result_ = std::move(scored);
++    }
++  }
+ }
+ 
+ bool GridMap::reactiveSurfaceGroundReady() const {

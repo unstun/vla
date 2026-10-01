@@ -1,0 +1,81 @@
+{
+  "passed": false,
+  "scope": "Round-3 read-only review (2026-09-29) of the revised diagnosis, the plans, the L1 judge and instrumentation, and K3 run 02. Nothing in the repository was written. Probes ran only in the session scratchpad, including a copy of evaluate_l1.py run on synthetic records. SHA-256 prefixes of the files reviewed. Audit: RESULT.md 9bfc2e6b, analyze_pose_gaps.py 086366e5, pose_gaps_diag_v31_clock03.json 9bf19739, pose_gaps_diag_v31_clock04.json fba33dba, diag_worker.py 4c6635d5, container_site/sitecustomize.py d030ab4d, smoke_check.sh eb460bb5, smoke_check_output.txt a8ebf1b8, analyze_linux.py aafd9b1a, analyze_pipeline.py 42852ee3, analyze_gc.py dae91e09, diag_launch.py 2034796d. versions/v32: PLAN.md 02f88577, PHYSICAL_RUN_PLAN.md 7ca3585c, REVIEW_RESPONSE_round1.md 196efdec, REVIEW_RESPONSE_round2.md 633985b3, freeze.py d347d7f7, l1/evaluate_l1.py b3077c1f, gc_schedule_check/bench_gc.py b36e4b6f, run_gc_check.py 088b34dd, result.json afac4a94, collect_freeze/summary.json d07f80c8, collect_freeze/gc_events.npy 4384dd1f, freeze/summary.json d50b5a1f, none/summary.json d9300a11, run01/result.json 6e5b3b2b, check_change.json 0557f1bd, prepared.json 83d1b571, changes.patch e7d8972e. Working tree: scripts/newton_episode.py 840e8e5f, unchanged. Raw data re-read: runs/diag_v31_clock03 and runs/diag_v31_clock04 (steps.npy, substeps.npy, gc_events.npy, probe_out.npy, clock_samples.jsonl, backend_body_callbacks.jsonl, telemetry.jsonl, bridge.log, result.json). No reviewed file changed after 03:05:41 while this review ran.",
+  "blocking": [
+    {
+      "id": "B1",
+      "where": "versions/v32/PLAN.md 'Stall classes' (class 2 'main CPU under 20 ms ...', class 4), L1 criterion 2, 'Claim boundary' ('What L1 can show'); PHYSICAL_RUN_PLAN.md 'Holds: no process-wide hold ... whether in a step or between steps'; versions/v32/l1/evaluate_l1.py lines 72-83",
+      "finding": "The process-wide-hold class cannot detect a hold inside a step, so criterion 2 does not test what the plans say it tests. Class 2 requires main CPU under 20 ms over the interval. But every in-step interval contains the physics step's own CPU, at least about 39 ms in every step over 150 ms of both diagnostic runs, so an in-step hold never reaches class 2. It falls into class 6 when the step's CPU is under half the interval: L1 still fails, but the hold is labelled 'unclassified'. It falls into class 4, 'main thread working', when the step's CPU is at least half the interval, and that passes L1. Between steps the opposite error is possible. The clock client's send gap also grows past 100 ms when its own round trip to the container times out: a 0.1 s socket timeout, then a 0.1 s reconnect wait, logged as an error row. So an interval dominated by a slow ZMQ round trip, with main CPU and runnable wait both low, is classed as a hold. In addition, an interval with main CPU under 50% and runnable wait between 20 and 100 ms (part blocked, part scheduling) lands in class 6 and fails L1, although it is neither a hold nor anything the plan means to fail. The garbage-collection hold that v32 targets is still caught by criterion 1 (any collection over 20 ms) and by class 1. So the defect concerns other holds and the wording, but it sits in the pre-registered judge and in the claim boundary ('L1 can show that no process-wide hold ... occurred').",
+      "evidence": "PLAN.md's rules applied to diag_v31_clock03's three in-process in-step holds (steps of 155.4, 167.8 and 265.5 ms; main CPU 39.6, 39.0 and 42.6 ms; runnable wait about 2 ms; clock-client pauses 127, 147 and 236 ms): all three come out class 6, none class 2. The v31 B stalls come out class 3 (19 of 19), and clock04's collection stalls class 1. A scratch copy of evaluate_l1.py on synthetic records gave: a 200 ms step with 40 ms of main CPU and a 190 ms clock pause, class 6; a 300 ms step with 160 ms of main CPU and a 281 ms clock pause, class 4 (passes); a 105 ms between-step interval with 3 ms of main CPU, 2 ms of wait and a 211 ms clock pause from a client timeout, class 2 (fails); a ZMQ-type wait with the clock running, class 5; a genuine between-step hold, class 2; a B step, class 3; a 120 ms collection, class 1 plus criterion-1 failure.",
+      "required_fix": "Before freezing, because the judge is pre-registered and pinned: (1) define a hold by the physics thread's off-CPU time (interval minus main CPU over 100 ms), with runnable wait under 20 ms and a clock-client pause over 100 ms that contains no clock-client error row. Alternatively use the watchdog's wake-up lateness, logged continuously. That way the rule applies both inside and between steps. (2) Evaluate class 2 before class 4, or keep intervals with such a pause out of class 4. (3) State how mixed intervals (main CPU under 50%, runnable wait 20-100 ms) are classed. (4) Re-run evaluate_l1.py on synthetic cases covering all of these (in-step hold at low and at high CPU share, between-step hold, network-timeout pause, ZMQ wait, B, collection), and record that check. (5) Align PLAN.md, PHYSICAL_RUN_PLAN.md and the claim boundary with the rule."
+    }
+  ],
+  "non_blocking": [
+    {
+      "id": "N1",
+      "where": "RESULT.md 'Answer' ('none of the 13 gaps would have exceeded 87 ms'); section 4 ('about 84 ms'); PLAN.md basis",
+      "finding": "These counterfactuals assume constant receipt delay. The received poses at the ends of the B gaps had receipt delays of 2.6 to 49.1 ms, so fully delivered gaps could have reached about 87 + 47, roughly 135 ms (clock04's fatal gap roughly 84-105 ms). The conclusions still hold: under 150 ms, and far under the 250 ms gate.",
+      "suggestion": "Label them as inferences and give the bound."
+    },
+    {
+      "id": "N2",
+      "where": "evaluate_l1.py criterion 1 (loop_gc = collections from the first step on)",
+      "finding": "Automatic generation-2 collections after the loop, while the result files are written, would also count. Collection durations are wall time, so a short explicit collection preempted under host load could exceed 20 ms. The risk is low: none of about 7,900 young and middle collections in clock04 exceeded 2.6 ms.",
+      "suggestion": "Bound the window at the last step's end, and consider recording the collecting thread's CPU time per collection."
+    },
+    {
+      "id": "N3",
+      "where": "analyze_pipeline.py line 53",
+      "finding": "'received' includes offers the bridge rejected; analyze_linux.py keeps only accepted ones.",
+      "suggestion": "Filter on the accepted flag (a == 1)."
+    },
+    {
+      "id": "N4",
+      "where": "analyze_pipeline.py lines 106-111; PLAN.md blame rule",
+      "finding": "The 'bridge timer' threshold (received at least 10 ms before the next pose) equals the timer period. Normal timer jitter can then blame the bridge timer in borderline cases.",
+      "suggestion": "Use a margin (for example 15-20 ms), or report the distribution of receive gaps for superseded poses."
+    },
+    {
+      "id": "N5",
+      "where": "PLAN.md exposure rule and candidate-1 and start-up numbers",
+      "finding": "clock04's full collections came at control steps 485, 3,571, 6,956, 10,671 and 14,745, not near 470, 3,660 and 7,090; the 7,100 rule still covers three. Candidate 1's '154,660 objects frozen for good' is run 01's upper bound; run 02 splits it into 146,504 frozen and 8,156 pending. The start-up collection took 84.1 ms in run 02 (82.1 ms in run 01).",
+      "suggestion": "Update the numbers."
+    },
+    {
+      "id": "N6",
+      "where": "PLAN.md 'Decision and basis', A bullet",
+      "finding": "'(measured)' also covers 'A thread held the GIL'. That is measured only for clock04's two A gaps, through logged collections; for clock03's five it is inferred, as RESULT.md says.",
+      "suggestion": "Label it inferred for clock03."
+    },
+    {
+      "id": "N7",
+      "where": "freeze.py (K4 comment and manifest 'freeze_boundary')",
+      "finding": "Both still say 'K4 independent review (round 2 or later)', but round 2 failed. PLAN.md says 'a round after round 2'.",
+      "suggestion": "Name the passing round."
+    },
+    {
+      "id": "N8",
+      "where": "K3 (bench_gc.py) compared with the live loop",
+      "finding": "The replay has no GIL-releasing file read between the scan submission and the window collection; the live loop reads backend_latest.json there. The scanner may therefore be mid-construction at a live freeze, so live frozen garbage can exceed K3's 0. PLAN's worst-case bound (about one kernel graph, 0.14 MB, per window) and the peak-RSS reporting cover this.",
+      "suggestion": "Mention this difference next to K3's result."
+    },
+    {
+      "id": "N9",
+      "where": "analyze_pipeline.py line 47",
+      "finding": "The backend process is chosen as the first command line containing 'backend', which is brittle.",
+      "suggestion": "Match native_backend_entry explicitly."
+    }
+  ],
+  "verified": [
+    "Round-2 B1 is resolved in the files. RESULT.md (Answer, sections 4-5, source table, 'What v32 can and cannot change') and PLAN.md (basis, 'Not addressed') now say that A gaps arose before publishing, and that B gaps are a worker slowdown plus superseding after publishing, with the superseding's location unmeasured. The longest publish intervals are reported, 38.9-87.1 ms in the B gaps. For clock04's fatal gap the publish offsets are 0, 83.5, 121.6, 146.9, 179.7, 216.6, 244.5 and 278.6 ms, with a longest interval of 83.5 ms. The delivery-side option and the gate time-base option are listed separately for Dr Sun.",
+    "Round-2 B2 is resolved in the files. diag_worker.py stores the absolute counters at each step's start and end in steps_abs.npy (13 columns), and evaluate_l1.py indexes them correctly for both in-step and between-step deltas. RESULT.md marks the runnable-wait and efficiency-core signs as not measured for the 5 between-step A gaps, and labels section 5's rows as in-step counters.",
+    "The round-1 resolutions still hold: stamps are mapped through the telemetry pairs, C is removed, measured and inferred are labelled, candidate 2 is unchanged (840e8e5f, check_change.json 0557f1bd), K3 is measured at the worst phase, and the exposure rule counts steps (7,100).",
+    "RESULT.md's numbers match the raw data. A: 7 gaps, 161-274 ms, receipt delays 1.9-12.1 ms, clock pauses 157-274 ms, probe at most 10 ms late; the two in-step A gaps show efficiency-core share 0.03 and runnable wait 0.3 and -7.3 ms. B: 13 gaps, 3-6 superseded poses, receipt delays 2.6-49.1 ms, runnable wait 152-724 ms, efficiency-core share 0.09-0.64, clock 30-105 ms, probe 9-39 ms. The normal publish interval has a median of 9.7-9.8 ms.",
+    "The superseding at the bridge is exact accounting. Accepted states = delivered + superseded (75,751 = 59,201 + 16,550; 113,204 = 87,977 + 25,227). Delivered = backend callbacks (59,201; 87,977). Frames sent = accepted states + clouds.",
+    "K3 run 02 checks out. Frozen garbage is 0 for v32 against 146,504 for freeze-only, and pending garbage 1,772 against 8,156. The method, gc.collect() before gc.unfreeze() and then gc.unfreeze() plus gc.collect(), counts exactly the frozen garbage. Run 01's total of 1,772 equals run 02's pending count, which is consistent. v32's in-loop explicit collections peaked at 3.84 ms (18 of them), the start-up collection took 84.1 ms, there were 1,156 young and 95 middle collections, and the joint error was 0.0. A fresh 3.12 interpreter already holds 375 permanent objects, which explains 'frozen_objects_at_end' in the no-freeze mode.",
+    "evaluate_l1.py implements PLAN.md's exposure rule, criterion 1 (using the explicit flag in gc_events column 6), the six classes in order, and criteria 2-3 as written. Applied to the v31 diagnostic data, the classes mark v31's behaviour as failing, so L1 can fail on what v32 targets.",
+    "analyze_pipeline.py: the stamp keys are identical across the worker frame header, the bridge offer/take (simulation_time_ns) and the backend callback (header sec*1e9 + nanosec), and BODY_STATE_V2 is 8. Container-to-Mac mapping uses the clock filter's offset. The blame rule matches PLAN.md, and each comparison stays within one clock.",
+    "sitecustomize.py: array.extend of a tuple runs in C under the GIL, so each row is appended atomically. Complete rows are flushed by index under a lock shared only by the two flush paths. The smoke-check output (Python 3.10.12, three patches loaded, complete collection rows) is stored.",
+    "freeze.py asserts K1-K4. It pins l1/evaluate_l1.py and both K3 runs (per mode, only summary.json and gc_events.npy) and the benchmark summaries. The manifest status is 'frozen_unvalidated'."
+  ]
+}

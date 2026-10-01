@@ -1,0 +1,98 @@
+{
+  "round": 2,
+  "verdict": "FAIL",
+  "reviewer": "independent read-only subagent (general-purpose), 2026-09-29",
+  "round1_findings": {
+    "B1": "partly",
+    "B2": "fixed",
+    "B3": "partly",
+    "B4": "partly",
+    "B5": "fixed",
+    "B6": "fixed",
+    "B7": "fixed",
+    "N1": "partly",
+    "N7": "partly",
+    "others": "fixed"
+  },
+  "blocking": [
+    {
+      "id": "R2-B1",
+      "finding": "The entry_filled recovery for v33 crosses cell (47,41) at z 1.8351-1.8361, inside the 0.12 m tolerance of the 1.4189 m layer (up to 1.839), while the rejected first attempt crosses at 1.8451-1.8460; it does not miss the row. The brief's generic WrongHeight sentence holds only for body references above 1.839 m."
+    },
+    {
+      "id": "R2-B2",
+      "finding": "The body-height wall face x -4.1983 exists only for y >= -3.600 (rows 47-58); rows 45-46 open onto the corridor (north wall face at y -3.600). Gaps 0.60 m (rows 47-50) and 0.70 m (rows 51-53). Surface floor ends at -4.295 only in row 46 and continues east in rows 44-45. The navigation ground also lacks the corridor's northern strip east of the band (rows 42-46)."
+    },
+    {
+      "id": "R2-B3",
+      "finding": "The -118.08 deg heading is from the 'optimized' capture after the third, converged round; the two rebound rounds wrote no capture."
+    },
+    {
+      "id": "R2-B4",
+      "finding": "The live v33 frontier 14.540880500718 is printed in the 5th, 7th and 9th attempts (reference_frontier and [DEBUG-prefix-01] frontier=); analyze.py parsed only reference_frontier and numbered attempts from 0; 6 of 9 identical."
+    },
+    {
+      "id": "R2-B5",
+      "finding": "The drop guard is not analysed in this audit; it came from building v34 (PLAN.md)."
+    }
+  ],
+  "non_blocking": [
+    {
+      "id": "R2-N1",
+      "finding": "v32 start velocity magnitude is 9.0e-8 m/s, not 1e-8."
+    },
+    {
+      "id": "R2-N2",
+      "finding": "The reference frontier (14.49 s, (-0.47,-4.25)) is v33's; v32 prints 14.44 s at (-0.522,-4.250)."
+    },
+    {
+      "id": "R2-N3",
+      "finding": "Screen group ranges (290-312 y 5.80-6.55; 535-556 y 5.42-6.06); the 578 poses span z 1.31-4.84 (three floors); give z per group."
+    },
+    {
+      "id": "R2-N4",
+      "finding": "Replica steps 2-3 fail at (22,52), not the corner cell."
+    },
+    {
+      "id": "R2-N5",
+      "finding": "Only rows 45-47 reach 14.5; row 52 ends at 8.1."
+    },
+    {
+      "id": "R2-N6",
+      "finding": "Four scans were processed in the v33 cycle; the causal link to the frontier difference is inferred (v32's cycle processed seven with no difference)."
+    },
+    {
+      "id": "R2-N7",
+      "finding": "Use one convention for blocked-heading bounds (v33 start 44, v32 start 49, bodies 67 and 48)."
+    },
+    {
+      "id": "R2-N8",
+      "finding": "Record the entry geometry as a script and JSON."
+    },
+    {
+      "id": "R2-N9",
+      "finding": "make_grounds.py docstring's wall wording is superseded."
+    },
+    {
+      "id": "R2-N10",
+      "finding": "The fallback's remaining poses are 457, 458, 512, 513, 514 and 519."
+    },
+    {
+      "id": "R2-N11",
+      "finding": "The replan limit ended v33 only; v32 ended on odom_stale."
+    },
+    {
+      "id": "R2-N12",
+      "finding": "Label the 7 cm claim an inference."
+    },
+    {
+      "id": "R2-N13",
+      "finding": "Regeneration is not byte-identical (v33 inputs from the first freezer version; CDR padding)."
+    },
+    {
+      "id": "R2-N14",
+      "finding": "PLAN.md's '0.5-0.6 m short of the wall' is superseded (for alignment when PLAN.md is next edited)."
+    }
+  ],
+  "note": "Condensed by the author from the reviewer's JSON report; each finding was checked before being applied (RESULT.md, Review)."
+}

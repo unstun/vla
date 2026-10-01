@@ -1,0 +1,5 @@
+# v44: share raw classification within the complete synchronous planning callback
+
+Parent version v43; native source parent v39. Actual v42 local planning measured 9.06 Hz, median 83.5 ms, and 838 overruns. Repeated empty sensor drains and nested rebound/prefix attempts clear an unchanged raw-input cache. Extend the existing scoped cache to one complete executor callback; nested scopes reuse their outer owner. Empty drains preserve the cache; every actual occupancy, bounds, inflation, cell, scan, ground or surface mutation still invalidates it before mutation. Raw contributor classification depends only on voxel occupancy and retained classification sets, not body pose, query height or sensor age. Bounds, freshness, terrain support and pose checks remain live for every query. Scope exit still clears; no cache is retained across executor callbacks. No optimizer budget, tolerances, iterations, collision checks or route changes.
+
+Gate: actual nested scope and mutation tests, original 34 native contract checks and complete v32/v33 geometry equality. Then actual bounded physical recording; component timing is not full-loop acceptance.

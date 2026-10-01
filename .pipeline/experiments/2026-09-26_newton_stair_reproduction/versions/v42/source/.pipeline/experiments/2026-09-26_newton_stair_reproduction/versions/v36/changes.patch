@@ -1,0 +1,859 @@
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan67_nav2_contract_v36/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan67_nav2_contract_v36/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -70,7 +70,10 @@
+     int navi_mode_; // 1 manual select, 2 hard code
+     double no_replan_thresh_, replan_thresh_;
+     double replan_frequency_{0.0}; // Zero preserves legacy distance scheduling.
+-    double last_nominal_replan_s_{-1.0}; // ROS clock; attempt start, not completion.
++    double last_nominal_replan_s_{-1.0}; // Selected clock; attempt start, not completion.
++    double next_nominal_replan_s_{-1.0};
++    double last_replan_clock_s_{-1.0};
++    bool replan_use_wall_clock_{true};
+     std::vector<Eigen::Vector3d> preset_waypoints_;
+     int waypoint_num_;
+     double planning_horizon_;
+@@ -155,6 +158,7 @@
+ 
+     /* ROS functions */
+     bool nominalReplanDue(bool mark_attempt);
++    void performNominalReplan();
+     void execFSMCallback();
+     void checkCollisionCallback();
+     void rvizGoalCallback(geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan67_nav2_contract_v36/src/plan_manage/src/closed_loop_controller.cpp
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan67_nav2_contract_v36/src/plan_manage/src/closed_loop_controller.cpp
+@@ -2,6 +2,8 @@
+ #include <cmath>
+ #include <cstdint>
+ #include <memory>
++#include <limits>
++#include <stdexcept>
+ #include <vector>
+ 
+ #include <Eigen/Eigen>
+@@ -12,6 +14,7 @@
+ #include <scan_planner_msgs/msg/bspline.hpp>
+ #include <scan_planner_msgs/msg/p2_b_admission.hpp>
+ #include <scan_planner_msgs/msg/p2_b_cancel.hpp>
++#include <scan_planner_msgs/msg/p2_b_route.hpp>
+ #include <scan_planner_msgs/msg/p2_b_stamped_twist.hpp>
+ #include <std_msgs/msg/bool.hpp>
+ #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+@@ -24,7 +27,8 @@
+ class ClosedLoopController : public rclcpp::Node
+ {
+ public:
+-  ClosedLoopController() : Node("closed_loop_controller")
++  explicit ClosedLoopController(const rclcpp::NodeOptions &options = rclcpp::NodeOptions())
++      : Node("closed_loop_controller", options)
+   {
+     time_forward_ = declare_parameter<double>("time_forward", 0.8);
+     heading_error_threshold_ = declare_parameter<double>("heading_error_threshold", 0.8);
+@@ -34,6 +38,20 @@
+     max_vy_ = declare_parameter<double>("max_vy", 0.35);
+     max_vyaw_ = std::min(declare_parameter<double>("max_vyaw", 1.0), kMaxVYawLimit);
+     finish_dist_ = declare_parameter<double>("finish_dist", 0.15);
++    goal_xy_tolerance_ = declare_parameter<double>("goal_xy_tolerance", 0.25);
++    goal_yaw_tolerance_ = declare_parameter<double>("goal_yaw_tolerance", 0.25);
++    goal_z_tolerance_ = declare_parameter<double>("goal_z_tolerance", 0.20);
++    for (double tolerance : {goal_xy_tolerance_, goal_yaw_tolerance_, goal_z_tolerance_})
++      if (!std::isfinite(tolerance) || tolerance <= 0.0)
++        throw std::runtime_error("Goal tolerances must be finite and positive");
++    const double controller_frequency = declare_parameter<double>("controller_frequency", 100.0);
++    if (!std::isfinite(controller_frequency) || controller_frequency <= 0.0 || controller_frequency > 100.0)
++      throw std::runtime_error("controller_frequency must be finite and in (0, 100] Hz");
++    const long double period_ns = 1.0e9L / controller_frequency;
++    if (!std::isfinite(period_ns) || period_ns < 1.0L ||
++        period_ns > static_cast<long double>(std::numeric_limits<std::int64_t>::max()))
++      throw std::runtime_error("controller_frequency has an unrepresentable nanosecond period");
++    const auto controller_period = std::chrono::nanoseconds(static_cast<std::int64_t>(period_ns));
+ 
+     bspline_sub_ = create_subscription<scan_planner_msgs::msg::Bspline>(
+         "planning/bspline", 10,
+@@ -41,18 +59,50 @@
+     odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
+         "body_pose", rclcpp::SensorDataQoS(),
+         std::bind(&ClosedLoopController::odomCallback, this, std::placeholders::_1));
++    goal_sub_ = create_subscription<scan_planner_msgs::msg::P2BRoute>(
++        "/p2b/route", 10, std::bind(&ClosedLoopController::goalCallback, this, std::placeholders::_1));
+     raw_cmd_pub_ = create_publisher<scan_planner_msgs::msg::P2BStampedTwist>("/quad_0/raw_scan_cmd_vel", 20);
+     p2b_admission_pub_ = create_publisher<scan_planner_msgs::msg::P2BAdmission>("/p2b/scan_admission", 10);
+     p2b_cancel_sub_ = create_subscription<scan_planner_msgs::msg::P2BCancel>("/p2b/scan_cancel", 10, std::bind(&ClosedLoopController::p2bCancelCallback, this, std::placeholders::_1));
+     execution_frozen_pub_ = create_publisher<std_msgs::msg::Bool>("planning/go2_execution_frozen", 10);
+-    cmd_timer_ = create_wall_timer(std::chrono::milliseconds(10),
++    cmd_timer_ = create_wall_timer(controller_period,
+                                    std::bind(&ClosedLoopController::cmdCallback, this));
+     last_update_time_ = now();
+-    RCLCPP_INFO(get_logger(), "Closed-loop controller ready");
++    RCLCPP_INFO(get_logger(), "Closed-loop controller ready: controller_frequency_hz=%.6f period_ns=%lld clock=wall",
++                controller_frequency, static_cast<long long>(controller_period.count()));
+   }
+ 
+ private:
+   static constexpr double kMaxVYawLimit = 1.0;
++
++  bool goalIdentityMatches() const
++  {
++    return goal_route_ && have_p2b_identity_ && goal_route_->run_id == run_id_ &&
++        goal_route_->epoch == epoch_ && goal_route_->request_id == request_id_ &&
++        goal_route_->goal_id == goal_id_ && goal_route_->route_id == route_id_ &&
++        goal_route_->command_id == command_id_ && goal_route_->generation == generation_ &&
++        goal_route_->map_epoch == map_epoch_ && goal_route_->map_revision == map_revision_;
++  }
++
++  void goalCallback(const scan_planner_msgs::msg::P2BRoute::ConstSharedPtr msg)
++  {
++    if (!msg || !msg->has_goal_pose || msg->path.poses.empty() || msg->generation <= cancelled_generation_high_water_ ||
++        msg->generation < max_generation_seen_) return;
++    const auto &pose = msg->goal_pose;
++    const auto &q = pose.orientation;
++    const double norm2 = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w;
++    if (!std::isfinite(pose.position.x) || !std::isfinite(pose.position.y) ||
++        !std::isfinite(pose.position.z) || !std::isfinite(norm2) || std::abs(norm2 - 1.0) > 1e-6)
++      return;
++    // A periodic global-path update keeps the initial goal pose and XY latch.
++    if (goal_route_ && msg->run_id == goal_route_->run_id && msg->epoch == goal_route_->epoch &&
++        msg->command_id == goal_route_->command_id && msg->generation == goal_route_->generation)
++      return;
++    goal_route_ = msg;
++    goal_pos_ << pose.position.x, pose.position.y, pose.position.z;
++    goal_yaw_ = tf2::getYaw(q);
++    goal_xy_reached_ = false;
++  }
+ 
+   static double normalizeAngle(double angle)
+   {
+@@ -162,6 +212,7 @@
+     }
+     cancelled_generation_high_water_ = std::max(cancelled_generation_high_water_, msg->generation);
+     receive_traj_ = false;
++    goal_xy_reached_ = false;
+     exec_time_ = 0.0;
+     publishStop();
+     publishExecutionFrozen(false);
+@@ -197,6 +248,13 @@
+         publishAdmissionForIdentity("rejected", "stale_spline_generation", false,
+                                     msg->run_id, msg->epoch, msg->request_id, msg->goal_id, msg->route_id, msg->command_id,
+                                     msg->generation, msg->map_epoch, msg->map_revision, msg->traj_id);
++        return;
++      }
++      if (emergency_stop_ && !msg->emergency_stop && msg->run_id == run_id_ &&
++          msg->epoch == epoch_ && msg->command_id == command_id_ && msg->generation == generation_ &&
++          msg->traj_id <= traj_id_)
++      {
++        RCLCPP_WARN(get_logger(), "Ignoring a pre-emergency trajectory during safety stop");
+         return;
+       }
+     }
+@@ -226,6 +284,13 @@
+     if (have_p2b_identity_) publishAdmission("accepted", "controller_bspline_accepted", false);
+     last_update_time_ = now();
+     receive_traj_ = true;
++    emergency_stop_ = msg->emergency_stop;
++    if (emergency_stop_)
++    {
++      goal_xy_reached_ = false;
++      publishExecutionFrozen(false);
++      publishStop();
++    }
+     RCLCPP_INFO(get_logger(), "Received trajectory %lld, duration %.3fs",
+                 static_cast<long long>(traj_id_), traj_duration_);
+   }
+@@ -239,13 +304,40 @@
+ 
+   void cmdCallback()
+   {
+-    if (!receive_traj_ || !have_odom_)
++    if (emergency_stop_)
+     {
+       publishExecutionFrozen(false);
+       publishStop();
+       return;
+     }
++    if (!receive_traj_ || !have_odom_)
++    {
++      publishExecutionFrozen(false);
++      publishStop();
++      return;
++    }
+     const auto current_time = now();
++    if (goalIdentityMatches())
++    {
++      const bool within_xy = (goal_pos_ - odom_pos_).head<2>().norm() <= goal_xy_tolerance_;
++      const bool within_z = std::abs(goal_pos_.z() - odom_pos_.z()) <= goal_z_tolerance_;
++      if (within_xy && within_z) goal_xy_reached_ = true;
++      // Nav2 stateful goal checking: once in XY tolerance, align final yaw.
++      // The backend rechecks measured XYZ/yaw after causal stopped dwell.
++      if (goal_xy_reached_ && within_z)
++      {
++        const double error = normalizeAngle(goal_yaw_ - odom_yaw_);
++        if (std::abs(error) <= goal_yaw_tolerance_ && !within_xy)
++          goal_xy_reached_ = false; // Reacquire strict final XY after yaw drift.
++        else
++        {
++          publishExecutionFrozen(true);
++          publishStop(std::abs(error) <= goal_yaw_tolerance_ ? 0.0 : kp_yaw_ * error);
++          last_update_time_ = current_time;
++          return;
++        }
++      }
++    }
+     double dt = (current_time - last_update_time_).seconds();
+     if (dt < 0.0 || dt > 0.2) dt = 0.0;
+     const double t_eval = std::min(exec_time_, traj_duration_);
+@@ -286,8 +378,15 @@
+   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr execution_frozen_pub_;
+   rclcpp::Subscription<scan_planner_msgs::msg::Bspline>::SharedPtr bspline_sub_;
+   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
++  rclcpp::Subscription<scan_planner_msgs::msg::P2BRoute>::SharedPtr goal_sub_;
++  scan_planner_msgs::msg::P2BRoute::ConstSharedPtr goal_route_;
++  Eigen::Vector3d goal_pos_{Eigen::Vector3d::Zero()};
++  double goal_yaw_{0.0};
++  bool goal_xy_reached_{false};
++  double goal_xy_tolerance_, goal_yaw_tolerance_, goal_z_tolerance_;
+   rclcpp::TimerBase::SharedPtr cmd_timer_;
+   bool receive_traj_{false};
++  bool emergency_stop_{false};
+   bool have_odom_{false};
+   std::vector<UniformBspline> traj_;
+   double traj_duration_{0.0};
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan67_nav2_contract_v36/src/plan_manage/src/scan_replan_fsm.cpp
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan67_nav2_contract_v36/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -71,6 +71,7 @@
+         (replan_frequency_ > 0.0 && !std::isfinite(1.0 / replan_frequency_)))
+       throw std::runtime_error("fsm.replan_frequency must be zero or a finite frequency in (0, 100] Hz");
+     last_nominal_replan_s_ = -1.0;
++    replan_use_wall_clock_ = load_parameter<bool>(node_, "fsm.replan_use_wall_clock", true);
+     replan_thresh_ = load_parameter<double>(node_, "fsm.thresh_replan", -1.0);
+     no_replan_thresh_ = load_parameter<double>(node_, "fsm.thresh_no_replan", -1.0);
+     planning_horizon_ = load_parameter<double>(node_, "fsm.planning_horizon", -1.0);
+@@ -802,24 +803,54 @@
+   bool SCANReplanFSM::nominalReplanDue(bool mark_attempt)
+   {
+     if (replan_frequency_ <= 0.0) return true;
+-    const double now_s = node_->now().seconds();
+-    // A reset starts a fresh interval. Paused time and missed periods never
+-    // create a catch-up queue; each actual attempt records its current start.
+-    if (last_nominal_replan_s_ >= 0.0 && now_s < last_nominal_replan_s_)
+-    {
++    const double now_s = replan_use_wall_clock_ ? std::chrono::duration<double>(
++        std::chrono::steady_clock::now().time_since_epoch()).count() : node_->now().seconds();
++    const double period = 1.0 / replan_frequency_;
++    // Observe every check: a rollback can remain later than the last attempt.
++    if (last_replan_clock_s_ >= 0.0 && now_s < last_replan_clock_s_)
++    {
++      last_replan_clock_s_ = now_s;
+       last_nominal_replan_s_ = now_s;
++      next_nominal_replan_s_ = now_s + period;
+       return false;
+     }
+-    if (last_nominal_replan_s_ >= 0.0 &&
+-        now_s - last_nominal_replan_s_ + 1e-9 < 1.0 / replan_frequency_)
+-      return false;
++    last_replan_clock_s_ = now_s;
++    if (next_nominal_replan_s_ < 0.0) next_nominal_replan_s_ = now_s;
++    if (now_s + 1e-9 < next_nominal_replan_s_) return false;
+     if (mark_attempt)
+     {
++      // Keep the phase despite poll quantization. Skip missed slots, never
++      // issue a catch-up burst or run concurrent solver calls on the same map.
++      const auto skipped = static_cast<std::int64_t>(std::floor(
++          std::max(0.0, now_s - next_nominal_replan_s_ + 1e-9) / period));
++      next_nominal_replan_s_ += (skipped + 1) * period;
+       last_nominal_replan_s_ = now_s;
+-      RCLCPP_INFO(node_->get_logger(), "nominal_replan frequency_hz=%.6f start_ros_s=%.9f state=%d",
+-                  replan_frequency_, now_s, static_cast<int>(exec_state_));
++      RCLCPP_INFO(node_->get_logger(), "nominal_replan frequency_hz=%.6f start_schedule_s=%.9f clock=%s ros_s=%.9f state=%d skipped_slots=%lld",
++                  replan_frequency_, now_s, replan_use_wall_clock_ ? "wall" : "ros", node_->now().seconds(),
++                  static_cast<int>(exec_state_), static_cast<long long>(skipped));
+     }
+     return true;
++  }
++
++  void SCANReplanFSM::performNominalReplan()
++  {
++    if (go2_execution_frozen_ || !nominalReplanDue(true)) return;
++    const auto started = std::chrono::steady_clock::now();
++    const bool success = planFromCurrentTraj();
++    const double elapsed = std::chrono::duration<double>(
++        std::chrono::steady_clock::now() - started).count();
++    RCLCPP_INFO(node_->get_logger(), "nominal_replan_result success=%d wall_s=%.9f budget_s=%.9f overrun=%d",
++                success, elapsed, 1.0 / replan_frequency_, elapsed > 1.0 / replan_frequency_);
++    if (success)
++    {
++      replan_fail_count_ = 0;
++      changeFSMExecState(EXEC_TRAJ, "FSM");
++    }
++    else
++    {
++      replan_fail_count_++;
++      changeFSMExecState(REPLAN_TRAJ, "FSM");
++    }
+   }
+ 
+   void SCANReplanFSM::execFSMCallback()
+@@ -903,6 +934,11 @@
+ 
+     case REPLAN_TRAJ:
+     {
++      if (replan_frequency_ > 0.0)
++      {
++        performNominalReplan();
++        break;
++      }
+       if (!nominalReplanDue(true)) break;
+ 
+       if (planFromCurrentTraj())
+@@ -1000,7 +1036,10 @@
+         // Periodic scheduling replaces the displacement trigger. The controller
+         // continues the accepted curve; safety replanning has its own callback.
+         if (!go2_execution_frozen_ && nominalReplanDue(false))
++        {
+           changeFSMExecState(REPLAN_TRAJ, "PERIODIC");
++          performNominalReplan();
++        }
+       }
+       else if ((info->start_pos_ - pos).norm() < replan_thresh_)
+       {
+@@ -1298,6 +1337,7 @@
+ 
+     /* publish traj */
+     scan_planner_msgs::msg::Bspline bspline;
++    bspline.emergency_stop = true;
+     bspline.order = 3;
+     bspline.start_time = info->start_time_;
+     bspline.traj_id = info->traj_id_;
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan67_nav2_contract_v36/src/scan_planner_msgs/msg/Bspline.msg
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan67_nav2_contract_v36/src/scan_planner_msgs/msg/Bspline.msg
+@@ -18,3 +18,5 @@
+ int64 generation
+ string map_epoch
+ int64 map_revision
++# Explicit safety stop, distinct from an ordinary trajectory's zero-speed tail.
++bool emergency_stop
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan67_nav2_contract_v36/src/scan_planner_msgs/msg/P2BRoute.msg
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan67_nav2_contract_v36/src/scan_planner_msgs/msg/P2BRoute.msg
+@@ -8,3 +8,6 @@
+ string map_epoch
+ int64 map_revision
+ nav_msgs/Path path
++# The requested goal pose is distinct from the PCT grid-snapped path endpoint.
++bool has_goal_pose
++geometry_msgs/Pose goal_pose
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/run_local_episode.py
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/run_local_episode.py
+@@ -11,9 +11,10 @@
+ import tarfile
+ import time
+ 
+-BASE = Path(__file__).resolve().parents[1]
++VERSION = Path(__file__).resolve().parent
++BASE = VERSION.parents[1]
+ PROJECT = BASE.parents[2]
+-BUILD = BASE / "builds/scan33_humble_amd64_v1"
++BUILD = BASE / "runtime/scan67_nav2_contract_v36"
+ IMAGE = "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb"
+ 
+ 
+@@ -75,6 +76,23 @@
+             raise ValueError("Version source changed; register a new version before running: " + name)
+     shutil.copyfile(manifest_path, out / "integration_version.json")
+     return version
++
++
++def verify_native_build(build, frozen):
++    """Reject installation drift or a build outside the frozen v36 path."""
++    if build.resolve() != BUILD.resolve():
++        raise ValueError("v36 requires its frozen native build path")
++    for filename, key in (("source_sha256.json", "native_source_sha256"),
++                          ("install_sha256.json", "native_install_sha256")):
++        actual = json.loads((build / filename).read_text())
++        if actual != frozen[key]:
++            raise ValueError("Native manifest differs from the frozen version: " + filename)
++        for name, expected in frozen[key].items():
++            if hashlib.sha256((build / name).read_bytes()).hexdigest() != expected:
++                raise ValueError("Frozen native byte mismatch: " + name)
++    result = json.loads((build / "build_result.json").read_text())
++    if not (result["passed"] and result["source_unchanged"]):
++        raise ValueError("Selected native build is not qualified")
+ 
+ 
+ HISTORICAL_PROFILE_SHA256 = "6afa0e573c268aca641f7d176f55bbf720b6521db8e5ce8153e2baece1b5b621"
+@@ -149,12 +167,10 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    for name in ("source_sha256.json", "install_sha256.json"):
+-        manifest = json.loads((build / name).read_text())
+-        if any(hashlib.sha256((build / p).read_bytes()).hexdigest() != sha for p, sha in manifest.items()):
+-            raise ValueError(f"Native identity mismatch: {name}")
+-    if not json.loads((build / "build_result.json").read_text())["passed"]:
+-        raise ValueError("Selected native build is not qualified")
++    if integration_version != "v36":
++        raise ValueError("This entry point requires frozen integration version v36")
++    frozen = json.loads((VERSION / "manifest.json").read_text())
++    verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+         identities = [json.loads(path.read_text()) for path in
+                       (BASE / "repairs/2026-09-26_generic_occupancy").glob("candidate*identity*.json")]
+@@ -166,8 +182,10 @@
+     epoch = time.time_ns()
+     (out / "artifacts/external_episode").mkdir(parents=True)
+     (out / "inputs").mkdir()
+-    planner_config = args.planner_config or (BASE / "repairs/2026-09-26_generic_occupancy/geometry_planner.yaml"
+-                                            if args.geometry_obstacles else BASE / "config_archived/planner.yaml")
++    planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
++    expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
++    if planner_config.resolve() != expected_config.resolve():
++        raise ValueError("Planner configuration must be the selected frozen v36 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -231,6 +249,8 @@
+         "sensor_preprocessing": "unfiltered planner cloud, as archived unfiltered_planner_cloud=true"}, indent=2) + "\n")
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
++    for name in ("run_local_episode.py", "native_graph.py", "native_backend_entry.py", "navigation_contract.json"):
++        shutil.copyfile(VERSION / name, out / ("executed_v36_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -246,12 +266,12 @@
+     (out / "execution_sources.json").write_text(json.dumps({p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+         for p in out.glob("executed_*")}, indent=2)+"\n")
+     sources = BASE / "runtime_sources"
+-    pythonpath = str(BASE / "runtime/foreground_py310") + ":" + ":".join(
++    pythonpath = str(VERSION / "backend_ros") + ":" + str(BASE / "runtime/foreground_py310") + ":" + ":".join(
+         str(sources / p) for p in ("backend_adapter", "backend_ros", "bridge", "pct_runtime/python"))
+     script = "\n".join(["set -e", "source /opt/ros/humble/setup.bash", "source /workspace/install/setup.bash",
+         "export PYTHONPATH=" + shlex.quote(pythonpath) + ':"${PYTHONPATH:-}"',
+         "export LD_LIBRARY_PATH=" + shlex.quote(str(sources / "pct_runtime/lib")) + ':"${LD_LIBRARY_PATH:-}"',
+-        "exec python3 " + shlex.quote(str(BASE / "scripts/native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
++        "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+     name = "vla-newton-" + out.name.replace("_", "-")
+     command = ["docker", "run", "--rm", "--pull=never", "--platform=linux/amd64", "--name", name,
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/native_graph.py
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/native_graph.py
+@@ -7,7 +7,8 @@
+ import sys
+ import time
+ 
+-BASE = Path(__file__).resolve().parents[1]
++VERSION = Path(__file__).resolve().parent
++BASE = VERSION.parents[1]
+ sys.path.insert(0, str(BASE / "references"))
+ from archived_pilot_driver import get_json
+ 
+@@ -18,6 +19,9 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
++    if request.get("integration_version") != "v36":
++        raise ValueError("v36 graph requires the frozen v36 integration identity")
++    contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+     cfg = BASE / "config_archived"
+@@ -68,7 +72,7 @@
+               "--tomogram-path", str(map_path), "--reference-height-m", "0.30"])
+         launch("scan", ["ros2", "run", "scan_planner", "scan_planner_node", "--ros-args", "--params-file", str(out / "planner.yaml"),
+               "-r", "body_pose:=/quad_0/body_pose", "-r", "sensor_pose:=/quad_0/lidar_pose", "-r", "cloud:=/quad_0/cloud"])
+-        launch("controller", ["ros2", "run", "scan_planner", "closed_loop_controller", "--ros-args", "--params-file", str(cfg / "controller.yaml"), "-r", "body_pose:=/quad_0/body_pose"])
++        launch("controller", ["ros2", "run", "scan_planner", "closed_loop_controller", "--ros-args", "--params-file", str(VERSION / "controller.yaml"), "-r", "body_pose:=/quad_0/body_pose"])
+         if not request.get("geometry_obstacles", False):
+             launch("tracker", ["ros2", "run", "scan_reactive_tracker", "moving_cluster_tracker", "--ros-args", "-p", "use_sim_time:=true",
+                   "-p", "static_background_pcd:=" + str(BASE / "inputs/static_background/building2_9.pcd")])
+@@ -80,6 +84,10 @@
+               "-p", "scan_audit_path:=" + str(out / "bridge_scan_audit.jsonl")])
+         backend = json.loads((cfg / "p2b_backend_ros.two_goal.json").read_text())
+         backend.update(run_id=out.name, run_epoch_ns=epoch)
++        backend["navigation"] = contract
++        backend.setdefault("arrival", {}).update(xy_tolerance_m=contract["xy_goal_tolerance_m"],
++            z_tolerance_m=contract["z_goal_tolerance_m"], yaw_tolerance_rad=contract["yaw_goal_tolerance_rad"],
++            monitor_period_s=1/contract["controller_frequency"])
+         if request.get("building_route_profile") == "historical_full":
+             if request.get("scene") != "building_full":
+                 raise ValueError("Historical profile requires the full Building geometry")
+@@ -92,7 +100,7 @@
+         backend["applied_evidence"].update(current_command_path=str(out / "artifacts/external_episode/current_command.json"),
+                                            finish_request_path=str(out / "artifacts/external_episode/finish_request.json"))
+         (out / "backend_config.json").write_text(json.dumps(backend, indent=2) + "\n")
+-        launch("backend", [py, str(BASE / "scripts/native_backend_entry.py"), "--config", str(out / "backend_config.json"),
++        launch("backend", [py, str(VERSION / "native_backend_entry.py"), "--config", str(out / "backend_config.json"),
+                             "--executor", request["backend_executor"]])
+         if not request["probe"]:
+             driver = (BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/building_planner.yaml
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/building_planner.yaml
+@@ -8,7 +8,8 @@
+     use_sim_time: true
+     fsm.navi_mode: 3
+     fsm.thresh_replan: 1.0
+-    fsm.replan_frequency: 2.0
++    fsm.replan_frequency: 30.0
++    fsm.replan_use_wall_clock: true
+     fsm.thresh_no_replan: 0.1
+     fsm.planning_horizon: 3.5
+     fsm.goal_neighbor_tolerance: 1.0
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/flat_planner.yaml
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/flat_planner.yaml
+@@ -7,7 +7,8 @@
+     use_sim_time: true
+     fsm.navi_mode: 3
+     fsm.thresh_replan: 1.0
+-    fsm.replan_frequency: 2.0
++    fsm.replan_frequency: 30.0
++    fsm.replan_use_wall_clock: true
+     fsm.thresh_no_replan: 0.1
+     fsm.planning_horizon: 3.5
+     fsm.goal_neighbor_tolerance: 1.0
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/controller.yaml
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/controller.yaml
+@@ -2,6 +2,10 @@
+   ros__parameters:
+     p2b_mode: true
+     use_sim_time: true
++    controller_frequency: 30.0
++    goal_xy_tolerance: 0.25
++    goal_yaw_tolerance: 0.25
++    goal_z_tolerance: 0.20
+     time_forward: 0.8
+     heading_error_threshold: 0.8
+     kp_pos: 0.8
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/backend_ros/p2b_backend_ros/config.py
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/backend_ros/p2b_backend_ros/config.py
+@@ -56,8 +56,10 @@
+     "arrival": {
+         "xy_tolerance_m": 0.25,
+         "z_tolerance_m": 0.20,
+-        "monitor_period_s": 0.05,
++        "monitor_period_s": 1/30,
++        "yaw_tolerance_rad": 0.25,
+     },
++    "navigation": {"global_planner_frequency": 1.0, "local_planner_frequency": 30.0, "controller_frequency": 30.0},
+     "service": {
+         "max_evidence_age_s": 10.0,
+         "command_timeout_s": 45.0,
+@@ -108,6 +110,7 @@
+             "required": ["request_id", "goal_id", "target_ground_xyz", "map_epoch", "map_revision"],
+             "target_ground_xyz": "[x_m, y_m, z_m] in world frame; PCT input target, not native body-reference output",
+             "frame": "world by default",
++            "target_yaw_rad": "optional finite radians; default is the initial PCT path's final horizontal segment",
+         },
+         "state_payload": {
+             "readiness": "separate body_pose, active owner, gate and last error fields; owner=None is not success",
+@@ -171,4 +174,3 @@
+     host = str(config.get("http", {}).get("host", "127.0.0.1"))
+     if host not in {"127.0.0.1", "localhost"}:
+         raise ValueError("http_host_must_be_loopback")
+-
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/backend_ros/p2b_backend_ros/runtime.py
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/backend_ros/p2b_backend_ros/runtime.py
+@@ -13,8 +13,9 @@
+ from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
+ 
+ from backend_adapter.applied_evidence import finish_request_payload
+-from backend_adapter.contracts import ContractError, MeasuredState, require_finite, require_identifier, require_int
++from backend_adapter.contracts import ContractError, MeasuredState, PlannerRequest, require_finite, require_identifier, require_int
+ from backend_adapter.p2a_bridge import load_p2a_core
++from .navigation_contract import PeriodicDeadline, normalize_yaw, positive_finite
+ 
+ 
+ @dataclass(frozen=True)
+@@ -26,6 +27,7 @@
+     map_epoch: str
+     map_revision: int
+     observation_id: str
++    target_yaw_rad: Optional[float] = None
+ 
+ 
+ class TerminalLedger:
+@@ -101,7 +103,9 @@
+     map_revision = require_int("map_revision", payload.get("map_revision", config.get("map", {}).get("revision")), 0)
+     observation_id = str(payload.get("observation_id", request_id))
+     require_identifier("observation_id", observation_id)
+-    return GoalWire(request_id, goal_id, target, frame_id, map_epoch, map_revision, observation_id)
++    yaw = payload.get("target_yaw_rad")
++    return GoalWire(request_id, goal_id, target, frame_id, map_epoch, map_revision, observation_id,
++                    None if yaw is None else normalize_yaw(yaw))
+ 
+ 
+ def make_p2a_request(goal: GoalWire, p2a: Any, now_s: float) -> Any:
+@@ -175,13 +179,21 @@
+         arrival = self.config.get("arrival", {})
+         self._arrival_tolerance_xy = float(arrival.get("xy_tolerance_m", 0.25))
+         self._arrival_tolerance_z = float(arrival.get("z_tolerance_m", 0.20))
+-        self._monitor_period_s = float(arrival.get("monitor_period_s", 0.05))
++        self._arrival_tolerance_yaw = positive_finite(arrival.get("yaw_tolerance_rad", 0.25), "yaw_tolerance_rad")
++        self._monitor_period_s = positive_finite(arrival.get("monitor_period_s", 1/30), "monitor_period_s")
++        self._global_frequency = positive_finite(self.config.get("navigation", {}).get("global_planner_frequency", 1.0), "global_planner_frequency")
++        self._global_schedule = PeriodicDeadline(self._global_frequency)
++        self._global_history = []
++        self._global_owner_key = None
+         self._stop = False
+         self._monitor_thread = threading.Thread(target=self._monitor_arrival, name="p2b-arrival-monitor", daemon=True)
+         self._monitor_thread.start()
++        self._global_thread = threading.Thread(target=self._monitor_global, name="p2b-global-refresh", daemon=True)
++        self._global_thread.start()
+ 
+     def submit_goal(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+         goal = parse_goal_payload(payload, self.config)
++        self.scan_port.set_goal_pose_request(goal)
+         job_id = str(uuid.uuid4())
+         with self._lock:
+             self.jobs[job_id] = {"status": "planning", "request_id": goal.request_id, "goal_id": goal.goal_id}
+@@ -230,6 +242,9 @@
+             "scan_port": self.scan_port.snapshot(),
+             "stop_flow": None if self._stop_flow is None else dict(self._stop_flow.__dict__),
+             "stop_flow_errors": list(self.stop_flow_errors[-20:]),
++            "navigation_contract": dict(self.config.get("navigation", {})),
++            "global_refresh": {"frequency_hz": self._global_frequency, "clock": "monotonic_wall",
++                "skipped_slots": self._global_schedule.skipped_slots, "history": list(self._global_history[-50:])},
+             "run_id": self.config.get("run_id"),
+             "run_epoch_ns": self.config.get("run_epoch_ns"),
+         }
+@@ -237,6 +252,65 @@
+     def shutdown(self) -> None:
+         self._stop = True
+         self._monitor_thread.join(timeout=1.0)
++        self._global_thread.join(timeout=1.0)
++
++    def _refresh_context(self, owner: Any) -> Any:
++        current = getattr(self.service, "active_owner", None)
++        if (self._stop or current is not owner or self._pending_stop_flow(owner) is not None or
++                self.adapter.gate.cancel_pending or self.adapter.gate.closed_reason != "open"):
++            return None
++        identity = self.adapter._identity_from_p2a_command(owner.command)
++        gate_owner = self.adapter.gate.owner
++        if gate_owner is None or not gate_owner.matches(identity):
++            return None
++        target = self._requested_target(owner)
++        return None if target is None else (identity, target)
++
++    def _monitor_global(self) -> None:
++        while not self._stop:
++            time.sleep(min(0.01, 0.1 / self._global_frequency))
++            owner = getattr(self.service, "active_owner", None)
++            if owner is None:
++                self._global_owner_key = None
++                continue
++            key = (owner.request_id, owner.goal_id, owner.command_id, owner.route_id)
++            if key != self._global_owner_key:
++                self._global_owner_key = key
++                self._global_schedule = PeriodicDeadline(self._global_frequency)
++            if not self._global_schedule.due(self.clock()):
++                continue
++            self._refresh_global_once(owner)
++
++    def _refresh_global_once(self, owner: Any) -> None:
++        context = self._refresh_context(owner)
++        if context is None:
++            return
++        identity, target = context
++        started = self.clock()
++        record = {"started_wall_s": started, "command_id": owner.command_id, "generation": identity.generation,
++                  "active_route_id": owner.route_id, "status": "planning"}
++        try:
++            body = self.scan_port.pct_start_provider()
++            if body.map_epoch != identity.map_epoch or body.map_revision != identity.map_revision:
++                raise RuntimeError("global_refresh_measured_map_mismatch")
++            request = PlannerRequest(owner.request_id, owner.goal_id, body.position_world_m, target.ground_xyz,
++                self.adapter.frame_id, identity.map_epoch, identity.map_revision, optimize=self.adapter.optimize)
++            route = self.adapter.pct_client.plan(request)
++            record["computed_route_id"] = route.route_id
++            # Planning may finish after cancel, preemption, timeout or arrival.
++            if self._refresh_context(owner) is None:
++                record["status"] = "discarded_owner_changed_or_stopping"
++            else:
++                record["status"] = "published" if self.scan_port.refresh_route(identity, route) else "discarded_gate_closed"
++        except Exception as exc:
++            record.update(status="failed", error=str(exc))
++            if self._refresh_context(owner) is not None:
++                self._request_stop_flow(owner, "fault", "global_refresh_failed:" + str(exc))
++        finally:
++            record["elapsed_wall_s"] = self.clock() - started
++            record["overrun"] = record["elapsed_wall_s"] > 1 / self._global_frequency
++            self._global_history.append(record)
++            self._global_history = self._global_history[-50:]
+ 
+     def _goal_worker(self, job_id: str, goal: GoalWire) -> None:
+         try:
+@@ -296,9 +370,32 @@
+             requested = self._requested_target(owner)
+             if requested is None:
+                 continue
+-            if not _within_arrival(measurement.position_world_m, requested.body_xyz, self._arrival_tolerance_xy, self._arrival_tolerance_z):
++            evidence = self._goal_pose_evidence(owner)
++            if evidence is None or not evidence["within_tolerance"]:
+                 continue
+             self._request_stop_flow(owner, "arrival", "arrived_hold")
++
++    def _within_goal_yaw(self, owner: Any) -> bool:
++        try:
++            _, target_yaw = self.scan_port.goal_pose(owner)
++            return abs(normalize_yaw(target_yaw - self.scan_port.measured_yaw())) <= self._arrival_tolerance_yaw
++        except (KeyError, ValueError, RuntimeError):
++            return False
++
++    def _goal_pose_evidence(self, owner: Any) -> Optional[dict]:
++        try:
++            body, yaw = self.scan_port.measurement_with_yaw()
++            target, target_yaw = self.scan_port.goal_pose(owner)
++            xyz = body.position_world_m
++            xy_error = math.hypot(xyz[0]-target[0], xyz[1]-target[1])
++            z_error = abs(xyz[2]-target[2])
++            yaw_error = abs(normalize_yaw(target_yaw-yaw))
++            return {"body_xyz_m":xyz,"body_yaw_rad":yaw,"goal_body_xyz_m":target,"goal_yaw_rad":target_yaw,
++                "state_sequence":body.state_sequence,"state_stamp_s":body.stamp_s,"xy_error_m":xy_error,
++                "z_error_m":z_error,"yaw_error_rad":yaw_error,"within_tolerance":xy_error<=self._arrival_tolerance_xy and
++                z_error<=self._arrival_tolerance_z and yaw_error<=self._arrival_tolerance_yaw}
++        except (KeyError, ValueError, RuntimeError):
++            return None
+ 
+     def _remember_requested_target(self, goal: GoalWire, route_id: str, command_id: str) -> None:
+         ground = goal.target_ground_xyz
+@@ -422,6 +519,8 @@
+         if result.get("ok"):
+             flow.status = "complete"
+             flow.message = terminal_message
++            result = dict(result)
++            result["goal_pose_evidence"] = self._goal_pose_evidence(owner)
+             record = self.ledger.append(owner.request_id, owner.goal_id, ledger_status, terminal_message, owner.route_id, result)
+             if self.write_finish_request and ledger_status in {"arrived", "failed", "stopped"}:
+                 self._write_finish(record, "FINISHED" if ledger_status == "arrived" else "FAILED")
+@@ -445,9 +544,10 @@
+             measurement = self.scan_port.measurement_provider()
+         except Exception as exc:
+             return "arrival_measurement_missing_after_stop:%s" % exc
+-        if _within_arrival(measurement.position_world_m, requested.body_xyz, self._arrival_tolerance_xy, self._arrival_tolerance_z):
++        evidence = self._goal_pose_evidence(owner)
++        if evidence is not None and evidence["within_tolerance"]:
+             return None
+-        return "arrival_geometry_drift_after_stop"
++        return "arrival_pose_drift_after_stop"
+ 
+     def _write_finish(self, record: Mapping[str, Any], status: str) -> None:
+         path_s = str(self.config.get("applied_evidence", {}).get("finish_request_path", ""))
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/backend_ros/p2b_backend_ros/node.py
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/backend_ros/p2b_backend_ros/node.py
+@@ -5,6 +5,7 @@
+ import argparse
+ import dataclasses
+ import json
++import math
+ import pathlib
+ import threading
+ import time
+@@ -20,6 +21,7 @@
+ 
+ from .config import load_runtime_config, render_wire_contract
+ from .runtime import NavigationHttpRuntime, pct_start_from_body_pose, start_http_server
++from .navigation_contract import final_path_yaw, normalize_yaw
+ 
+ 
+ class RosUnavailable(RuntimeError):
+@@ -46,6 +48,11 @@
+         self._last_admission = None  # type: Optional[Dict[str, Any]]
+         self._faults = []  # type: List[Dict[str, Any]]
+         self._last_odom_stamp_ns = None  # type: Optional[int]
++        self._goal_inputs = {}
++        self._goal_requests = {}
++        self._goal_poses = {}
++        self._measured_yaw = None
++        self._pose_with_yaw = None
+         self._load_ros_types()
+         topics = config.get("topics", {})
+         self.route_pub = node.create_publisher(self.P2BRoute, topics.get("route_topic", "/p2b/route"), 10)
+@@ -127,12 +134,71 @@
+         msg = self.P2BRoute()
+         self._fill_identity(msg, identity)
+         msg.path = self._route_to_path(route)
++        self._fill_goal_pose(msg, identity, route)
+         with self._condition:
+             self.route_pub.publish(msg)
+             admission = self._wait_admission(identity, {"accepted", "rejected"}, 2.0, {"fsm"})
+         if admission.status == "accepted":
+             self._mark_owner_admitted(identity)
+         return admission
++
++    def set_goal_pose_request(self, goal: Any) -> None:
++        key = (goal.request_id, goal.goal_id)
++        with self._condition:
++            previous = self._goal_requests.get(goal.request_id)
++            if previous is not None and previous != goal:
++                raise ContractError("goal_pose_request_identity_conflict")
++            self._goal_requests[goal.request_id] = goal
++            self._goal_inputs[key] = (goal.target_ground_xyz, goal.target_yaw_rad)
++
++    @staticmethod
++    def _goal_pose_key(identity: CommandIdentity) -> tuple:
++        return tuple(identity.to_dict().values())
++
++    def _fill_goal_pose(self, msg: Any, identity: CommandIdentity, route: NativeRoute) -> None:
++        key = self._goal_pose_key(identity)
++        with self._condition:
++            pose = self._goal_poses.get(key)
++            if pose is None:
++                ground, yaw = self._goal_inputs[(identity.request_id, identity.goal_id)]
++                yaw = final_path_yaw(route.waypoints_m) if yaw is None else normalize_yaw(yaw)
++                pose = ((ground[0], ground[1], ground[2] + self.nominal_body_height_m), yaw)
++                self._goal_poses[key] = pose
++        xyz, yaw = pose
++        msg.has_goal_pose = True
++        msg.goal_pose.position.x, msg.goal_pose.position.y, msg.goal_pose.position.z = xyz
++        msg.goal_pose.orientation.z, msg.goal_pose.orientation.w = math.sin(yaw/2), math.cos(yaw/2)
++
++    def goal_pose(self, owner: Any) -> Tuple[Tuple[float, float, float], float]:
++        with self._condition:
++            identity = self.adapter._identity_from_p2a_command(owner.command)
++            return self._goal_poses[self._goal_pose_key(identity)]
++
++    def measured_yaw(self) -> float:
++        self.measurement_provider()  # Apply the same freshness rule as XYZ.
++        if self._measured_yaw is None:
++            raise RuntimeError("body_yaw_not_ready")
++        return self._measured_yaw
++
++    def measurement_with_yaw(self) -> tuple:
++        self.measurement_provider()  # Same freshness/clock gate as body pose.
++        if self._pose_with_yaw is None:
++            raise RuntimeError("body_yaw_not_ready")
++        return self._pose_with_yaw  # XYZ and yaw from one atomic callback record.
++
++    def refresh_route(self, identity: CommandIdentity, route: NativeRoute) -> bool:
++        # No new generation/admission/grace period. The native cancellation
++        # high-water mark also rejects a publish racing with stop delivery.
++        msg = self.P2BRoute()
++        self._fill_identity(msg, identity)
++        msg.path = self._route_to_path(route)
++        self._fill_goal_pose(msg, identity, route)
++        with self._condition:
++            owner = self.gate.owner
++            if owner is None or not owner.matches(identity) or self.gate.cancel_pending or self.gate.closed_reason != "open":
++                return False
++            self.route_pub.publish(msg)
++        return True
+ 
+     def request_stop(self, identity: CommandIdentity, reason: str) -> ScanAdmission:
+         msg = self.P2BCancel()
+@@ -258,6 +324,11 @@
+         if not self._valid_body_pose_header(msg):
+             return
+         try:
++            q = msg.pose.pose.orientation
++            norm2 = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w
++            if not math.isfinite(norm2) or abs(norm2 - 1.0) > 1e-6:
++                raise ValueError("invalid_body_orientation")
++            self._measured_yaw = math.atan2(2*(q.w*q.z + q.x*q.y), 1-2*(q.y*q.y + q.z*q.z))
+             state = MeasuredState(
+                 state_sequence=self._state_seq + 1,
+                 monotonic_s=now,
+@@ -274,6 +345,7 @@
+             return
+         self._state_seq += 1
+         self._last_measurement = state
++        self._pose_with_yaw = (state, self._measured_yaw)
+         try:
+             self.gate.observe_measurement(state)
+         except ContractError:

@@ -1,0 +1,125 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/render_episode.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v43/render_episode_v43.py
+@@ -24,6 +24,8 @@
+ wp.set_device("cpu")
+ import newton
+ 
++import sys
++sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+ from scene_assets import BASE, OfficialHuman, verify_inputs
+ from robot_scene import StairRobot
+ 
+@@ -212,6 +214,18 @@
+     return parts
+ 
+ 
++def load_recorded_rows(source):
++    """Display-only 30 FPS sampling; retain actual logged poses without interpolation."""
++    original = json.loads((source / "video_states.json").read_text())
++    times = np.asarray([row["physics_time_s"] for row in original])
++    if len(times) < 2 or not np.isfinite(times).all() or np.any(np.diff(times) <= 0.):
++        raise ValueError("Expected strictly increasing actual recorded native times")
++    display = times[0] + np.arange(int(np.floor((times[-1]-times[0])*30.))+1) / 30.
++    indices = np.searchsorted(times, display).clip(1, len(times)-1)
++    indices -= np.abs(times[indices-1]-display) <= np.abs(times[indices]-display)
++    return [dict(original[int(i)], display_time_s=float(t)) for i,t in zip(indices,display)]
++
++
+ def main():
+     parser = argparse.ArgumentParser()
+     parser.add_argument("--source-run", required=True)
+@@ -225,14 +239,15 @@
+     episode_request = (json.loads((source / "episode_request.json").read_text())
+                        if (source / "episode_request.json").exists() else {})
+     startup_view = episode_request.get("startup_qualification", False)
++    timing = json.loads((source / "recording_measurements.json").read_text())
+     verify_inputs()
+-    rows = json.loads((source / "video_states.json").read_text())
++    rows = load_recorded_rows(source)
+     if args.limit is not None:
+         rows = rows[:args.limit]
+     if not rows:
+         raise ValueError("No recorded physics frames")
+     for name in ("render_episode.py", "scene_assets.py", "robot_scene.py", "flat_scene.py"):
+-        shutil.copyfile(Path(__file__).with_name(name), out / ("executed_" + name))
++        shutil.copyfile((BASE / "scripts" / name), out / ("executed_" + name))
+     long_route = episode_request.get("scene") == "flat_empty_long"
+     full_building = episode_request.get("scene") == "building_full"
+     if episode_request.get("scene") in ("flat_static", "flat_box", "flat_empty_long"):
+@@ -375,6 +390,7 @@
+                     mode = row["controller_phase"]
+                 distance = float(np.linalg.norm(base_position[:2] - np.array(robot.scenario["goal_ground_xyz_m"][:2])))
+                 detail = f"Control: {mode} | goal distance: {distance:.2f} m | command vx: {command[0]:+.2f} m/s | curve messages: {len(available)}"
++            detail = f"RTF {timing['actual_navigation_rtf']:.4f} | local {timing['local_hz']:.2f} Hz | control {timing['controller_hz']:.2f} Hz | overruns {timing['local_overruns']}"
+             draw.text((22, 53), detail, font=small, fill=(153, 216, 239))
+             if long_route:
+                 left, right, top, bottom = frame.width-360, frame.width-20, 115, 245
+@@ -415,7 +431,7 @@
+             path = frames / f"{i:06d}.png"
+             frame.save(path)
+             manifest.append({"file": str(path.relative_to(out)), "sha256": digest(path),
+-                             "physics_time_s": t, "actor_clip": actor["clip"], "actor_frame": actor["frame"],
++                             "physics_time_s": t, "display_time_s": row["display_time_s"], "actor_clip": actor["clip"], "actor_frame": actor["frame"],
+                              "camera_position_m": position.tolist(), "camera_target_m": target.tolist(),
+                              "navigation_status": status,
+                              "shape": list(rgb.shape)})
+@@ -424,21 +440,21 @@
+     finally:
+         viewer.close()
+     video = out / "newton_stair_recorded.mp4"
+-    command = ["/opt/homebrew/bin/ffmpeg", "-nostdin", "-v", "error", "-framerate", "12.5",
++    command = ["/opt/homebrew/bin/ffmpeg", "-nostdin", "-v", "error", "-framerate", "30",
+                "-i", str(frames / "%06d.png"), "-vf", "scale=1280:720", "-c:v", "libx264",
+                "-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(video)]
+-    subprocess.run(command, check=True, timeout=90)
++    subprocess.run(command, check=True, timeout=180)
+     (out / "frames.json").write_text(json.dumps(manifest, indent=2) + "\n")
+     (out / "result.json").write_text(json.dumps({"source_run": args.source_run,
+         "source_states_sha256": digest(source / "video_states.json"), "video": str(video),
+-        "video_sha256": digest(video), "frames": len(rows), "fps": 12.5,
++        "video_sha256": digest(video), "frames": len(rows), "fps": 30,
+         "first_physics_s": rows[0]["physics_time_s"], "last_physics_s": rows[-1]["physics_time_s"],
+         "display_camera_fov_degrees": 60.0 if full_building else 50.0 if long_route else 45.0 if startup_view or args.view == "rear-right" else 60.0 if flat_view else 80.0,
+         "display_camera_mode": "building_overview_then_follow" if full_building else "long_route_follow" if long_route else "rear_right" if args.view == "rear-right" else "startup_close_side" if startup_view else "fixed_flat_side" if flat_view else "original_follow",
+         "integration_version": episode_request.get("integration_version"),
+         "appearance_sha256": digest(out / "appearance.json"),
+         "render_only_no_physics_steps": robot.steps == 0,
+-        "claim": "Replay visualization of actual logged physics; no synthesized robot trajectory or live-render timing claim"}, indent=2) + "\n")
++        "claim": "30 FPS display-only nearest sampling of actual recorded physical states; 1 native second per video second; runtime timing is measured separately"}, indent=2) + "\n")
+ 
+ 
+ if __name__ == "__main__":
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/render_heading_view.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v43/render_heading_v43.py
+@@ -29,7 +29,10 @@
+ parser = argparse.ArgumentParser()
+ parser.add_argument("--source-run", required=True)
+ args, _ = parser.parse_known_args()
+-rows = json.loads((EXPERIMENT / "runs" / args.source_run / "video_states.json").read_text())
++sys.path.insert(0, str(SCRIPTS))
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++import render_episode_v43 as render_episode
++rows = render_episode.load_recorded_rows(EXPERIMENT / "runs" / args.source_run)
+ 
+ # Newton free joint: joint_q = [x, y, z, qx, qy, qz, qw, ...].
+ cameras, smoothed, last_t = [], None, None
+@@ -55,9 +58,7 @@
+                     "position_m": position.tolist(), "target_m": target.tolist()})
+ 
+ sys.path.insert(0, str(SCRIPTS))
+-spec = importlib.util.spec_from_file_location("render_episode", SCRIPTS / "render_episode.py")
+-render_episode = importlib.util.module_from_spec(spec)
+-spec.loader.exec_module(render_episode)
++# Renderer is the version-owned 30 FPS actual-state replay imported above.
+ Base = render_episode.newton.viewer.ViewerGL
+ 
+ 
+@@ -87,7 +88,7 @@
+ out = Path(os.environ["NEWTON_RUN_DIR"])
+ (out / "executed_render_heading_view.py").write_bytes(Path(__file__).read_bytes())
+ (out / "heading_camera.json").write_text(json.dumps({
+-    "wrapper": "render_heading_view.py", "renderer": "scripts/render_episode.py (unchanged, imported)",
++    "wrapper": "render_heading_view.py", "renderer": "versions/v43/render_episode_v43.py (30 FPS actual-state replay)",
+     "overview_until_s": OVERVIEW_S, "trail_m": TRAIL_M, "height_m": HEIGHT_M, "ahead_m": AHEAD_M, "down_m": DOWN_M,
+     "yaw_time_constant_s": TAU_S, "frames": len(cameras), "cameras": cameras}, indent=1) + "\n")
+ print(json.dumps({"heading_view": str(out), "frames": len(cameras)}))

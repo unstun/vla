@@ -1,0 +1,53 @@
+{
+  "passed": true,
+  "blocking_findings": [],
+  "nonblocking_findings": [
+    {
+      "file": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract/periodic_probe.cpp",
+      "line": 124,
+      "reason": "失败重试用 NaN 里程计触发真实输入门控拒绝，尚未覆盖正常输入下的优化器失败、成功后继曲线发布或控制器切换。因此这些测试支持调度组件结论，不能证明连续导航或 PVA 切换延迟。现有 RESULTS.md 已准确保留此边界，不阻塞本次有界仿真。"
+    },
+    {
+      "file": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract/periodic_probe.cpp",
+      "line": 199,
+      "reason": "安全断言覆盖时钟回退导致的无效曲线紧急停止，尚未实际覆盖碰撞发现后的即时求解。不过实际源码 checkCollisionCallback 在 scan_replan_fsm.cpp:1193 直接调用 planFromCurrentTraj，未经过新增 nominalReplanDue 门控，且与 v34 对应函数保持不变；未发现安全回调被周期限流的实现缺陷。"
+    },
+    {
+      "file": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/RESULTS.md",
+      "line": 77,
+      "reason": "候选仍未冻结。此次审查不代替执行前的版本冻结和安装身份核验；应绑定当前源码、2 Hz 配置、已返回安装文件及本次运行记录。全路线完成、东端转角可行性、动态避障和端到端延迟仍是运行待验证项。"
+    }
+  ],
+  "evidence_checked": [
+    "AGENTS.md",
+    ".trellis/tasks/09-23-scan-reactive-stair-pedestrian/task.json",
+    ".trellis/tasks/09-23-scan-reactive-stair-pedestrian/prd.md",
+    ".pipeline/terminology/terminology.md",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v34/manifest.json",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan65_evidence_floor_v34/src/plan_manage/include/plan_manage/scan_replan_fsm.h",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan65_evidence_floor_v34/src/plan_manage/src/scan_replan_fsm.cpp",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/PLAN.md",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/RESULTS.md",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/changes.patch",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/prepared.json",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/source_checks.json",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/check_source.py",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/parent_source/src/plan_manage/src/scan_replan_fsm.cpp",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan66_periodic_replan_v35/src/plan_manage/include/plan_manage/scan_replan_fsm.h",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan66_periodic_replan_v35/src/plan_manage/src/scan_replan_fsm.cpp",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract/periodic_probe.cpp",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract/contract_results.json",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract/CMakeLists.txt",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract/inside.sh",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract/attempt_green04/probe.log",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract/attempt_green04/result.json",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract/attempt_green04/invalid_1e-310.log",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/contract/attempt_red04/probe.log",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/remote5070ti/build_result.json",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/remote5070ti/build.log",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/remote5070ti_retry04/result.json",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/remote_sync/remote_verification04.json",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v35/remote_sync/return_verification.json"
+  ],
+  "conclusion": "Dr Sun, 未发现阻塞已授权单次有界仿真试验的具体实现缺陷。实际源码以名义 2 Hz 周期替代位移触发，限流初始规划及普通重试，保留直接安全求解、紧急停止和原有完成判断。v34 当前 FSM、冻结快照和保存的父版 preimage 哈希一致，实际差异符合 changes.patch；原始组件日志支持调度结论。此变更没有新增上游导入或 VLA action-interface 修改。执行前仍需冻结并绑定身份；审查通过不代表全路线、无缝切换或导航验收通过。全程只读，没有运行项目代码、仿真或远端操作。"
+}

@@ -1,0 +1,90 @@
+{
+  "passed": false,
+  "scope": "Round-2 read-only review (2026-09-29) of the revised wall-clock diagnosis and the rebuilt v32 candidate 2. Nothing in the repository was written. Probes ran only in the session scratchpad. SHA-256 prefixes of the files reviewed. Audit: RESULT.md 98a9d5fb, DIAG_RUN_PLAN.md e0560353, analyze_pose_gaps.py 9c9e7499, pose_gaps_diag_v31_clock03.json d7441e15, pose_gaps_diag_v31_clock04.json e87a0ba6, analyze_gc.py dae91e09, gc_attribution_diag_v31_clock04.json b8480e01, gc_attribution_diag_v31_clock04_round1.json 323fd2d5, diag_worker.py 3d9c4aa7, container_site/sitecustomize.py 7f289cbb, diag_launch.py 2034796d, analyze_linux.py e1b8a2f2. versions/v32: PLAN.md a754c527, PHYSICAL_RUN_PLAN.md 4eb6ca9a, REVIEW_RESPONSE_round1.md 0a827122, materialize.py 62d77d22, changes.patch e7d8972e, prepared.json 83d1b571, check_change.py f3ad8b7c, check_change.json 0557f1bd, freeze.py 75d35c25, gc_schedule_check/bench_gc.py a49c77a7, run_gc_check.py 964f0c4d, result.json 6e5b3b2b, collect_freeze/summary.json d982b2a0, collect_freeze/gc_events.npy 3174a55c, freeze/summary.json c8b8af97, none/summary.json 92bbc46d, attempt01/newton_episode_candidate1.py 2e93fd5d, parent_source/scripts/newton_episode.py 5ab9d564. Working tree: scripts/newton_episode.py 840e8e5f. Raw data re-read: runs/diag_v31_clock03, runs/diag_v31_clock04 (diagnostics/*.npy, host.jsonl, backend_body_callbacks.jsonl, clock_samples.jsonl, telemetry.jsonl, result.json, bridge.log) and runs/v31_historical_full01. No file in versions/v32, the audit folder or scripts/ changed after REVIEW_RESPONSE_round1.md (02:39) while this review ran.",
+  "blocking": [
+    {
+      "id": "B1",
+      "where": "RESULT.md 'Answer', 'Where the gaps arise' (lines 26-29); section 5 table row 'Mac publish interval at least half the backend gap'; section 4 'The fatal gap' (lines 173-177); 'Which stall ended which run', row diag_v31_clock04 (line 221); 'What v32 can and cannot change', B and 'For Dr Sun' (lines 254-261). PLAN.md 'Decision and basis' ('all 20 backend gaps over 150 ms arose in the Mac-side Newton worker, before publishing (measured)'; 'diag_v31_clock04 ended on B') and 'Not addressed by v32' ('They can still stretch a step past 0.25 s, and they ended diag_v31_clock04'). REVIEW_RESPONSE_round1.md B2 ('All 20 arose before publishing').",
+      "finding": "The new localisation is wrong for 13 of the 20 gaps, and it is labelled 'measured'. In every B gap the worker kept publishing inside the window: 3-6 intermediate poses, with the longest interval between consecutive Mac publishes 38.9-87.1 ms, which is 25-55% of the backend gap. In clock04's fatal 297.3 ms gap, poses were published at 0, 83.5, 121.6, 146.9, 179.7, 216.6, 244.5 and 278.6 ms, so the longest interval was 83.5 ms. Those poses reached the bridge and were superseded there. So the part of each B gap beyond about 40-87 ms arose after publishing, at a location the record itself calls unmeasured. With lossless delivery none of the 13 B gaps would have exceeded about 90 ms, and clock04 would not have tripped the 0.25 s gate; no step in that window exceeded 177 ms. The test used for 'arose before publishing' (the two received poses were published at least half the backend gap apart) holds by construction whenever both received poses have small receipt delays. It therefore cannot locate a gap made of superseded poses. Only the 7 A gaps, with consecutive poses, arose before publishing. Consequences: (1) 'Every one of them arose on the Mac, before publishing (measured)' contradicts the record's own B bullet ('poses published during the slow window never reached the backend'). (2) The clock04 source row, 'B, measured', leaves out the post-publish part that made the gap fatal. (3) PLAN's 'can still stretch a step past 0.25 s, and they ended diag_v31_clock04' is not what happened. (4) 'Removing B's effect needs a change to what the gate measures' is not supported for the diagnostic runs' B gaps. A delivery-side change would have kept those gaps under 90 ms: in the worker's sender, the host-VM path, or the bridge's newest-only 10 ms timer, once L1 has located the delay. The gate time-base option is needed only for producer-side stalls such as v31's 288 ms step with no publish.",
+      "evidence": "Scratch recomputation using the endpoints in pose_gaps_*.json and publish times from diagnostics/substeps.npy (every fifth substep). Longest intervals between consecutive publishes in the B gaps: clock03 69.7, 38.9, 79.8, 83.5, 67.8, 82.2 and 69.4 ms; clock04 87.1, 62.8, 60.8, 73.8, 83.9 and 83.5 ms. In the A gaps the longest interval is the whole gap, 161-274 ms. Every frame the worker sent was accepted at the bridge: clock04 sent 79,538 frames = 75,751 accepted states + 3,787 clouds; clock03 sent 118,864 = 113,204 + 5,660.",
+      "required_fix": "State that A gaps arose before publishing (no pose was published). State that B gaps combine a worker slowdown (publishes 20-87 ms apart instead of about 10 ms) with the post-publish superseding of 3-6 poses, that both are needed to exceed 150 ms, and that the superseding's location is unmeasured. In section 5, replace the non-discriminating row with 'longest interval between consecutive Mac publishes' (A 161-274 ms, B 39-87 ms). Rewrite the clock04 source row, PLAN.md's basis and its 'Not addressed' text, and RESULT's 'What v32 can and cannot change' and 'For Dr Sun', so the delivery-side option (after L1 locates the delay) sits next to the gate time-base option."
+    },
+    {
+      "id": "B2",
+      "where": "versions/v32/PLAN.md 'Stall classes' and L1 criteria 2-3; PHYSICAL_RUN_PLAN.md 'Expected signals'; audits/2026-09-29_wall_clock_chain/diag_worker.py step() (lines 61-82); RESULT.md 'Answer', A bullet ('Four signs occur together (measured)'), and the section 5 rows 'Process runnable wait in the window' and 'Efficiency-core share'; analyze_pose_gaps.py lines 72-95.",
+      "finding": "The stall classes cannot be evaluated between steps. 'Process-wide hold' needs the physics thread's off-CPU time and the process runnable wait, and 'scheduling-type' needs the runnable wait. But diag_worker records rusage and thread CPU only as deltas taken inside Lite3Newton.step, so nothing covers the time between steps. Any gap between steps over 100 ms is therefore 'unclassified' and fails criterion 3 whatever its cause. That contradicts 'scheduling-type stalls ... do not fail L1', and criterion 2 cannot detect a hold between steps under its own definition. The same limit affects the record. Five A gaps were between-step freezes: clock03's 159, 200, 211 and 262 ms and clock04's 181 ms. For them, the signs 'runnable wait about 0' and 'efficiency-core share at most 0.12', labelled measured, come from the in-step deltas of the steps overlapping the window, not from the freeze. analyze_pose_gaps sums whole overlapping steps. The same summing gives one B gap a 724 ms runnable wait, mostly from a 188.8 ms step that lies largely before the window. The A reading of those five still rests on measured signs: the clock client stopped, the external probe woke on time, and in clock04 the logged 176 ms collection. But two of the 'four measured signs' were not measured for them.",
+      "evidence": "diag_worker.py stores only the deltas (after - usage, thread_after - thread_cpu) in each steps.npy row and no absolute values. The pose_gaps entries for between-step A gaps show runnable waits of -1.3 to 1.5 ms, taken from the adjacent steps.",
+      "required_fix": "Before L1, record absolute rusage_v6 values and main-thread CPU at each step's start and end, or add explicit between-step rows, so that between-step deltas exist. Then state the between-step rule, for example: a hold is main-thread CPU and process runnable wait both under 20 ms between the steps, plus a clock-client pause over 100 ms (a collection on the main thread is caught by criterion 1). Alternatively, define the between-step classes only from signals that are recorded: an overlapping collection, a clock-client pause, watchdog lateness and the external probe. In RESULT.md, limit the 'measured' runnable-wait and efficiency-core signs to the in-step A gaps, and mark them as not measured in the window for the between-step ones."
+    }
+  ],
+  "non_blocking": [
+    {
+      "id": "N1",
+      "where": "PLAN.md 'The collection first' ('traverses only objects created since the previous freeze') and 'Remaining costs, measured by K3'",
+      "finding": "The first explicit collection, before the loop, covers the whole start-up heap. It took 82.1 ms in K3 (the first explicit event in collect_freeze/gc_events.npy), which is outside K3(a) and L1 criterion 1 by design. In the live run it comes right after commands.start() and telemetry.start(), while the clock client (200 ms TTL) and command receiver are running. No pose flows yet, and the backend's odom check runs only once there is an owner, so the risk is low.",
+      "suggestion": "State this cost in PLAN.md and report its duration in L1."
+    },
+    {
+      "id": "N2",
+      "where": "PLAN.md 'The freeze' ('middle collections run at most about once per window')",
+      "finding": "Under v32's schedule, K3 logged 95 middle and 1,155 young collections in 946 steps, against 16 and 174 without freezing. The likely cause is that each explicit full collection clears the free lists, and refilling them inflates the young-generation count. Each collection is cheap: young at most 0.10 ms, middle at most 0.35 ms.",
+      "suggestion": "Correct the sentence; it is true only for the freeze-only schedule."
+    },
+    {
+      "id": "N3",
+      "where": "gc_schedule_check/bench_gc.py lines 142-144; REVIEW_RESPONSE_round1.md B4 table",
+      "finding": "'Garbage collectable after unfreeze' is an upper bound. It also counts unfrozen garbage still pending since the last window (steps 901-946); the 'none' mode alone shows 18,019 such objects. So 'Garbage frozen for good: 1,772' overstates. Also, the live loop reads backend_latest.json, which releases the GIL, between the scan submission and the window's collection. The scanner can then be mid-construction at the freeze more often than in the replay. The worst case is about one kernel graph (about 0.14 MB) per window, about 80 MB over a 600 s run.",
+      "suggestion": "Isolate the leak with gc.collect() before gc.unfreeze(), relabel the number as an upper bound, and check peak RSS in L1 and L2."
+    },
+    {
+      "id": "N4",
+      "where": "PLAN.md L1 criterion 1",
+      "finding": "diag_worker's gc_events has no flag marking explicit collections (K3's bench has one), so 'no automatic full collection' needs a rule to tell explicit from automatic generation-2 collections.",
+      "suggestion": "Pre-register the rule, for example: a main-thread generation-2 collection starting between steps right after a step whose state_sequence is divisible by 50 is explicit. Or wrap gc.collect in diag_worker to mark them (observation only)."
+    },
+    {
+      "id": "N5",
+      "where": "PLAN.md exposure rule ('7,100 control steps or 300 s of loop wall time')",
+      "finding": "Full collections are driven by allocations; in clock04 they came at about 470, 3,660 and 7,090 steps. With 'or', a slow run could reach 300 s with only about 3,000 steps, in which v31 would have had one full collection.",
+      "suggestion": "Use the step count, or 'and'."
+    },
+    {
+      "id": "N6",
+      "where": "container_site/sitecustomize.py (writers at lines 41, 78, 84 and 98; flush_once at lines 46-53; atexit at line 69)",
+      "finding": "The writers extend buffers[k] without holding the lock, while flush_once swaps the array and writes the old one. A row appended after the old array was written is lost. The atexit flush can also interleave with the flush thread and write chunks out of time order, and analyze_linux takes np.diff of the publish starts. Lost or out-of-order rows can look like 'not received' or like a callback pause.",
+      "suggestion": "Take the lock in the writers, or flush by index without swapping, and sort by time in analyze_linux."
+    },
+    {
+      "id": "N7",
+      "where": "PLAN.md L1 records; analyze_linux.py",
+      "finding": "The bridge's 'receive' time (receive_monotonic_ns in timed_offer) is taken in its telemetry thread after recv and decode. A late receive therefore cannot separate the host-VM path from starvation of that thread, except through the recorded publish-callback durations and collections. No analysis script yet reads the worker's telemetry_frames_*.npy.",
+      "suggestion": "Pre-register how the three segments (worker sender, network, bridge) will be split."
+    },
+    {
+      "id": "N8",
+      "where": "Container smoke check; diag_worker.py docstring",
+      "finding": "The smoke check in the pinned image (Python 3.10.12, three patches loaded) is not in the repository. The docstring names diagnostics/telemetry_frames.npy, but the code writes telemetry_frames_enqueued.npy and telemetry_frames_sent.npy.",
+      "suggestion": "Store the smoke check's command and output with the audit, and fix the docstring."
+    },
+    {
+      "id": "N9",
+      "where": "RESULT.md section 4 ('Each matches a stall exactly')",
+      "finding": "The 112, 128 and 143 ms collections sit inside steps of 156, 172 and 186 ms, so each collection is contained in its stall rather than equal to it.",
+      "suggestion": "Say 'coincides with' instead of 'matches exactly'."
+    }
+  ],
+  "verified": [
+    "Round-1 B1 is resolved in the files. analyze_gc.py has no pose-gap section anymore (output keys: run, collections, startup_collections, loop_collections_by_generation, longest_loop_collections, stalls, clock_ttl_windows), and the round-1 output is kept separately. analyze_pose_gaps maps stamps through the telemetry pairs: stamp 389.419128418 s is physics step 387,640 exactly.",
+    "Round-1 B2 is only partly resolved. Mechanism C is gone, and the superseding is labelled with its location unmeasured. But a new unsupported localisation, 'before publishing', replaced it (B1 above).",
+    "Round-1 B3 is mostly resolved. The source table has a status column, 'since resolved' is gone, clock03's cause is labelled inferred, and v31 is labelled inferred with a possible A part of up to 78 ms. The code comment now cites only the logged 99-176 ms. Two exceptions remain: B1 above (clock04's row) and B2 above (A signs between steps).",
+    "Round-1 B4 is resolved by candidate 2. K3 on 946 steps: frozen garbage upper bound 1,772 objects with collect-then-freeze, against 154,660 with freeze only; in-loop explicit collections 0.92-1.34 ms (18 of them); no automatic generation-2 collection; joint error 0.0 in all three modes; peak RSS 0.872, 0.874 and 0.873 GB.",
+    "Round-1 B5 is resolved. K3 now measures the collection at the worst phase with pre-registered conditions (a)-(c), and all three pass. L1 has an exposure rule with an inconclusive outcome (caveat in N5).",
+    "K1 and K2 for candidate 2, checked independently. The preimage has v31's hash, and the working tree (840e8e5f) matches prepared.json. There are 11 inserted lines and no removals; the other 2,870 v31 source files are unchanged. The AST is equal once the three nodes are removed. Candidate 1 (2e93fd5d) matches attempt01/prepared.json.",
+    "Placement: the collect-then-freeze pair sits before the loop, after start-up. The periodic pair follows 'last_snapshot = snapshot' and comes before the fallen break (line 261) and the finish continue/break, so no path skips it. At each window boundary a scan was just submitted, so the scanner is usually waiting for the GIL. The explicit collection runs on the main thread at a point where it holds no lock; a finalizer that needs a lock releases the GIL while it waits, so there is no deadlock path.",
+    "Worker telemetry patch, exercised in the scratchpad: patch_transport was taken from diag_worker.py's source and applied to the real lite3_sim_bridge.transport with a priority-send TelemetryPublisherServer. Five frames were recorded at enqueue and at send with the correct type (4) and stamps and ok=1, and the client received them unchanged.",
+    "Section 5's 20 gaps: 8 in clock04 and 12 in clock03. 7 A gaps (161-269 ms, consecutive poses, clock-client gaps 157-274 ms, external probe at most 10 ms late; in clock04 they coincide with the logged 142.7 and 176.0 ms collections). 13 B gaps (151-297 ms, 3-6 superseded poses, clock-client gaps 30-105 ms, probe 9-39 ms late, efficiency-core share 0.09-0.64). Receipt delays 1.9-49.1 ms. Every B gap also shows at least 136 ms of runnable wait in the steps that overlap its receipt window.",
+    "Section 3 facts re-checked: clock03's four between-step freezes (158.7, 211.1, 199.9 and 261.9 ms) and their clock-client gaps; the step after the 159 ms freeze reads 'active'; the efficiency-core share reaches 0.89; worker page-ins were 26 in each run.",
+    "Memory: clock03's free memory fell from 7.4 GB to a minimum of 2.5 GB, with 1,112 swap-ins and 6,803 decompressions; clock04's fell from 10.6 to 3.9 GB.",
+    "freeze.py asserts K1/K2 (check_change.json), K3 (gc_schedule_check/result.json) and K4 (independent_review.json). It pins bench/*/summary.json and each mode's summary.json and gc_events.npy. Its manifest lists the superseding and the gate time base as not addressed, and it writes the status 'frozen_unvalidated'. PLAN.md keeps v3 as the last accepted condition and does not claim the clock fault is fixed."
+  ]
+}

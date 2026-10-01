@@ -1,0 +1,58 @@
+{
+  "passed": true,
+  "passing_round": 5,
+  "reviewer": "one independent read-only subagent, resumed for rounds 1-5; its output is model output, verified by the main session before each fix",
+  "rounds": {
+    "1": {
+      "file": "independent_review_round1.json",
+      "passed": false,
+      "response": "REVIEW_RESPONSE_round1.md"
+    },
+    "2": {
+      "file": "independent_review_round2.json",
+      "passed": false,
+      "response": "REVIEW_RESPONSE_round2.md"
+    },
+    "3": {
+      "file": "independent_review_round3.json",
+      "passed": false,
+      "response": "REVIEW_RESPONSE_round3.md"
+    },
+    "4": {
+      "file": "independent_review_round4.json",
+      "passed": true,
+      "response": "REVIEW_RESPONSE_round4.md",
+      "note": "passed with three non-blocking findings; the fixes changed the pre-registered L1 judge, so round 5 confirmed them"
+    },
+    "5": {
+      "file": "independent_review_round5.json",
+      "passed": true
+    }
+  },
+  "post_review_edits": {
+    "scope": "Round 5's two non-blocking findings were wording only. They were applied to plan text after round 5 as the reviewer suggested, with no change to code, the L1 judge, the checks or any recorded number.",
+    "edits": [
+      {
+        "file": "versions/v32/PHYSICAL_RUN_PLAN.md",
+        "finding": "round-5 N1",
+        "old": "  - **Exposure:** at least 7,100 control steps, otherwise the run is inconclusive.",
+        "new": "  - **Exposure:** at least 7,100 control steps, otherwise the run is inconclusive.\n  - **Watchdog log:** if the wake-up log does not span the loop, L1 is inconclusive."
+      },
+      {
+        "file": "versions/v32/PLAN.md",
+        "finding": "round-5 N2",
+        "old": "  The watchdog only sleeps 10 ms, so *W* is its sleep plus waiting for the GIL or for a CPU. At most *w* of\n  that can be CPU waiting, so *W* − *w* − 10 ms bounds from below how long it could not get the GIL.",
+        "new": "  The watchdog only sleeps 10 ms, so *W* is its sleep plus waiting for the GIL or for a CPU. At most *w* of\n  that can be CPU waiting, so *W* − *w* − 10 ms bounds from below how long it was blocked rather than queued\n  for a CPU: GIL waiting together with timer lateness and its own work (see the limits below)."
+      }
+    ]
+  },
+  "files_at_freeze_sha256": {
+    "PLAN.md": "fc1be8d8195ca5000f7e60e87e10a34fa9029a27c308873376b233e3803b85cf",
+    "PHYSICAL_RUN_PLAN.md": "fb773997cb1b5323b39e81bea41876f9ae8274f26ded696e743dddce5634316b",
+    "l1/evaluate_l1.py": "ef4a4b3af33c27311fd0b1a3704420aef48613fecd26ae0a50f64dc8885902ca",
+    "l1/synthetic_check.py": "5153b2b8fd0711ff6511ffd07957ae5b612a5f6ae66e78991746164e118212ff",
+    "l1/synthetic_check.json": "283e51f30019dcb0fd59312ea56b2c45ac973dd51f39b91334eebf8b99286994",
+    "freeze.py": "5d26109bdcebccb9bdf89514ab692d12719a8e11d52636d88dfa965fe73e5500",
+    "../../scripts/newton_episode.py": "840e8e5f16c3f75c8fdbd231461f33fef7fbe94f780e022e3c9a296ce5eca1cc"
+  }
+}

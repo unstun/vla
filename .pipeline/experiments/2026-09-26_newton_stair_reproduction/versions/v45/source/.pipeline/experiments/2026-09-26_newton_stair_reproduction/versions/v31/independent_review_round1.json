@@ -1,0 +1,127 @@
+{
+  "round": 1,
+  "reviewed_candidate": "runtime/scan63_input_refresh_v31 (attempt01/)",
+  "date": "2026-09-28",
+  "note": "Verbatim report of the read-only independent review subagent (model output, verified by the main session: CR counts, the corridor-entry delta-0 replan and the option-1 wording were rechecked). Dr Sun kept the narrower design and asked for every finding to be fixed.",
+  "passed": false,
+  "blocking_findings": [
+    {
+      "id": "B1_crlf_stripped_patch_and_byte_claim_wrong",
+      "summary": "materialize.py rewrote the three CRLF source files in text mode, removing every CR byte (2,651 in total). So v31 differs from v30 by more than changes.patch records, the parent_source/ preimages are not v30's bytes, and PLAN.md's 'Every other v30 byte is unchanged' is false. The conversion is semantically inert, but the version record is inexact.",
+      "evidence": "E=/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction. E/versions/v31/materialize.py:207 'before = path.read_text()', :212 'path.write_text(after)', :219 preimage.write_text(before), :220 changes.patch built from those text-mode strings; :224 checks only which files changed. CR counts v30 -> v31: src/plan_env/include/plan_env/grid_map.h 433 -> 0, src/plan_env/src/grid_map.cpp 1060 -> 0, src/bspline_opt/src/bspline_optimizer.cpp 1158 -> 0; planner_manager.cpp and scan_replan_fsm.cpp were already LF-only. parent_source sha256 differs from v30: bspline_optimizer.cpp e34fa3c9.. vs eadf278d.., grid_map.cpp 08a70bad.. vs 2588081b.., grid_map.h cf867d83.. vs 243af1f1... 'patch -p1 --dry-run < versions/v31/changes.patch' on scratch copies of the v30 files gives '1 out of 1 hunks failed' for grid_map.cpp and bspline_optimizer.cpp; after patching, grid_map.h, grid_map.cpp and bspline_optimizer.cpp still differ from the v31 bytes. The wrong claim is at PLAN.md:79. Why the conversion is inert: after CRLF->LF normalisation the v30->v31 diff is exactly the patch's added lines (+4 grid_map.h, +66 grid_map.cpp, +7 fsm, +4 manager, +2 optimizer, 0 removed), and the three files contain no raw string literals or backslash line continuations. v29 and v30 used the same code, but every file they edited was LF-only.",
+      "why_blocking": "PLAN.md makes a false byte-identity claim. The recorded patch and preimages do not reproduce v31 from v30, which breaks the project rule that each version records its exact difference from its frozen parent.",
+      "suggested_fix": "Option 1: re-materialize with byte-preserving I/O (read_bytes().decode() and write_bytes(), or open(..., newline='')), rebuild, and show install_sha256.json unchanged (a Release build without -g should give identical objects). Option 2: keep the bytes but correct PLAN.md:79 to record the CRLF->LF normalisation of the three files, write byte-exact parent_source copies, and add a materialize assertion that the CRLF-normalised diff equals the intended edits."
+    },
+    {
+      "id": "B2_green_C4_expectation_untested_and_contradicted",
+      "summary": "PLAN.md's green C4 expectation, 'the result at Δ = 0', was never implemented by either analyzer and does not hold for corridor_entry_replan. There, the diagnosis's Δ = 0 replan fails, but green C4 plans successfully. The correction note nonetheless says the green criteria are unchanged, and COMPONENT_RESULTS.md reports 'all four plan successfully' without noting the difference.",
+      "evidence": "PLAN.md:110 (C4 green cell: 'the result at Δ = 0'); PLAN.md:131 ('Unchanged: the green criteria'). analyze_first_judgement.py:69-71 and analyze.py:108-110 check only that 'exec' appears in refresh_sites and that there is no stale signature. Diagnosis Δ = 0 replans (audits/2026-09-28_v30_stop_classes/<state>/result.json replans[0].ok): stairs_replan true, stairs_hold true, corridor_entry_replan false, upper_corridor_hold true. RESULT.md:202 gives the corridor result as 'fails (status 1, see §5)'. Green C4 results: final_plan_success=1 and exec_state_after=4 in all four states; green_v31/corridor_entry_replan/C4.log:153 'full_spline_sampled_clear duration=4.560000000 samples=458' and :157 'final_plan_success=1'. COMPONENT_RESULTS.md:56.",
+      "why_blocking": "This is the same kind of PLAN/result mismatch that was corrected for red C3, but on the green side and unrecorded. PLAN.md keeps an acceptance expectation that nothing tested, that one state contradicts, and that it describes as unchanged and met.",
+      "suggested_fix": "Add C4 green to the correction note: state that the analyzers judged it only as 'refresh applied at exec, no stale signature'. Record in COMPONENT_RESULTS.md that corridor_entry_replan succeeds where the diagnosis's Δ = 0 replan failed; the inputs are 0.30 s newer and the start point is further along the curve. Do not describe green C4 as reproducing the Δ = 0 result."
+    },
+    {
+      "id": "B3_freeze_omits_judgement_inputs_and_timing_control",
+      "summary": "freeze.py neither snapshots nor hashes the per-state diagnosis rows that the corrected C3 criterion compares against. It also neither asserts nor pins the timing control, which both regression explanations and the manifest's own freeze_boundary cite.",
+      "evidence": "analyze.py:39, 46-53 and 98 read audits/2026-09-28_v30_stop_classes/<state>/result.json and result_fresh_pose.json (8 files). freeze.py:37-38 adds only RESULT.md, timeline.json, scan_age_bounds.json and summary.json from that audit. v30's freeze pinned the audit results its contract used (versions/v30/freeze.py:27-30: landing_oracle/result.json, onset_oracle/result.json, support_map/*.json). freeze.py:17 labels runs/v31_native_regression02 'The timing control'. runs/v31_regression_timing_control01 is cited by both difference_explanations.json files and by COMPONENT_RESULTS.md:157-173, yet it is never asserted or hashed, although freeze.py:55 writes 'native regression (with its timing control)'. Mitigation: the 8 audit files are tracked in commit b3a172e5 and unchanged since.",
+      "why_blocking": "The manifest claims a complete snapshot of the acceptance evidence, but it would not pin the reference data behind the post-hoc criterion correction, the most review-sensitive part of the contract.",
+      "suggested_fix": "Add the 8 result.json and result_fresh_pose.json files to selected. Assert that runs/v31_regression_timing_control01/summary.json has all_exit_zero and v31 equal == runs for every fixture, and hash its summary.json and execution.json. Fix the freeze.py:17 comment."
+    },
+    {
+      "id": "B4_design_deviation_from_recorded_user_decision",
+      "summary": "Dr Sun's recorded option-1 decision names a separate callback group on a multi-threaded executor and time-bounded planning. v31 uses neither: it keeps the single-threaded executor, applies pending inputs at fixed sites instead, and defers bounded planning. PLAN.md explains the deviation openly, but no record shows Dr Sun accepting it. The project index and task records still describe v31 as the multi-threaded, time-bounded version.",
+      "evidence": "bigmemory/热区/未关闭决策.md:13 ('v31按方案1…（独立回调组/多线程执行器、限时规划）'); E/versions/current.json 'next_version' ('their own callback group on a multi-threaded executor) and bounds planning callbacks'); .trellis/tasks/09-23-scan-reactive-stair-pedestrian/task.json newton_versioned_repair.next_gate says the same. PLAN.md:33 'No multi-threaded executor' and :45 'Bounded planning is left out'. No approval record was found in PLAN.md, COMPONENT_RESULTS.md, bigmemory/热区 or the task directory.",
+      "why_blocking": "Freezing would fix a version whose index and decision records misdescribe it. Dropping one of the two means Dr Sun chose is a scope decision, and AGENTS.md requires explaining the difference and asking before choosing.",
+      "suggested_fix": "Get Dr Sun's explicit confirmation of the take-and-apply means and of deferring bounded planning, or cite it if it was given in chat, and record it in PLAN.md. Then update current.json, task.json and the bigmemory decision to describe the actual v31."
+    }
+  ],
+  "non_blocking_findings": [
+    {
+      "id": "N1_take_order_race_can_mispair_scan_and_pose",
+      "summary": "refreshSensorInputs drains sensor_pose before cloud. If a new scan pair arrives while the cloud loop runs, its cloud is taken without its pose and is applied with the previous scan's pose. Because cloud_is_world is false, cloudCallback transforms points with the last applied pose, so the whole scan is mis-registered: wrong raycast origin, wrong occupancy updates, and misplaced hits in the persistent reactive_nonterrain_history_. The window is small, since the cloud loop must outlast the pose-to-cloud delivery gap. v31's stamp sort also fixes a v30 backlog mispair: the round-robin executor, with queues [p_k+1] and [c_k], applies c_k with p_k+1.",
+      "evidence": "grid_map.cpp:948 (take_poses for sensor_pose) runs before :949-957 (cloud loop); :1011-1012 and :1035 'pt_world = sensor_r * pt_sensor + ray_pos'; E/versions/v31/building_planner.yaml:35 'cloud_is_world: false'. The bridge publishes the pose, then the raw cloud, then the planner cloud, all with one stamp (runtime_sources/bridge/lite3_sim_bridge/foxy_bridge_node.py:522, 542-543). The contract publishes every pair with identical stamps before the call, so C5 cannot exercise this race.",
+      "suggested_fix": "Drain clouds first, then sensor poses, then body poses (reverse publication order), or re-drain sensor_pose after the cloud loop."
+    },
+    {
+      "id": "N2_error_path_now_fatal",
+      "summary": "rcl_take errors (RCLError) and rclcpp::Time on a sensor_pose stamp (which throws for negative seconds; sensorPoseCallback never built one) now escape the timer callbacks and executor.spin() into main's catch. The node then exits with a misleading 'Failed to initialize SCAN-Planner', and native_graph aborts the episode. On the executor path the same take errors are only logged and skipped.",
+      "evidence": "grid_map.cpp:944-945, 954-955; plan_manage/src/scan_planner_node.cpp:20-25; rclcpp 16.0.12 executor.cpp:556-566 (catches RCLError in take_and_do_error_handling); subscription_base.cpp:159-163 (throw_from_rcl_error); time.cpp:68-74 (throws for negative sec).",
+      "suggested_fix": "Wrap each take() and stamp conversion in a try/catch that logs and skips, mirroring take_and_do_error_handling."
+    },
+    {
+      "id": "N3_within_step_ageing_understated",
+      "summary": "PLAN.md bounds within-step ageing by one A* search (about 0.08 s sim). But a step between refresh sites can contain several searches with a 0.2 s wall budget each: the seed search plus one per collision segment in initControlPoints before the first rebound_round, and one per segment inside each round's check_collision_and_rebound. v30 logged 85 A* timeouts. After a refresh the pose margin is about 0.1 s minus the 5 ms pose period and delivery time, and one search takes 0.078-0.086 s sim at the observed sim/wall ratios of 0.39-0.43. Two searches in one step therefore exceed the pose gate and probably the scan gate. Stationary samples then read as occupied, because a NaN yaw returns 1, which yields 'robot is inside an obstacle' and failed rounds mid-attempt. Only final_check is guaranteed fresh.",
+      "evidence": "PLAN.md:150-154; planner_manager.cpp:130 -> :159 (seed AstarSearch) -> :247 (initControlPoints) -> bspline_optimizer.cpp:140-160 (A* per segment) -> :996 (first rebound_round); bspline_optimizer.cpp:802-806 (A* inside a round, via L-BFGS earlyExit); grid_map.h:419; motion_heading.h:15; audits/.../RESULT.md:247-256.",
+      "suggested_fix": "State this in PLAN.md's claim boundary. In the trial, log input ages at each rebound_round and final_check, not only above the logging thresholds."
+    },
+    {
+      "id": "N4_contract_coverage_gaps",
+      "summary": "The contract exercises only the first site of each callback (exec or safety), with every input pending before the call and sim time frozen during it. C5's equivalence holds by construction: each scan pair shares one stamp, counts are equal, and body poses write disjoint state. The 'applies nothing' checks rely on log lines that print only above 0.15 s and 0.05 s ages, though the digests cover C1 and C5. The inner sites, which target the mid-callback ageing that motivated v31, run only with empty queues before the physical trial. COMPONENT_RESULTS.md:101-105 discloses this.",
+      "evidence": "make_refresh_probe.py:63-85 (publish everything, sleep 300 ms, then call) and :68-71 (identical stamps for pose and cloud); analyze.py:90-91, 113; grid_map.cpp:977. The only sites logged in green are exec and safety.",
+      "suggested_fix": "Before the trial, add a case where a helper thread publishes pending inputs during a long execFSMCallback or reboundReplan. Assert refresh lines at route_walk, replan_start, rebound_round and final_check, and a digest equal to executor processing. Include a cloud whose pose arrives in a later batch."
+    },
+    {
+      "id": "N5_future_stamped_inputs_and_instrumentation",
+      "summary": "Every freshness test treats a stamp ahead of now() as stale. now() comes from the /clock thread, while the refresh applies the newest data immediately before a decision. If the clock thread has not yet processed the /clock that precedes a just-taken body pose or scan, the decision sees stamp > now and yields a NaN heading or StaleInput, the very signatures v31 targets. The input_refresh log line prints only above its thresholds, and trial_signatures.py reports after-ages as median and max only, so negative ages would go unseen.",
+      "evidence": "plan_env/include/plan_env/reactive_collision.h:91-93, 131-133; motion_heading.h:15; known_lite3_trunk.h:15, 32; rclcpp node_options.hpp:406 (use_clock_thread_ true); building_planner.yaml:8 (use_sim_time: true); foxy_bridge_node.py:588-590 (clock published, then body pose); E/versions/v31/trial_signatures.py:45-51.",
+      "suggested_fix": "Have trial_signatures.py report the minimum after-age and the count of negative after-ages per site, and log whenever an after-age is negative."
+    },
+    {
+      "id": "N6_fsm_odom_vs_map_body_pose",
+      "summary": "The FSM's odom_pos_ and odom_vel_ are still updated only by the executor, while GridMap's body pose (which sets the trunk-waiver centre and the yaw of stationary samples) is refreshed at every site. The two can now differ by a whole planning callback; in v30 both body_pose subscriptions were served in the same wait cycle. This affects GEN_NEW_TRAJ start states, non-reference REPLAN starts, EMERGENCY_STOP holds placed at odom_pos_, and the odom_vel_ < 0.1 exit test. PLAN.md:160 notes only 'not refreshed', not this inconsistency.",
+      "evidence": "scan_replan_fsm.cpp:84-86, 1065-1069, 1027, 528, 953, 957-958; scan_reactive_grid_methods.inc:241-253.",
+      "suggested_fix": "Record the inconsistency as a residual risk, or refresh odom_sub_ at the same sites in a later version."
+    },
+    {
+      "id": "N7_route_walk_site_after_final_check_and_neighbour_search",
+      "summary": "adjustGlobalTargetIfOccupied runs its final-point check and goal-neighbourhood A* before the refresh. When it is entered from p2bRouteCallback, which no refresh precedes, both can use stale inputs. The effect is conservative (a wasted search, and a frontier instead of the neighbour target), but it contradicts 'each collision-deciding step' in PLAN.md:1 and :40.",
+      "evidence": "scan_replan_fsm.cpp:338 (final_occ), :345 (findGoalNeighborhoodPath), :361 (refresh), :469 -> :244 (the p2bRouteCallback path).",
+      "suggested_fix": "Move the refresh to the top of the function in a later version, or reword PLAN.md."
+    },
+    {
+      "id": "N8_wording_inaccuracies",
+      "summary": "Minor record inaccuracies.",
+      "evidence": "COMPONENT_RESULTS.md:148-149 says 'every other field identical', but all_path_edges_checked also flips from true to false. :56 cites 'Ran out of pool' as a red signature, but green C4 prints it in the same three states and both builds print it during the replay. :61-62 says 'count buffers', but the digest covers only occupancy_buffer_inflate_cnt_ (make_refresh_probe.py:114-139). :70-73 includes C1, which has no pending poses. :129-130 says run 02 was 'alone ... from start to end', but alone_check.txt samples only the start and the end, and run 02's v18 failed searches took 0.113-0.194 s against 0.107-0.109 s in v30. runs/v31_native_regression02_attempt01_domain233/NOTE.md calls the attempt a 'timing control', but it was the first start of native_regression02. PLAN.md:85-86 says messages are 'dropped exactly as in v30', but draining at each site drops fewer messages.",
+      "suggested_fix": "Correct the wording."
+    },
+    {
+      "id": "N9_local_only_bytes_not_ignored",
+      "summary": "The v31 directory is untracked. freeze.py treats pending/ (3.1 MB of the run's clouds) and the two probe_build trees (about 11 MB each, including binaries) as local-only, but no path-specific ignore entry or LOCAL_ONLY inventory exists yet (AGENTS.md Engineering rule 9).",
+      "evidence": "git check-ignore returns nothing for input_refresh_contract/pending/stairs_hold/scans_0p30/cloud_00.f32 or green_v31/probe_build/refresh_probe; freeze.py:32-36. pending_manifest.json holds SHA-256s, and prepare_pending.py regenerates the files.",
+      "suggested_fix": "Add path-specific ignore entries and a SHA-256 inventory before committing."
+    }
+  ],
+  "checks_performed": [
+    "E=/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction",
+    "Diffed the v30 and v31 source trees byte-wise and after CRLF normalisation; counted CR bytes; checked for raw strings and line continuations; dry-ran changes.patch on scratch copies of the v30 files.",
+    "Read v31 grid_map.h/.cpp, scan_reactive_grid_methods.inc, reactive_collision.h, motion_heading.h, known_lite3_trunk.h, scan_replan_fsm.cpp, planner_manager.cpp, bspline_optimizer.cpp, dyn_a_star, and scan_planner_node.cpp, looking for held references, iterators, cached state, recursion and off-thread calls at the six sites.",
+    "Fetched rclcpp 16.0.12 sources (executor.cpp, subscription_base.cpp, subscription.hpp, node_options, time.cpp, allocator_memory_strategy.hpp) and rmw_fastrtps humble rmw_take.cpp.",
+    "Checked the bridge's publish order, stamps and clock handling, and the planner YAML.",
+    "Re-ran analyze_first_judgement.py and analyze.py on scratch copies: both reproduce the stored summaries exactly. Diffed the two analyzers.",
+    "Compared the red and green C3 rechecks with the Δ = 0.15 rows of result.json and result_fresh_pose.json; checked git history for b3a172e5 and the file mtimes.",
+    "Verified every number in COMPONENT_RESULTS.md sections 1-4 against build logs, install_sha256.json, summaries, manifests and logs.",
+    "Byte-compared all saved-state and regression outputs with v30's; deep-diffed the differing fixtures; normalised and diffed the differing logs; re-ran all three review.py scripts and the timing-control analyze.py on copies; recomputed the timing medians and budget counts.",
+    "Simulated freeze.py's file selection; compared it with v30's freeze.py and manifest (v30 hashes still match: 0 mismatches).",
+    "Checked the recorded option-1 decision in bigmemory/热区, current.json and task.json."
+  ],
+  "claims_verified": [
+    "Intra-process delivery is off: default NodeOptions at scan_planner_node.cpp:10, node_options.hpp:396, subscription_base.cpp:282-286. take() exists at subscription.hpp:281-285 and returns false on RCL_RET_SUBSCRIPTION_TAKE_FAILED (subscription_base.cpp:150-172). It works for SensorDataQoS keep-last-5: the contract applied at most 5 body poses.",
+    "A failed take after the refresh drains a subscription is handled silently (DEBUG log only, no callback): executor.cpp:550-582 and 640-656. Timers are served first (executor.cpp:845-856) and the clock runs on its own thread (node_options.hpp:406).",
+    "All six sites run on the executor thread, with no recursion. No caller holds GridMap references, iterators or indices across a refresh. The optimizer's cps_ state is geometric, and A* keeps no map cache between searches. The map never changes inside a GridMap query, an A* search or a curve check.",
+    "The stamp sort with the pose<cloud<body tie rule matches the bridge (one stamp per pair, pose published first) and repairs v30's backlog mispair.",
+    "The callbacks are unchanged: after CRLF normalisation the diff is additions only. The build recompiled the same 7 translation units as v30; 5 installed files changed; every .so and libpath_searching.a are identical; the 32 warnings form the same multiset.",
+    "The first judgement failed only on 'stairs_replan: C3 red moving curve clear'. The green criteria are identical in both analyzers, per-case rows are identical, and the red C4 check is stricter. The red C3 rechecks equal the diagnosis's stale-pose rows exactly in all four states, and green C3 equals the fresh-pose rows. RESULT.md:126 says a curve ending at rest fails in its tail. The diagnosis was committed at 13:49 -0700; pending inputs were prepared at 14:04 and the runs took place 14:05-14:33; analyze_first_judgement.py predates the red run.",
+    "All section-2 numbers hold: 40 processes exit 0; 838 and 841 s; 3 scans with 44-53 body poses; 24-28 body poses; scan ages 0.360-0.365 -> 0.060-0.065 s; extra time 37-69 ms; body age artifact 0.000165 s; 3 of 4 red C4 runs print 'Ran out of pool'.",
+    "Saved states: 48 of 48 non-log outputs are byte-identical, and 12 of 12 logs are identical after normalisation. Probes were rebuilt against scan63 from sources identical to v30's.",
+    "Regression: the only differing outputs are unmapped_low_box in run 01 and mapped_low_box in run 02, each search_status 0->2, path 60->0 and all_path_edges_checked true->false, each with exactly one added 'time limit exceeded' line. The v18, v23_repeat and execution.log explanations match the normalised diffs.",
+    "Timing control: the summary reproduces. Median differences per repetition are +0.003/-0.001/+0.0015/-0.0055/+0.001 s. Budget failures are 15,5,5,0,1 (v30) and 16,5,5,0,0 (v31). The v30_rep5 unmapped_low_box output is byte-equal to run 01's flip. measured_cloud_probe calls AstarSearch directly (probe_source/src/measured_cloud_probe.cpp:151), and libpath_searching.a is identical, so the regression differences are the A* budget, not v31."
+  ],
+  "claims_not_verified": [
+    "How the four inner refresh sites behave when messages arrive mid-callback: nothing exercises this.",
+    "That restoring CRLF would leave install_sha256.json unchanged: no rebuild was done.",
+    "That mapped_low_box's flip can occur with the v30 build: it happened 0 times in 10 control runs, so its attribution rests on the timeout log line and the identical A* code.",
+    "Successful low-box A* durations: the logs do not record them.",
+    "How often the take-order race and future-stamped inputs occur in a live run.",
+    "Any approval by Dr Sun of the narrower design: no record was found.",
+    "That the 7 recompiled translation units are exactly those that include grid_map.h: they match v30's list, but the include graph was not traced."
+  ]
+}

@@ -1,9 +1,9 @@
 {
-  "current": "v33",
-  "status": "v33_frozen_trial_on_gpu5070ti_no_pose_gap_route_failed_corridor_entry_native_replan_exhausted",
+  "current": "v45",
+  "status": "v45_recording_complete_timing_and_navigation_gates_failed",
   "last_validated_trial_version": "v3",
-  "last_validated_condition": "One empty 12 m trial; not general startup stability",
-  "validated_scope": "v33 checks passed: K1-K5 (simulation-time odom gate in the simulator only; K4 reproduces 10 of 12 recorded odom_stale ends) and independent review (passed round 2, confirmed rounds 3 and 4). The trial ran on gpu5070ti after the port's validation (P1-P6) and five review rounds; no pose gap over 0.25 s occurred, so it says nothing about the gate's stall tolerance. Physical full route failed; no full-route acceptance",
+  "last_validated_condition": "One empty12m trial; not general startup stability",
+  "validated_scope": "v44 actual native/cache/recorded geometry checks and v40 CPU exact closed-loop trace passed. v45 physical stack executed; raw controller29.9648Hz/global0.99998Hz measured, but local16.8619Hz and RTF0.9400 fail requested targets; complete Building arrival failed on global_refresh_failed:pct_no_route.",
   "measured_06_command_forward_mean_mps": [
     0.566610550435978,
     0.5655182859929156
@@ -32,12 +32,16 @@
     "v31_historical_full01": "29.94s physics; no stale-input stop (0 conflict stops, 0 invalidations, 0 final-curve rejections, 9/9 final checks clear; v30 had 8/5/42 in the same 29.9 s); climbed both flights faster than v30 (0.90 m at 19.34 s, 1.40 m at 25.82 s); odom_stale at about 27.7 s after a 0.288 s wall pause in body-pose callbacks (sim moved 5 ms), with 3 clock_observation_stale reconnects; stood on the upper stair flight at (-4.99,-1.40,1.53), goal XY error 7.12 m, 7.78 m path, 9 moving curves; no arrival; no fall; the corridor was not reached",
     "diag_v32_clock01": "L1 instrumented diagnostic run (not the trial): 67.35 s physics, 2,818 control steps, 156 s wall; no automatic full collection in the worker loop (longest collection 16.39 ms, explicit), 0 process-wide holds, 11 scheduling-type intervals (runnable wait 171-977 ms); outcome inconclusive by the exposure rule; went through the corridor entry (its curves missed the wrong-height cell's row by 1.8 cm) and stopped by about 60 s at (7.42,-4.29,1.85); odom_stale at 65.2 s during a 376.9 ms gap in which the bridge held a pose 254.5 ms (288.5 ms publish callback) while the host was starved; 3 clock_observation_stale reconnects",
     "v32_historical_full01": "286.48 s physics, 13,721 control steps, 721 s wall; climbed both flights (0.90 m at 19.26 s, 1.80 m at 35.17 s); stood from 39.3 s at the upper corridor entry (-4.91,-3.45,1.84) while all 2,130 curves checked there were rejected as collisions at the west edge of wrong-height navigation cell (47,41); FIXED_STAND final PD 238 s; odom_stale at 284.4 s after a 0.320 s body-pose gap inside a 0.326 s worker step with consecutive stamps (worker-side stall, inferred) at the start of a burst of machine-dog git processes; 0 clock-client pauses over 150 ms; 5 reconnects; goal XY error 6.88 m, 9.92 m path; no arrival; no fall",
-    "v33_historical_full01": "gpu5070ti (execution copy, numerically different physics from the Mac): 461.81 s physics, 22,425 control steps, 951 s wall; climbed both flights (0.90 m at 19.34 s, 1.80 m at 31.97 s); stood from 32.61 s at the upper corridor entry (-4.865,-3.422,1.848), 0.05 m from v32's stand; FIXED_STAND final PD 426 s; SCAN logged 6,000 'robot is inside an obstacle' with A* start/end errors (v32: 10) and 7 final-check rejections (v32: 2,138), none at cell (47,41); SCAN's replan limit (1,000 failures) ended the stand: native_replan_exhausted stop flow at 459.71 s; no pose gap over 0.25 s (max 69.7 ms), odom_time_base simulation throughout, sim age max 10.1 ms; no odom_stale/heartbeat_stale/applied_evidence_stale; 1 clock TTL window (259 ms) at the control loop's start; 0 reconnects; goal XY error 6.83 m, 9.82 m path; no arrival; no fall; copy verified (4,597 files)"
+    "v33_historical_full01": "gpu5070ti (execution copy, numerically different physics from the Mac): 461.81 s physics, 22,425 control steps, 951 s wall; climbed both flights (0.90 m at 19.34 s, 1.80 m at 31.97 s); stood from 32.61 s at the upper corridor entry (-4.865,-3.422,1.848), 0.05 m from v32's stand; FIXED_STAND final PD 426 s; SCAN logged 6,000 'robot is inside an obstacle' with A* start/end errors (v32: 10) and 7 final-check rejections (v32: 2,138), none at cell (47,41); SCAN's replan limit (1,000 failures) ended the stand: native_replan_exhausted stop flow at 459.71 s; no pose gap over 0.25 s (max 69.7 ms), odom_time_base simulation throughout, sim age max 10.1 ms; no odom_stale/heartbeat_stale/applied_evidence_stale; 1 clock TTL window (259 ms) at the control loop's start; 0 reconnects; goal XY error 6.83 m, 9.82 m path; no arrival; no fall; copy verified (4,597 files)",
+    "v34_historical_full01": "600.52s physics; east-end corner reached; no arrival; XYerror5.88m; original driver-final missing, original formal reviewers no verdict; videos decoded/verified",
+    "v35_historical_full01": "561.512634s physics,1189.84s wall; native_replan_exhausted at east-end corner; goalXYerror5.94845m; no arrival; returned5602files verified; preview/fullvideos delivered",
+    "v42_realtime_preview01": "120000 actual physical steps; native119.9457 s; navigation RTF0.8900; local9.0638 Hz; gated controller30.0055 Hz; 838 overruns; 1207 returned files SHA verified; no complete-route arrival.",
+    "v45_realtime_preview01": "64880 actual steps; native64.856s; initialized-navigation53.835native/57.271wall seconds, RTF0.9400; local16.8619Hz vs30 target; raw controller29.9648Hz, actual global0.99998Hz; 625 budget overruns; global_refresh_failed:pct_no_route; original stop/copyback verified; 661 returned files SHA verified."
   },
   "full_building_navigation_validated": false,
   "minimum_measured_body_speed_validated": false,
-  "next_version": "v34 (Dr Sun, 2026-09-29): the corridor entry's wrong-height PCT cell (47,41); v33's trial adds SCAN's inside-obstacle failures and the replan limit at the corridor entry to its diagnosis.",
-  "execution": "v33_trial_done_on_gpu5070ti_next_v34_corridor_cell",
+  "next_version": "Human video inspection and concrete design for local30Hz/RTF1 are pending; v46 is display-only wall-time replay.",
+  "execution": "v45_failed_timing_recording_complete_v46_wall_video_delivered",
   "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md",
   "v28_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md",
   "start_thrash_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v28_start_thrash/RESULT.md",
@@ -59,5 +63,69 @@
   "v33_component_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v33/COMPONENT_RESULTS.md",
   "v33_host_note": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v33/HOST_NOTE_gpu5070ti.md",
   "v33_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v33/RESULTS.md",
-  "gpu5070ti_port": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/PORT.md"
+  "gpu5070ti_port": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/PORT.md",
+  "previous_index_version": "v33",
+  "previous_index_validation_scope": "v33 checks passed: K1-K5 (simulation-time odom gate in the simulator only; K4 reproduces 10 of 12 recorded odom_stale ends) and independent review (passed round 2, confirmed rounds 3 and 4). The trial ran on gpu5070ti after the port's validation (P1-P6) and five review rounds; no pose gap over 0.25 s occurred, so it says nothing about the gate's stall tolerance. Physical full route failed; no full-route acceptance",
+  "latest_physical_trial_version": "v35",
+  "latest_physical_trial_run": "v35_historical_full01",
+  "local_planning_30hz_validated": false,
+  "navigation_contract_fully_validated": false,
+  "v36_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/RESULTS.md",
+  "v36_manifest": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/manifest.json",
+  "realtime_cpu_audit": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-30_realtime_budget",
+  "realtime_upstream_survey": ".pipeline/survey/2026-09-30_realtime_clock_upstream_survey.md",
+  "v37_plan": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v37/PLAN.md",
+  "performance_work": {
+    "state": "actual_video_delivered_timing_targets_unmet_human_inspection_pending",
+    "cpu_baseline_rtf": [
+      0.5344094377109899,
+      0.5221500930933396
+    ],
+    "v38_solver_graph_rtf": [
+      1.587083968340959,
+      1.5824111538857502
+    ],
+    "v38_full_stack_adopted": false,
+    "target_replay_numerical_gate_passed": false,
+    "v39_compiled": true,
+    "v39_frozen": true,
+    "device_comparison_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-30_gpu_device_compare/RESULTS.md",
+    "v39_resume": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v39/INTERRUPTED.md",
+    "v40_cpu_graph_exact_200_row_trace": true,
+    "v40_cpu_graph_rtf": 1.5845,
+    "v44_compiled": true,
+    "v44_frozen": true,
+    "v44_native_checks": 34,
+    "v44_cache_checks": 48,
+    "v44_recorded_plan_ms": [
+      11.758781,
+      12.763442
+    ],
+    "v42_failed_timing_recording": "runs/v42_realtime_preview01/recording_measurements.json",
+    "v45_actual_rates": {
+      "actual_navigation_rtf": 0.9400067028877152,
+      "local_hz": 16.86192449160238,
+      "controller_hz": 29.964754892592037,
+      "local_overruns": 625,
+      "local_median_ms": 42.2255895,
+      "local_max_ms": 411.559189,
+      "local_skipped_slots": 684,
+      "global_observed_hz": 0.9999813741704954,
+      "global_observed_samples": 52,
+      "simulation_1_to_1_qualified": false,
+      "local_30hz_qualified": false,
+      "controller_approximately_30hz": true,
+      "terminal_status": "FAILED",
+      "terminal_cause": "global_refresh_failed:pct_no_route",
+      "physical_native_duration_s": 64.85598754882812,
+      "navigation_native_duration_s": 53.835164070129395,
+      "navigation_wall_duration_s": 57.27104275400052,
+      "dropped_physics_steps": 0,
+      "returned_files": 661,
+      "all_returned_files_verified": true,
+      "source_run": "v45_realtime_preview01",
+      "video_clock": "Actual monotonic wall; 1 wall second per video second"
+    },
+    "v46_wall_video": "output/2026-09-30_lite3_realtime/v45_actual_wall_57s.mp4"
+  }
 }

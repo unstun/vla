@@ -1,0 +1,15 @@
+string run_id
+int64 epoch
+string request_id
+string goal_id
+string route_id
+string command_id
+int64 generation
+string map_epoch
+int64 map_revision
+string consumer
+string status
+string message
+bool hold_confirmed
+bool measured_stillness_confirmed
+int64 traj_id

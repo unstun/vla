@@ -1,0 +1,275 @@
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan68_raw_contributor_cache_v39/src/plan_manage/src/planner_manager.cpp
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan68_raw_contributor_cache_v39/src/plan_manage/src/planner_manager.cpp
+@@ -99,6 +99,7 @@
+                                         Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
+                                         Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj)
+   {
++    GridMap::RawContributorCacheScope raw_cache_scope(*grid_map_);
+     bool attempted = false;
+     const int failures_before = continuous_failures_count_;
+     if (reboundReplanAttempt(start_pt, start_vel, start_acc, local_target_pt,
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan68_raw_contributor_cache_v39/src/plan_env/src/grid_map.cpp
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan68_raw_contributor_cache_v39/src/plan_env/src/grid_map.cpp
+@@ -17,6 +17,7 @@
+ 
+ void GridMap::initMap(rclcpp::Node *node)
+ {
++  invalidateRawContributorCache();
+   node_ = node;
+ 
+   /* get parameter */
+@@ -214,7 +215,8 @@
+ }
+ 
+ void GridMap::updateMapBoundaryFromIndex()
+-{
++{
++  invalidateRawContributorCache();
+   mp_.map_bound_min_idx_ = mp_.map_origin_idx_ - mp_.map_voxel_num_ / 2;
+   mp_.map_bound_max_idx_ = mp_.map_bound_min_idx_ + mp_.map_voxel_num_ - Eigen::Vector3i::Ones();
+ 
+@@ -224,7 +226,8 @@
+ }
+ 
+ void GridMap::rebuildInflationOffsets()
+-{
++{
++  invalidateRawContributorCache();
+   const double double_radius = std::max(0.0, mp_.double_cylinder_radius_);
+   const int inf_step_xy = ceil(double_radius / mp_.resolution_);
+   const int inf_step_z_up = ceil(mp_.obstacles_inflation_z_up / mp_.resolution_);
+@@ -244,7 +247,8 @@
+ }
+ 
+ void GridMap::resetAllMapData()
+-{
++{
++  invalidateRawContributorCache();
+   reactive_terrain_hits_.clear();
+   reactive_nonterrain_hits_.clear();
+   reactive_nonterrain_history_.clear();
+@@ -284,7 +288,8 @@
+                                    std::vector<int>& cnt_buffer,
+                                    std::vector<char>& flag_buffer,
+                                    const std::vector<char>* ignore_mask)
+-{
++{
++  invalidateRawContributorCache();
+   for (const auto& offset : offsets)
+   {
+     const Eigen::Vector3i inf_id = id + offset;
+@@ -309,7 +314,8 @@
+ }
+ 
+ void GridMap::applyOccupancyUpdate(const Eigen::Vector3i& id, double new_log_odds)
+-{
++{
++  invalidateRawContributorCache();
+   if (!isInMap(id))
+     return;
+ 
+@@ -328,7 +334,8 @@
+ }
+ 
+ void GridMap::resetCellByAddress(int addr)
+-{
++{
++  invalidateRawContributorCache();
+   Eigen::Vector3i id_g;
+   hashIdToGlobalIndex(addr, id_g);
+   const auto key = std::make_tuple(id_g.x(), id_g.y(), id_g.z());
+@@ -346,7 +353,8 @@
+ }
+ 
+ void GridMap::resetCellByAddressForSliding(int addr, const std::vector<char>& clear_mask)
+-{
++{
++  invalidateRawContributorCache();
+   Eigen::Vector3i id_g;
+   hashIdToGlobalIndex(addr, id_g);
+   const auto key = std::make_tuple(id_g.x(), id_g.y(), id_g.z());
+@@ -358,7 +366,8 @@
+ }
+ 
+ void GridMap::updateSlidingMap(const Eigen::Vector3d& center)
+-{
++{
++  invalidateRawContributorCache();
+   if (!mp_.map_sliding_en_)
+     return;
+ 
+@@ -576,7 +585,8 @@
+ }
+ 
+ void GridMap::raycastProcess()
+-{
++{
++  invalidateRawContributorCache();
+   // if (md_.proj_points_.size() == 0)
+   if (md_.proj_points_cnt == 0)
+     return;
+@@ -918,6 +928,7 @@
+ 
+ void GridMap::refreshSensorInputs(const char *site, int fsm_odometry)
+ {
++  invalidateRawContributorCache();
+   // v31: SCAN serves its planning and safety timers and these subscriptions on
+   // one single-threaded executor, timers first, while the simulation clock runs
+   // on its own thread. Pose and scan messages that arrive during a long callback
+@@ -998,7 +1009,8 @@
+ }
+ 
+ void GridMap::cloudCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr img)
+-{
++{
++  invalidateRawContributorCache();
+   if (!reactiveSurfaceGroundReady()) return;
+   if (mp_.sensor_type_ != "lidar")
+     return;
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan68_raw_contributor_cache_v39/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan68_raw_contributor_cache_v39/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -92,6 +92,7 @@
+ }
+ 
+ void GridMap::reactiveTomogramCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {
++  invalidateRawContributorCache();
+   reactive_ground_ = reactive_stair::TerrainSnapshot{};
+   reactive_cloud_ready_ = false;
+   reactive_pending_cloud_ = false;
+@@ -116,6 +117,7 @@
+ }
+ 
+ void GridMap::reactiveSurfaceGroundCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {
++  invalidateRawContributorCache();
+   reactive_surface_ground_ = decodeReactiveGround(msg);
+   // A changed source must not retain positive labels from an older source.
+   // Historical nonterrain evidence remains conservative and is not cleared.
+@@ -209,6 +211,44 @@
+   return true;
+ }
+ 
++reactive_stair::Occupancy GridMap::rawContributorOccupancy(const Eigen::Vector3i &id) {
++  if (!isInMap(id)) return reactive_stair::Occupancy::Unknown;
++  const int address = toAddress(id);
++  if (raw_contributor_cache_active_) {
++    const auto cached = raw_contributor_cache_.find(address);
++    if (cached != raw_contributor_cache_.end()) {
++      ++raw_contributor_cache_hits_;
++      return cached->second;
++    }
++  }
++      // Every raw occupied source contributing to SCAN's inflated hit must
++      // have a retained, positively observed terrain classification. One unclassified
++      // return, even at a supported XY, keeps the result occupied.
++      bool contributor = false;
++      bool unclassified = false;
++      for (const auto &offset : md_.inflate_offsets_) {
++        const Eigen::Vector3i source = id - offset;
++        if (!isInMap(source) || md_.occupancy_buffer_[toAddress(source)] <= mp_.min_occupancy_log_)
++          continue;
++        contributor = true;
++        const auto key = std::make_tuple(source.x(), source.y(), source.z());
++        if (!reactive_stair::mayWaiveRawContributor(
++                reactive_terrain_hits_.count(key) != 0,
++                reactive_nonterrain_hits_.count(key) != 0,
++                reactive_nonterrain_history_.count(key) != 0)) {
++          unclassified = true;
++          break;
++        }
++      }
++      const auto result = !contributor ? reactive_stair::Occupancy::Unknown :
++          (unclassified ? reactive_stair::Occupancy::Occupied : reactive_stair::Occupancy::Free);
++  if (raw_contributor_cache_active_) {
++    ++raw_contributor_cache_evaluations_;
++    raw_contributor_cache_.emplace(address, result);
++  }
++  return result;
++}
++
+ int GridMap::reactiveOccupancy(const Eigen::Vector3d &point, const Eigen::Vector3d *body_reference) {
+   if (!reactiveSurfaceGroundReady()) return 1;
+   if (!point.allFinite()) return 1;
+@@ -238,27 +278,7 @@
+     } else if (md_.occupancy_buffer_inflate_[address] == 0) {
+       obstacle.occupancy = reactive_stair::Occupancy::Free;
+     } else {
+-      // Every raw occupied source contributing to SCAN's inflated hit must
+-      // have a retained, positively observed terrain classification. One unclassified
+-      // return, even at a supported XY, keeps the result occupied.
+-      bool contributor = false;
+-      bool unclassified = false;
+-      for (const auto &offset : md_.inflate_offsets_) {
+-        const Eigen::Vector3i source = query_id - offset;
+-        if (!isInMap(source) || md_.occupancy_buffer_[toAddress(source)] <= mp_.min_occupancy_log_)
+-          continue;
+-        contributor = true;
+-        const auto key = std::make_tuple(source.x(), source.y(), source.z());
+-        if (!reactive_stair::mayWaiveRawContributor(
+-                reactive_terrain_hits_.count(key) != 0,
+-                reactive_nonterrain_hits_.count(key) != 0,
+-                reactive_nonterrain_history_.count(key) != 0)) {
+-          unclassified = true;
+-          break;
+-        }
+-      }
+-      obstacle.occupancy = !contributor ? reactive_stair::Occupancy::Unknown :
+-          (unclassified ? reactive_stair::Occupancy::Occupied : reactive_stair::Occupancy::Free);
++      obstacle.occupancy = rawContributorOccupancy(query_id);
+     }
+   }
+   if (reactive_known_trunk_enabled_ && query.in_map && reactive_body_stamp_s_ > 0.0) {
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan68_raw_contributor_cache_v39/src/plan_env/include/plan_env/grid_map.h
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan68_raw_contributor_cache_v39/src/plan_env/include/plan_env/grid_map.h
+@@ -34,7 +34,8 @@
+ #include <plan_env/collision_segment.h>
+ #include <plan_env/eth_step_score_adaptation.h>
+ #include <plan_env/evidence_floor_fill.h>
+-#include <set>
++#include <set>
++#include <unordered_map>
+ 
+ #define logit(x) (log((x) / (1 - (x))))
+ 
+@@ -157,7 +158,27 @@
+   GridMap() {}
+   ~GridMap() {}
+ 
+-  enum { INVALID_IDX = -10000 };
++  enum { INVALID_IDX = -10000 };
++
++  // Only raw occupied-source classification is memoized; query-specific
++  // freshness, support, physical position and trunk masking remain live.
++  class RawContributorCacheScope {
++    GridMap &map_;
++    bool previous_;
++   public:
++    explicit RawContributorCacheScope(GridMap &map) : map_(map), previous_(map.raw_contributor_cache_active_) {
++      map_.invalidateRawContributorCache();
++      if (map_.raw_contributor_cache_.bucket_count() < 1024) map_.raw_contributor_cache_.reserve(1024);
++      map_.raw_contributor_cache_evaluations_ = map_.raw_contributor_cache_hits_ = 0;
++      map_.raw_contributor_cache_active_ = true;
++    }
++    ~RawContributorCacheScope() {
++      map_.invalidateRawContributorCache();
++      map_.raw_contributor_cache_active_ = previous_;
++    }
++    RawContributorCacheScope(const RawContributorCacheScope &) = delete;
++    RawContributorCacheScope &operator=(const RawContributorCacheScope &) = delete;
++  };
+ 
+   // occupancy map management
+   void resetBuffer();
+@@ -222,6 +243,13 @@
+   MappingData md_;
+   bool reactive_known_trunk_enabled_ = false;
+   bool reactive_diagnostic_force_ = false;
++  bool raw_contributor_cache_active_ = false;
++  std::unordered_map<int, reactive_stair::Occupancy> raw_contributor_cache_;
++  std::size_t raw_contributor_cache_evaluations_ = 0, raw_contributor_cache_hits_ = 0;
++  void invalidateRawContributorCache() {
++    if (!raw_contributor_cache_.empty()) raw_contributor_cache_.clear();
++  }
++  reactive_stair::Occupancy rawContributorOccupancy(const Eigen::Vector3i &id);
+   double reactive_body_stamp_s_ = 0.0;
+   Eigen::Quaterniond reactive_body_quaternion_ = Eigen::Quaterniond::Identity();
+ 

@@ -1,0 +1,207 @@
+--- v30/src/plan_env/include/plan_env/grid_map.h
++++ v31/src/plan_env/include/plan_env/grid_map.h
+@@ -175,6 +175,12 @@
+   inline int getOccupancy(Eigen::Vector3i id);
+   inline int getInflateOccupancy(Eigen::Vector3d pos, double yaw);
+   void logInitialSplineCollision(const Eigen::Vector3d &pos, double yaw);
++  // v31: take the pose and scan messages that arrived during a long callback
++  // and apply them, in stamp order, through the unchanged callbacks. Call only
++  // on the executor's thread, between collision-deciding steps. fsm_odometry is
++  // the number of FSM body_pose messages the caller applied just before (-1 if
++  // the caller applies none); it is only logged.
++  void refreshSensorInputs(const char *site, int fsm_odometry = -1);
+   double collisionSegmentYaw(const Eigen::Vector3d &from, const Eigen::Vector3d &to) const;
+   bool collisionFreeSegment(const Eigen::Vector3d &from, const Eigen::Vector3d &to,
+                             int *blocked_sample = nullptr);
+--- v30/src/plan_env/src/grid_map.cpp
++++ v31/src/plan_env/src/grid_map.cpp
+@@ -916,6 +916,87 @@
+   }
+ }
+ 
++void GridMap::refreshSensorInputs(const char *site, int fsm_odometry)
++{
++  // v31: SCAN serves its planning and safety timers and these subscriptions on
++  // one single-threaded executor, timers first, while the simulation clock runs
++  // on its own thread. Pose and scan messages that arrive during a long callback
++  // therefore wait, and their age can pass the 0.1 s pose and 0.25 s scan limits
++  // before a decision uses them. Take the pending messages here, on the same
++  // thread, and apply them through the unchanged callbacks in stamp order (ties
++  // in subscription creation order), so each collision-deciding step starts
++  // from the newest received inputs. The limits and callbacks are unchanged.
++  struct PendingInput
++  {
++    double stamp_s;
++    int subscription;  // 0 sensor_pose, 1 cloud, 2 body_pose (creation order)
++    nav_msgs::msg::Odometry::ConstSharedPtr pose;
++    sensor_msgs::msg::PointCloud2::ConstSharedPtr cloud;
++  };
++  std::vector<PendingInput> pending;
++  rclcpp::MessageInfo info;
++  // Stamps are read as plain numbers here, so no stamp can throw. A failed take
++  // is logged and ends that subscription's drain, as the executor's
++  // take_and_do_error_handling logs and skips it.
++  const auto stamp_s = [](const builtin_interfaces::msg::Time &stamp) {
++    return static_cast<double>(stamp.sec) + 1e-9 * static_cast<double>(stamp.nanosec);
++  };
++  const auto take = [&](auto &subscription, auto message, int order, const char *topic) {
++    try
++    {
++      if (!subscription->take(*message, info)) return false;
++    }
++    catch (const rclcpp::exceptions::RCLError &error)
++    {
++      RCLCPP_ERROR(node_->get_logger(), "input_refresh site=%s take from %s failed: %s", site, topic, error.what());
++      return false;
++    }
++    if constexpr (std::is_same_v<decltype(message), std::shared_ptr<sensor_msgs::msg::PointCloud2>>)
++      pending.push_back({stamp_s(message->header.stamp), order, nullptr, message});
++    else
++      pending.push_back({stamp_s(message->header.stamp), order, message, nullptr});
++    return true;
++  };
++  // Reverse publication order: the bridge publishes each scan's sensor pose
++  // before its cloud, so a pair that arrives during this drain cannot leave its
++  // cloud taken without its pose (a delivery that reorders the two topics would
++  // mispair them on the executor path as well).
++  while (cloud_sub_ && take(cloud_sub_, std::make_shared<sensor_msgs::msg::PointCloud2>(), 1, "cloud")) {}
++  while (lidar_pose_sub_ && take(lidar_pose_sub_, std::make_shared<nav_msgs::msg::Odometry>(), 0, "sensor_pose")) {}
++  while (sliding_map_frame_sub_ &&
++         take(sliding_map_frame_sub_, std::make_shared<nav_msgs::msg::Odometry>(), 2, "body_pose")) {}
++  std::stable_sort(pending.begin(), pending.end(), [](const PendingInput &a, const PendingInput &b) {
++    return a.stamp_s != b.stamp_s ? a.stamp_s < b.stamp_s : a.subscription < b.subscription;
++  });
++  const double now = node_->now().seconds();
++  const double cloud_age = now - reactive_cloud_stamp_s_;
++  const double body_age = now - reactive_body_stamp_s_;
++  int applied[3] = {0, 0, 0};
++  for (const PendingInput &input : pending)
++  {
++    ++applied[input.subscription];
++    if (input.subscription == 0)
++      sensorPoseCallback(input.pose);
++    else if (input.subscription == 1)
++      cloudCallback(input.cloud);
++    else
++      slidingMapFrameCallback(input.pose);
++  }
++  const double cloud_age_after = now - reactive_cloud_stamp_s_;
++  const double body_age_after = now - reactive_body_stamp_s_;
++  const std::string where(site);
++  // Log every call at the sites inside a timer callback, which show how much the
++  // inputs aged within a step; at the two timers, log a stale input applied or
++  // any input stamped ahead of the clock (a freshness test reads it as stale).
++  if ((where != "exec" && where != "safety") || (applied[1] > 0 && cloud_age > 0.15) ||
++      (applied[2] > 0 && body_age > 0.05) || cloud_age_after < 0.0 || body_age_after < 0.0)
++    RCLCPP_INFO(node_->get_logger(),
++                "input_refresh site=%s sensor_poses=%d clouds=%d body_poses=%d fsm_odom=%d "
++                "cloud_age=%.4f->%.4f body_age=%.4f->%.4f cloud_ready=%d",
++                site, applied[0], applied[1], applied[2], fsm_odometry, cloud_age, cloud_age_after,
++                body_age, body_age_after, static_cast<int>(reactive_cloud_ready_));
++}
++
+ void GridMap::cloudCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr img)
+ {
+   if (!reactiveSurfaceGroundReady()) return;
+--- v30/src/plan_manage/src/scan_replan_fsm.cpp
++++ v31/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -13,6 +13,34 @@
+   {
+     if (!node->has_parameter(name)) node->declare_parameter<T>(name, default_value);
+     return node->get_parameter(name).get_value<T>();
++  }
++
++  // v31: take the FSM's pending body_pose messages and apply them through the
++  // unchanged odometryCallback, so odom_pos_ and odom_vel_ are as fresh as the
++  // map's body pose when a timer callback starts. A failed take is logged and
++  // skipped, as on the executor path.
++  template <typename Callback>
++  int takePendingOdometry(const rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr &subscription,
++                          const rclcpp::Logger &logger, Callback &&callback)
++  {
++    int applied = 0;
++    rclcpp::MessageInfo info;
++    while (subscription)
++    {
++      auto message = std::make_shared<nav_msgs::msg::Odometry>();
++      try
++      {
++        if (!subscription->take(*message, info)) break;
++      }
++      catch (const rclcpp::exceptions::RCLError &error)
++      {
++        RCLCPP_ERROR(logger, "input_refresh take from body_pose (fsm) failed: %s", error.what());
++        break;
++      }
++      callback(message);
++      ++applied;
++    }
++    return applied;
+   }
+ } // namespace
+ 
+@@ -317,6 +345,9 @@
+   bool SCANReplanFSM::adjustGlobalTargetIfOccupied()
+   {
+     auto map = planner_manager_->grid_map_;
++    // v31: check the target, search its neighbourhood and walk the route with the
++    // newest received inputs; a route message reaches here without a timer.
++    if (map) map->refreshSensorInputs("target_check");
+     auto &global_data = planner_manager_->global_data_;
+     const double duration = global_data.global_duration_;
+     const bool reference = navi_mode_ == NAVI_MODE::REFERENCE_PATH;
+@@ -764,6 +795,11 @@
+ 
+   void SCANReplanFSM::execFSMCallback()
+   {
++    // v31: start each planning-timer callback from the newest received inputs,
++    // the FSM's own body_pose included.
++    const int fsm_odometry = takePendingOdometry(
++        odom_sub_, node_->get_logger(), [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) { odometryCallback(msg); });
++    planner_manager_->grid_map_->refreshSensorInputs("exec", fsm_odometry);
+     updateLocalTrajTimeFreeze();
+ 
+     static int fsm_num = 0;
+@@ -1085,6 +1121,11 @@
+ 
+   void SCANReplanFSM::checkCollisionCallback()
+   {
++    // v31: check the executing curve against the newest received inputs, the
++    // FSM's own body_pose included.
++    const int fsm_odometry = takePendingOdometry(
++        odom_sub_, node_->get_logger(), [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) { odometryCallback(msg); });
++    planner_manager_->grid_map_->refreshSensorInputs("safety", fsm_odometry);
+     updateLocalTrajTimeFreeze();
+ 
+     LocalTrajData *info = &planner_manager_->local_data_;
+--- v30/src/plan_manage/src/planner_manager.cpp
++++ v31/src/plan_manage/src/planner_manager.cpp
+@@ -126,6 +126,8 @@
+                                         bool &optimization_attempted)
+   {
+     optimization_attempted = false;
++    // v31: each replan attempt starts from the newest received inputs.
++    grid_map_->refreshSensorInputs("replan_start");
+ 
+     static int count = 0;
+     std::cout << endl
+@@ -330,6 +332,8 @@
+ 
+     t_refine = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();
+ 
++    // v31: judge the final curve against the newest received inputs.
++    grid_map_->refreshSensorInputs("final_check");
+     const auto collision_started = std::chrono::steady_clock::now();
+     const auto collision = reactive_stair::checkFullCubicTrajectory(
+         pos, 0.0, grid_map_->getResolution(), GridMap::collision_heading_lookahead_s,
+--- v30/src/bspline_opt/src/bspline_optimizer.cpp
++++ v31/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -992,6 +992,8 @@
+     do
+     {
+       /* ---------- prepare ---------- */
++      // v31: each rebound round starts from the newest received inputs.
++      grid_map_->refreshSensorInputs("rebound_round");
+       min_cost_ = std::numeric_limits<double>::max();
+       iter_num_ = 0;
+       flag_force_return = false;

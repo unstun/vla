@@ -1,0 +1,32 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--cpus=3",
+    "--memory=6g",
+    "--name",
+    "vla-v34-stand-replay01",
+    "-e",
+    "ROS_DOMAIN_ID=232",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction:/archive:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan65_evidence_floor_v34:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-29_corridor_entry:/audit:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v34/stand_replay:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside.sh"
+  ],
+  "deadline_s": 2400,
+  "claim": "versions/v34/PLAN.md K3: the corridor-entry audit's frozen v32 and v33 stands (unchanged inputs, pinned grounds) replayed with its read-only corridor_probe rebuilt against scan65. Green expectation: the live REPLAN_TRAJ entry plans on its first attempt and the committed curve passes the native full check. Red is the audit's own record (scan64)."
+}

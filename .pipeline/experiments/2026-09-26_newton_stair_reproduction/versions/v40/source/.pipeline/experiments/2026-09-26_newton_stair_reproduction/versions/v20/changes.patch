@@ -1,0 +1,20 @@
+--- v19/scripts/render_episode.py
++++ v20/scripts/render_episode.py
+@@ -307,7 +307,7 @@
+                 target = base_position + np.array([.3, 0., -.05])
+             if full_building:
+                 right = np.array([math.sin(yaw), -math.cos(yaw), 0.])
+-                position = base_position - 2. * forward + .9 * right + np.array([0., 0., 1.1])
++                position = base_position - 2. * forward + .1 * right + np.array([0., 0., 1.1])
+                 target = base_position + .5 * forward
+                 if t < 1.6:
+                     lower, upper = robot.building_vertices.min(axis=0), robot.building_vertices.max(axis=0)
+@@ -317,7 +317,7 @@
+             if startup_view:
+                 position = np.array([.7, 1.1, .7])
+                 target = np.array([0., 0., .19])
+-            if args.view == "rear-right":
++            if args.view == "rear-right" and not full_building:
+                 # Robot forward is +X and right is -Y in this recorded episode.
+                 position = np.array([-.7, -1.1, .7])
+                 target = np.array([-.05, 0., .19])

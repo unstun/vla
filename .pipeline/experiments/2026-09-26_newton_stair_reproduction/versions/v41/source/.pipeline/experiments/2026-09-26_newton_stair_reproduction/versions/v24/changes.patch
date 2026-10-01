@@ -1,0 +1,118 @@
+--- v23/src/plan_env/include/plan_env/grid_map.h
++++ v24/src/plan_env/include/plan_env/grid_map.h
+@@ -235,7 +235,9 @@
+ 
+   inline void inflatePoint(const Eigen::Vector3i& pt, int inf_step_xy, int inf_step_z_up, int inf_step_z_down, vector<Eigen::Vector3i>& pts);
+   inline int getInflateOccupancyFromBuffer(Eigen::Vector3d pos, const std::vector<char>& buffer);
+-  int reactiveOccupancy(const Eigen::Vector3d &point);
++  bool reactiveFootprintSupportQuery(const Eigen::Vector3d &body_reference,
++      const reactive_stair::NonTerrainVoxel &obstacle, reactive_stair::Query &query);
++  int reactiveOccupancy(const Eigen::Vector3d &point, const Eigen::Vector3d *body_reference = nullptr);
+   bool reactiveTerrainReturn(const Eigen::Vector3d &point) const;
+   void reactiveTomogramCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);
+   reactive_stair::TerrainSnapshot decodeReactiveGround(sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) const;
+@@ -414,8 +416,8 @@
+   Eigen::Vector3d heading(std::cos(yaw), std::sin(yaw), 0.0);
+   Eigen::Vector3d front = pos + mp_.double_cylinder_offset_ * heading;
+   Eigen::Vector3d rear = pos - mp_.double_cylinder_offset_ * heading;
+-  if (reactiveOccupancy(front) != 0) return 1;
+-  return reactiveOccupancy(rear);
++  if (reactiveOccupancy(front, &pos) != 0) return 1;
++  return reactiveOccupancy(rear, &pos);
+ }
+ 
+ inline int GridMap::getInflateOccupancyFromBuffer(Eigen::Vector3d pos, const std::vector<char>& buffer) {
+--- v23/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v24/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -123,7 +123,59 @@
+       point.x(), point.y(), point.z(), reactive_terrain_band_m_);
+ }
+ 
+-int GridMap::reactiveOccupancy(const Eigen::Vector3d &point) {
++bool GridMap::reactiveFootprintSupportQuery(const Eigen::Vector3d &body_reference,
++    const reactive_stair::NonTerrainVoxel &obstacle, reactive_stair::Query &query) {
++  if (!body_reference.allFinite()) return false;
++  const auto &raw = reactive_ground_;
++  const auto &scored = reactive_terrain_;
++  if (raw.source_id != scored.source_id || raw.frame != scored.frame ||
++      raw.resolution_m != scored.resolution_m || raw.origin_x_m != scored.origin_x_m ||
++      raw.origin_y_m != scored.origin_y_m) return false;
++  auto body_query = query;
++  body_query.x_m = body_reference.x();
++  body_query.y_m = body_reference.y();
++  body_query.z_m = body_reference.z();
++  body_query.in_map = isInMap(body_reference);
++  // This copy checks terrain support only. The original measured obstacle
++  // still controls the final footprint verdict at the original physical XYZ.
++  auto support_only = obstacle;
++  support_only.occupancy = reactive_stair::Occupancy::Free;
++  if (reactive_decision_.decide(body_query, support_only) != reactive_stair::Verdict::Free)
++    return false;
++  const auto associated_height = [&](double x, double y, double target, double limit, double &height) {
++    const double ix = std::floor((x - raw.origin_x_m) / raw.resolution_m);
++    const double iy = std::floor((y - raw.origin_y_m) / raw.resolution_m);
++    if (!std::isfinite(ix) || !std::isfinite(iy) ||
++        ix < std::numeric_limits<int>::min() || ix > std::numeric_limits<int>::max() ||
++        iy < std::numeric_limits<int>::min() || iy > std::numeric_limits<int>::max()) return false;
++    const reactive_stair::Cell2 cell{static_cast<int>(ix), static_cast<int>(iy)};
++    const auto original = raw.cells.find(cell), classified = scored.cells.find(cell);
++    if (original == raw.cells.end() || classified == scored.cells.end() ||
++        original->second.size() != classified->second.size()) return false;
++    // Associate before considering scored status. Never skip an unknown or
++    // unsupported nearest layer in favor of a farther supported floor.
++    const int layer = reactive_stair::nearestSurface(original->second, target, limit);
++    if (layer < 0) return false;
++    const auto &surface = classified->second[layer];
++    if (surface.elevation_m != original->second[layer].elevation_m ||
++        !reactive_stair::selectedSurface(surface)) return false;
++    height = surface.elevation_m;
++    return true;
++  };
++  double body_ground, footprint_ground;
++  const double step = reactive_stair::StepScoreParameters{}.critical_height_m;
++  if (!associated_height(body_query.x_m, body_query.y_m,
++          body_query.z_m - reactive_parameters_.body_clearance_m,
++          reactive_parameters_.body_height_tolerance_m, body_ground) ||
++      !associated_height(query.x_m, query.y_m, body_ground, step, footprint_ground) ||
++      std::abs(footprint_ground - body_ground) >= step) return false;
++  // Only the support-layer height changes; do not move the robot, spline,
++  // obstacle query, map-boundary query or retained measured LiDAR evidence.
++  query.z_m = footprint_ground + reactive_parameters_.body_clearance_m;
++  return true;
++}
++
++int GridMap::reactiveOccupancy(const Eigen::Vector3d &point, const Eigen::Vector3d *body_reference) {
+   if (!reactiveSurfaceGroundReady()) return 1;
+   if (!point.allFinite()) return 1;
+   const double radius = mp_.double_cylinder_radius_;
+@@ -188,6 +240,7 @@
+     obstacle.occupancy = reactive_stair::measuredTrunkQuery(
+         obstacle.occupancy, md_.occupancy_buffer_inflate_[toAddress(id)] != 0, inside);
+   }
++  if (body_reference && !reactiveFootprintSupportQuery(*body_reference, obstacle, query)) return 1;
+   const auto verdict = reactive_decision_.decide(query, obstacle);
+   static std::set<std::tuple<int, int, int>> diagnosed;
+   Eigen::Vector3i diagnostic_id;
+@@ -204,9 +257,9 @@
+   }
+   if (verdict != reactive_stair::Verdict::Free) {
+     RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000,
+-        "reactive_collision_blocked verdict=%d voxel=%d q=(%.3f,%.3f,%.3f) now=%.3f cloud_stamp=%.3f cloud_ready=%d terrain_cells=%zu body_clearance=%.3f",
++        "reactive_collision_blocked verdict=%d voxel=%d q=(%.3f,%.3f,%.3f) support_z=%.3f now=%.3f cloud_stamp=%.3f cloud_ready=%d terrain_cells=%zu body_clearance=%.3f",
+         static_cast<int>(verdict), static_cast<int>(obstacle.occupancy),
+-        query.x_m, query.y_m, query.z_m, query.stamp_s, obstacle.stamp_s,
++        point.x(), point.y(), point.z(), query.z_m, query.stamp_s, obstacle.stamp_s,
+         reactive_cloud_ready_, reactive_terrain_.cells.size(), reactive_parameters_.body_clearance_m);
+   }
+   return verdict == reactive_stair::Verdict::Free ? 0 : 1;
+@@ -221,8 +274,8 @@
+       reactive_body_stamp_s_, node_->now().seconds());
+   const Eigen::Vector3d heading(std::cos(yaw), std::sin(yaw), 0.0);
+   reactive_diagnostic_force_ = true;
+-  reactiveOccupancy(pos + mp_.double_cylinder_offset_ * heading);
+-  reactiveOccupancy(pos - mp_.double_cylinder_offset_ * heading);
++  reactiveOccupancy(pos + mp_.double_cylinder_offset_ * heading, &pos);
++  reactiveOccupancy(pos - mp_.double_cylinder_offset_ * heading, &pos);
+   reactive_diagnostic_force_ = false;
+ }
+ 

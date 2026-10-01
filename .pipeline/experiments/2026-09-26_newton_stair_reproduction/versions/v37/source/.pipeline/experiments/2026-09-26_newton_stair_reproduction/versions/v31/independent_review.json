@@ -1,0 +1,114 @@
+{
+  "round": 2,
+  "reviewed_candidate": "runtime/scan64_input_refresh_v31",
+  "date": "2026-09-28",
+  "note": "Verbatim report of the read-only independent review subagent (model output). The main session applied the non-blocking suggestions before freezing; see handling_of_non_blocking_findings.",
+  "passed": true,
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "id": "NB1_analyzer_checks_narrower_than_cells",
+      "summary": "The corrected C1 check cannot see a body pose applied at the safety site. It checks that every in-call refresh line applied nothing and that the scan age did not change. But the timer sites log a body pose only when the body age before the refresh exceeds 0.05 s, and C1 re-stamps the body pose, so its age is 0. The cell's claim, 'nothing applied', holds only through green C1's map digest being equal to red's. I verified that equality in all four states; analyze.py does not assert it. Likewise, C4's 'no stale signature' tests only two signature classes: a conflict stop at 0.000 s and a whole-route block. The other classes appear in no green C4 or C6 call either.",
+      "evidence": "E/versions/v31/input_refresh_contract/analyze.py:92-93,139-140,163; E/runtime/scan64_input_refresh_v31/src/plan_env/src/grid_map.cpp:991-992; make_refresh_probe.py:56-60 (re-stamp) and :238-251 (the digest covers body stamp, position and quaternion); summary.json red/green C1: equal recheck and digests cdadfdb10174e22d, b090d2ca7e586de3, 16a3947f8503a6bb, 0de8847d9437b328. The green C4/C6 call sections have 0 lines matching remaining_spline_invalid, final_spline_rejected, inside an obstacle or terminal point.",
+      "suggested_fix": "In a later contract: assert that green C1's digest and recheck equal red's, and extend the C4/C6 no-stale check to remaining_spline_invalid, final_spline_rejected and 'inside an obstacle'."
+    },
+    {
+      "id": "NB2_preregistration_not_provable",
+      "summary": "Two records say all criteria were fixed before this contract ran; the file times do not fully support that. The v31 directory is untracked, so git cannot date the criteria. analyze_first_judgement.py was last written 66 s after the run started and 7 s after the first two outputs. PLAN.md was last edited after the run. Mitigation: the analyzer's C2–C7 criteria predate every one of their outputs, and C1, the only check whose output already existed, is the one that failed. So nothing suggests tuning.",
+      "evidence": "The execution logs were created 22:43:22. red/green stairs_replan C1.json: 22:44:21. analyze_first_judgement.py: 22:44:28. Next outputs (C2): 22:44:32; C6: 22:45:18. PLAN.md: 23:05:55. Claims: PLAN.md:156-160 ('All were fixed before this contract ran') and analyze.py:5-6 ('before this run').",
+      "suggested_fix": "Record the analyzer and PLAN.md SHA-256 in request_*.json before execution, or reword the two claims to 'before any C2–C7 output existed'."
+    },
+    {
+      "id": "NB3_wording",
+      "summary": "Several records overstate or misstate small points. (a) COMPONENT_RESULTS.md gives the 0.30 s later start and the newer scans as the reason green C4 succeeds at the corridor entry, but nothing isolates either as the cause. The diagnosis's failure at Δ = 0 was WrongHeight at a navigation cell, which is ground geometry, not scan age. Green's curve crosses the same stretch and is clear, and A* wall-time variation could also explain the difference. (b) The C6 detail is imprecise: in upper_corridor_hold the last scan was applied at the first replan_start, and body poses were also applied at replan_start in three states. (c) '3 scans and 8 poses' omits the 5 FSM odometry messages applied in the same callback. (d) The 'What it does not show' sentence at COMPONENT_RESULTS.md:217-219 is ambiguous. (e) attempt01/README.md:29-30 still calls run 02 'rerun alone'. (f) The line-ending rule in PLAN.md does not fit grid_map.cpp: that insertion has no preceding anchor and takes the ending of the line after it.",
+      "evidence": "(a) COMPONENT_RESULTS.md:110-111; audits/2026-09-28_v30_stop_classes/RESULT.md:296-304 (first colliding sample 2.61 m ahead at (-2.387,-4.152), WrongHeight); green_v31/corridor_entry_replan/C4.log:24-25 (start (-4.92,-3.5), goal (-1.66,-4.14)); full_spline_sampled_clear duration 4.56. (b) COMPONENT_RESULTS.md:119-122; green_v31/upper_corridor_hold/C6.log:137 (the first replan_start applied sensor_poses=1 clouds=1 body_poses=5); stairs_replan/C6.log:18 (a replan_start applied body_poses=5). (c) COMPONENT_RESULTS.md:143-145; green C2 safety line fsm_odom=5. (f) PLAN.md:105-107; materialize.py:52-53,258-260.",
+      "suggested_fix": "Reword (a) to 'the conditions differ (0.30 s later, newer scans, later start); the cause was not isolated'. Correct (b)–(f)."
+    },
+    {
+      "id": "NB4_future_stamped_scans_and_log_filter",
+      "summary": "PLAN.md's claim boundary names only body poses stamped ahead of the clock. fresh() also rejects any scan stamped ahead of now(), which turns every query into StaleInput: the conflict-stop and whole-route signature v31 targets. The code already logs and counts such scans (cloud_age_after < 0; trial_signatures.py cloud_after_negative). Separately, log_review.py drops every refresh line that applied nothing, even one carrying a negative age, which would hide such an event in a future regression. None occurred in these runs.",
+      "evidence": "PLAN.md:213-220; plan_env/include/plan_env/reactive_collision.h:91-93 (now >= stamp required); grid_map.cpp:991-992; trial_signatures.py:59-71; runs/v31_native_regression03/log_review.py:24. All 163 saved-state and 129 regression refresh lines have non-negative ages.",
+      "suggested_fix": "Name scans in the claim boundary. Keep refresh lines with negative ages in the log normalisation."
+    },
+    {
+      "id": "NB5_contract_artifacts",
+      "summary": "(a) In C6 the body pose was older than the 0.1 s gate after exec (0.160–0.165 s) and after the first target_check (0.115–0.145 s). So part of C6's planning ran on a stale pose. This is disclosed, and C6's pass criteria do not depend on planning. The first attempt's seed A* failures in stairs_replan and stairs_hold hit the 0.2 s wall budget, as in C4. (b) C7's per-batch records are printed at the stream's default 6 significant digits, so the per-batch equality is coarse. The final FNV digest is exact and equal in all three rows.",
+      "evidence": "COMPONENT_RESULTS.md:127-131; green C6 exec/target_check lines (e.g. stairs_replan/C6.log:10,17); C4 and C6 logs both show 'Failed in A-star path search: 0.2 second time limit exceeded'. make_refresh_probe.py:138,176-178 (batch_record has no setprecision); summary.json batches (17.2222, -5.37164).",
+      "suggested_fix": "None needed for freezing. In later probes, set precision 17 on batch_record and re-stamp the frozen pose no newer than the newest pending one."
+    },
+    {
+      "id": "NB6_fsm_odometry_residuals",
+      "summary": "(a) Within a callback, the map's body pose (refreshed at the inner sites) can be newer than odom_pos_ (refreshed only at the timers). This is disclosed. In reference mode I confirmed that odom_pos_ drives decisions only at callback start; during planning it is only checked for finiteness. (b) Latent behaviour change: in PRESET_TARGET mode, the first odometry message calls planGlobalTrajbyGivenWps. That call now runs inside takePendingOdometry at the start of the exec timer, so the preset plan and a GEN_NEW_TRAJ step can happen in one callback. This trial uses navi_mode 3, so it is not exercised.",
+      "evidence": "PLAN.md:224-228; scan_replan_fsm.cpp:1300-1304 (finiteness only), :1351-1356 (reference mode uses start_pt_), :688-692, :800-802; versions/v31/building_planner.yaml:9 (fsm.navi_mode: 3).",
+      "suggested_fix": "Record (b) as a latent residual. No change is needed for this trial."
+    },
+    {
+      "id": "NB7_recent_changes_memory",
+      "summary": "One memory record still describes only the original option-1 means (separate callback groups, a multi-threaded executor and time-bounded planning), with no entry for the later narrowing. The four records the review names are correct. The chat decision itself cannot be verified from repository evidence.",
+      "evidence": "bigmemory/热区/近期改动.md:7 (stale). Correct: PLAN.md:5-15; versions/current.json next_version; .trellis/tasks/09-23-scan-reactive-stair-pedestrian/task.json meta.newton_versioned_repair.user_decisions[-1] and next_gate; bigmemory/热区/未关闭决策.md:3,14.",
+      "suggested_fix": "Add the narrower-means decision to 近期改动.md."
+    },
+    {
+      "id": "NB8_inventory_and_freeze_scope",
+      "summary": "(a) The v31 .gitignore block cites versions/v31/LOCAL_ONLY_BYTES.json, which does not exist yet. local_only_inventory.py writes it after the trial, following the v30 convention; the pending bytes are already hashed in pending_manifest.json. (b) freeze.py asserts the saved-state and regression reviews but hashes neither them nor their outputs, as v30 did. Its 'Complete snapshot' wording therefore relies on git tracking for step 3–4 evidence.",
+      "evidence": ".gitignore:648-684; versions/v31/local_only_inventory.py; pending_manifest.json (338 files, all hashes match); freeze.py:15-16 versus :37-55 and :75-77.",
+      "suggested_fix": "Run local_only_inventory.py before any commit of versions/v31 or runs/v31_*. Optionally add both runs' review.json and explanation files to freeze.py's selected set."
+    }
+  ],
+  "round1_findings_status": {
+    "B1": "Fixed. scan64 differs from v30 (scan62; all 2194 frozen manifest hashes still match) in exactly the five edited files; the other 92 source files are byte-identical. CR counts: 433/1060/0/0/1158 → 433/1060/0/0/1160. parent_source/ matches scan62 and versions/v30/source byte for byte. changes.patch (134 added, 0 removed) applies cleanly with Apple patch and with git apply to copies of parent_source/ and reproduces all five scan64 files byte for byte. Re-running materialize.py's apply_edits in memory on the v30 bytes reproduces scan64 and changes.patch exactly. PLAN.md:103-111 is now true.",
+    "B2": "Fixed. PLAN.md:148-152 withdraws the untested cell. analyze.py records the diagnosis's Δ = 0 replan result beside green's (true/true/false/true against success in all four). COMPONENT_RESULTS.md:106-113 says green C4 does not reproduce the Δ = 0 result. The stated cause at :110-111 is not isolated (NB3).",
+    "B3": "Fixed. freeze.py:47-53 pins the diagnosis files, the 8 result/result_fresh_pose rows (tracked and unchanged since b3a172e5), LOCAL_ONLY_BYTES.json, raw_ground.f32 and the stop-probe source. :19-20 asserts the timing control; :54-55 hashes its summary, execution and scripts; the comment at :17-18 is fixed. A simulated selection gives 2689 files, none missing, 31 MB.",
+    "B4": "The records are fixed and consistent: PLAN.md:5-15, current.json next_version, task.json user_decisions and next_gate, and 未关闭决策.md:14. The chat decision is not verifiable from repository evidence. 近期改动.md:7 is stale (NB7).",
+    "N1": "Fixed. grid_map.cpp:964-967 drains cloud, then sensor_pose, then body_pose; :968-970 sorts by stamp with ties in the order sensor pose, cloud, body pose. If poses and clouds are delivered in publication order, a pair arriving mid-drain can at worst leave a pose taken without its cloud, and the cloud is then applied correctly (C6 corridor entry, final_check). A cloud delivered before its own pose is still unrepaired, as on v30's executor path; this is disclosed.",
+    "N2": "Fixed. Each take is wrapped in a catch of RCLError that logs and ends that subscription's drain (grid_map.cpp:944-953; scan_replan_fsm.cpp:31-38), as the executor does. Stamps are read as plain numbers (:941-943). The unchanged callbacks can still throw (rclcpp::Time at :910 and :1008), exactly as they did on the executor path.",
+    "N3": "Fixed in the records: PLAN.md:200-212 states that freshness is per site, with the A* budget arithmetic. Every inner-site call is logged (grid_map.cpp:991).",
+    "N4": "Fixed. C6 publishes the remaining inputs in 8–10 batches during the call; 10–15 messages are applied at inner sites, and every final digest equals C5spin's. C7 covers split batches, including a cloud that arrives before its pose, with equal per-batch records and digests. The FSM odometry checks are in C2, C3 and C4. Sim time is frozen during each call; this is disclosed.",
+    "N5": "Fixed. A negative after-age forces a log line at the timers, every inner call is logged, and trial_signatures.py reports minimum ages and negative counts. PLAN names only body poses (NB4).",
+    "N6": "Fixed at the timers (scan_replan_fsm.cpp:22-44, 800-802, 1126-1128). The contract shows odom_pos_, the map's body pose and the newest pending pose equal in C2, C3 and C4 in all four states. The within-callback residual is disclosed.",
+    "N7": "Fixed. The refresh is at the top of adjustGlobalTargetIfOccupied (scan_replan_fsm.cpp:350), before the final-point check (:369), the neighbourhood A* (:376) and the route walk (:390). The route_walk site is gone.",
+    "N8": "Fixed. None of the wrong phrases remain; NOTE.md is corrected; the 'alone' claims are backed by 5-s sampling. attempt01/README.md:29-30 still says 'rerun alone', which is minor.",
+    "N9": "Addressed for now: there is a path-specific ignore block, the pending bytes are hashed, and the inventory script exists. LOCAL_ONLY_BYTES.json is not written yet (NB8)."
+  },
+  "checks_performed": [
+    "E=/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction; scratch copies under the rereview scratchpad.",
+    "Byte-compared the scan62 and scan64 source trees; counted CR bytes; compared parent_source with scan62 and with versions/v30/source; verified all 2194 hashes in v30/manifest.json; checked the source_sha256 of scan62, scan63 and scan64.",
+    "Dry-ran and applied changes.patch to copies of parent_source with both Apple patch and git apply, and compared the results with scan64; re-ran materialize.py's edit functions in memory on the v30 bytes and compared with scan64 and changes.patch.",
+    "Diffed scan63 against scan64 after CR normalisation.",
+    "Read the new C++ in full: grid_map.cpp refresh and the three callbacks, grid_map.h, scan_replan_fsm.cpp, planner_manager.cpp, the bspline_optimizer.cpp rebound loop, scan_planner_node.cpp, plus fresh() and motionHeading. Searched for threads, executors and callback groups, and confirmed the optimizer and A* share one GridMap instance.",
+    "Compared the build evidence with the runtime records: 7 translation units, the 32-warning multiset, install differences and shared libraries; confirmed the pinned rclcpp 16.0.12.",
+    "Re-ran analyze.py and analyze_first_judgement.py on scratch copies; diffed the two analyzers; checked the probe derivation hashes and that the replay is byte-for-byte; read make_refresh_probe.py (timers cancelled, the C6 helper thread, the C7 batches, the digest); extracted C1–C7 lines and rows from the logs and summary; checked exit codes, walls, the pending manifest (338 files) and file times.",
+    "Re-ran review.py for saved_states02 and native_regression03 on scratch copies; byte-compared all outputs with v30's; scanned every input_refresh line; re-derived the v18 and z_0p3700 differences; read the timing control and alone_check.",
+    "Simulated freeze.py's selection; checked .gitignore and git check-ignore; smoke-tested trial_signatures.py on v30's scan.log; confirmed that no v31 run or manifest exists yet."
+  ],
+  "claims_verified": [
+    "Materialization is byte-exact and the patch reproduces scan64 (B1).",
+    "Build: 71.2 s, passed, sources unchanged; the same 7 translation units as v30; warnings identical; 5 installed files differ; the 12 shared libraries and libpath_searching.a are identical; dyn_a_star.cpp is identical in scan62, scan63 and scan64.",
+    "Contract: 28 red and 32 green processes all exit 0 (1142.8 s and 1299.8 s). Both analyzers reproduce their stored summaries exactly, and the per-case rows are identical in both.",
+    "Every COMPONENT_RESULTS §2 number: C1 identical stop and digest, with 3 target_check lines per state all applying nothing; C2 3/3/5 applied at safety, scan age 0.360–0.365 → 0.060–0.065 s; C3 against the diagnosis rows, body age 0.150 → 0.0001 s; C4 319–369 ms; C5 digests; C6 216 ms with 7 of 10 batches, 10–15 messages applied, body ages 0.160–0.165 and 0.115–0.145 s; C7 digests; FSM odometry offset up to 0.118 m; extra time 45.7–83.4 ms; pending counts 44–53 and 24–28.",
+    "Saved states: 48 of 48 outputs byte-identical, 11 of 12 logs identical, the z_0p3700 explanation holds, 163 refresh lines all applying nothing, 449 s, 90 samples alone.",
+    "Regression: 47 of 47 outputs byte-identical, 25 of 27 logs identical; the execution.log and v18.log explanations hold (only one elapsed-time line missing); 129 refresh lines all applying nothing; 436 s, 87 samples alone.",
+    "Timing control: every run exits 0, scan63 equals v30 in all 25 fixture runs, and v30 flipped unmapped_low_box once; medians 0.105 s and 0.104 s; v30_rep5 printed 5 of 6.",
+    "The C1 correction is legitimate. It matches PLAN.md's cell ('nothing applied') and the analyzer's own pre-run docstring. The first judgement's proxy, 'no refresh line', contradicted the logging design PLAN.md describes, because green's safety callback replans three times through target_check, as red's does.",
+    "No label is promoted: status is frozen_unvalidated, and v3 remains the last accepted condition.",
+    "The new code runs only on the executor thread (the probe's helper thread only publishes), handles null subscriptions, does not recurse, holds no GridMap state across a refresh, and cannot apply one message twice."
+  ],
+  "claims_not_verified": [
+    "Dr Sun's 2026-09-28 chat decision; only the records of it were checked.",
+    "Live behaviour: the order in which DDS delivers poses and clouds across topics (the N1 fix assumes publication order), how often inputs are stamped ahead of the clock, and ageing between sites. Sim time was frozen in every contract call.",
+    "The cause of green C4's success at the corridor entry.",
+    "Pre-run fixation of PLAN.md and the analyzer beyond file times.",
+    "rmw_fastrtps 6.2.7 wait-set behaviour after direct takes, beyond round 1 and these outputs.",
+    "That the recompiled translation units match the include graph, and that freeze.py itself runs; it was not executed."
+  ],
+  "handling_of_non_blocking_findings": {
+    "NB1_analyzer_checks_narrower_than_cells": "Recorded in COMPONENT_RESULTS.md section 2 ('Narrower checks than the table'), with the main session's own check: green C1 digest and re-check equal red's in all four states; no remaining_spline_invalid, final_spline_rejected, 'inside an obstacle' or blocked-terminal line in any green C4 or C6 call. The analyzer's logic was not changed after the run.",
+    "NB2_preregistration_not_provable": "Reworded in PLAN.md and the analyze.py docstring (docstring only; summary.json regenerated byte-identical): cases and table fixed before the run; the analyzer written during the run before any output was inspected, its first version's file time 7 s after the first two (C1) outputs and before every C2-C7 output.",
+    "NB3_wording": "(a) C4 corridor-entry cause reworded as not isolated, with the diagnosis's WrongHeight sample (verified in audits/2026-09-28_v30_stop_classes/RESULT.md) and A* wall-time variation; (b) C6 per-state detail corrected; (c) the 5 FSM odometry messages added; (d) the closing sentence of section 4 rewritten; (e) attempt01/README.md corrected; (f) PLAN.md's line-ending rule now covers the grid_map.cpp insertion.",
+    "NB4_future_stamped_scans_and_log_filter": "PLAN.md's claim boundary names scans stamped ahead of the clock. Both runs' log_review.py now keep refresh lines with a negative age; both reviews were rerun and their review.json and refresh counts are unchanged.",
+    "NB5_contract_artifacts": "(a) already disclosed; (b) the 6-significant-digit per-batch records are noted in COMPONENT_RESULTS.md. No change to the probe for this version.",
+    "NB6_fsm_odometry_residuals": "The PRESET_TARGET latent behaviour is recorded in PLAN.md's claim boundary; this trial uses navi_mode 3.",
+    "NB7_recent_changes_memory": "bigmemory/热区/近期改动.md gained the narrower-means decision and this round's progress.",
+    "NB8_inventory_and_freeze_scope": "(a) LOCAL_ONLY_BYTES.json is written by local_only_inventory.py after the trial and before any commit; (b) freeze.py now selects every file of runs/v31_saved_states02 and runs/v31_native_regression03 except their CMake build trees."
+  }
+}

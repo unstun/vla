@@ -1,0 +1,168 @@
+--- a/src/plan_manage/src/scan_replan_fsm.cpp
++++ b/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1,3 +1,4 @@
++#include <plan_env/local_hotspot_profile.h>
+ #include <bspline_opt/full_trajectory_collision.h>
+ 
+ #include <plan_manage/scan_replan_fsm.h>
+@@ -1102,6 +1103,7 @@
+ 
+   bool SCANReplanFSM::planFromCurrentTraj()
+   {
++    local_profile::Scope profile_scope(0);
+     LocalTrajData *info = &planner_manager_->local_data_;
+     rclcpp::Time time_now = node_->now();
+     double t_cur = (time_now - info->start_time_).seconds();
+--- a/src/plan_manage/src/planner_manager.cpp
++++ b/src/plan_manage/src/planner_manager.cpp
+@@ -1,3 +1,4 @@
++#include <plan_env/local_hotspot_profile.h>
+ #include <cmath>
+ #include <iomanip>
+ #include <sstream>
+@@ -125,6 +126,7 @@
+                                         Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj,
+                                         bool &optimization_attempted)
+   {
++    local_profile::Scope profile_scope(1);
+     optimization_attempted = false;
+     // v31: each replan attempt starts from the newest received inputs.
+     grid_map_->refreshSensorInputs("replan_start");
+--- a/src/bspline_opt/src/bspline_optimizer.cpp
++++ b/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -1,3 +1,4 @@
++#include <plan_env/local_hotspot_profile.h>
+ #include <bspline_opt/rebound_constraint_utils.h>
+ #include "bspline_opt/bspline_optimizer.h"
+ #include "bspline_opt/gradient_descent_optimizer.h"
+@@ -407,7 +408,8 @@
+ 
+   void BsplineOptimizer::calcDistanceCostRebound(const Eigen::MatrixXd &q, double &cost,
+                                                  Eigen::MatrixXd &gradient, int iter_num, double smoothness_cost)
+-  {
++  {
++    local_profile::Scope profile_scope(4);
+     cost = 0.0;
+     int end_idx = q.cols() - order_;
+     double demarcation = cps_.clearance;
+@@ -722,7 +724,8 @@
+   }
+ 
+   bool BsplineOptimizer::check_collision_and_rebound(void)
+-  {
++  {
++    local_profile::Scope profile_scope(5);
+ 
+     int end_idx = cps_.size - order_;
+ 
+@@ -974,7 +977,8 @@
+   }
+ 
+   bool BsplineOptimizer::rebound_optimize()
+-  {
++  {
++    local_profile::Scope profile_scope(2);
+     iter_num_ = 0;
+     int start_id = order_;
+     int end_id = this->cps_.size - order_;
+@@ -1160,7 +1164,8 @@
+   }
+ 
+   void BsplineOptimizer::combineCostRebound(const double *x, double *grad, double &f_combine, const int n)
+-  {
++  {
++    local_profile::Scope profile_scope(3);
+ 
+     memcpy(cps_.points.data() + 3 * order_, x, n * sizeof(x[0]));
+ 
+--- a/src/path_searching/src/dyn_a_star.cpp
++++ b/src/path_searching/src/dyn_a_star.cpp
+@@ -1,3 +1,4 @@
++#include <plan_env/local_hotspot_profile.h>
+ #include "path_searching/dyn_a_star.h"
+ #include <algorithm>
+ #include <chrono>
+@@ -144,7 +145,8 @@
+ }
+ 
+ ASTAR_RET AStar::AstarSearch(const double step_size, Vector3d start_pt, Vector3d end_pt, bool exact_endpoint, double goal_tolerance)
+-{
++{
++    local_profile::Scope profile_scope(6);
+     const auto time_1 = std::chrono::steady_clock::now();
+     // Clear result state even when initialization fails or modes are switched.
+     gridPath_.clear();
+--- a/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ b/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -1,3 +1,4 @@
++#include <plan_env/local_hotspot_profile.h>
+ // Included only by scan_06 grid_map.cpp after GridMap is defined.
+ // PCT selected ground cells are a static support map, not live obstacle truth.
+ // The LiDAR raycasting path remains unchanged; only the common collision query
+@@ -159,6 +160,7 @@
+ 
+ bool GridMap::reactiveFootprintSupportQuery(const Eigen::Vector3d &body_reference,
+     const reactive_stair::NonTerrainVoxel &obstacle, reactive_stair::Query &query) {
++    local_profile::Scope profile_scope(9);
+   if (!body_reference.allFinite()) return false;
+   const auto &raw = reactive_ground_;
+   const auto &scored = reactive_terrain_;
+@@ -210,6 +212,7 @@
+ }
+ 
+ int GridMap::reactiveOccupancy(const Eigen::Vector3d &point, const Eigen::Vector3d *body_reference) {
++    local_profile::Scope profile_scope(7);
+   if (!reactiveSurfaceGroundReady()) return 1;
+   if (!point.allFinite()) return 1;
+   const double radius = mp_.double_cylinder_radius_;
+@@ -241,6 +244,7 @@
+       // Every raw occupied source contributing to SCAN's inflated hit must
+       // have a retained, positively observed terrain classification. One unclassified
+       // return, even at a supported XY, keeps the result occupied.
++      local_profile::Scope raw_profile_scope(8);
+       bool contributor = false;
+       bool unclassified = false;
+       for (const auto &offset : md_.inflate_offsets_) {
+--- a/src/plan_env/include/plan_env/reactive_collision.h
++++ b/src/plan_env/include/plan_env/reactive_collision.h
+@@ -1,3 +1,4 @@
++#include <plan_env/local_hotspot_profile.h>
+ #ifndef P2B_REACTIVE_STAIR_COLLISION_H
+ #define P2B_REACTIVE_STAIR_COLLISION_H
+ 
+@@ -118,6 +119,7 @@
+   }
+ 
+   Verdict decide(const Query &query, const NonTerrainVoxel &obstacle) const {
++    local_profile::Scope profile_scope(10);
+     if (query.frame.empty() || !std::isfinite(query.stamp_s) ||
+         !std::isfinite(query.x_m) || !std::isfinite(query.y_m) ||
+         !std::isfinite(query.z_m) || !std::isfinite(p_.robot_radius_m) ||
+--- a/src/bspline_opt/src/uniform_bspline.cpp
++++ b/src/bspline_opt/src/uniform_bspline.cpp
+@@ -1,3 +1,4 @@
++#include <plan_env/local_hotspot_profile.h>
+ #include "bspline_opt/uniform_bspline.h"
+ 
+ namespace scan_planner
+@@ -58,7 +59,8 @@
+   Eigen::MatrixXd UniformBspline::getControlPoint() { return control_points_; }
+ 
+   Eigen::VectorXd UniformBspline::evaluateDeBoor(const double &u) const
+-  {
++  {
++    local_profile::Scope profile_scope(11);
+ 
+     double ub = min(max(u_(p_), u), u_(m_ - p_));
+ 
+--- a/src/plan_env/CMakeLists.txt
++++ b/src/plan_env/CMakeLists.txt
+@@ -22,7 +22,7 @@
+ find_package(tf2_ros REQUIRED)
+ find_package(visualization_msgs REQUIRED)
+ 
+-add_library(plan_env src/grid_map.cpp src/raycast.cpp)
++add_library(plan_env src/profile_state.cpp src/grid_map.cpp src/raycast.cpp)
+ target_include_directories(plan_env PUBLIC
+   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+   $<INSTALL_INTERFACE:include>

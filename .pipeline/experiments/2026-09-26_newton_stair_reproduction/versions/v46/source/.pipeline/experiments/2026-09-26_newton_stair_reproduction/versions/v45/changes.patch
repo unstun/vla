@@ -1,0 +1,156 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v42/navigation_contract.json
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v45/navigation_contract.json
+@@ -1,6 +1,6 @@
+ {
+   "schema": "lite3_nav2_alignment_v1",
+-  "version": "v42",
++  "version": "v45",
+   "global_planner_frequency": 1.0,
+   "local_planner_frequency": 30.0,
+   "controller_frequency": 30.0,
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v42/newton_episode.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v45/newton_episode.py
+@@ -125,6 +125,11 @@
+             from applied_channel import AppliedClient
+             applied_client = AppliedClient()
+         (out / "initial_clock.json").write_text(json.dumps(asdict(estimate), indent=2) + "\n")
++        atomic_json(out / "startup_pacing.json", pacer.snapshot(robot.physics_time()))
++        # The 1:1 navigation video starts from the measured initialized state.
++        # Factory execution remains separately timed; native ROS time is continuous.
++        pacer = NativeClockPacer(robot.physics_time())
++        atomic_json(out / "navigation_clock_anchor.json", pacer.snapshot(robot.physics_time()))
+         with (out / "telemetry.jsonl").open("w") as log, (out / "sensor.jsonl").open("w") as sensor_log, (out / "backend_states.jsonl").open("w") as backend_log, ThreadPoolExecutor(max_workers=1) as writer, ThreadPoolExecutor(max_workers=1) as scanner:
+             io_jobs, pending_scan = deque(), None
+             scan_index = 0
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v42/native_graph.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v45/native_graph.py
+@@ -19,8 +19,8 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v42":
+-        raise ValueError("v42 graph requires the frozen v42 integration identity")
++    if request.get("integration_version") != "v45":
++        raise ValueError("v45 graph requires the frozen v45 integration identity")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v42/frequency_observer.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v45/frequency_observer.py
+@@ -5,6 +5,7 @@
+ import time
+ import rclpy
+ from geometry_msgs.msg import Twist
++from scan_planner_msgs.msg import P2BStampedTwist
+ 
+ 
+ def main():
+@@ -15,10 +16,11 @@
+     node = rclpy.create_node("recording_frequency_observer")
+     log = (args.output / "command_frequencies.jsonl").open("w")
+     def record(topic, message):
++        message = message.twist if isinstance(message, P2BStampedTwist) else message
+         log.write(json.dumps({"topic":topic,"wall_monotonic_s":time.monotonic(),
+             "vx":message.linear.x,"vy":message.linear.y,"wz":message.angular.z})+"\n")
+         log.flush()
+-    subscriptions = [node.create_subscription(Twist, topic,
++    subscriptions = [node.create_subscription(P2BStampedTwist if "raw_scan" in topic else Twist, topic,
+         lambda message, topic=topic: record(topic,message), 100)
+         for topic in ("/quad_0/raw_scan_cmd_vel", "/quad_0/cmd_vel")]
+     try:
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v42/component_qualification.json
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v45/component_qualification.json
+@@ -17,5 +17,18 @@
+     "child_sha256": "25308f85e1d162b736d4c68e097dc8a25bbdcf064d098f6ee733100a8650ab0c",
+     "parent_sha256": "25308f85e1d162b736d4c68e097dc8a25bbdcf064d098f6ee733100a8650ab0c"
+   },
+-  "cpu_graph_result_sha256": "759754541c508027882b63d0d4b3d49eb4edb527b94222f89b6f8802c96a14f4"
++  "cpu_graph_result_sha256": "759754541c508027882b63d0d4b3d49eb4edb527b94222f89b6f8802c96a14f4",
++  "adopted_native_version": "v44",
++  "v44_native_and_cache_checks_passed": true,
++  "v44_test_result_sha256": "cb031cf6bab5827f9677fd5de2051491b77fa05b9f7bb9862ae6226d14c971a1",
++  "v44_v32_stand": {
++    "geometry_exact": true,
++    "child_sha256": "7d3a852e58db3abe5f83e737808d3b1b6dff2175422b42e166a1c3c2687d4000",
++    "parent_sha256": "7d3a852e58db3abe5f83e737808d3b1b6dff2175422b42e166a1c3c2687d4000"
++  },
++  "v44_v33_stand": {
++    "geometry_exact": true,
++    "child_sha256": "25308f85e1d162b736d4c68e097dc8a25bbdcf064d098f6ee733100a8650ab0c",
++    "parent_sha256": "25308f85e1d162b736d4c68e097dc8a25bbdcf064d098f6ee733100a8650ab0c"
++  }
+ }
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v42/run_local_episode.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v45/run_local_episode.py
+@@ -14,7 +14,7 @@
+ VERSION = Path(__file__).resolve().parent
+ BASE = VERSION.parents[1]
+ PROJECT = BASE.parents[2]
+-BUILD = BASE / "runtime/scan68_raw_contributor_cache_v39"
++BUILD = BASE / "runtime/scan69_shared_attempt_cache_v44"
+ IMAGE = "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb"
+ 
+ 
+@@ -79,9 +79,9 @@
+ 
+ 
+ def verify_native_build(build, frozen):
+-    """Reject installation drift or a build outside the frozen v42 path."""
++    """Reject installation drift or a build outside the frozen v45 path."""
+     if build.resolve() != BUILD.resolve():
+-        raise ValueError("v42 requires its frozen native build path")
++        raise ValueError("v45 requires its frozen native build path")
+     for filename, key in (("source_sha256.json", "native_source_sha256"),
+                           ("install_sha256.json", "native_install_sha256")):
+         actual = json.loads((build / filename).read_text())
+@@ -131,10 +131,10 @@
+     parser.add_argument("--stance-hold", action="store_true")
+     parser.add_argument("--physics-backend", choices=("warp", "native"), default="warp")
+     parser.add_argument("--real-time-factor", type=float, default=1.)
+-    parser.add_argument("--recording-sim-seconds", type=float, default=120.)
++    parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v42 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v45 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -172,8 +172,8 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v42":
+-        raise ValueError("This entry point requires frozen integration version v42")
++    if integration_version != "v45":
++        raise ValueError("This entry point requires frozen integration version v45")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+@@ -189,7 +189,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v42 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v45 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -255,7 +255,7 @@
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
+     for name in ("run_local_episode.py", "native_graph.py", "native_backend_entry.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v42_" + name))
++        shutil.copyfile(VERSION / name, out / ("executed_v45_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -280,7 +280,7 @@
+     (out / "native_inside.sh").write_text(script)
+     name = "vla-newton-" + out.name.replace("_", "-")
+     command = ["docker", "run", "--rm", "--pull=never", "--platform=linux/amd64", "--name", name,
+-        "--memory=5g", "--cpus=4", "-e", "ROS_DOMAIN_ID=214", "-e", "ROS_LOCALHOST_ONLY=1",
++        "--memory=5g", "--cpus=6", "-e", "ROS_DOMAIN_ID=214", "-e", "ROS_LOCALHOST_ONLY=1",
+         "-e", "PYTHONDONTWRITEBYTECODE=1", "-e", "OPENBLAS_NUM_THREADS=1", "-e", "OMP_NUM_THREADS=1",
+         "-p", "127.0.0.1:46202:46202",
+         "-v", str(PROJECT) + ":" + str(PROJECT) + ":ro", "-v", str(out) + ":" + str(out) + ":rw",

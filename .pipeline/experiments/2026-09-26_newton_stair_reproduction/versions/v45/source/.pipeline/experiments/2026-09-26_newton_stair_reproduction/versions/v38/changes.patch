@@ -1,0 +1,56 @@
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v38/physics/lite3_newton_v38.py
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v38/physics/lite3_newton_v38.py
+@@ -42,7 +42,11 @@
+     def __init__(self, *, robot_source=None, scene_builder=None, spawn_xyz=(0., 0., .35),
+                  spawn_yaw=0.0, newton_contacts=False, automatic_contact_capacity=False,
+                  contact_observer=None, startup_mode="policy", stance_hold=False,
+-                 model_device="cpu"):
++                 model_device="cpu", use_solver_graph=False):
++        if not isinstance(use_solver_graph, bool):
++            raise ValueError("use_solver_graph must be bool")
++        if use_solver_graph and model_device != "cuda:0":
++            raise ValueError("Solver graph requires cuda:0")
+         if model_device not in ("cpu", "cuda:0"):
+             raise ValueError("model_device must be cpu or cuda:0")
+         if model_device != "cpu" and not newton_contacts:
+@@ -156,6 +160,11 @@
+         if stance_hold:
+             from newton_stance import NewtonStance
+             self.stance = NewtonStance(self)
++        if use_solver_graph:
++            from solver_graph_step import SolverGraphStep
++            self.solver_graph = SolverGraphStep(self.solver, self.state, self.next_state,
++                                                self.control, self.contacts)
++            self.solver.step = self.solver_graph
+ 
+     def native_array(self, name):
+         if self.solver.use_mujoco_cpu:
+--- a/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v38/physics/robot_scene_v38.py
++++ b/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v38/physics/robot_scene_v38.py
+@@ -13,7 +13,7 @@
+ 
+ QUALIFIED = BASE.parent / "2026-09-26_newton_macos_policy"
+ sys.path.insert(0, str(QUALIFIED / "scripts"))
+-from lite3_newton_v37 import Lite3Newton
++from lite3_newton_v38 import Lite3Newton
+ 
+ 
+ def fixed_frame_transform(urdf, frame):
+@@ -42,7 +42,7 @@
+ 
+ class StairRobot(Lite3Newton):
+     def __init__(self, *, startup_mode="policy", stance_hold=False, scenario=None,
+-                 automatic_contact_capacity=False, model_device="cpu"):
++                 automatic_contact_capacity=False, model_device="cpu", use_solver_graph=False):
+         self.building_vertices, self.building_faces, archived_scenario = building_mesh()
+         self.scenario = scenario if scenario is not None else archived_scenario
+         source = BASE / "inputs/sensor_rig/lite3_pro_sensor_rig_real_with_interface.urdf"
+@@ -59,7 +59,7 @@
+                          spawn_yaw=self.scenario["spawn_yaw_rad"], newton_contacts=True,
+                          startup_mode=startup_mode, stance_hold=stance_hold,
+                          automatic_contact_capacity=automatic_contact_capacity,
+-                         model_device=model_device)
++                         model_device=model_device, use_solver_graph=use_solver_graph)
+ 
+     def body_and_sensor(self):
+         q, qd = self.native_array("qpos"), self.native_array("qvel")

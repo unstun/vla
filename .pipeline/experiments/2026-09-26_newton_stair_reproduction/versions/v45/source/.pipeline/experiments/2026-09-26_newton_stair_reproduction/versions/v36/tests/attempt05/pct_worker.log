@@ -1,0 +1,25 @@
+Traceback (most recent call last):
+  File "/archive/runtime_sources/backend_adapter/backend_adapter/pct_worker.py", line 45, in __init__
+    from pct_planner.planner_wrapper import TomogramPlanner  # type: ignore
+  File "/archive/runtime_sources/pct_runtime/python/pct_planner/planner_wrapper.py", line 13, in <module>
+    from .utils import *
+  File "/archive/runtime_sources/pct_runtime/python/pct_planner/utils/__init__.py", line 2, in <module>
+    from .vis_ros import traj2ros
+  File "/archive/runtime_sources/pct_runtime/python/pct_planner/utils/vis_ros.py", line 1, in <module>
+    from nav_msgs.msg import Path
+ModuleNotFoundError: No module named 'nav_msgs'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/archive/runtime_sources/backend_adapter/backend_adapter/pct_worker.py", line 173, in <module>
+    raise SystemExit(main())
+  File "/archive/runtime_sources/backend_adapter/backend_adapter/pct_worker.py", line 160, in main
+    planner = NativePctPlanner(NativePctConfig(
+  File "/archive/runtime_sources/backend_adapter/backend_adapter/pct_worker.py", line 47, in __init__
+    raise RuntimeError("pct_native_import_failed") from exc
+RuntimeError: pct_native_import_failed
