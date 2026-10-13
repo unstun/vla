@@ -1,0 +1,5 @@
+# v54 component result
+
+Frozen v53 had an actual native pre-trajectory route-refresh exception caused by subtracting mixed clock types before checking that an accepted local curve existed. v54 adds a three-line trajectory ownership/clock-type guard in canPreserveReferenceBinding. The source delta touches one function only. All valid-curve scheduling, PVA, goal, yaw, safety and stop behavior remains unchanged.
+
+Build attempt01 and contract attempt01 pass: actual pre-trajectory callback replay; explicit absent/unowned/mixed-clock negatives; 35 native checks, 64 cache checks, both exact cold geometry fixtures, callback/rollback, warm PVA/final-curve/dynamics, goal-region and backend contracts. The corner callback still retains eligibility and succeeds in both complete native rounds. Exact parent-plus-patch source materialization passes all 100 hashes. Physics and expiry reserve extension are pending integration. Frozen v53 failure/source remain unchanged; D2 is v55 and D3 is v56. Bulk evidence remains on gpu5070ti.

@@ -649,3 +649,565 @@ Task 09-17-isaac-runner-stance-hold closed. The xfade1s crossfade entry was sele
 ### Next Steps
 
 - Dr Sun chooses the next foundation step. Open: the two-goal stop-dwell margin (worst 0.145 of 0.15) is set by V12 settling; no PD hold on the real robot; local clouds.jsonl copies of the stand/walk runs (~650 MB).
+
+
+## Session 17: Archive sequential SCAN stair repairs at scan33 build after server shutdown
+
+**Date**: 2026-09-26
+**Task**: Archive sequential SCAN stair repairs at scan33 build after server shutdown
+**Branch**: `main`
+
+### Summary
+
+Experiment + analysis remains in progress. scan33 native15/local+Foxy, independent review, generator parity and full build passed; install identity and real-optimizer/live tests pending. User reported server shutdown and requested archive. Local simulation capability assessed without installation or run.
+
+### Main Changes
+
+- Saved scan28–33 evidence boundaries, cold/hot project memory and exact resumption handoff; no staging or commit.
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] scan33 native15 cases pass locally and in fixed Foxy; old scan32 has12 declared failures and3 positives. Full build source identity matches before and after.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- After continuation and server power-on, capture scan33 installation identity then replay fresh/old inputs; keep MuJoCo adaptation a separate unexecuted option.
+
+
+## Session 18: v6 short SCAN reference continuation
+
+**Date**: 2026-09-27
+**Task**: v6 short SCAN reference continuation
+**Branch**: `main`
+
+### Summary
+
+Confirmed and repaired the captured 17.4 cm native continuation. Repeated native PVA/collision/negative checks and default flat replay pass. Two full Building attempts remain unsuccessful; the second reaches 90,000 physics steps, moves 0.4158 m net and does not enter final PD hold. Preserve original A4 task as in_progress.
+
+### Main Changes
+
+- One shared, explicitly enabled map-resolution progress predicate replaces four duplicate close-target guards; source frozen before execution.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `00be31a6` | (see git log) |
+
+### Testing
+
+- [OK] Native frozen-state controls and repeats pass; all declared negative cases retained; recorded-state video fully decoded and visually inspected.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Trace observed obstacle contributors and support/heading at the next rejected targets, then define one v7 change; audit missing backend failure terminal separately.
+
+
+## Session 19: v7 minimum planned cruise 0.6 m/s
+
+**Date**: 2026-09-27
+**Task**: v7 minimum planned cruise 0.6 m/s
+**Branch**: `main`
+
+### Summary
+
+Implemented and froze v7 minimum planned horizontal cruise 0.6 m/s with acceleration/braking/stop exceptions. Native build, 15 recorded curves, invalid-parameter checks, original short continuation, actual native retiming 0.59856 -> 0.60783 m/s and two direct 0.6 m/s walks with PD return passed. Measured steady forward mean is about 0.566 m/s, so measured minimum 0.6 is not validated. Empty full-route trial failed on initial heartbeat; original Building reached its physical bound after 0.4113 m net progress, no cruise/arrival/final PD. Retained all failures and verified v7 Building MP4. Original A4 remains open; next production repair uses v8. Scoped commit only, unrelated dirty files preserved.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `32c25642` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 20: Recover historical full Building success
+
+**Date**: 2026-09-27
+**Task**: Recover historical full Building success
+**Branch**: `main`
+
+### Summary
+
+Dr Sun clarified the old successful video was the stair/full-floor route. Recovered machine-dog-nav native_full02: 4904 raw records, 74.062882 m XY, 98.08 s, 3.768 cm final error, stopped; original full video SHA and full decode verified. Current v7 loads the same Building/PCT assets but plans only a 46-point 5.001 m stair segment, versus the historical 631-point 73.237 m route. Isaac/native planner and Newton/reactive planner conditions differ. No runtime code or sibling repository changed. Historical sibling planner directory is untracked, so future import must use clean pinned upstream and reviewed port provenance. Same-input causal comparison remains pending; original task stays in progress.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ce7284ed` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 21: Compare historical full Building success with Newton v7
+
+**Date**: 2026-09-27
+**Task**: Compare historical full Building success with Newton v7
+**Branch**: `main`
+
+### Summary
+
+Read-only production audit with repeated native replays: terrain/support and retained nonterrain labels block the stair frontier; native exhaustion is not reported to the active P2B owner. Historical full route remains the control. No v8, physics run or production change.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `661b02e0` | (see git log) |
+
+### Testing
+
+- [OK] Original 66-scan continuation replay repeated identically; native single-label counterfactual gives occupied 1 -> 0 -> 1.
+- [OK] Historical 65 manifest and 62 executed source checks; current 205 frozen source, 97 native source and 515 installed file hashes pass.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Repair the recorded terrain/obstacle evidence seam separately from P2B failure reporting, preserving obstacle negatives and integer versioning.
+
+
+## 2026-10-02 — v57 two recordings and review delivery
+
+Executed the two authorized90s Building recordings on idle gpu5070ti. Both pass the old corner and record46.20/46.62m with no >1s pauses, but successful local planning25.65/25.76Hz and660.975/290.149ms maxima fail30Hz/tail acceptance. All7408source/519install hashes and1590 archived members verified. Numeric analysis stays remote; compact tables support local plots. One original-state8.4MiB MP4 has full decode/frame/hash and three-preview review. Frozen v51 rendering needed exact source/reference transfer and its original font via task-local XDG font lookup; no frozen source changed. See versions/v57/RESULTS.md and provenance. Main performance objective remains open; no further physics launched and no commit made in this delivery turn.
+
+
+## 2026-10-02 — v57 post-70-second diagnosis
+
+Original two-run traces and20-state/40-search unchanged-native replay confirm a fixed-pool spatial trigger, repeated failed final-goal A* before warm initialization, and growing corridor expansion. Curve timestamp comparison establishes an inherited handover timing gap, with~1m longitudinal tracking lead and reduced30Hz controller commands. No runtime edits or new physics; verified compact audit and figure saved under audits/2026-10-02_v57_after70. Native source/install hashes unchanged; heavy replay artifacts stay on gpu5070ti.
+
+
+### 2026-10-02 — v58/v59 post70 repair, physical validation waiting
+
+Authorized by Dr Sun after the completed v57 diagnosis. v58 freezes a current necessary endpoint observation certificate; 80 paired calls retain outcomes, max goal search45.129->0.272ms. v59 freezes sampled trajectory epoch through warm/native fallback and controller receipt; 15 controller and10 epoch checks per native fixture pass, with all inherited build/safety gates. v57, v58 and v59 source/install identities preserved; no v49 budget or stop change. GPU became occupied by a separate Isaac evaluation; v58 trial01 stopped at preflight with zero physics. Dr Sun said "just wait". Next: v58 trial02 then v59 trial01 (90s each), compact analysis/plots and one review MP4. Heavy data remains remote, no commit or global-memory write. See active v59 task EXECUTION_STATE.md.
+
+
+### 2026-10-03 — v58/v59 physical validation and final review delivery
+
+Honored Dr Sun's GPU wait, then ran frozen v58 trial02 and v59 trial01 sequentially on the free host. Both 90-second requests complete, with no dropped steps. Successful planning 27.53/26.43 Hz; max solve 659.526/1236.709 ms; paths 55.19/55.04 m. Idle-host paired03 confirms final-goal-search max 44.614381 → 0.259025 ms with exact outcomes. v59 controller/native epoch tests pass; late matched handover position difference falls to at most 0.168 mm. Overall acceptance remains failed: v59 has a 1.099 s late hold while a rejected warm connector triggers repeated cold recovery and the observed old curve expires. No goal/yaw/PVA/dynamics/safety or stop-protocol relaxation, and no v49 deadlines.
+
+Final plot uses complete pacing-window rates/latencies and includes initial navigation waiting; post-recording planner activity is excluded. Original all-log metrics remain separate. Final v61 camera is display-only, replaying exact v59 states: 2,449 frames, full decode/time-state identity and six visual samples verified. One 10,488,224-byte MP4 returned, SHA03ade05cdc1f51e9c75650cb686f85dcfed6d53e8271ab3a9e6832814f8acc1a; failed camera renders and all heavy logs/state/builds remain remote. See versions/v59/REPAIR_REPORT.md and versions/v61/REVIEW_VIDEO.json. GPU-wait heartbeat paused. Native versions remain frozen; no commit or broad staging. Main performance/continuity task remains open for review of the remaining cold-recovery chain.
+
+
+### 2026-10-03 — v59 cold-recovery root-cause audit
+
+Dr Sun requested diagnosis only. Native recorded-input replay confirms the remaining curve is clear, but the proposed connector reorients its front footprint into an intentional drop exclusion at sample0. The first shorter target has a clear fitted initializer; optimization moves it into collision, and failed constraint generation is repeated three times per ordinary/fixed-height attempt because its failure status is not propagated. Live trace has six such failures in an eight-attempt,1236.709ms round. A separate v59 defect retains the81.027099609s sampled PVA across retries but assigns82.286407471s after the old curve expires; prior "fresh restart" interpretation corrected. Two37.6s CPU native probes plus5.1s static guard witness, frozen sources unchanged; one-ULP preparation failure preserved. No physics/new version/production repair. Compact audit and corrected acceptance/report links saved; heavy data remote. Main task remains open.
+
+
+## Session 22: Mac planner repair: retry epoch and failed optimizer search
+
+**Date**: 2026-10-04
+**Task**: Mac planner repair: retry epoch and failed optimizer search
+**Branch**: `main`
+
+### Summary
+
+Continued authorized main task locally while gpu5070ti was busy. Frozen v62 (native parent v59) keeps original sample epoch through eight actual retry calls: rebasing1.259307862s->0,34 checks. Frozen v63 (parent v62) explicitly propagates optimizer repair failure: actual optimizer/LBFGS fixture searches3->1 in both height modes,40 checks. Both native eight-package builds and all available Mac/recorded component suites pass; failed fixtures/build attempts are preserved. Full original corner/physics/max-latency/30Hz qualification remains pending, protected-heading connector unresolved, v48 reference retained. No GPU access, heavy downloads, commit or broad staging. Owned temporary Docker builds removed; source/snapshot identities verified. v63 active task remains in progress.
+
+### Git Commits
+
+(No commits - planning session)
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 23: Actual Newton Mac validation and heartbeat failures
+
+**Date**: 2026-10-04
+**Task**: Actual Newton Mac validation and heartbeat failures
+**Branch**: `main`
+
+### Summary
+
+Dr Sun authorized Newton on Mac. Exact nativev63 with original v59 physics/backend ran in frozen hostv67/v68. Actual routes end31.614/46.506s via original heartbeat_stale, successful16.815/18.606wallHz, max494.716/836.683ms, path13.197/22.742m. Controller remains near30Hz; matching backend receipt needs trace. Earlier host-entry and cold-scan failures preserved. Clock-domain-aware plots/report/provenance delivered; full90s/post70s/30Hz validation remains pending. No native/goal/stop/safety changes, GPU use, broad staging or commit. Raw archives outside repo; all owned containers and63MB temporary build removed. v48 reference and main task in_progress retained.
+
+### Git Commits
+
+(No commits - planning session)
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 24: Mac heartbeat and planner bottleneck diagnosis
+
+**Date**: 2026-10-04
+**Task**: Mac heartbeat and planner bottleneck diagnosis
+**Branch**: `main`
+
+### Summary
+
+Verified original active identities during stale-heartbeat gaps; replayed original gate dispatch/latch mechanism. Frozen observation-only v70 reaches 90,000 integrations without heartbeat fault, but23.423Hz/max1316.856ms still fail main performance acceptance. Measured cold recovery/cloud work and repeated PCT-history JSON overhead; exact old DDS/OS/GIL delay remains unproven.
+
+### Main Changes
+
+- Added verified capture/serializer/gate-order/trace analysis and detailed report; preserved frozen v68/v70 and failed pre-physics launches.
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] Original gate replay10 assertions; actual original callback/JSON/error seam;4 entry tests; manager chain;8-package exact-native build and source/install gate; complete diagnostic trace0 drops.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Compact frequent state responses and preserve full route history once; protect heartbeat reception under diagnostics; reduce cold recovery/input work without v49 timeouts or safety relaxation.
+
+
+## Session 25: Upstream SCAN Mac test and actual failure video
+
+**Date**: 2026-10-04
+**Task**: Upstream SCAN Mac test and actual failure video
+**Branch**: `main`
+
+### Summary
+
+Pinned upstream ROS2 core tested in Mac Newton; early native planning failure recorded and video delivered, with verified remote raw storage.
+
+### Main Changes
+
+- Frozen v71 upstream core/transport; v72 floor publisher host key only; v73 display-only replay. Production v48 reference preserved.
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] Six-package native build, six actual transport/cancel checks, four entry/storage tests, actual manager retention, two parser tests, actual Newton trial, source/install hash gates and 135-frame full decode/causal/visual verification.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Diagnose original upstream startup rejection and design a matched later-corner comparison; preserve current safety contracts and avoid v49 timeouts. Main30Hz repair remains open.
+
+
+## Session 26: Corner-start current and upstream tests with verified videos
+
+**Date**: 2026-10-05
+**Task**: Corner-start current and upstream tests with verified videos
+**Branch**: `main`
+
+### Summary
+
+Started both arms beside the recorded late corner; current planner crosses it but misses 30 Hz, upstream moves briefly then stalls with an incomplete ACK/copyback failure. Both actual review videos and durable raw evidence are delivered; the main planner repair remains in progress.
+
+### Main Changes
+
+- Frozen v74/v75 corner attempts preserve unavailable raw and failure boundaries; v76/v77 archive physical evidence before rendering and preserve original goal/yaw/PVA/safety/stop behavior.
+- Returned compact report, current time-series plot, source and video checks, updated task/spec/index, exact MP4 ignores and remote regeneration provenance. v48 stays the reference; no GPU job or commit.
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] Current eight-package and upstream six-package builds, actual source/install gates, available Mac component subset, six upstream transport/cancel checks and frozen source/snapshot identity verification pass; original incomplete physical failure remains failed.
+- [OK] Actual v76: 20.035 m, 14.700 successful wall Hz, corner max397.826 ms, later max1307.535 ms; v77: 1.130 m, 10/1226 successful chains, max311.138 ms, original receive/ACK and copyback fail.
+- [OK] Both MP4s pass full decode, causal frame/time/state checks and visual review; all288 raw/render files225114094bytes remote SHA-verified. Current local/install identities pass before383897473 temporary bytes are removed; compact failures retained.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Profile repeated input/cloud/map processing across cold recovery while preserving newest occupancy/support validation, trajectory continuity and every final safety gate; main30Hz and full-route acceptance remain open.
+
+
+## Session 27: Map-processing spike diagnosis and native replay v78
+
+**Date**: 2026-10-05
+**Task**: Map-processing spike diagnosis and native replay v78
+**Branch**: `main`
+
+### Summary
+
+Verified the original977ms scope is twelve synchronous refreshes containing seven new scans. Native replay identifies voxel fusion/inflation and sliding-cell clearing as intrinsic hot paths; the full original live multiplier remains unresolved and no production optimization is claimed.
+
+### Main Changes
+
+- Frozen observation-onlyv78, parentv76/nativev63, with exact source reconstruction and map state parity. Kept v48 reference and all goal/yaw/PVA/safety/stop rules.
+- Recorded original input flow, exact wire/config comparison, per-stage timings and operation counts, report and task/spec/version state. Original heavy data and full profiling/runtime remain remotely retained.
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] Two map dependency packages and both probe builds pass; three runs per arm replay188scans. All six final buffer/history digests match and all116source/snapshot identities verify.
+- [OK] Seven scans:926950fusedvoxels,905074occupancycalls,25175190inflationneighborvisits,3actualshifts/21checks clearing474416cells. Unmodified idle batch266.600–312.992ms does not fully reproduce live976.721ms.
+- [OK] Original wire poses/cloud widths/config and three support payload hashes verify. All21retained result/runtime files3436644bytes remotelySHAverified;120935798temporaryMacbytes removed after current source/input/install/result identities and container closure pass.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Measure per-refresh/per-cloud live timing, actual shifts and cache sizes/clear cost to separate the remaining live multiplier; then optimize proven operations with decision-boundary state and safety equivalence. Main30Hz/continuity repair remains open.
+
+
+## Session 28: Compact polling and asynchronous mapping repair, failed continuity
+
+**Date**: 2026-10-05
+**Task**: Compact polling and asynchronous mapping repair
+**Branch**: `main`
+**Stage**: experiment + analysis
+
+### Summary
+
+Implemented the four authorized changes as frozen v79–v82; builds and component
+safety/equality checks pass. Two actual 90-second Mac corner runs preserve
+heartbeat but fail trajectory continuity and 30 Hz. v82 is a failed candidate;
+v48 remains the reference and the main task stays in progress.
+
+### Main Changes
+
+- v79 compact polling and once-per-plan full evidence; v80 equivalent voxel,
+  inflation and sliding arithmetic; v81 immutable map snapshots and newest-map
+  publication validation; v82 fixed-point duplicate reduction only with backlog.
+- Display-only v83 renders the actual failed trial01 as a verified MP4. Returned
+  report, plots, specification and exact remote storage/cleanup receipts.
+- No v49 deadline, stop-protocol change, safety age relaxation, GPU compute or
+  real-robot actuation. Goal/yaw/PVA/dynamic/support rules are preserved.
+
+### Git Commits
+
+No commit: a pre-existing Git index lock and other Git activity were observed.
+The lock and unrelated work remain untouched; no automatic session commit.
+
+### Testing
+
+- [OK] Eight native packages; 23 Python/HTTP/backend checks; actual 360 polls at
+  30 Hz keep callbacks healthy. The original 200 ms heartbeat fault still latches
+  when input stops.
+- [OK] Three 188-scan paired runs and 14 sliding phases preserve every map/history
+  state. Original native/cache/endpoint/controller/recorded suites, 26 snapshot
+  checks and 20 backlog checks pass; all 188 moving observations are retained.
+- [FAILED acceptance] Two 89.962 s Mac runs: 11.114/10.959 useful Hz,
+  491.143/312.939 ms maximum solves, 23.787/31.283 s longest pauses and 850
+  emergency transitions each. No heartbeat_stale. Mapping breaches the unchanged
+  250 ms scan validity interval and causes holds; neither run records arrival.
+- [OK] Review MP4: 2,707 causal frames, 90.233 s, full decode and visual QA.
+  All 343 files / 590,903,005 bytes remotely SHA-verified; 1,028,377,799 owned
+  temporary bytes removed after identity/process checks. All 41,402 source and
+  snapshot pairs pass after cleanup (82,804 individual hashes).
+
+### Status
+
+Review handoff delivered; main continuity/30 Hz repair remains **in progress**.
+No navigation acceptance promotion.
+
+### Next Steps
+
+Review async mapping throughput and handover before adoption. Keep v48 runnable
+and v82 failed evidence; do not broaden frame loss or relax freshness to mask
+the regression.
+
+## Session 29: Mapping admission comparison and separated-lane prototype
+
+**Date**: 2026-10-08
+**Task**: 10-04-newton-v64-mac-physics
+**Stage**: experiment + analysis
+
+Dr Sun approved the two upstream-backed investigations. v84 runs the same 188
+recorded scans through exact native mapping with FIFO, timer/latest and latest
+admission. Plain latest-only loses obstacle evidence and is rejected; a native
+transient-only fixture demonstrates the missed obstacle. Completion-time source
+age and held-map age are separately recorded; stale exposure remains.
+
+v85 implements a separate three-thread component prototype. Its 26 checks and
+actual recorded replay pass: all frames retained, original map hash recovered,
+sensor and execution decisions continue during mapper stalls, and stale maps
+never receive an allowance in the checked windows. No actual command publisher,
+full moving-trajectory/braking integration, physics, training or robot action.
+
+The first temporary environment disappeared after an interrupted turn; cause is
+unknown and missing raw evidence is disclosed. Recreated attempt02 uses the
+original verified archive and returns compact results after every arm. Original
+v82 source/install identity is checked; heavy evidence/runtime is archived to
+gpu5070ti storage with per-member hashes. See the 2026-10-08 mapping-admission
+report and storage receipt. v48 remains the reference, v82 remains failed, and
+the main continuity/30 Hz task stays in progress. No automatic commit or staging
+of the large pre-existing dirty worktree.
+
+### Planning continuation: fixed Foxy deployment design
+
+Dr Sun selected the existing Jetson with Ubuntu 20.04 and ROS 2 Foxy. The
+reviewable design and Chinese overview are in
+`.pipeline/design/2026-10-08_nav2_foxy/`. Eleven Nav2 0.4.7 fixed-commit files,
+the root package tree, official Foxy release/platform records and current local
+P2B contracts were inspected; source hashes are retained. Official BT task
+orchestration is the first increment, while PCT/SCAN and the sole command/stop
+path remain authoritative. Cancellation requires controller hold and measured
+stillness before new ownership. Mapping throughput and full motion remain open.
+
+This continuation is planning only: no executable import/build, runtime version,
+Nav2 integration, robot action, training, staging or commit. Existing task stays
+in progress; the next implementation gate is target inventory plus a Foxy mock
+adapter build. See `NAV2_FOXY_DESIGN_20261008.md` in the active task.
+
+## Session 30: Foxy SCAN plugins and Nav2 observation scheduling
+
+**Date**: 2026-10-08
+**Task**: 10-04-newton-v64-mac-physics
+**Stage**: implementation + component analysis
+
+Dr Sun requested actual pluginization and Nav2-style mapping backlog handling.
+v86 exports Foxy controller/goal plugins, owns the native SCAN planning executor,
+and preserves tagged output and physical-stop authority through a narrowly
+pinned ControllerServer adaptation. v87 adds temporal observation buffering and
+periodic native 3D map updates. Original frozen versions remain unchanged.
+
+ARM64/Foxy builds, 18 GoogleTest cases including 300-sample tracking parity,
+actual server protocol/launch checks, 37 actual ObservationBuffer checks, native
+safety emission and six transient cases have direct evidence. The server protocol
+uses synthetic planner/TF/stop proof. Two three-arm 188-scan native replays retain
+FIFO parity; the selected 0.5s window loses 2 scans and 23 occupied cells, and
+map-age intervals still exceed the unchanged 250ms gate. This is not a complete
+navigation repair or a Jetson/robot result. Current remains v48; main task stays
+in progress. Source/compact reports are local; bulk evidence is archived with
+hash receipts under the 2026-10-08 Nav2 Foxy plugin audit. Existing index.lock and
+the two pre-existing staged files are preserved; no commit or broad staging.
+
+
+## Session 31: Full Nav2 Foxy integration and failed original physics
+
+**Date**: 2026-10-08
+**Task**: 10-04-newton-v64-mac-physics
+**Stage**: implementation + experiment analysis
+
+Dr Sun approved full Nav2 integration on the existing Ubuntu 20.04/Foxy Jetson.
+Access is unavailable today and will be supplied later. v88-v99 preserve all
+frozen parents and add the actual PCT GlobalPlanner, SCAN controller, native-map
+TerrainLayer, BT binding/measured-stop recovery, public mission gateway and
+legacy HTTP adapter. PCT runs natively on ARM64/Python 3.8. Native scan replay,
+stock Nav2 control and full mission protocol checks remain separately labelled.
+Normal 188-scan FIFO and 20 Hz window replays retain the exact final map and
+about 100 ms max sampled age; injected stalls remain stale and fail closed.
+
+The portable source export builds 14 packages from scratch and passes 25 GTest
+cases (28 colcon entries including wrappers). Its fresh install repeats native
+PCT goal/cancel/input checks, with explicitly synthetic SCAN curves/map/safety.
+Real-plugin failing regressions reproduce and repair missing repeated cancel
+ack before a first spline and identical timestamps falsely classified as future.
+Future/stale negatives retain the original thresholds. Newton sensor precompile
+preserves ray outputs, physical state and sequence/time without publishing probes.
+
+The original Newton scene is connected but NOT accepted: v95-v98 have no walking
+commands. v98 no longer shows timestamp-rounding faults; native startup/trajectory
+safety rejects remain, followed by an applied-state transport timeout. Its final
+Linux state differs from the last acknowledged bytes, so copyback fails. Both
+copies and all failures are retained. No complete route, steady 30 Hz, Jetson
+receive-only or robot motion claim. See the full Nav2 audit report and STORAGE.json.
+Current v48 and the main in-progress task remain. The pre-existing index lock,
+staged v34/v35 records and unrelated dirty work remain untouched; no commit.
+
+Retention closeout: archive425237207bytes /20689members remotely SHA-verified;
+local members reverified and1536405652temporary/archivebytes removed. Owned
+container/image removed, baseFoxy retained. See STORAGE.json/RESTORE.md; no exact
+Docker image export claim. Source/code and compact evidence remain local.
+
+
+## Session 32: Nav2 original Newton arrival with two protected retries
+
+**Date**: 2026-10-08
+**Task**: 10-04-newton-v64-mac-physics
+**Stage**: experiment + analysis
+
+Dr Sun rejected component-only delivery and required the original simulation to
+work. Continued inline with no subagents. Frozen v100-v114 preserve the original
+scene, robot policy, inputs and safety limits. Diagnosed real clock/body ordering,
+replan safety state, output-ticket races, Foxy executor shutdown and applied audit
+I/O. Recorded-map CPU profiling led to equivalent inflation optimization with268
+per-frame and14 sliding-boundary hash matches. Independent native collision
+validation in the Nav2 controller removes its dependence on the planner safety
+timer's scheduling; each command retains owner/trajectory/map/body timing checks.
+
+v114 actual original-scene run travels26.551m, reaches goal and completes measured
+stop. XY error0.128538m, Z error0.013565m; no fall; applied copyback passes. Two
+protected stop/retries remain (future controller-body input and254.86ms map age).
+Six affected packages rebuilt over verified14-package Foxy/ARM64 underlay;
+34colcon entries/31GTest cases and actual native map/proof regressions pass.
+v115 review MP4 is54.833s/1645frames, actual wall1:1 state replay, no interpolation
+or new physics; full decode and visual inspection pass, final arrived visible.
+
+Main30Hz/continuity/repeatability acceptance remains open; referencev48. Jetson
+access remains unavailable per user; no robot motion or GPU jobs. Current exact
+runtime and all failed recordings are retained; bulk archive status in the audit
+STORAGE.json. Existing index.lock, staged v34/v35 and unrelated work are preserved.
+No commit or broad staging. See audits/2026-10-08_nav2_sim_repair/REPORT.md.
+
+Retention verified: archive1099739984bytes, all30605members and manifest checked
+on gpu5070ti; storage only. Local runtime/raw roots retained for continuation.
+Docker execution image remains local and is explicitly excluded from the archive.
+
+
+## Session 33: Visible native local curves and offline timing HTML
+
+**Date**: 2026-10-09
+**Task**: 10-04-newton-v64-mac-physics
+**Stage**: experiment + analysis
+
+Dr Sun requested local planning curves in the video and an HTML latency plot.
+v114's prior successful run had no final Bspline records: the recorder used the
+old unnamespaced topic. v116 fixes recording only and preserves exact v114 native
+source/install/config/policy. Actual DDS regression confirms old0/new3 exact curves.
+Attempt01 records774 curves then fails transport/copyback. Attempt02 completes
+recording with904 splines (895 normal,9 emergency holds) and900 timed rounds,
+but navigation fails after three protected stop/retries. Do not mix it with the
+previous v114 success. Both raw attempts (540members,260174054bytes) are remotely
+SHA-verified on gpu5070ti, storage only.
+
+v117–v119 establish causal controller-admitted curve display and complete-round
+Matplotlib timing HTML. Visual QA exposed curve/global-route overlap and later
+start-camera occlusion. Final v120 uses thick cyan markers at unchanged sample
+coordinates and the original close camera; start/stair/final visibility and full
+MP4 decoding pass. Video53.366667s/1601frames;903 frames show a local curve.
+v121 final HTML embeds this video and all900 timing points, preserves gaps/spikes,
+offers log/linear view, hover, CSV and causal seeking. Median1.580ms, P95 4.081ms,
+max138.782ms; six over33.333ms and five failed computations. Four selector tests,
+900 actual seek cases, unchanged source/frame hashes and final browser checks pass.
+Browser confirms curve409/latest1.20ms at15s with no console error. Offline HTML
+and separate MP4 are under output/2026-10-09_nav2_local_planning/delivered/.
+
+No planner/safety change, new navigation acceptance, Jetson validation, actuation,
+GPU job, subagent or commit. v48 remains reference and the main task in_progress.
+Existing index.lock and unrelated staged/dirty paths preserved. See the local
+curve timing audit REPORT.md and STORAGE.json. Local preview uses loopback8848;
+the delivered HTML is self-contained and does not depend on that server.

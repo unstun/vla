@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.8)
+project(v50_recorded_tail_profile)
+set(CMAKE_CXX_STANDARD 17)
+find_package(ament_cmake REQUIRED)
+find_package(Eigen3 REQUIRED)
+set(dependencies ament_index_cpp bspline_opt geometry_msgs nav_msgs path_searching plan_env rclcpp rosgraph_msgs scan_planner_msgs sensor_msgs std_msgs tf2 tf2_geometry_msgs tf2_ros traj_utils visualization_msgs)
+foreach(dependency ${dependencies})
+  find_package(${dependency} REQUIRED)
+endforeach()
+add_executable(tail_replay tail_replay.cpp
+  /workspace/src/plan_manage/src/scan_replan_fsm.cpp
+  /workspace/src/plan_manage/src/planner_manager.cpp)
+target_include_directories(tail_replay PRIVATE /workspace/src/plan_manage/include)
+target_compile_options(tail_replay PRIVATE -fno-access-control)
+ament_target_dependencies(tail_replay ${dependencies})
+target_link_libraries(tail_replay Eigen3::Eigen)

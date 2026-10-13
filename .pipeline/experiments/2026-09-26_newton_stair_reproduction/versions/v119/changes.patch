@@ -1,0 +1,38 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v118/build_report.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v119/build_report.py
+@@ -5,6 +5,8 @@
+ import matplotlib
+ matplotlib.use('Agg')
+ import matplotlib.pyplot as plt
++import sys
++sys.path.insert(0,str(Path(__file__).resolve().parent.parent/'v118'))
+ from curve_overlay import Overlay,owner
+ 
+ def svg_plot(rows,duration,log=False,stops=()):
+@@ -45,8 +47,8 @@
+         seen.add(owner(event['data']));stops.append(dict(t=event['host_wall_s']-origin,reason=event['data'].get('reason','')))
+     video=a.render/'newton_stair_recorded.mp4';video_bytes=video.read_bytes();sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+     values=np.array([r['ms'] for r in rows]);metrics=json.loads((a.analysis/'metrics.json').read_text());status=metrics['terminal']['backend_terminal_status']
+-    meta=dict(run=a.source.name,physical_version='v116',native_version='v114',display_version='v118',terminal=status,rounds=len(rows),successes=sum(r['success'] for r in rows),median_ms=float(np.median(values)),p95_ms=float(np.percentile(values,95)),maximum_ms=float(values.max()),budget_ms=1000/30,over_budget=int((values>1000/30).sum()),source_splines=overlay.total_splines,visible_curve_frames=sum(r['trajectory_id'] is not None for r in frames),video_seconds=duration,video_sha256=sha(video),latency_csv_sha256=sha(a.analysis/'latency.csv'),source_states_sha256=sha(a.source/'video_states.json'),clock_mapping=metrics['clock_mapping'],prior_attempt='attempt01 transport timeout; preserved, not included in these curves/timings')
+-    data=dict(meta=meta,rounds=rows,frames=[dict(t=r['display_time_s'],id=r['trajectory_id'],ms=r['latest_completed_solve_ms']) for r in frames],stops=stops)
++    meta=dict(run=a.source.name,physical_version='v116',native_version='v114',display_version='v118',report_version='v119',terminal=status,rounds=len(rows),successes=sum(r['success'] for r in rows),median_ms=float(np.median(values)),p95_ms=float(np.percentile(values,95)),maximum_ms=float(values.max()),budget_ms=1000/30,over_budget=int((values>1000/30).sum()),source_splines=overlay.total_splines,visible_curve_frames=sum(r['trajectory_id'] is not None for r in frames),video_seconds=duration,video_sha256=sha(video),latency_csv_sha256=sha(a.analysis/'latency.csv'),source_states_sha256=sha(a.source/'video_states.json'),clock_mapping=metrics['clock_mapping'],prior_attempt='attempt01 transport timeout; preserved, not included in these curves/timings')
++    data=dict(meta=meta,rounds=rows,frames=[dict(t=r['display_time_s'],source_t=r['source_wall_s']-origin,id=r['trajectory_id'],ms=r['latest_completed_solve_ms']) for r in frames],stops=stops)
+     (a.output/'timing_data.json').write_text(json.dumps(data,ensure_ascii=False,separators=(',',':'))+'\n')
+     (a.output/'latency.csv').write_bytes((a.analysis/'latency.csv').read_bytes())
+     plots=[svg_plot(rows,duration,log,stops) for log in (False,True)]
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v118/report_template.html
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v119/report_template.html
+@@ -12,11 +12,11 @@
+ <div class="timeline"><input id="seek" aria-label="视频时间轴" type="range" min="0" max="1" step="0.01" value="0"><output id="time">0.00 / 0.00 s</output></div>
+ <div class="plot-note"><span>蓝色点：计算成功；红色 ×：计算失败；橙色虚线：30 Hz 对应的 33.33 ms 预算。</span><span>__OVER__ 次超预算 · __FAILURES__ 次计算失败</span></div><p class="small" style="margin-top:9px">悬停查看单次数据；点击曲线跳到该轮计算结束。红色竖线标出保护停车。30 FPS 视频不代表规划器运行在 30 Hz。</p></section>
+ <div class="detail-grid"><section class="card panel"><h2>耗时最高的几轮</h2><table><thead><tr><th>视频时间</th><th>耗时</th><th>计算结果</th><th></th></tr></thead><tbody id="worst"></tbody></table></section><section class="card panel"><h2>这份回放说明什么</h2><ul class="text-list"><li>这次补录共收到 __SPLINES__ 条原始局部样条。视频和耗时图来自同一轮，规划器仍是 v114。</li><li>本轮没有到达终点；此前那次成功运行的录像仍保留，不能把两轮的曲线混在一起。</li><li>第一轮补录因通信超时中断。当前页面使用第二轮完整记录，失败记录没有删除。</li><li>空白或断开的时间段没有补成“0 毫秒”。切到对数坐标可看清常见的小耗时，同时保留大尖峰。</li></ul><details><summary>数据与复核信息</summary><div id="sources" class="sources"></div></details></section></div>
+-<footer>离线单文件 · 视频、曲线图和数据均内嵌。未重新生成机器人的运动，也未修改规划与安全阈值。</footer>
++<footer>离线单文件 · 视频、曲线图和数据均内嵌。画面回放这轮真实记录，未插值运动或修改规划与安全阈值。</footer>
+ </main><script id="report-data" type="application/json">__DATA__</script><script>
+ 'use strict';const data=JSON.parse(document.getElementById('report-data').textContent),$=id=>document.getElementById(id),video=$('video');const rounds=data.rounds,duration=data.meta.video_seconds;let dragging=false;$('seek').max=duration;
+ function nearest(t){let lo=0,hi=rounds.length-1;while(lo<hi){let m=Math.floor((lo+hi)/2);if(rounds[m].t<t)lo=m+1;else hi=m}return lo&&Math.abs(rounds[lo-1].t-t)<Math.abs(rounds[lo].t-t)?rounds[lo-1]:rounds[lo]}
+-function seekRound(r){video.currentTime=Math.max(0,Math.min(duration-.04,r.t+r.ms/1000));sync()}
++function seekRound(r){const cutoff=r.t+r.ms/1000,i=data.frames.findIndex(f=>f.source_t>=cutoff);video.currentTime=i<0?duration-.04:Math.min(duration-.001,data.frames[i].t+.001);sync()}
+ function sync(){let t=video.currentTime||0,frame=data.frames[Math.min(data.frames.length-1,Math.floor(t*30))];$('curve').textContent=frame.id===null?'暂无线':'#'+frame.id;$('cost').textContent=frame.ms===null?'—':frame.ms.toFixed(2);$('clock').textContent='视频 '+t.toFixed(2)+' 秒';$('time').textContent=t.toFixed(2)+' / '+duration.toFixed(2)+' s';if(!dragging)$('seek').value=t;$('cursor').style.left=(7.5+90.5*t/duration)+'%'}
+ video.addEventListener('timeupdate',sync);video.addEventListener('seeked',sync);video.addEventListener('loadedmetadata',sync);$('speed').onchange=()=>video.playbackRate=Number($('speed').value);$('seek').oninput=()=>{video.currentTime=Number($('seek').value);sync()};
+ $('peak').onclick=()=>seekRound(rounds.reduce((a,b)=>a.ms>b.ms?a:b));

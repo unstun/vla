@@ -1,0 +1,430 @@
+--- v147/analyze_remote.py
++++ v149/analyze_remote.py
+@@ -64,7 +64,7 @@
+         elif pause_start is not None:
+             pauses.append({'start_sim_s':pause_start,'end_sim_s':last,'duration_sim_s':last-pause_start});pause_start=None
+     if pause_start is not None:pauses.append({'start_sim_s':pause_start,'end_sim_s':last,'duration_sim_s':last-pause_start})
+-    metrics={'run':root.name,'host':'gpu5070ti','native_version':'Nav2 Foxy x86_64 native SCAN','integration_version':capture.json('episode_request.json')['integration_version'],
++    metrics={'run':root.name,'host':'Mac ARM64','native_version':'Nav2 Foxy ARM64 native v147 SCAN','integration_version':capture.json('episode_request.json')['integration_version'],
+         'requested_physics_end_s':capture.json('episode_request.json')['max_physics_s'],
+         'actual_physics_end_s':result['physics_duration_s'],'physics_steps':result['physics_steps'],
+         'navigation_sim_duration_s':pace['native_elapsed_s'],'navigation_wall_duration_s':end-begin,
+@@ -90,7 +90,7 @@
+             'samples':len(sync),'median_host_minus_container_s':float(np.median(offset)),
+             'maximum_rtt_ms':max(r['rtt_ns'] for r in sync)/1e6},
+         'sustained_30hz_validated':False,'full_qualification':False,
+-        'comparison_boundary':'Actual gpu5070ti CPU Newton plus x86_64 Foxy Nav2 on the same host. No Jetson or GPU speedup claim.',
++        'comparison_boundary':'Actual Mac CPU Newton plus ARM64 Foxy Nav2. Separate cohort from gpu5070ti; no cross-host timing or reliability pooling.',
+         'frequency_definition':'Trailing (t-1,t] wall-second counts, actual clock mapped to simulation time',
+         'source':capture.sources,'parser_sha256':hashlib.sha256(source.read_bytes()).hexdigest()}
+     output.mkdir(parents=True,exist_ok=True)
+--- v147/freeze_host.py
++++ v149/freeze_host.py
+@@ -1,4 +1,4 @@
+-"""Freeze a new x86_64 host port without relabeling its ARM64 parents."""
++"""Freeze the Mac host port separately from its unchanged native v147 parent."""
+ from pathlib import Path
+ import argparse
+ import hashlib
+@@ -18,7 +18,7 @@
+             raise ValueError('Source/snapshot changed: '+name)
+     if sha(HERE/'quality.json') != manifest['quality_sha256']:
+         raise ValueError('Quality identity changed')
+-    if sha(HERE.parent/'v144/manifest.json') != manifest['parent_manifest_sha256']:
++    if sha(HERE.parent/'v147/manifest.json') != manifest['parent_manifest_sha256']:
+         raise ValueError('Parent identity changed')
+     inputs = json.loads((HERE/'runtime_sync_manifest.json').read_text())
+     for name, expected in inputs['files'].items():
+@@ -31,7 +31,7 @@
+ def freeze():
+     if (HERE/'manifest.json').exists():
+         raise ValueError('Never overwrite a frozen version')
+-    previous = json.loads((HERE.parent/'v144/manifest.json').read_text())
++    previous = json.loads((HERE.parent/'v147/manifest.json').read_text())
+     files, locations = dict(previous['source_files']), dict(previous['snapshot_locations'])
+     selected = [p for p in HERE.iterdir() if p.is_file() and
+                 (p.suffix in ('.py', '.sh', '.yaml') or p.name in (
+@@ -54,11 +54,11 @@
+         snapshot.parent.mkdir(parents=True, exist_ok=True)
+         shutil.copyfile(path, snapshot)
+         files[name], locations[name] = digest, str(snapshot.relative_to(ROOT))
+-    manifest = {'version': 'v147', 'parent': 'v144',
+-                'parent_manifest_sha256': sha(HERE.parent/'v144/manifest.json'),
+-                'status': 'frozen_recording_checked_native_prefix_search_v147',
+-                'platform': 'gpu5070ti Linux x86_64 / Ubuntu 20.04 ROS 2 Foxy container / CPU Newton',
+-                'native_variants': {'baseline': 'v139', 'candidate': 'v147'},
++    manifest = {'version': 'v149', 'parent': 'v147',
++                'parent_manifest_sha256': sha(HERE.parent/'v147/manifest.json'),
++                'status': 'frozen_mac_host_unchanged_native_v147',
++                'platform': 'Mac ARM64 / Ubuntu 20.04 ROS 2 Foxy ARM64 container / CPU Newton',
++                'native_variants': {'candidate': 'v147'},
+                 'source_files': files, 'snapshot_locations': locations,
+                 'quality_sha256': sha(HERE/'quality.json')}
+     (HERE/'manifest.json').write_text(json.dumps(manifest, indent=2)+'\n')
+--- v147/mac_managed.py
++++ v149/mac_managed.py
+@@ -14,6 +14,6 @@
+ namespace['verify_prepared_mount']=verify_prepared_mount
+ exec(compile(text.replace(old,'verify_prepared_mount(run)'),str(source),'exec'),namespace)
+ managed_run.main=namespace['main']
+-managed_run.a.BASE=Path(os.environ['V147_TEMP_ROOT'])
++managed_run.a.BASE=Path(os.environ['V149_TEMP_ROOT'])
+ managed_run.a.AUDIT=managed_run.a.BASE/'artifact_audit'
+ raise SystemExit(managed_run.main())
+--- v147/mac_supervisor.py
++++ v149/mac_supervisor.py
+@@ -15,18 +15,14 @@
+     text=source.read_text();old='out.mkdir(parents=True, exist_ok=False)'
+     assert text.count(old)==1
+     index=sys.argv.index('--run-id');run_id=sys.argv[index+1]
+-    root=Path(os.environ['V147_TEMP_ROOT'])
+-    assert root.parent==Path('/data/sun/vla_mppi_20261009/trials') and root.name.startswith('v147_')
++    root=Path(os.environ['V149_TEMP_ROOT'])
++    assert root.parent.parent == Path('/private/tmp') and root.parent.name.startswith('vla_newton_v149_') and root.name.startswith('v149_')
+     verify_prepared_mount(root/'runs'/run_id)
+-    spec=importlib.util.spec_from_file_location('v147_original_supervisor',source)
++    spec=importlib.util.spec_from_file_location('v149_original_supervisor',source)
+     module=importlib.util.module_from_spec(spec)
+     # Only Docker's pre-created empty tmpfs-parent directories are accepted.
+     # Original process group, deadline, child/environment and results stay exact.
+     text=text.replace(old,'out.mkdir(parents=True, exist_ok=True)')
+-    # Linux reports ru_maxrss in KiB; retain the evidence field's byte unit.
+-    rss='resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss'
+-    assert text.count(rss)==1
+-    text=text.replace(rss,'('+rss+' * 1024)')
+     exec(compile(text,str(source),'exec'),module.__dict__)
+     module.BASE=root;module.MAX_DEADLINE_S=1800;module.main()
+ 
+--- v147/native_gate.py
++++ v149/native_gate.py
+@@ -1,4 +1,4 @@
+-"""Require the selected same-host source/install receipt; no ARM64 receipt reuse."""
++"""Require the selected same-host source/install receipt; ARM64 rebuild of unchanged native v147."""
+ from pathlib import Path
+ import hashlib
+ import json
+@@ -12,17 +12,17 @@
+ def verify(build, manifest):
+     if build.resolve() != HERE or sha(HERE/'quality.json') != manifest['quality_sha256']:
+         raise ValueError('Wrong source or component quality identity')
+-    variant = os.environ['V147_VARIANT']
++    variant = os.environ['V149_VARIANT']
+     if variant not in ('baseline', 'candidate'):
+         raise ValueError('Unknown comparison variant')
+-    path = Path(os.environ['V147_BUILD_EVIDENCE'])/'build_receipt.json'
++    path = Path(os.environ['V149_BUILD_EVIDENCE'])/'build_receipt.json'
+     quality = json.loads((HERE/'quality.json').read_text())
+     receipt = json.loads(path.read_text())
+     if not quality['passed'] or sha(path) != quality['runtime_receipts'][variant]:
+         raise ValueError('Unqualified source/install receipt')
+-    if not receipt['passed'] or receipt['platform'] != 'linux/amd64' or receipt['variant'] != variant:
++    if not receipt['passed'] or receipt['platform'] != 'linux/arm64' or receipt['variant'] != variant:
+         raise ValueError('Wrong execution platform/variant')
+-    container = os.environ['V147_NATIVE_CONTAINER']
++    container = os.environ['V149_NATIVE_CONTAINER']
+     image = subprocess.check_output(['docker', 'inspect', '--format', '{{.Image}}', container], text=True).strip()
+     if image != receipt['image_id']:
+         raise ValueError('Image differs from tested image')
+@@ -31,10 +31,10 @@
+ r=json.loads(Path(sys.argv[1]).read_text())
+ for name,expected in r['files'].items():
+  assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==expected,name
+-print('V147_NATIVE_IDENTITY_PASS')
++print('V149_NATIVE_IDENTITY_PASS')
+ '''
+     result = subprocess.run(['docker', 'exec', container, 'python3', '-c', script, str(path)],
+                             capture_output=True, text=True, check=True, timeout=90)
+-    if 'V147_NATIVE_IDENTITY_PASS' not in result.stdout:
++    if 'V149_NATIVE_IDENTITY_PASS' not in result.stdout:
+         raise ValueError('Missing native identity witness')
+     return {'passed': True, 'variant': variant, 'receipt_sha256': sha(path), 'physics_acceptance': False}
+--- v147/native_graph.py
++++ v149/native_graph.py
+@@ -20,8 +20,8 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v147":
+-        raise ValueError("v147 graph requires the frozen v147 integration identity")
++    if request.get("integration_version") != "v149":
++        raise ValueError("v149 graph requires the frozen v149 integration identity")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     variant=request['native_variant']
+     if variant not in ('baseline','candidate'):
+--- v147/physical_floor_publisher.py
++++ v149/physical_floor_publisher.py
+@@ -16,7 +16,7 @@
+         super().__init__('pct_physical_floor_publisher')
+         info=json.loads((HERE/'physical_floor_input.json').read_text())
+         assert info['role']=='physical_floor_presence_only' and not info['traversal_authority'] and not info['terrain_return_classification_authority']
+-        data=Path(os.environ['V147_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
++        data=Path(os.environ['V149_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
+         self.points=np.frombuffer(data,dtype='<f4').reshape(-1,4)
+         assert len(self.points)==info['files']['physical_floor.f32']['points'] and np.isfinite(self.points).all()
+         self.gate=SimClockGate();qos=QoSProfile(depth=1,reliability=QoSReliabilityPolicy.RELIABLE,durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+--- v147/run_local_episode.py
++++ v149/run_local_episode.py
+@@ -15,7 +15,7 @@
+ BASE = VERSION.parents[1]
+ PROJECT = BASE.parents[2]
+ BUILD = VERSION
+-IMAGE = os.environ.get("V147_EXECUTION_IMAGE")  # The owned launcher pins the qualified Foxy image.
++IMAGE = os.environ.get("V149_EXECUTION_IMAGE")  # The owned launcher pins the qualified Foxy image.
+ 
+ 
+ def return_linux_state(name, out):
+@@ -137,7 +137,7 @@
+     parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v147 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v149 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -175,18 +175,18 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v147":
+-        raise ValueError("This entry point requires frozen integration version v147")
++    if integration_version != "v149":
++        raise ValueError("This entry point requires frozen integration version v149")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+         qualification = json.loads((VERSION / "quality.json").read_text())
+         if not qualification["passed"] or qualification.get("native_packages_available", qualification.get("native_packages_built")) != 14:
+-            raise ValueError("Linux diagnostic physics requires actual native/recorded component tests")
++            raise ValueError("Mac diagnostic physics requires actual native component tests")
+         (out / "qualification_scope.json").write_text(json.dumps({
+-            "mode": "user_authorized_gpu5070ti_physics_validation",
+-            "linux_component_subset_passed": True, "full_component_qualification": False,
+-            "missing_original_corner_fixtures": ["Full Linux corner navigation and steady 30 Hz acceptance"],
++            "mode": "user_authorized_mac_original_full_route_diagnosis",
++            "arm64_component_subset_passed": True, "full_component_qualification": False,
++            "missing_original_corner_fixtures": ["Repeated original full-route navigation and steady 30 Hz acceptance"],
+             "live_safety_gates": "original occupancy, stair support, PVA, dynamics, freshness and backend stop gates",
+             "reference_version": "v48", "physics_acceptance": False,
+         }, indent=2) + "\n")
+@@ -199,7 +199,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v147 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v149 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -235,7 +235,7 @@
+         "scene": args.scene,
+         "building_route_profile": args.building_route if full_building else None,
+         "integration_version": integration_version,
+-        "native_variant": os.environ["V147_VARIANT"],
++        "native_variant": os.environ["V149_VARIANT"],
+         "startup_mode": args.startup_mode,
+         "stance_hold": args.stance_hold,
+         "body_publish_substeps": 5 if extended_route else 20,
+@@ -267,7 +267,7 @@
+         shutil.copyfile(path, out / ("executed_" + path.name))
+     shutil.copyfile(VERSION / "long_route_driver.py", out / "executed_long_route_driver.py")
+     for name in ("run_local_episode.py", "native_graph.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py", "native_observer.py", "nav2_recorder.py", "initial_frame_v142.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v147_" + name))
++        shutil.copyfile(VERSION / name, out / ("executed_v149_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -285,13 +285,13 @@
+     sources = BASE / "runtime_sources"
+     pythonpath = "/task/foxy_python:" + str(sources / "bridge")
+     script = "\n".join(["set -e", "source /opt/ros/foxy/setup.bash",
+-        "source /task/" + ("recovery_v139_02" if os.environ["V147_VARIANT"] == "baseline" else "recovery_v147") + "/install/setup.bash",
++        "source /task/" + ("recovery_v139_02" if os.environ["V149_VARIANT"] == "baseline" else "recovery_v147") + "/install/setup.bash",
+         "export PYTHONPATH=" + shlex.quote(pythonpath) + ':"${PYTHONPATH:-}"',
+         "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+     name = "vla-newton-" + out.name.replace("_", "-")
+-    name = os.environ["V147_NATIVE_CONTAINER"]
+-    command = ["docker", "exec", "-e", "V147_PHYSICAL_FLOOR=" + os.environ["V147_PHYSICAL_FLOOR"],
++    name = os.environ["V149_NATIVE_CONTAINER"]
++    command = ["docker", "exec", "-e", "V149_PHYSICAL_FLOOR=" + os.environ["V149_PHYSICAL_FLOOR"],
+         name, "/bin/bash", str(out / "native_inside.sh")]
+     (out / "container_command.json").write_text(json.dumps(command, indent=2) + "\n")
+     with (out / "native_graph.log").open("w") as log:
+--- v147/test_full_route.py
++++ v149/test_full_route.py
+@@ -26,7 +26,7 @@
+         self.assertNotEqual(selected['spawn_ground_xyz_m'], corner['spawn_ground_xyz_m'])
+ 
+     def test_actual_launcher_requests_full_profile_and_recording(self):
+-        tree = ast.parse((HERE / 'run_remote_full.py').read_text())
++        tree = ast.parse((HERE / 'run_mac_full.py').read_text())
+         episode = next(node.value for node in ast.walk(tree)
+                        if isinstance(node, ast.Assign) and any(
+                            isinstance(t, ast.Name) and t.id == 'episode' for t in node.targets))
+@@ -34,7 +34,7 @@
+         self.assertEqual(values[values.index('--building-route') + 1], 'historical_full')
+         self.assertEqual(values[values.index('--recording-sim-seconds') + 1], '600')
+         self.assertEqual(values[values.index('--goal-wall-budget') + 1], '1500')
+-        self.assertEqual(values[values.index('--integration-version') + 1], 'v147')
++        self.assertEqual(values[values.index('--integration-version') + 1], 'v149')
+ 
+ 
+ if __name__ == '__main__':
+--- v147/test_native_graph.py
++++ v149/test_native_graph.py
+@@ -1,68 +1,73 @@
+-"""Start the actual native graph with the Linux run mounts, before physics."""
++"""Exercise the real Mac Docker graph before advancing any physics."""
+ from pathlib import Path
++import argparse
+ import json
+ import os
+ import shutil
+ import subprocess
+ import time
+ 
+-HERE = Path(__file__).resolve().parent
+-BASE = HERE.parents[1]
+-ROOT = BASE.parents[2]
+-TASK = ROOT.parent
+-check = TASK/'checks'/f'native_graph_{time.time_ns()}'
+-check.mkdir(parents=True)
+-(check/'ros_logs').mkdir()
+-(check/'external').mkdir()
+-fixture = TASK/'trials/v124_baseline_attempt01/runs/v124_baseline_attempt01'
+-request = json.loads((fixture/'episode_request.json').read_text())
+-request.update(integration_version='v147', probe=True, native_variant='candidate', building_route_profile='historical_full', goal_wall_budget_s=1500.0)
+-(check/'episode_request.json').write_text(json.dumps(request)+'\n')
+-shutil.copyfile(HERE/'building_planner.yaml', check/'planner.yaml')
+-shutil.copyfile(TASK/'trials/v124_baseline_attempt01/physical_floor.f32', check/'physical_floor.f32')
+-(check/'artifacts/external_episode').mkdir(parents=True)
+-image = json.loads((TASK/'results/recovery_v147/candidate_receipt.json').read_text())['image_id']
+-name = f'vla-mppi-native-graph-check-{os.getpid()}'
+-command = ['docker', 'run', '-d', '--rm', '--name', name, '--network', 'host',
+-           '--user', f'{os.getuid()}:{os.getgid()}', '-e', 'ROS_DOMAIN_ID=194',
+-           '-e', 'ROS_LOCALHOST_ONLY=1', '-e', 'ROS_LOG_DIR='+str(check/'ros_logs'),
+-           '-e', 'PYTHONDONTWRITEBYTECODE=1',
+-           '-e', 'V147_PHYSICAL_FLOOR='+str(check/'physical_floor.f32'),
+-           '--add-host', 'host.docker.internal:127.0.0.1',
+-           '-v', f'{ROOT}:{ROOT}:ro', '-v', f'{ROOT}:/repo:ro',
+-           '-v', f'{TASK}:/task:ro', '-v', f'{check}:{check}:rw',
+-           '--entrypoint', '/bin/bash', image, '-c', 'exec sleep infinity']
+-created = False
+-try:
+-    subprocess.run(command, check=True, capture_output=True, timeout=30)
+-    created = True
+-    # Same environment and installed baseline as the actual episode.
+-    script = '\n'.join(['set -e', 'source /opt/ros/foxy/setup.bash',
+-        'source /task/recovery_v147/install/setup.bash',
+-        'export PYTHONPATH='+str(BASE/'runtime_sources/bridge')+':${PYTHONPATH:-}',
+-        'exec python3 '+str(HERE/'native_graph.py')+' --output '+str(check)])
+-    (check/'inside.sh').write_text(script+'\n')
+-    with (check/'graph.log').open('w') as stream:
+-        process = subprocess.Popen(['docker', 'exec', name, '/bin/bash', str(check/'inside.sh')],
+-                                   stdout=stream, stderr=subprocess.STDOUT)
+-        time.sleep(10)
+-        if process.poll() is not None or (check/'native_failure.json').exists():
+-            raise RuntimeError('Native graph exited; inspect '+str(check))
+-        commands = json.loads((check/'native_commands.json').read_text())
+-        assert 'nav2' in commands and 'pct_support' in commands
+-        for path in check.glob('*.log'):
+-            if 'Traceback (most recent call last)' in path.read_text(errors='replace'):
+-                raise RuntimeError('Child exception: '+str(path))
+-        result = {'passed': True, 'duration_s': 10, 'probe': True, 'physics_advanced': False,
+-                  'graph_root': str(check), 'image_id': image, 'children': list(commands)}
+-        selected=json.loads((check/'selected_route_map.json').read_text())
+-        backend=json.loads((check/'backend_config.json').read_text())
+-        assert selected['path']=='/task/global_coverage_v135_foxy/map.pickle'
+-        assert selected['sha256']==json.loads((HERE/'global_map_input.json').read_text())['map_sha256']
+-        assert backend['map']['epoch']=='stair_reactive_coverage_v135'
+-        result.update(selected_route_map=selected,map_identity=backend['map'])
+-        (TASK/'results/recording_v147/native_graph_preflight.json').write_text(json.dumps(result, indent=2)+'\n')
+-        print(json.dumps(result))
+-finally:
+-    if created:
+-        subprocess.run(['docker', 'rm', '-f', name], capture_output=True, timeout=30)
++from run_mac_full import BASE, HERE, PYTHON, container_command, validate_task
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument('--task-root', type=Path, required=True)
++    args = parser.parse_args()
++    task = validate_task(args.task_root)
++    trial = task / 'v149_graph_preflight'
++    run = 'v149_graph_probe'
++    out = trial / 'runs' / run
++    (out / 'artifacts/external_episode').mkdir(parents=True, exist_ok=False)
++    evidence = trial / 'evidence'
++    (evidence / 'ros_logs').mkdir(parents=True)
++    (evidence / 'ros_home').mkdir()
++    (out / 'episode_request.json').write_text(json.dumps({
++        'integration_version': 'v149', 'native_variant': 'candidate', 'probe': True,
++        'run_epoch_ns': time.time_ns(), 'scene': 'building_full', 'geometry_obstacles': True,
++        'applied_transport': 'zmq', 'building_route_profile': 'historical_full',
++        'goal_wall_budget_s': 1500, 'startup_mode': 'factory_pd'}) + '\n')
++    shutil.copyfile(HERE / 'building_planner.yaml', out / 'planner.yaml')
++    subprocess.run([str(PYTHON), str(HERE / 'derive_mac_floor.py'), '--output',
++                    str(trial / 'physical_floor.f32')], check=True)
++    image = (task / 'evidence/image_id.txt').read_text().strip()
++    name = 'vla-v149-graph-preflight'
++    command = container_command(task, trial, evidence, name, image, run)
++    made = False
++    try:
++        subprocess.run(command, check=True, capture_output=True, timeout=30)
++        made = True
++        script = '\n'.join(['set -e', 'source /opt/ros/foxy/setup.bash',
++                            'source /task/recovery_v147/install/setup.bash',
++                            'export PYTHONPATH=' + str(BASE / 'runtime_sources/bridge') + ':${PYTHONPATH:-}',
++                            'exec python3 ' + str(HERE / 'native_graph.py') + ' --output ' + str(out)])
++        (out / 'inside.sh').write_text(script + '\n')
++        with (out / 'graph.log').open('w') as stream:
++            process = subprocess.Popen(['docker', 'exec', '-e',
++                'V149_PHYSICAL_FLOOR=' + str(trial / 'physical_floor.f32'), name,
++                '/bin/bash', str(out / 'inside.sh')], stdout=stream, stderr=subprocess.STDOUT)
++            deadline = time.monotonic() + 15
++            while time.monotonic() < deadline:
++                if process.poll() is not None or (out / 'native_failure.json').exists():
++                    raise RuntimeError('Native graph exited; inspect ' + str(out))
++                time.sleep(0.5)
++            for path in out.glob('*.log'):
++                assert 'Traceback (most recent call last)' not in path.read_text(errors='replace'), path
++            commands = json.loads((out / 'native_commands.json').read_text())
++            selected = json.loads((out / 'selected_route_map.json').read_text())
++            backend = json.loads((out / 'backend_config.json').read_text())
++            assert selected['sha256'] == json.loads((HERE / 'global_map_input.json').read_text())['map_sha256']
++            assert backend['map']['epoch'] == 'stair_reactive_coverage_v135'
++            latest = json.loads((out / 'backend_latest.json').read_text())
++            assert latest['navigation_authority'] == 'Nav2'
++            result = {'passed': True, 'duration_s': 15, 'physics_advanced': False,
++                      'graph_root': str(out), 'children': list(commands), 'selected_route_map': selected}
++            (task / 'evidence/native_graph_preflight.json').write_text(json.dumps(result, indent=2) + '\n')
++            print(json.dumps(result))
++    finally:
++        if made:
++            subprocess.run(['docker', 'rm', '-f', name], capture_output=True, timeout=30)
++
++
++if __name__ == '__main__':
++    main()
+--- v147/verify_full_route.py
++++ v149/verify_full_route.py
+@@ -24,7 +24,7 @@
+     scenario = capture.json('inputs/stair_scenario.json')
+     for key in ['spawn_ground_xyz_m', 'spawn_yaw_rad', 'goal_ground_xyz_m']:
+         assert scenario[key] == original[key] == identity[key], key
+-    assert request['integration_version'] == 'v147' and request['scene'] == 'building_full'
++    assert request['integration_version'] == 'v149' and request['scene'] == 'building_full'
+     rows = capture.json('video_states.json')
+     proof = capture.json('initial_state.json')
+     assert rows[0] == proof['frame'] and proof['physics_steps'] == 0
+@@ -62,7 +62,7 @@
+     final_height_error = abs(float(poses[-1, 2]) - target[2] - original['locomotion_reference_height_m'])
+     assert final_height_error <= contract['z_goal_tolerance_m']
+     return {'passed': True, 'profile': 'historical_full', 'run': root.name,
+-            'native_navigation': 'v147 bounded prefix search', 'original_profile_sha256': identity['source_sha256'],
++            'native_navigation': 'v147 bounded prefix search on Mac host v149', 'original_profile_sha256': identity['source_sha256'],
+             'original_spawn_ground_xyz_m': original['spawn_ground_xyz_m'],
+             'actual_initial_body_xyz_m': poses[0].tolist(), 'initial_yaw_error_rad': yaw_error,
+             'original_goal_ground_xyz_m': target, 'actual_final_body_xyz_m': poses[-1].tolist(),

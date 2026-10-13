@@ -1,0 +1,332 @@
+--- v114/src/plan_manage/src/scan_replan_fsm.cpp
++++ v122/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -908,7 +908,13 @@
+     if (go2_execution_frozen_ || !nominalReplanDue(true)) return;
+     const auto started = std::chrono::steady_clock::now();
+     const auto profile_before=planner_manager_->grid_map_->planning_profile_.values;
++    // V122_DIAGNOSTIC_BEGIN
++    planner_manager_->planning_outcome_.begin();
++    // V122_DIAGNOSTIC_END
+     const bool success = planFromCurrentTraj();
++    // V122_DIAGNOSTIC_BEGIN
++    planner_manager_->finishPlanningOutcome(success);
++    // V122_DIAGNOSTIC_END
+     RCLCPP_INFO(node_->get_logger(), "V50_PROFILE %s", planner_manager_->grid_map_->planning_profile_.since(profile_before).c_str());
+     const double elapsed = std::chrono::duration<double>(
+         std::chrono::steady_clock::now() - started).count();
+@@ -994,7 +1000,13 @@
+ 
+       const auto initial_started=std::chrono::steady_clock::now();
+       const auto profile_before=planner_manager_->grid_map_->planning_profile_.values;
+-      bool success = callReboundReplan(true, flag_random_poly_init);
++      // V122_DIAGNOSTIC_BEGIN
++    planner_manager_->planning_outcome_.begin();
++    // V122_DIAGNOSTIC_END
++    bool success = callReboundReplan(true, flag_random_poly_init);
++    // V122_DIAGNOSTIC_BEGIN
++    planner_manager_->finishPlanningOutcome(success);
++    // V122_DIAGNOSTIC_END
+       RCLCPP_INFO(node_->get_logger(), "V50_PROFILE %s", planner_manager_->grid_map_->planning_profile_.since(profile_before).c_str());
+       const double initial_elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-initial_started).count();
+       if(replan_frequency_>0.0)
+@@ -1380,7 +1392,7 @@
+     if (!getLocalTarget()) {
+       planner_manager_->invalidateWarmStart();
+       feasible_window_.valid = false;
+-      return false;
++      return planner_manager_->planningRejected(FailureStage::Target, "local_target_selection"); // V122_REJECT
+     }
+ 
+     planner_manager_->setWarmStartContext(warmStartIdentity(), warmGoalContext(), warm_curve_time);
+--- v114/src/plan_manage/src/planner_manager.cpp
++++ v122/src/plan_manage/src/planner_manager.cpp
+@@ -241,6 +241,23 @@
+     return true;
+   }
+ 
++  // V122_DIAGNOSTIC_BEGIN
++  bool SCANPlannerManager::planningRejected(FailureStage stage, const char *detail) {
++    if (planning_outcome_.active()) {
++      const auto observation = grid_map_ && node_
++        ? observationState(grid_map_->observationReady(), node_->now().seconds(),
++            grid_map_->observationStamp(), grid_map_->observationMaxAge())
++        : ObservationState::Missing;
++      planning_outcome_.rejected(stage, detail, observation, grid_map_ ? grid_map_->mapRevision() : 0);
++    }
++    return false;
++  }
++  void SCANPlannerManager::finishPlanningOutcome(bool success) {
++    planning_outcome_.finish(success);
++    RCLCPP_INFO(node_->get_logger(), "V122_PLANNING_OUTCOME %s", planning_outcome_.json().c_str());
++  }
++  // V122_DIAGNOSTIC_END
++
+   bool SCANPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
+                                         Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
+                                         Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj,
+@@ -258,7 +275,7 @@
+          !std::isfinite(trajectory_origin->seconds()) ||
+          (*trajectory_origin - sampled_origin).seconds() > 1e-6)) {
+       RCLCPP_WARN(node_->get_logger(), "V62_RETRY_EPOCH invalid_clock_or_future");
+-      return false;
++      return planningRejected(FailureStage::Epoch, "retry_origin"); // V122_REJECT
+     }
+     if (!trajectory_origin && sampledTrajectoryOrigin(start_pt, start_vel, start_acc,
+             warm_curve_time_, sampled_origin)) trajectory_origin = &sampled_origin;
+@@ -322,7 +339,7 @@
+     {
+       cout << "Close to goal" << endl;
+       continuous_failures_count_++;
+-      return false;
++      return planningRejected(FailureStage::SeedGeometry, "no_local_translation"); // V122_REJECT
+     }
+ 
+     auto t_start = std::chrono::steady_clock::now();
+@@ -354,14 +371,14 @@
+     if (seed_status != ASTAR_RET::SUCCESS) {
+       RCLCPP_WARN(node_->get_logger(), "reactive_stair_seed_search_failed status=%d", static_cast<int>(seed_status));
+       continuous_failures_count_++;
+-      return false;
++      return planningRejected(FailureStage::SeedSearch, "astar_rejected"); // V122_REJECT
+     }
+     seed_path = seed_search->getPath();
+     if (seed_path.size() < 2 || (seed_path.front() - start_pt).norm() > 1e-6 ||
+         (seed_path.back() - local_target_pt).norm() > 1e-6) {
+       RCLCPP_WARN(node_->get_logger(), "reactive_stair_seed_endpoint_mismatch");
+       continuous_failures_count_++;
+-      return false;
++      return planningRejected(FailureStage::SeedGeometry, "endpoint_mismatch"); // V122_REJECT
+     }
+     // Search already checked the exact terminal connection. Do not overwrite
+     // endpoints here: changing the last edge can change its footprint heading.
+@@ -370,7 +387,7 @@
+       if (!grid_map_->collisionFreeSegment(seed_path[i - 1], seed_path[i], &blocked_sample)) {
+         RCLCPP_WARN(node_->get_logger(), "reactive_stair_seed_edge_blocked edge=%zu sample=%d", i, blocked_sample);
+         continuous_failures_count_++;
+-        return false;
++        return planningRejected(FailureStage::SeedGeometry, "edge_rejected"); // V122_REJECT
+       }
+     }
+     // OMPL 1.7.0 eabb4d0 reduceVertices: simplify only after checkMotion.
+@@ -390,7 +407,7 @@
+       pseudo_arc_length.push_back(pseudo_arc_length.back() + (seed_path[i] - seed_path[i-1]).norm());
+     double cps_dist = pp_.ctrl_pt_dist * 1.5;
+     if (!std::isfinite(cps_dist) || cps_dist <= 0.0 ||
+-        !std::isfinite(pp_.max_vel_) || pp_.max_vel_ <= 0.0) return false;
++        !std::isfinite(pp_.max_vel_) || pp_.max_vel_ <= 0.0) return planningRejected(FailureStage::InvalidInput, "seed_parameters"); // V122_REJECT
+     do {
+       cps_dist /= 1.5;
+       point_set.clear();
+@@ -413,7 +430,7 @@
+     }
+     if (warm && point_set.size() > pp_.planning_horizon_ / pp_.ctrl_pt_dist * 3) {
+       continuous_failures_count_++;
+-      return false;
++      return planningRejected(FailureStage::SeedGeometry, "warm_seed_size"); // V122_REJECT
+     }
+     start_end_derivatives = {start_vel, local_target_vel, start_acc, Eigen::Vector3d::Zero()};
+     RCLCPP_INFO(node_->get_logger(), "reactive_stair_seed_checked nodes=%zu samples=%zu", seed_path.size(), point_set.size());
+@@ -439,7 +456,7 @@
+     if (!reactive_stair::fitCubicBoundaryPva(ts, point_set, start_end_derivatives, ctrl_pts)) {
+       RCLCPP_WARN(node_->get_logger(), "spline_boundary_fit_failed");
+       continuous_failures_count_++;
+-      return false;
++      return planningRejected(FailureStage::SeedGeometry, "boundary_fit"); // V122_REJECT
+     }
+     RCLCPP_INFO(node_->get_logger(), "spline_geometry_initialized samples=%zu interval=%.12f duration=%.12f",
+                 point_set.size(), ts, ts * (point_set.size() - 1));
+@@ -464,7 +481,7 @@
+     {
+       // visualization_->displayOptimalList( ctrl_pts, vis_id );
+       continuous_failures_count_++;
+-      return false;
++      return planningRejected(FailureStage::Optimizer, "optimizer_rejected"); // V122_REJECT
+     }
+     //visualization_->displayOptimalList( ctrl_pts, vis_id );
+ 
+@@ -529,7 +546,7 @@
+     {
+       printf("\033[34mThis refined trajectory is unsafe or dynamically infeasible. Skip publishing it.\n\033[0m");
+       continuous_failures_count_++;
+-      return false;
++      return planningRejected(FailureStage::Dynamics, "refine_boundary_or_limits"); // V122_REJECT
+     }
+ 
+     t_refine = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();
+@@ -554,7 +571,7 @@
+       RCLCPP_WARN(node_->get_logger(), "final_spline_rejected status=%d t=%.9f duration=%.9f samples=%zu wall_ms=%.3f",
+                   static_cast<int>(collision.status), collision.first_time_s, collision.duration_s, collision.samples, collision_ms);
+       continuous_failures_count_++;
+-      return false;
++      return planningRejected(FailureStage::FinalCollision, "curve_collision"); // V122_REJECT
+     }
+     RCLCPP_INFO(node_->get_logger(), "full_spline_sampled_clear duration=%.9f samples=%zu wall_ms=%.3f",
+                 collision.duration_s, collision.samples, collision_ms);
+@@ -567,7 +584,7 @@
+     if (elapsed < 0.0 || elapsed >= pos.getTimeSum()) {
+       RCLCPP_WARN(node_->get_logger(), "final_spline_time_invalid elapsed=%.9f duration=%.9f", elapsed, pos.getTimeSum());
+       continuous_failures_count_++;
+-      return false;
++      return planningRejected(FailureStage::Epoch, "published_curve_expired"); // V122_REJECT
+     }
+     updateTrajInfo(pos, curve_origin);
+     RCLCPP_INFO(node_->get_logger(), "V59_TRAJECTORY_EPOCH sampled=%d origin_s=%.9f publication_s=%.9f age_s=%.9f",
+@@ -596,7 +613,12 @@
+     reactive_stair::PlanningProfile::Scope profile(grid_map_->planning_profile_, reactive_stair::PlanningProfile::GoalSearch);
+     if (!grid_map_ || !bspline_optimizer_rebound_ || !bspline_optimizer_rebound_->a_star_) return {};
+     const auto search = bspline_optimizer_rebound_->a_star_;
+-    if (search->AstarSearch(grid_map_->getResolution(), start, goal, true, tolerance) != ASTAR_RET::SUCCESS) return {};
++    if (search->AstarSearch(grid_map_->getResolution(), start, goal, true, tolerance) != ASTAR_RET::SUCCESS) {
++      // V122_DIAGNOSTIC_BEGIN
++      planningRejected(FailureStage::Target, "goal_neighborhood_search");
++      // V122_DIAGNOSTIC_END
++      return {};
++    }
+     return search->getPath();
+   }
+ 
+--- v114/src/plan_manage/include/plan_manage/planning_outcome.h
++++ v122/src/plan_manage/include/plan_manage/planning_outcome.h
+@@ -0,0 +1,105 @@
++#pragma once
++
++#include <array>
++#include <cmath>
++#include <cstddef>
++#include <cstdint>
++#include <sstream>
++#include <string>
++
++namespace scan_planner {
++
++// Diagnostic only. These values never authorize motion or choose a retry.
++enum class FailureStage : std::size_t {
++  None, Target, SeedSearch, SeedGeometry, Optimizer, Dynamics, FinalCollision,
++  Epoch, InvalidInput, Count
++};
++enum class ObservationState { Fresh, Missing, Invalid, Future, Stale };
++
++inline const char *name(FailureStage stage) {
++  constexpr const char *names[] = {"none", "target", "seed_search", "seed_geometry",
++    "optimizer", "dynamics", "final_collision", "epoch", "invalid_input"};
++  const auto index = static_cast<std::size_t>(stage);
++  return index < static_cast<std::size_t>(FailureStage::Count) ? names[index] : "invalid";
++}
++inline const char *name(ObservationState state) {
++  switch (state) {
++    case ObservationState::Fresh: return "fresh";
++    case ObservationState::Missing: return "missing";
++    case ObservationState::Invalid: return "invalid";
++    case ObservationState::Future: return "future";
++    case ObservationState::Stale: return "stale";
++  }
++  return "invalid";
++}
++inline ObservationState observationState(bool ready, double now, double stamp, double max_age) {
++  if (!ready) return ObservationState::Missing;
++  if (!std::isfinite(now) || !std::isfinite(stamp) || !std::isfinite(max_age) || max_age < 0)
++    return ObservationState::Invalid;
++  if (now < stamp) return ObservationState::Future;
++  return now - stamp <= max_age ? ObservationState::Fresh : ObservationState::Stale;
++}
++
++struct PlanningFailure {
++  FailureStage stage{FailureStage::None};
++  const char *detail{"none"};  // Compile-time literals only; no external text.
++  ObservationState observation{ObservationState::Missing};
++  std::uint64_t map_revision{0};
++};
++
++class PlanningOutcome {
++ public:
++  void begin() {
++    active_ = true;
++    success_ = false;
++    first_ = last_ = {};
++    counts_.fill(0);
++    failures_ = 0;
++  }
++  bool active() const { return active_; }
++  void rejected(FailureStage stage, const char *detail, ObservationState observation,
++                std::uint64_t revision) {
++    const auto index = static_cast<std::size_t>(stage);
++    if (!active_ || stage == FailureStage::None || index >= counts_.size()) return;
++    last_ = {stage, detail, observation, revision};
++    if (failures_++ == 0) first_ = last_;
++    ++counts_[index];
++  }
++  void finish(bool success) { success_ = success; active_ = false; }
++  bool success() const { return success_; }
++  std::size_t failures() const { return failures_; }
++  const PlanningFailure &first() const { return first_; }
++  const PlanningFailure &last() const { return last_; }
++  const std::array<std::size_t, static_cast<std::size_t>(FailureStage::Count)> &counts() const {
++    return counts_;
++  }
++  std::string json() const {
++    std::ostringstream out;
++    out << "{\"success\":" << (success_ ? "true" : "false")
++        << ",\"rejections\":" << failures_ << ",\"first\":";
++    writeFailure(out, first_);
++    out << ",\"last\":";
++    writeFailure(out, last_);
++    out << ",\"counts\":{";
++    for (std::size_t i = 1; i < counts_.size(); ++i) {
++      if (i > 1) out << ',';
++      out << '\"' << name(static_cast<FailureStage>(i)) << "\":" << counts_[i];
++    }
++    out << "}}";
++    return out.str();
++  }
++
++ private:
++  static void writeFailure(std::ostream &out, const PlanningFailure &value) {
++    out << "{\"stage\":\"" << name(value.stage) << "\",\"detail\":\"" << value.detail
++        << "\",\"observation\":\"" << name(value.observation)
++        << "\",\"map_revision\":" << value.map_revision << '}';
++  }
++  bool active_{false};
++  bool success_{false};
++  std::size_t failures_{0};
++  PlanningFailure first_, last_;
++  std::array<std::size_t, static_cast<std::size_t>(FailureStage::Count)> counts_{};
++};
++
++}  // namespace scan_planner
+--- v114/src/plan_manage/include/plan_manage/planner_manager.h
++++ v122/src/plan_manage/include/plan_manage/planner_manager.h
+@@ -2,6 +2,9 @@
+ #define _PLANNER_MANAGER_H_
+ 
+ #include <stdlib.h>
++// V122_DIAGNOSTIC_BEGIN
++#include <plan_manage/planning_outcome.h>
++// V122_DIAGNOSTIC_END
+ #include <string>
+ 
+ #include <bspline_opt/bspline_optimizer.h>
+@@ -26,6 +29,11 @@
+ 
+     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+ 
++    // V122_DIAGNOSTIC_BEGIN
++    PlanningOutcome planning_outcome_;
++    bool planningRejected(FailureStage stage, const char *detail);
++    void finishPlanningOutcome(bool success);
++    // V122_DIAGNOSTIC_END
+     /* main planning interface */
+     bool hasLocalTranslation(const Eigen::Vector3d &start, const Eigen::Vector3d &target) const;
+     bool reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel, Eigen::Vector3d start_acc,
+--- v114/src/plan_env/include/plan_env/grid_map.h
++++ v122/src/plan_env/include/plan_env/grid_map.h
+@@ -228,6 +228,10 @@
+     (!query_context_ || (!query_context_->failed.load() && !query_context_->stopping.load())); }
+   uint64_t mapRevision() const { return map_revision_; }
+   double observationStamp() const { return mapState().reactive_cloud_stamp_s_; }
++  // V122_DIAGNOSTIC_BEGIN
++  bool observationReady() const { return mapState().reactive_cloud_ready_; }
++  double observationMaxAge() const { return supportState().reactive_parameters_.obstacle_max_age_s; }
++  // V122_DIAGNOSTIC_END
+   std::unique_ptr<PublicationLease> beginPublication();
+   struct QueryLease {
+     std::unique_ptr<PublicationLease> publication;

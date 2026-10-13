@@ -1,0 +1,131 @@
+--- native_v158/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
++++ native_v159/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
+@@ -2,6 +2,7 @@
+ 
+ #include <mutex>
+ #include <map>
++#include <plan_env/body_time_buffer.h>
+ #include <thread>
+ #include <nav2_core/controller.hpp>
+ #include <nav2_core/goal_checker.hpp>
+@@ -74,6 +75,8 @@
+   double ticket_body_stamp_s_{0.0}; // Original body time, not the later ticket creation time.
+   bool ticket_ready_{false};
+   bool output_owner_bound_{false};
++  scan_input_time::BodyTimeBuffer body_inputs_;
++  nav_msgs::msg::Odometry::ConstSharedPtr last_due_body_;
+   rclcpp::Publisher<scan_planner_msgs::msg::P2BRoute>::SharedPtr route_pub_;
+   rclcpp::Publisher<scan_planner_msgs::msg::P2BRoute>::SharedPtr binding_ready_pub_;
+   rclcpp::Publisher<scan_planner_msgs::msg::P2BCancel>::SharedPtr cancel_pub_;
+--- native_v158/src/scan_nav2_controller/src/controller.cpp
++++ native_v159/src/scan_nav2_controller/src/controller.cpp
+@@ -287,6 +287,7 @@
+   executor_.reset(); binding_sub_.reset(); spline_sub_.reset(); cancel_sub_.reset();
+   safety_sub_.reset(); stopped_sub_.reset(); route_pub_.reset(); binding_ready_pub_.reset(); cancel_pub_.reset(); cancel_admission_pub_.reset(); command_pub_.reset();
+   tracker_.reset(); bridge_.reset(); parent_.reset(); state_.reset();
++  body_inputs_=scan_input_time::BodyTimeBuffer();last_due_body_.reset();
+   pending_.reset(); safety_.reset(); ticket_ready_=false; output_owner_bound_=false;
+   candidate_curves_.clear();candidate_proofs_.clear();first_candidate_received_s_=0.0;
+ }
+@@ -458,9 +459,11 @@
+ }
+ 
+ geometry_msgs::msg::TwistStamped Controller::computeVelocityCommands(
+-  const geometry_msgs::msg::PoseStamped &pose, const geometry_msgs::msg::Twist &velocity)
+-{
+-  std::lock_guard<std::mutex> lock(state_->mutex);
++  const geometry_msgs::msg::PoseStamped &incoming_pose, const geometry_msgs::msg::Twist &incoming_velocity)
++{
++  std::lock_guard<std::mutex> lock(state_->mutex);
++  auto pose=incoming_pose;
++  auto velocity=incoming_velocity;
+   if (!state_->active || !state_->route) throw nav2_core::PlannerException("SCAN has no active bound route");
+   if (!output_owner_bound_) throw nav2_core::PlannerException("Stock Foxy output is not authorized for SCAN; tagged-output extension required");
+   const auto fail=[&](const std::string &reason) {
+@@ -470,12 +473,33 @@
+   double now=parent_->now().seconds();
+   if (pose.header.frame_id!=global_frame_) fail("scan_body_pose_frame_invalid");
+   if (!finitePose(pose.pose) || !finiteTwist(velocity)) fail("scan_body_pose_value_invalid");
++  auto incoming=std::make_shared<nav_msgs::msg::Odometry>();
++  incoming->header=pose.header;incoming->pose.pose=pose.pose;incoming->twist.twist=velocity;
++  const auto decision_time=parent_->now();now=decision_time.seconds();
++  const auto source_time=rclcpp::Time(pose.header.stamp);
++  const bool future=source_time.nanoseconds()>decision_time.nanoseconds();
++  // TF can legitimately answer a historical query. Preserve the ordinary due
++  // input path; only future deliveries enter the native ordered source queue.
++  if(!body_inputs_.healthy())fail(body_inputs_.error());
++  if(future && !body_inputs_.push(incoming))fail(body_inputs_.error());
++  if(auto due=body_inputs_.takeDue(decision_time.nanoseconds())) {
++    if(!last_due_body_ || rclcpp::Time(due->header.stamp)>rclcpp::Time(last_due_body_->header.stamp))last_due_body_=due;
++  }
++  if(!future) {
++    if(!last_due_body_ || source_time>rclcpp::Time(last_due_body_->header.stamp))last_due_body_=incoming;
++  } else if(last_due_body_) {
++    pose.header=last_due_body_->header;pose.pose=last_due_body_->pose.pose;
++    velocity=last_due_body_->twist.twist;
++  }
+   const double pose_stamp=stampSeconds(pose.header.stamp);
+   if (!fresh(now,pose_stamp,pose_timeout_s_)) {
+     RCLCPP_ERROR(parent_->get_logger(),"SCAN body time rejected: now=%.9f source=%.9f age=%.9f limit=%.3f",
+       now,pose_stamp,now-pose_stamp,pose_timeout_s_);
+     fail(now<pose_stamp?"scan_body_pose_future":"scan_body_pose_stale");
+   }
++  if(future)RCLCPP_INFO(parent_->get_logger(),
++      "V159_DUE_BODY now=%.9f queued_source=%.9f selected_source=%.9f age=%.9f",
++      now,source_time.seconds(),pose_stamp,now-pose_stamp);
+   const auto stoppedCommand=[&]() {
+     // An asynchronous native rejection must fail FollowPath on this tick.
+     // Returning normal zeros hides the fault until the progress timeout.
+--- native_v158/src/scan_nav2_controller/test/test_controller.cpp
++++ native_v159/src/scan_nav2_controller/test/test_controller.cpp
+@@ -349,6 +349,50 @@
+   auto p=pose();p.header.stamp=rclcpp::Time(19840670012LL,RCL_ROS_TIME);
+   EXPECT_THROW(plugin->computeVelocityCommands(p,geometry_msgs::msg::Twist()),nav2_core::PlannerException);
+ }
++TEST_F(PluginTest, FuturePoseUsesFreshDueSourceWithoutRestamping)
++{
++  auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
++  const auto parent_clock=parent->get_clock()->get_clock_handle();
++  const auto tracker_clock=actual->tracker_->get_clock()->get_clock_handle();
++  ASSERT_EQ(rcl_enable_ros_time_override(parent_clock),RCL_RET_OK);
++  ASSERT_EQ(rcl_enable_ros_time_override(tracker_clock),RCL_RET_OK);
++  const int64_t original=83100959778LL, now=83120948792LL, future=83130943298LL;
++  ASSERT_EQ(rcl_set_ros_time_override(parent_clock,original),RCL_RET_OK);
++  ASSERT_EQ(rcl_set_ros_time_override(tracker_clock,original),RCL_RET_OK);
++  moving();
++  ASSERT_EQ(rcl_set_ros_time_override(parent_clock,now),RCL_RET_OK);
++  ASSERT_EQ(rcl_set_ros_time_override(tracker_clock,now),RCL_RET_OK);
++  auto incoming=pose(7.0);incoming.header.stamp=rclcpp::Time(future,RCL_ROS_TIME);
++  geometry_msgs::msg::TwistStamped command;
++  EXPECT_NO_THROW(command=plugin->computeVelocityCommands(incoming,geometry_msgs::msg::Twist()));
++  EXPECT_GT(command.twist.linear.x,0.0);
++  EXPECT_DOUBLE_EQ(actual->tracker_->odom_pos_.x(),0.0);
++  EXPECT_DOUBLE_EQ(actual->ticket_body_stamp_s_,rclcpp::Time(original,RCL_ROS_TIME).seconds());
++  // Once its original time is due, the queued measurement can be selected.
++  ASSERT_EQ(rcl_set_ros_time_override(parent_clock,future+10000000),RCL_RET_OK);
++  ASSERT_EQ(rcl_set_ros_time_override(tracker_clock,future+10000000),RCL_RET_OK);
++  incoming=pose(6.0);incoming.header.stamp=rclcpp::Time(future+20000000,RCL_ROS_TIME);
++  EXPECT_NO_THROW(plugin->computeVelocityCommands(incoming,geometry_msgs::msg::Twist()));
++  EXPECT_DOUBLE_EQ(actual->tracker_->odom_pos_.x(),7.0);
++  EXPECT_DOUBLE_EQ(actual->ticket_body_stamp_s_,rclcpp::Time(future,RCL_ROS_TIME).seconds());
++}
++TEST_F(PluginTest, FutureQueueCannotExtendBodyFreshness)
++{
++  auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
++  const auto clock=parent->get_clock()->get_clock_handle();
++  ASSERT_EQ(rcl_enable_ros_time_override(clock),RCL_RET_OK);
++  ASSERT_EQ(rcl_set_ros_time_override(clock,19000000000LL),RCL_RET_OK);
++  plan();EXPECT_NO_THROW(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()));
++  ASSERT_EQ(rcl_set_ros_time_override(clock,19100000001LL),RCL_RET_OK);
++  auto future=pose();future.header.stamp=rclcpp::Time(19200000000LL,RCL_ROS_TIME);
++  EXPECT_THROW(plugin->computeVelocityCommands(future,geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++  EXPECT_TRUE(actual->state_->stopping);
++}
++TEST_F(PluginTest, CachedBodyDoesNotHideInvalidIncomingFrame)
++{
++  moving();auto invalid=pose();invalid.header.frame_id="foreign";
++  EXPECT_THROW(plugin->computeVelocityCommands(invalid,geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++}
+ TEST_F(PluginTest, MalformedSplineIsRejectedWithoutEvaluatorCrash)
+ {
+   plan(); auto m=curve(); m.knots[4]=m.knots[3]; spline->publish(m);

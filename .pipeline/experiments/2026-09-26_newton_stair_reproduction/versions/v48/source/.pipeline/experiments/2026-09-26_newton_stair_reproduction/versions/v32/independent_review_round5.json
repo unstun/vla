@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "scope": "Round-5 confirmation review (2026-09-29), read-only, of the edits made after round 4 passed. Nothing in the repository was written. The synthetic check was re-run on scratch copies only. SHA-256 prefixes. Changed files: versions/v32/l1/evaluate_l1.py ef4a4b3a (round 4: a4fa8de5, a copy kept in the scratchpad from round 4 and diffed), l1/synthetic_check.py 5153b2b8, l1/synthetic_check.json 283e51f3, PLAN.md 8cc4f2b9, REVIEW_RESPONSE_round4.md cd979e82, independent_review_round4.json 8f2d9d38. Unchanged since round 4 (same hashes): PHYSICAL_RUN_PLAN.md f3fc94f2, freeze.py 5d26109b, audits/.../diag_worker.py 9e48e2ba, RESULT.md df82b249, analyze_pipeline.py 2ba017a1, scripts/newton_episode.py 840e8e5f. No file changed after REVIEW_RESPONSE_round4.md (03:34:11) while this review ran.",
+  "blocking": [],
+  "non_blocking": [
+    {
+      "id": "N1",
+      "where": "versions/v32/PHYSICAL_RUN_PLAN.md 'Expected signals', L1 bullets",
+      "finding": "It still lists only the exposure rule as a route to 'inconclusive'. It does not mention the new outcome for an incomplete watchdog log, which PLAN.md and evaluate_l1.py now apply.",
+      "suggestion": "Add one line: if the wake-up log does not span the loop, L1 is inconclusive."
+    },
+    {
+      "id": "N2",
+      "where": "versions/v32/PLAN.md 'Stall classes', the paragraph before the class list",
+      "finding": "The sentence 'W - w - 10 ms bounds from below how long it could not get the GIL' remains. The new 'What the bound includes' bullet below it correctly qualifies it: the bound also includes timer lateness and the watchdog's own work.",
+      "suggestion": "Reword the sentence to match the bullet."
+    }
+  ],
+  "verified": [
+    "(b) The diff of evaluate_l1.py against the round-4 version (a4fa8de5 to ef4a4b3a) contains only the stated changes: the docstring paragraph; a coverage test (a wake-up at or before the interval's start and one at or after its end), otherwise class 0 'watchdog_log_incomplete', checked before class 1; the watchdog_coverage block (wakeups, spans_loop, incomplete_intervals); the outcome is inconclusive unless exposure is met, the log spans the loop and no interval is incomplete; the new label in the class counts; and the wake-up count moved into the coverage block. The class order and thresholds for covered intervals, criteria 1 and 2 and the exposure rule are unchanged.",
+    "(a) The coverage test cannot misfire on a normal live log. diag_worker.py starts the watchdog thread at import, before runpy and the episode's start-up, so seconds before the first control step. It sets stop only in its finally, after runpy returns. After the last step, the episode's post-loop and finally code (waiting on pending futures, file writes, transport stop() joins of up to 1-2 s) releases the GIL repeatedly, so wake-ups follow the last step's end. The 600,000-entry array lasts at least 6,000 s at a 10 ms or longer period. Every interval lies between the first step's start and the last step's end, so a log that spans the loop covers every interval, and the two inconclusive conditions coincide.",
+    "(c) PLAN.md's 'Limits of this rule' block matches round-4 N1: w subtracted in full, so a hold overlapping at least W - 110 ms of waiting is classed as scheduling; holds up to about 100 ms beyond the 10 ms sleep are not class 2, with collections left to criterion 1; the bound includes timer lateness and the watchdog's own work; a missing log makes intervals incomplete and the outcome inconclusive. The claim-boundary sentence states the scheduling limit.",
+    "(d) synthetic_check.json records evaluate_l1_sha256 ef4a4b3a..., equal to the current evaluate_l1.py, and was written (03:33:18) after it (03:32:30). A scratch re-run of the current synthetic_check.py on the current evaluate_l1.py passed all five runs and reproduced the stored JSON exactly. In 'watchdog_cut', one interval is incomplete, spans_loop is false and the outcome is inconclusive; in 'benign', spans_loop is true and the outcome is passed."
+  ]
+}

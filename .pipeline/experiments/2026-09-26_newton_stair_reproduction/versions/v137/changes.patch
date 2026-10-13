@@ -1,0 +1,66 @@
+--- parent/src/plan_env/include/plan_env/grid_map.h
++++ v137/src/plan_env/include/plan_env/grid_map.h
+@@ -230,6 +230,7 @@
+     (!query_context_ || (!query_context_->failed.load() && !query_context_->stopping.load())); }
+   uint64_t mapRevision() const { return map_revision_; }
+   double observationStamp() const { return mapState().reactive_cloud_stamp_s_; }
++  bool planningInputsReady() const;
+   std::unique_ptr<PublicationLease> beginPublication();
+   struct QueryLease {
+     std::unique_ptr<PublicationLease> publication;
+--- parent/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v137/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -226,6 +226,12 @@
+         surface.stamp_s <= now && now - surface.stamp_s <= supportState().reactive_parameters_.terrain_max_age_s;
+   };
+   return fresh(supportState().reactive_ground_) && fresh(supportState().reactive_surface_ground_);
++}
++
++bool GridMap::planningInputsReady() const {
++  return mapperHealthy() && reactiveSurfaceGroundReady() && mapState().reactive_cloud_ready_ &&
++      observationStamp()>0.0 && reactive_stair::fresh(queryNow().seconds(),observationStamp(),
++          supportState().reactive_parameters_.obstacle_max_age_s);
+ }
+ 
+ bool GridMap::reactiveTerrainReturn(const Eigen::Vector3d &point) const {
+--- parent/src/plan_manage/src/scan_replan_fsm.cpp
++++ v137/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -572,6 +572,16 @@
+       publish_candidate("pending","waiting_for_emergency_exit");
+       return;
+     }
++    auto map=planner_manager_->grid_map_;
++    map->refreshSensorInputs("route_input_ready");
++    const auto inputs_ready = [&] {
++      return map->planningInputsReady() && std::isfinite(map->collisionSegmentYaw(odom_pos_,odom_pos_));
++    };
++    if (!inputs_ready()) {
++      deferred_p2b_route_=msg;
++      publish_candidate("pending","waiting_for_fresh_planning_inputs");
++      return;
++    }
+     const bool previous_have_p2b_identity = have_p2b_identity_;
+     const P2BIdentity previous_identity = active_p2b_identity_;
+     const bool previous_goal_valid = have_requested_goal_pose_;
+@@ -594,7 +604,8 @@
+     trigger_ = true;
+     end_pt_ = waypoints.back();
+     const bool success = planGlobalTrajByWaypoints(waypoints, compatible);
+-    if (success)
++    const bool ready_after=inputs_ready();
++    if (success && ready_after)
+     {
+       if (compatible) reprojectFeasibleWindow();
+       p2b_route_generation_high_water_ = std::max(p2b_route_generation_high_water_, candidate.generation);
+@@ -604,7 +615,10 @@
+     }
+     else
+     {
+-      publish_candidate("rejected", "scan_global_traj_failed");
++      if (!ready_after) {
++        deferred_p2b_route_=msg;
++        publish_candidate("pending","planning_inputs_expired_during_admission");
++      } else publish_candidate("rejected", "scan_global_traj_failed");
+       active_p2b_identity_ = previous_identity;
+       have_p2b_identity_ = previous_have_p2b_identity;
+       requested_goal_pose_ = previous_goal;

@@ -1,0 +1,267 @@
+diff -ru .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/plan_env/include/plan_env/async_mapping_methods.inc .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/plan_env/include/plan_env/async_mapping_methods.inc
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/plan_env/include/plan_env/async_mapping_methods.inc	2026-10-08 05:34:02
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/plan_env/include/plan_env/async_mapping_methods.inc	2026-10-08 20:31:32
+@@ -1,6 +1,27 @@
+ // Single writer; published map states are immutable and never shared for writes.
+ GridMap::~GridMap() { stopAsyncMapping(); }
+ 
++std::unique_ptr<GridMap::QueryLease> GridMap::snapshotQuery(
++    const rclcpp::Clock::SharedPtr &clock,const geometry_msgs::msg::PoseStamped &body) const {
++  const auto context=async_mapping_;
++  if(!context || !clock || body.header.stamp.sec<0 || body.header.stamp.nanosec>=1000000000u)return nullptr;
++  const int64_t source=rclcpp::Time(body.header.stamp).nanoseconds(),now=clock->now().nanoseconds();
++  if(source<=0 || source>now || now-source>100000000LL)return nullptr;
++  auto result=std::make_unique<QueryLease>();
++  result->publication=std::make_unique<PublicationLease>(context);
++  const auto snapshot=context->latest;
++  if(!snapshot || context->failed || context->stopping || body.header.frame_id!=snapshot->state->mp_.frame_id_)return nullptr;
++  const auto &p=body.pose.position;const auto &q=body.pose.orientation;
++  const Eigen::Vector3d position(p.x,p.y,p.z);const Eigen::Quaterniond rotation(q.w,q.x,q.y,q.z);
++  if(!position.allFinite() || !rotation.coeffs().allFinite() || std::abs(rotation.norm()-1.0)>1e-3)return nullptr;
++  result->view=std::make_unique<GridMap>();auto &view=*result->view;
++  view.owned_state_.reset();view.read_state_=snapshot->state;view.node_=node_;
++  view.map_revision_=snapshot->revision;view.query_context_=context;view.query_clock_=clock;
++  view.query_body_override_=true;view.live_body_position_=position;
++  view.reactive_body_quaternion_=rotation.normalized();view.reactive_body_stamp_s_=rclcpp::Time(body.header.stamp).seconds();
++  return result;
++}
++
+ void GridMap::enqueueMapping(MappingInput input) {
+   auto context = async_mapping_;
+   {
+diff -ru .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/plan_env/include/plan_env/grid_map.h .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/plan_env/include/plan_env/grid_map.h
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/plan_env/include/plan_env/grid_map.h	2026-10-08 20:06:59
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/plan_env/include/plan_env/grid_map.h	2026-10-08 20:36:26
+@@ -1,3 +1,4 @@
++#include <geometry_msgs/msg/pose_stamped.hpp>
+ #include <plan_env/observation_window.h>
+ #include <plan_env/body_time_buffer.h>
+ #ifndef _GRID_MAP_H
+@@ -223,10 +224,19 @@
+   };
+   void startAsyncMapping();
+   void stopAsyncMapping();
+-  bool mapperHealthy() const { return live_body_inputs_.healthy() && (!async_mapping_ || !async_mapping_->failed.load()); }
++  bool mapperHealthy() const { return live_body_inputs_.healthy() && (!async_mapping_ || !async_mapping_->failed.load()) &&
++    (!query_context_ || (!query_context_->failed.load() && !query_context_->stopping.load())); }
+   uint64_t mapRevision() const { return map_revision_; }
+   double observationStamp() const { return mapState().reactive_cloud_stamp_s_; }
+   std::unique_ptr<PublicationLease> beginPublication();
++  struct QueryLease {
++    std::unique_ptr<PublicationLease> publication;
++    std::unique_ptr<GridMap> view;
++  };
++  // Independent query caches and live body state over a pinned immutable map.
++  // Does not adopt into or mutate the planner's own read state.
++  std::unique_ptr<QueryLease> snapshotQuery(const rclcpp::Clock::SharedPtr &clock,
++    const geometry_msgs::msg::PoseStamped &body) const;
+   reactive_stair::PlanningProfile planning_profile_;
+   // Necessary body-center bounds only; every actual collision query stays live.
+   bool bodyCenterBounds(Eigen::Vector3d &lower, Eigen::Vector3d &upper) const {
+@@ -343,7 +353,10 @@
+   std::unique_ptr<GridMapState> owned_state_;
+   std::shared_ptr<const GridMapState> read_state_;
+   Eigen::Vector3d live_body_position_{Eigen::Vector3d::Zero()};
+-  Eigen::Vector3d queryBodyPosition() const { return async_mapping_ ? live_body_position_ : mapState().md_.sliding_map_frame_pos_; }
++  Eigen::Vector3d queryBodyPosition() const { return (async_mapping_ || query_body_override_) ? live_body_position_ : mapState().md_.sliding_map_frame_pos_; }
++  rclcpp::Time queryNow() const { return query_clock_ ? query_clock_->now() : node_->now(); }
++  rclcpp::Clock::SharedPtr query_clock_;
++  bool query_body_override_{false};
+   struct MappingInput {
+     int kind;
+     int64_t stamp_ns;
+@@ -374,6 +387,7 @@
+     std::atomic<uint64_t> expired_clouds{0}, replaced_clouds{0}, capacity_drops{0};
+   };
+   std::shared_ptr<AsyncMapping> async_mapping_;
++  std::shared_ptr<AsyncMapping> query_context_; // Health only; never owns/join-stops the writer.
+   uint64_t map_revision_ = 0;
+   bool last_fusion_fixed_point_ = false;
+   void enqueueMapping(MappingInput input);
+diff -ru .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc	2026-10-05 03:18:15
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc	2026-10-08 20:40:24
+@@ -113,7 +113,7 @@
+ }
+ 
+ const reactive_stair::PhysicalFloorSnapshot *GridMap::qualifiedPhysicalFloor() const {
+-  const double now=node_->now().seconds();
++  const double now=queryNow().seconds();
+   if(mapState().reactive_physical_floor_topic_.empty() || !supportState().physical_floor_decoded_valid_ ||
+      supportState().reactive_physical_floor_.source_id!=mapState().physical_floor_source_id_ ||
+      supportState().reactive_navigation_ground_.source_id!=mapState().physical_floor_navigation_source_id_ ||
+@@ -219,7 +219,7 @@
+ bool GridMap::reactiveSurfaceGroundReady() const {
+   if (!physicalFloorReady()) return false;
+   if (mapState().reactive_surface_ground_topic_.empty()) return true;
+-  const double now = node_->now().seconds();
++  const double now = queryNow().seconds();
+   const auto fresh = [&](const reactive_stair::TerrainSnapshot &surface) {
+     return !surface.cells.empty() && surface.frame == mapState().mp_.frame_id_ &&
+         std::isfinite(surface.stamp_s) && surface.stamp_s > 0.0 &&
+@@ -423,7 +423,7 @@
+       point.z() + mapState().mp_.obstacles_inflation_z_up > mapState().mp_.map_max_boundary_.z()) return 1;
+   reactive_stair::Query query;
+   query.frame = mapState().mp_.frame_id_;
+-  query.stamp_s = node_->now().seconds();
++  query.stamp_s = queryNow().seconds();
+   query.x_m = point.x(); query.y_m = point.y(); query.z_m = point.z();
+   query.in_map = isInMap(point);
+   reactive_stair::NonTerrainVoxel obstacle;
+@@ -457,6 +457,8 @@
+   }
+   if (body_reference && !reactiveFootprintSupportQuery(*body_reference, obstacle, query)) return 1;
+   const auto verdict = supportState().reactive_decision_.decide(query, obstacle);
++  // Controller query views never share the native logger throttles or diagnostic set.
++  if (query_context_) return verdict == reactive_stair::Verdict::Free ? 0 : 1;
+   static std::set<std::tuple<int, int, int>> diagnosed;
+   Eigen::Vector3i diagnostic_id;
+   posToIndex(point, diagnostic_id);
+@@ -486,7 +488,7 @@
+       pos.x(), pos.y(), pos.z(), yaw,
+       queryBodyPosition().x(), queryBodyPosition().y(), queryBodyPosition().z(),
+       reactive_body_quaternion_.w(), reactive_body_quaternion_.x(), reactive_body_quaternion_.y(), reactive_body_quaternion_.z(),
+-      reactive_body_stamp_s_, node_->now().seconds());
++      reactive_body_stamp_s_, queryNow().seconds());
+   const Eigen::Vector3d heading(std::cos(yaw), std::sin(yaw), 0.0);
+   reactive_diagnostic_force_ = true;
+   reactiveOccupancy(pos + mapState().mp_.double_cylinder_offset_ * heading, &pos);
+@@ -498,7 +500,7 @@
+   const Eigen::Vector3d direction = reactive_body_quaternion_.toRotationMatrix().col(0);
+   const double body_yaw = std::atan2(direction.y(), direction.x());
+   return reactive_stair::motionHeading(to.x() - from.x(), to.y() - from.y(), body_yaw,
+-                                      node_->now().seconds(), reactive_body_stamp_s_);
++                                      queryNow().seconds(), reactive_body_stamp_s_);
+ }
+ 
+ bool GridMap::collisionFreeSegment(const Eigen::Vector3d &from, const Eigen::Vector3d &to,
+diff -ru .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/plan_env/src/grid_map.cpp .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/plan_env/src/grid_map.cpp
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/plan_env/src/grid_map.cpp	2026-10-08 20:06:59
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/plan_env/src/grid_map.cpp	2026-10-08 20:31:32
+@@ -1008,6 +1008,14 @@
+     applyDueLiveBody();
+     if (!live_body_inputs_.push(pose)) {
+       reactive_body_stamp_s_=0.0;
++      // Publish this existing fail-closed state through the shared atomic map
++      // health latch so independent read-only queries reject it as well.
++      {
++        std::lock_guard<std::mutex> lock(async_mapping_->queue_mutex);
++        async_mapping_->error=live_body_inputs_.error();
++        async_mapping_->failed=true;
++      }
++      async_mapping_->wake.notify_all();
+       RCLCPP_ERROR(node_->get_logger(),"Live body admission failed: %s",live_body_inputs_.error().c_str());
+       return;
+     }
+diff -ru .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp	2026-10-08 19:19:30
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp	2026-10-08 20:36:26
+@@ -71,6 +71,7 @@
+   double first_candidate_received_s_{0.0};
+   geometry_msgs::msg::TwistStamped ticket_;
+   scan_planner_msgs::msg::P2BStampedTwist ticket_identity_;
++  double ticket_body_stamp_s_{0.0}; // Original body time, not the later ticket creation time.
+   bool ticket_ready_{false};
+   bool output_owner_bound_{false};
+   rclcpp::Publisher<scan_planner_msgs::msg::P2BRoute>::SharedPtr route_pub_;
+Only in .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/scan_nav2_controller/include/scan_nav2_controller: native_validation.hpp
+diff -ru .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/scan_nav2_controller/src/controller.cpp .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/scan_nav2_controller/src/controller.cpp
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/scan_nav2_controller/src/controller.cpp	2026-10-08 19:25:38
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/scan_nav2_controller/src/controller.cpp	2026-10-08 20:40:24
+@@ -1,6 +1,7 @@
+ #include <scan_nav2_controller/controller.hpp>
+ #include <scan_nav2_controller/executor_shutdown.hpp>
+ #include <rclcpp/scope_exit.hpp>
++#include <scan_nav2_controller/native_validation.hpp>
+ 
+ #include <map>
+ #include <filesystem>
+@@ -59,6 +60,13 @@
+       catch (...) { healthy_=false; fault("native_worker_unknown_exception"); }
+     });
+   }
++  scan_planner_msgs::msg::P2BExecutionSafety validate(
++      const rclcpp::Clock::SharedPtr &clock,const geometry_msgs::msg::PoseStamped &body,
++      const scan_planner::UniformBspline &curve,double phase) const {
++    auto map=planner_->nav2Map();
++    return map ? validateNativeCurve(*map,clock,body,curve,phase) : scan_planner_msgs::msg::P2BExecutionSafety();
++  }
++
+   bool healthy() const { return healthy_.load(); }
+   ~NativeWorker() {
+     joinStoppedExecutor(executor_,worker_,finished_);
+@@ -359,7 +367,9 @@
+   if (!std::isfinite(stampSeconds(message->stamp))) { stopLocked("invalid_safety_stamp"); return; }
+   if (tracker_->receive_traj_ && message->binding.traj_id==tracker_->traj_id_) {
+     if (safety_ && stampSeconds(message->stamp)<=stampSeconds(safety_->stamp)) return;
+-    safety_=message;
++    // Native negative evidence still revokes. Positive timer messages cannot
++    // replace the controller's newer independently checked proof.
++    if (!native_worker_ || !message->clear) safety_=message;
+     if (!message->clear) stopLocked("scan_safety_rejected");
+     return;
+   }
+@@ -453,7 +463,7 @@
+     stopLocked(reason); throw nav2_core::PlannerException(reason);
+   };
+   if (native_worker_ && !native_worker_->healthy()) fail("native_planner_worker_failed");
+-  const double now=parent_->now().seconds();
++  double now=parent_->now().seconds();
+   if (pose.header.frame_id!=global_frame_) fail("scan_body_pose_frame_invalid");
+   if (!finitePose(pose.pose) || !finiteTwist(velocity)) fail("scan_body_pose_value_invalid");
+   const double pose_stamp=stampSeconds(pose.header.stamp);
+@@ -471,6 +481,14 @@
+     if (now<plan_started_s_ || now-plan_started_s_>startup_timeout_s_) fail("scan_trajectory_missing");
+     return ticket(geometry_msgs::msg::Twist());
+   }
++  if (native_worker_) {
++    auto proof=std::make_shared<scan_planner_msgs::msg::P2BExecutionSafety>(
++      native_worker_->validate(parent_->get_clock(),pose,tracker_->traj_.at(0),tracker_->exec_time_));
++    copyIdentity(*state_->route,proof->binding);proof->binding.traj_id=tracker_->traj_id_;
++    proof->binding.consumer="native_safety";proof->binding.status=proof->clear?"clear":"blocked";
++    safety_=proof;now=parent_->now().seconds();
++    if(!proof->clear)RCLCPP_ERROR(parent_->get_logger(),"Controller native validation rejected: %s",proof->binding.message.c_str());
++  }
+   if (!safety_ && now>=spline_received_s_ && now-spline_received_s_<=safety_timeout_s_)
+     return ticket(geometry_msgs::msg::Twist());
+   if (!safety_ || !safety_->clear || !fresh(now,stampSeconds(safety_->stamp),safety_timeout_s_) ||
+@@ -488,7 +506,7 @@
+   }
+   const auto command=tracker_->sample(pose);
+   if (!finiteTwist(command)) fail("scan_nonfinite_command");
+-  return ticket(command);
++  const auto output=ticket(command);ticket_body_stamp_s_=pose_stamp;return output;
+ }
+ 
+ void Controller::bindOutputOwner()
+@@ -506,7 +524,8 @@
+   const bool superseded=ticket_identity_.traj_id!=tracker_->traj_id_;
+   if (!fresh(now,stampSeconds(ticket_.header.stamp),pose_timeout_s_) ||
+       (!superseded && command.twist!=geometry_msgs::msg::Twist() &&
+-       (!safety_ || !safety_->clear || !fresh(now,stampSeconds(safety_->stamp),safety_timeout_s_) ||
++       (!fresh(now,ticket_body_stamp_s_,pose_timeout_s_) ||
++        !safety_ || !safety_->clear || !fresh(now,stampSeconds(safety_->stamp),safety_timeout_s_) ||
+         !fresh(now,safety_->observation_stamp_s,observation_timeout_s_)))) {
+     stopLocked("nav2_command_evidence_expired"); return;
+   }
+diff -ru .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/scan_nav2_controller/test/test_controller.cpp .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/scan_nav2_controller/test/test_controller.cpp
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/scan_nav2_controller/test/test_controller.cpp	2026-10-08 19:18:18
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/scan_nav2_controller/test/test_controller.cpp	2026-10-08 20:37:01
+@@ -378,6 +378,17 @@
+   output->publishCommand(v);
+   EXPECT_EQ(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()).twist,geometry_msgs::msg::Twist());
+ }
++TEST_F(PluginTest, FreshTicketCannotRenewItsOlderBodySample)
++{
++  moving();sendSafety();wait([] { return false; },0.01);
++  auto p=pose();p.header.stamp=rclcpp::Time(parent->now().nanoseconds()-80000000LL);
++  auto command=plugin->computeVelocityCommands(p,geometry_msgs::msg::Twist());
++  ASSERT_GT(command.twist.linear.x,0.0);
++  // Proof and ticket remain valid; only the original body sample expires.
++  wait([] { return false; },0.04);output->publishCommand(command);
++  auto actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
++  EXPECT_TRUE(actual->state_->stopping);
++}
+ TEST_F(PluginTest, WrongIdentityCancelDoesNotStopCurrentOwner)
+ {
+   moving(); sm::P2BCancel m; identity(m); ++m.map_revision; cancel->publish(m);

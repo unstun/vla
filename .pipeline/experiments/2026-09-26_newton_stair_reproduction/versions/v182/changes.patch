@@ -1,0 +1,104 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v179/freeze.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v182/freeze.py
+@@ -47,9 +47,9 @@
+         target.parent.mkdir(parents=True, exist_ok=True)
+         shutil.copyfile(path, target)
+         files[name] = dict(sha256=digest, snapshot=str(target.relative_to(ROOT)))
+-    (HERE / "manifest.json").write_text(json.dumps(dict(version=HERE.name, parent="v177",
++    (HERE / "manifest.json").write_text(json.dumps(dict(version=HERE.name, parent="v179", inherited_physics_parent="v177",
+         parent_manifest_sha256=sha(BASE / "versions/v177/manifest.json"), files=files,
+-        change="standalone scripted current-policy diagnostic; automatic hold disabled only after original REJOIN"), indent=2) + "\n")
++        change="same v179 protocol, only walking command amplitudes changed to0.6/0.8/1.0mps"), indent=2) + "\n")
+     print("FROZEN", len(verify()["files"]))
+ 
+ 
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v179/protocol.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v182/protocol.py
+@@ -1,5 +1,5 @@
+ """Predeclared policy-only velocity schedule, independent of robot feedback."""
+-CONDITIONS = [(0.2, 3.0), (0.2, 3.3), (0.35, 2.8), (0.35, 3.1), (0.5, 2.4), (0.5, 2.7)]
++CONDITIONS = [(0.6, 3.0), (0.6, 3.3), (0.8, 2.8), (0.8, 3.1), (1.0, 2.4), (1.0, 2.7)]
+ STOP_SECONDS = 10.0
+ RESTART_SECONDS = 3.0
+ LATE_START_SECONDS = 2.0
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v179/PLAN.md
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v182/PLAN.md
+@@ -1,50 +1,33 @@
+-# v179: policy-only move / stop / restart diagnosis
++# v182: minimum operating-speed correction
+ 
+-Stage: experiment + analysis. Dr Sun authorizes repeated flat and stair tests
+-with the current model, navigation disconnected, and review videos.
++Stage: experiment + analysis. Dr Sun corrects the active diagnosis: the minimum
++walking-speed condition matters. The existing project contract specifies0.6m/s
++planned horizontal cruise; v179tested0.2/0.35/0.5, all below that operating
++requirement. Retain v179as low-speed controls, not nominal-range qualification.
+ 
+-The single logical change from v177 is the experimental command source and
+-controller ownership: deterministic body-velocity scripts replace navigation;
+-the existing factory startup and smooth REJOIN finish before automatic standing
+-is detached. All measured zero-command windows are policy-only, Kp20/Kd0.5.
+-No model, observation, action history, torque limits or original physics code
+-changes. A read-only contact observer survives detachment. No state reset occurs
+-within a trial. This is a diagnostic protocol, not a navigation repair.
++The single experimental change from v179 is the walking-command amplitude:
++0.6/0.8/1.0m/s, two cases each on flat and stairs. Keep first-walk durations,
++10s stops,3s restart, starting geometry, current model, all gains, smooth startup
++and hold detachment identical. Record measured cruise speed separately;0.6m/s
++command is not proof of0.6m/s actual motion. Stop commands remain exactly zero.
++Twelve serial new trials; no controller, model or training changes.
+ 
+-Owned paths: this version's protocol, standalone runner, bounded launcher,
+-analysis, tests and immutable source manifest. Inherited physics uses v40 CPU
+-solver graph, the same current ONNX and sensor-rig URDF as v177. Flat uses an
+-empty triangle floor with friction1; stairs use the original full Building mesh
+-and a declared flat approach before the first flight. The start is a diagnostic
+-start, not a claim of replaying the full-route failure's exact hidden state.
++Matched flat pairs change only command amplitude on homogeneous ground. Stair
++pairs naturally stop at different physical positions, so stair differences are
++not a controlled single-cause estimate. Report that confound explicitly rather
++than claiming minimum speed alone explains all drift. All failure evidence and
++old videos remain. No overwrite or relabelling of v179as nominal-speed tests.
+ 
+-Six conditions per terrain: speeds0.2/0.35/0.5m/s, two predeclared first-walk
+-durations at each speed. Then10s zero,3s walk,10s zero. These are varied scripted
+-conditions, not six random-seed replicates. Factory initialization, all failures,
+-and both stops remain recorded. Fall/invalid-state/timeout aborts preserve partial
+-evidence. A stop that is never reached is not a stop failure or pass.
++The archived training sampler has a dynamic per-axis lower bound. With9mtiles,
++0.5mborders and25sepisodes, its initial ordinary branch is approximately0.200m/s
++per horizontal axis (about0.283m/s vector norm when both axes are sampled).
++The bound depends on remaining commanded distance and time and can change; later
++special branches override components. This is distinct from the project's0.6m/s
++planned-cruise operating rule. Neither is a universal minimum for a zero stop.
+ 
+-Report braking displacement in the first2s separately from later drift, maximum
+-excursion and actual speed/yaw. Report measured contact forces and world foot
+-motion, using finite-difference displacement with persistent contact separately
+-from swing. No universal2cm acceptance claim. Late-window XY excursion over5cm
+-is a predeclared diagnostic flag, alongside all continuous values; it is not a
+-robot safety or industry qualification.
+-
+-gpu5070ti admission currently held:18.29GiB available and two GPU tasks. Use the
+-already authorized Mac CPU exception, one process at a time, >=10GiB free disk,
+->=8GiB available RAM,12GiB child RSS cap,600s wall deadline per trial. Do not
+-weaken the remote20GiB/no-other-GPU-task gate or stop unrelated jobs.
+-
+-Temporary raw root: `/private/tmp/vla_policy_stop_20261012`. Budget2GiB. Durable
+-archive target: `/data/sun/vla_mppi_20261009/policy_stop_v179_mac/`. Return source,
+-compact JSON/CSV/report, archive identities, and review MP4s (target<150MiB).
+-Verify every returned hash and remote raw archive before rendering. Rendering
+-uses recorded states without advancing physics and gets a separate version.
+-
+-Preflight: source/snapshot hashes, pinned golden model inputs, phase tests,
+-current environment/version and original startup contracts. Actual physics
+-determines the result; tests do not establish stopping. No formal training or
+-hardware actuation. Do not infer a learned-policy-only cause from Newton alone:
+-deployment/simulator dynamics remain alternative causes without a cross-simulator
+-comparison.
++Local Mac execution uses the same bounded temporary root and resource guards
++as v179. New IDs v182_flat01..06 and v182_stairs01..06. Durable raw target is
++`gpu5070ti:/data/sun/vla_mppi_20261009/policy_stop_v182_mac/`. Expected compact
++returns plus videos<150MiB; retain raw in the authorized2GiBtemporary budget.
++No navigation, formal training or real-robot actuation. Compare above/below-bound
++approach speed to test the user's hypothesis, without assuming it is proved.

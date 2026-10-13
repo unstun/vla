@@ -1,0 +1,3 @@
+# Frozen v53 post-freeze defect
+
+Native DDS regression versions/v54/freshness/red01 (remote only) throws "can't subtract times with different time sources [1 != 2]" while replaying repeated qualified route callbacks before an accepted local curve was initialized. canPreserveReferenceBinding computed age before rejecting traj_id=0. The frozen v53 source/manifest/component results are unchanged. v54 adds a separate early ID/clock guard; D2 and D3 move to v55/v56. This does not invalidate the passing post-refresh accepted-curve fixture, but precludes treating v53 as generally navigation-validated.

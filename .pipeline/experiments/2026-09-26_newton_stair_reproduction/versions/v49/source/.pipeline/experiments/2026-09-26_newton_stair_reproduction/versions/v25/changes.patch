@@ -1,0 +1,147 @@
+--- v24/scripts/native_graph.py
++++ v25/scripts/native_graph.py
+@@ -80,6 +80,10 @@
+               "-p", "scan_audit_path:=" + str(out / "bridge_scan_audit.jsonl")])
+         backend = json.loads((cfg / "p2b_backend_ros.two_goal.json").read_text())
+         backend.update(run_id=out.name, run_epoch_ns=epoch)
++        if request.get("building_route_profile") == "historical_full":
++            if request.get("scene") != "building_full":
++                raise ValueError("Historical profile requires the full Building geometry")
++            backend["map"]["pct_layer"] = None  # Existing native multi-floor selection.
+         backend["service"]["command_timeout_s"] = request.get("goal_wall_budget_s", 35.0)
+         backend["applied_evidence"].update(current_command_path=str(out / "artifacts/external_episode/current_command.json"),
+                                            finish_request_path=str(out / "artifacts/external_episode/finish_request.json"))
+--- v24/scripts/review_building_episode.py
++++ v25/scripts/review_building_episode.py
+@@ -19,7 +19,10 @@
+     common = json.loads((BASE / "validation" / (args.run_id + "_review.json")).read_text())
+     rows = [json.loads(line) for line in (run / "telemetry.jsonl").read_text().splitlines()]
+     scenario = json.loads((run / "inputs/stair_scenario.json").read_text())
+-    original = json.loads((BASE / "inputs/stair_scenario.json").read_text())
++    request = json.loads((run / "episode_request.json").read_text())
++    historical_full = request.get("building_route_profile") == "historical_full"
++    profile_file = "historical_full_building.json" if historical_full else "stair_scenario.json"
++    original = json.loads((BASE / "inputs" / profile_file).read_text())
+     driver = json.loads((run / "artifacts/stair_driver_result.json").read_text())
+     source = json.loads((run / "execution_sources.json").read_text())
+     handoff = json.loads((run / "factory_handoff.json").read_text())
+@@ -57,12 +60,26 @@
+         "factory_pd_force_match": np.max(np.abs(np.asarray(handoff["new_force_nm"])-handoff["factory_force_nm"])) < 1e-10,
+         "motor_map": rows[-1]["applied_torque_max_abs"] <= 1e-4,
+     }
++    route_profile_checks = {}
++    if historical_full:
++        outcome = json.loads((run / "result.json").read_text())
++        pct = outcome["last_backend"]["pct"]
++        history = pct.get("plan_history", [])
++        planned = np.asarray(history[-1].get("waypoints_m", []) if history else [])
++        route_profile_checks = {
++            "automatic_native_layers": "configured_pct_layer" in pct and pct["configured_pct_layer"] is None,
++            "historical_route_length": len(planned) > 1 and np.linalg.norm(np.diff(planned[:,:2],axis=0),axis=1).sum() >= 70.,
++            "correct_goal_level": len(planned) > 1 and abs(planned[-1,2]-goal[2]-.30) <= .02,
++        }
++        checks.update(route_profile_checks)
+     checks = {k:bool(v) for k,v in checks.items()}
+-    result = {"checks":checks,"passed":all(checks.values()),"actual_navigation_path_m":float(np.linalg.norm(np.diff(positions,axis=0),axis=1).sum()),
++    result = {"building_route_profile": request.get("building_route_profile", "short_stair"),
++              "actual_xy_path_m":float(np.linalg.norm(np.diff(positions[:,:2],axis=0),axis=1).sum()),
++              "checks":checks,"passed":all(checks.values()),"actual_navigation_path_m":float(np.linalg.norm(np.diff(positions,axis=0),axis=1).sum()),
+               "goal_xy_error_m":float(np.linalg.norm(positions[-1,:2]-goal[:2])),"final_pd_hold_s":dwell,
+               "physics_s":rows[-1]["physics_time_s"],"moving_curves":len(common["moving_curves"]),
+               "architectural_surface_contact_acceptance":"not assessed; no collision-free claim",
+-              "scope":"One full Building simulation with fixed architecture; no added actor or physical-robot claim"}
++              "scope":("Historical complete-floor route" if historical_full else "Short stair route in complete Building geometry") + "; no added actor or physical-robot claim"}
+     (BASE / "validation" / (args.run_id + "_building.json")).write_text(json.dumps(result,indent=2)+"\n")
+     print(json.dumps(result,indent=2))
+ 
+--- v24/scripts/run_local_episode.py
++++ v25/scripts/run_local_episode.py
+@@ -77,6 +77,25 @@
+     return version
+ 
+ 
++HISTORICAL_PROFILE_SHA256 = "6afa0e573c268aca641f7d176f55bbf720b6521db8e5ce8153e2baece1b5b621"
++
++
++def building_scenario(profile, wall_budget):
++    """Select an explicit immutable route profile within the same Building."""
++    if profile not in ("short_stair", "historical_full"):
++        raise ValueError("Unknown Building route profile")
++    historical = profile == "historical_full"
++    path = BASE / "inputs" / ("historical_full_building.json" if historical else "stair_scenario.json")
++    if historical and hashlib.sha256(path.read_bytes()).hexdigest() != HISTORICAL_PROFILE_SHA256:
++        raise ValueError("Historical Building profile SHA-256 mismatch")
++    scenario = json.loads(path.read_text())
++    scenario.update(max_sim_seconds=600. if historical else 90., max_wall_seconds=wall_budget,
++                    navigation_input="native PCT map, actual geometric LiDAR and simulator body localization",
++                    scene_condition=("Complete archived Building; historical full-floor route; no added actor" if historical else
++                                     "Complete archived Building; fixed architecture; no added actor"))
++    return scenario
++
++
+ def main():
+     parser = argparse.ArgumentParser()
+     parser.add_argument("--probe", action="store_true")
+@@ -87,6 +106,7 @@
+     parser.add_argument("--static-human", action="store_true")
+     parser.add_argument("--planner-config", type=Path)
+     parser.add_argument("--scene", choices=("building", "building_full", "flat_static", "flat_box", "flat_empty_long"), default="building")
++    parser.add_argument("--building-route", choices=("short_stair", "historical_full"), default="short_stair")
+     parser.add_argument("--integration-version")
+     parser.add_argument("--goal-wall-budget", type=float, default=35.0)
+     parser.add_argument("--startup-mode", choices=("policy", "pd_stand", "factory_pd"), default="policy")
+@@ -96,6 +116,9 @@
+     args = parser.parse_args()
+     long_route = args.scene == "flat_empty_long"
+     full_building = args.scene == "building_full"
++    historical_full = full_building and args.building_route == "historical_full"
++    if args.building_route != "short_stair" and not full_building:
++        parser.error("Historical Building route requires scene building_full")
+     extended_route = long_route or full_building
+     if not .1 <= args.real_time_factor <= 1.:
+         parser.error("real-time-factor must be in [.1,1]")
+@@ -156,10 +179,7 @@
+         shutil.copyfile(BASE / "inputs" / name, out / "inputs" / name)
+     if full_building:
+         scenario_path = out / "inputs/stair_scenario.json"
+-        scenario = json.loads(scenario_path.read_text())
+-        scenario.update(max_sim_seconds=90., max_wall_seconds=args.goal_wall_budget,
+-                        navigation_input="native PCT map, actual geometric LiDAR and simulator body localization",
+-                        scene_condition="Complete archived Building; fixed architecture; no added actor")
++        scenario = building_scenario(args.building_route, args.goal_wall_budget)
+         scenario_path.write_text(json.dumps(scenario, indent=2) + "\n")
+     if args.scene in ("flat_static", "flat_box", "flat_empty_long"):
+         scene_root = BASE / ("repairs/2026-09-27_pd_long_route/inputs" if long_route
+@@ -181,6 +201,7 @@
+         "applied_transport": args.applied_transport,
+         "native_build": str(build), "geometry_obstacles": args.geometry_obstacles,
+         "scene": args.scene,
++        "building_route_profile": args.building_route if full_building else None,
+         "integration_version": integration_version,
+         "startup_mode": args.startup_mode,
+         "stance_hold": args.stance_hold,
+@@ -193,7 +214,7 @@
+         "goal_wall_budget_s": args.goal_wall_budget,
+         "planner_config_source": str(planner_config),
+         "planner_config_sha256": hashlib.sha256((out / "planner.yaml").read_bytes()).hexdigest(),
+-        "max_physics_s": (8 if args.startup_mode == "pd_stand" else 3) if args.probe else (150 if long_route else 90 if full_building else 35),
++        "max_physics_s": (8 if args.startup_mode == "pd_stand" else 3) if args.probe else (150 if long_route else 600 if historical_full else 90 if full_building else 35),
+         "max_worker_wall_s": 1700 if extended_route else 500,
+         "source_condition": ("Complete original Building / original map and sensor rig / PCT + SCAN / factory-PD-RL switching"
+                              if full_building else "12 m empty flat scene / original sensor rig / native PCT + SCAN42 + controller / PD-RL switching"
+--- v24/setup/source_identity.json
++++ v25/setup/source_identity.json
+@@ -215,6 +215,13 @@
+       "bytes": 2026672,
+       "source": "audits/2026-09-27_dense_static_sampling/prepare.py + observe_raw.py; pinned Trimesh all-surface sampling and unchanged PCT generator",
+       "scope": "Offline static Building evidence only; original PCD points retained; no actor truth; original navigation map unchanged"
++    },
++    {
++      "path": "inputs/historical_full_building.json",
++      "sha256": "6afa0e573c268aca641f7d176f55bbf720b6521db8e5ce8153e2baece1b5b621",
++      "bytes": 2842,
++      "source": "Audited historical native_full02 spawn/yaw/goal; native auto-layer preflight and static endpoint surface audit",
++      "scope": "Explicit historical full Building route profile; no PD or safety threshold changes"
+     }
+   ],
+   "newton_environment": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv",

@@ -1,0 +1,1 @@
+Retain the old sampled boundary time; consume elapsed trajectory time once on receipt, then preserve original incremental/frozen clock semantics. No predicted handover, new command mode, deadline, stop-reason or acceptance relaxation.

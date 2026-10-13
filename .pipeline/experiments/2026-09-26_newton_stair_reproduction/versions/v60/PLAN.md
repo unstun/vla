@@ -1,0 +1,3 @@
+# v60 display-only review camera
+
+The first v59 review render passes decoding but its middle frame is fully occluded by architecture. Preserve that failed-view evidence on gpu5070ti. Replay the same v59 recording with a closer heading-follow camera: trail0.45m, height0.60m, look-ahead0.25m, look-down0.05m; yaw smoothing remains0.5s. This changes display only. Native/runtime source, physics, recorded states/times, overlays, renderer assets, FPS and stream encoding remain unchanged. Source renderer parentv51, physical sourcev59. Validate full decoding, exact frame count/timeline/state provenance, and first/middle/last plus the previous occluded view. Keep only one usable review MP4 locally; the first remains hashed/provenanced remotely.

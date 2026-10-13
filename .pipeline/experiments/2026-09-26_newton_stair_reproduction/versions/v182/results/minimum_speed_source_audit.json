@@ -1,0 +1,118 @@
+{
+  "source_commit": "8c3fdffa84b85be0704a10ea5b2533817d543822",
+  "files": [
+    {
+      "path": "2_experiment/baseline_rebuild/go2_rl_robotlab_lite3_v12/source/robot_lab/robot_lab/tasks/go2/mdp/commands.py",
+      "sha256": "d97996f154ea4bf5c00043f5379896f95c7b434592c0e61fd70568c9502bd488",
+      "excerpts": [
+        {
+          "first_line": 95,
+          "lines": [
+            "            if len(idxs) > 0:",
+            "                self.terrain_idxs[idxs] = self.terrain_type2idx[terrain_type]",
+            "        terrain_cfg = self._env.scene.terrain.cfg.terrain_generator",
+            "        sub_terrain_border_width = getattr(terrain_cfg, \"sub_terrain_border_width\", 0.0) or 0.0",
+            "        self.terrain_length = max(0.0, terrain_cfg.size[0] - 2.0 * sub_terrain_border_width)",
+            ""
+          ]
+        },
+        {
+          "first_line": 143,
+          "lines": [
+            "        if self.cfg.dynamic_resample_commands:",
+            "            # arrive at boundary 0.625 times the width of the remaining distance",
+            "            if ((env.max_episode_length - env.episode_length_buf[env_ids]) + 1 == 0).any():",
+            "                raise ValueError(\"Some envs have zero remaining episode length during command resampling\")",
+            "            vel_low_bound = torch.clip(remaining_dist / ((env.max_episode_length - env.episode_length_buf[env_ids] + 1 + 1e-9) * env.step_dt), 0.0)",
+            "            self.commands[env_ids, 0] = sample_disjoint_intervals(",
+            "                env_ids,",
+            "                vel_low_bound,",
+            "                self.env_command_ranges[\"lin_vel_x\"][env_ids, 0],",
+            "                self.env_command_ranges[\"lin_vel_x\"][env_ids, 1],",
+            "                self.device",
+            "            )",
+            "            self.commands[env_ids, 1] = sample_disjoint_intervals(",
+            "                env_ids,",
+            "                vel_low_bound,",
+            "                self.env_command_ranges[\"lin_vel_y\"][env_ids, 0],",
+            "                self.env_command_ranges[\"lin_vel_y\"][env_ids, 1],",
+            "                self.device",
+            "            )",
+            "            r = torch.rand(len(env_ids), device=self.device)",
+            "            lower = self.env_command_ranges[\"ang_vel_yaw\"][env_ids, 0]",
+            "            upper = self.env_command_ranges[\"ang_vel_yaw\"][env_ids, 1]"
+          ]
+        },
+        {
+          "first_line": 233,
+          "lines": [
+            "        # set all commands to zero with some probability",
+            "        if self.cfg.zero_command_curriculum is not None:",
+            "            self.zero_command_prob = self.get_current_scale(self.cfg.zero_command_curriculum)",
+            "        if self.zero_command_prob > 0.0:",
+            "            max_prob += self.zero_command_prob",
+            "            next_time_left = torch.clip(",
+            "                env.max_episode_length_s - env.episode_length_buf[env_ids] * env.step_dt - (remaining_dist / (0.8 * self.max_lin_vel + 1e-9)),",
+            "                min=0.0,",
+            "                max=self.cfg.resampling_time,",
+            "            )",
+            "            zero_mask = (rand_prob >= min_prob) * (rand_prob < max_prob) * (next_time_left > 0.0)",
+            "            zero_env_ids = env_ids[zero_mask]",
+            "            if len(zero_env_ids) > 0:",
+            "                self.commands[zero_env_ids, :2] = 0.0",
+            "                self.time_left[zero_env_ids] = next_time_left[zero_mask]",
+            "                if self.cfg.limit_ang_vel_at_zero_command_prob > 0.0:",
+            "                    ang_vel_rand = torch.rand(len(zero_env_ids), device=self.device)  # independent distribution",
+            "                    add_ang_mask = ang_vel_rand < self.cfg.limit_ang_vel_at_zero_command_prob",
+            "                    add_ang_env_ids = zero_env_ids[add_ang_mask]",
+            "                    if len(add_ang_env_ids) > 0:",
+            "                        direction_rand = torch.rand(len(add_ang_env_ids), device=self.device)",
+            "                        self.commands[add_ang_env_ids, 2] = torch.where(",
+            "                            direction_rand < 0.5,",
+            "                            self.env_command_ranges[\"ang_vel_yaw\"][add_ang_env_ids, 0],",
+            "                            self.env_command_ranges[\"ang_vel_yaw\"][add_ang_env_ids, 1]",
+            "                        )",
+            "            min_prob += self.zero_command_prob"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "2_experiment/baseline_rebuild/go2_rl_robotlab_lite3_v12/source/robot_lab/robot_lab/tasks/go2/mdp/utils.py",
+      "sha256": "5b2e969d948a6bf6a40096af793216ac2653a495b3cb39b9cc9e79b11dacbe64",
+      "excerpts": [
+        {
+          "first_line": 110,
+          "lines": [
+            "def sample_disjoint_intervals(env_ids, limit_bound, cfg_min, cfg_max, device):",
+            "    \"\"\"Sample uniform distribution from [cfg_min, -limit_bound] U [limit_bound, cfg_max]\"\"\"",
+            "    width_neg = torch.nn.functional.relu(-limit_bound - cfg_min)",
+            "    width_pos = torch.nn.functional.relu(cfg_max - limit_bound)",
+            "    ",
+            "    total_width = width_neg + width_pos + 1e-6 # \u52a0\u6781\u5c0f\u503c\u9632\u9664\u96f6",
+            "    u = torch.rand(len(env_ids), device=device) * total_width",
+            "    ",
+            "    samples = torch.where(",
+            "        u < width_neg, ",
+            "        cfg_min + u, ",
+            "        cfg_max - width_pos + (u - width_neg)",
+            "    )",
+            "    return samples",
+            "",
+            "def sample_single_interval(env_ids, cfg_min, cfg_max, device):"
+          ]
+        }
+      ]
+    }
+  ],
+  "terrain_tile_m": 9.0,
+  "sub_terrain_border_m": 0.5,
+  "effective_length_m": 8.0,
+  "episode_seconds": 25.0,
+  "policy_dt_s": 0.02,
+  "initial_ordinary_per_axis_lower_mps": 0.19984012789768185,
+  "initial_ordinary_xy_norm_lower_mps": 0.2826166191792756,
+  "project_planned_cruise_minimum_mps": 0.6,
+  "project_rule_source": ".trellis/spec/backend/newton-minimum-cruise.md",
+  "claim": "Dynamic sampling gap and project operating floor are distinct; no universal fixed trained minimum or causal speed result established yet."
+}

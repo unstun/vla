@@ -1,0 +1,242 @@
+--- a/mac_native_gate.py
++++ b/mac_native_gate.py
+@@ -28,8 +28,8 @@
+ 
+ def verify(build, manifest):
+     if build.resolve()!=NATIVE.resolve():
+-        raise ValueError('v64 requires the unchanged v63 native source')
+-    receipt_path=Path(os.environ['V64_BUILD_EVIDENCE'])/'build_receipt.json'
++        raise ValueError('v65 requires the unchanged v63 native source')
++    receipt_path=Path(os.environ['V65_BUILD_EVIDENCE'])/'build_receipt.json'
+     receipt=json.loads(receipt_path.read_text())
+     validate_receipt(receipt,manifest)
+     if sha(receipt_path)!=manifest['mac_build_receipt_sha256']:
+@@ -43,7 +43,7 @@
+     qualification=json.loads(subset.read_text())
+     result=BASE/'versions/v63/mac_tests/attempt03/result.json'
+     if (not qualification['mac_suite_passed'] or not qualification['build_passed'] or
+-        qualification['test_result_sha256']!=sha(result) or not json.loads(result.read_text())['passed']):
++        qualification['result_sha256']!=sha(result) or not json.loads(result.read_text())['passed']):
+         raise ValueError('Required actual Mac native/recorded tests did not pass')
+     script="""from pathlib import Path
+ import hashlib,json,sys
+@@ -52,12 +52,12 @@
+ for group in ('native_source_sha256','native_install_sha256'):
+  for name,h in receipt[group].items():
+   assert hashlib.sha256((root/name).read_bytes()).hexdigest()==h,name
+-print('V64_ACTUAL_SOURCE_INSTALL_GATE_PASS')
++print('V65_ACTUAL_SOURCE_INSTALL_GATE_PASS')
+ """
+-    checked=subprocess.run(['docker','exec',os.environ['V64_NATIVE_CONTAINER'],
++    checked=subprocess.run(['docker','exec',os.environ['V65_NATIVE_CONTAINER'],
+         'python3','-c',script,str(receipt_path)],capture_output=True,text=True,timeout=30)
+     checked.check_returncode()
+-    if 'V64_ACTUAL_SOURCE_INSTALL_GATE_PASS' not in checked.stdout:
++    if 'V65_ACTUAL_SOURCE_INSTALL_GATE_PASS' not in checked.stdout:
+         raise ValueError('Actual installed byte gate has no success evidence')
+     return {'actual_native_source_install_gate_passed':True,
+         'mac_component_subset_passed':True,'full_component_qualification':False,
+--- a/mac_supervisor.py
++++ b/mac_supervisor.py
+@@ -1,10 +1,28 @@
+ """Use the original bounded supervisor with an explicit temporary run root."""
+ from pathlib import Path
+-import importlib.util,os
++import importlib.util,os,sys
+ HERE=Path(__file__).resolve().parent;BASE=HERE.parents[1]
+-source=BASE.parent/'2026-09-26_newton_macos_policy/scripts/run_bounded.py'
+-spec=importlib.util.spec_from_file_location('v64_original_supervisor',source)
+-module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+-module.BASE=Path(os.environ['V64_TEMP_ROOT'])
+-module.MAX_DEADLINE_S=1800
+-module.main()
++
++def verify_prepared_mount(run):
++    if not run.exists():return
++    allowed={'artifacts','artifacts/external_episode'}
++    for path in run.rglob('*'):
++        if path.is_symlink() or not path.is_dir() or str(path.relative_to(run)) not in allowed:
++            raise FileExistsError('Run already contains data: '+str(path))
++
++def main():
++    source=BASE.parent/'2026-09-26_newton_macos_policy/scripts/run_bounded.py'
++    text=source.read_text();old='out.mkdir(parents=True, exist_ok=False)'
++    assert text.count(old)==1
++    index=sys.argv.index('--run-id');run_id=sys.argv[index+1]
++    root=Path(os.environ['V65_TEMP_ROOT'])
++    assert root.parent==Path('/private/tmp') and root.name.startswith('vla_newton_v65_')
++    verify_prepared_mount(root/'runs'/run_id)
++    spec=importlib.util.spec_from_file_location('v65_original_supervisor',source)
++    module=importlib.util.module_from_spec(spec)
++    # Only Docker's pre-created empty tmpfs-parent directories are accepted.
++    # Original process group, deadline, child/environment and results stay exact.
++    exec(compile(text.replace(old,'out.mkdir(parents=True, exist_ok=True)'),str(source),'exec'),module.__dict__)
++    module.BASE=root;module.MAX_DEADLINE_S=1800;module.main()
++
++if __name__=='__main__':main()
+--- a/mac_trial.py
++++ b/mac_trial.py
+@@ -20,7 +20,7 @@
+ def freeze(receipt_path):
+     """Pin this host integration without claiming physics/full qualification."""
+     assert not (HERE/'manifest.json').exists(),'Frozen source cannot be replaced'
+-    parent=json.loads((BASE/'versions/v63/manifest.json').read_text())
++    parent=json.loads((BASE/'versions/v64/manifest.json').read_text())
+     runtime=json.loads((BASE/'versions/v59/manifest.json').read_text())
+     selected=dict(runtime['source_files']);locations=dict(runtime['snapshot_locations'])
+     selected.update(parent['source_files']);locations.update(parent['snapshot_locations'])
+@@ -35,8 +35,8 @@
+             assert not target.exists();shutil.copyfile(path,target);location=str(target.relative_to(ROOT))
+         selected[name]=h;locations[name]=location
+     receipt=json.loads(receipt_path.read_text())
+-    manifest={'version':'v64','parent':'v63','native_source_parent':'v63','runtime_source_parent':'v59',
+-        'parent_manifest_sha256':sha(BASE/'versions/v63/manifest.json'),
++    manifest={'version':'v65','parent':'v64','native_source_parent':'v63','runtime_source_parent':'v59',
++        'parent_manifest_sha256':sha(BASE/'versions/v64/manifest.json'),
+         'runtime_parent_manifest_sha256':sha(BASE/'versions/v59/manifest.json'),
+         'status':'frozen_user_authorized_mac_physics_validation_pending',
+         'source_files':dict(sorted(selected.items())),'snapshot_locations':dict(sorted(locations.items())),
+@@ -60,17 +60,17 @@
+     assert shutil.disk_usage(HERE).free>12*1024**3
+     for port in (46200,46201,46202,46203):
+         with socket.socket() as s:s.bind(('127.0.0.1',port))
+-    temp=Path(tempfile.mkdtemp(prefix='vla_newton_v64_',dir='/private/tmp'))
++    temp=Path(tempfile.mkdtemp(prefix='vla_newton_v65_',dir='/private/tmp'))
+     (temp/'scripts').mkdir();(temp/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+-    container=f'vla-v64-mac-physics-{args.attempt:02d}'
++    container=f'vla-v65-mac-physics-{args.attempt:02d}'
+     env=os.environ.copy();env.update(DOCKER_CONTEXT='desktop-linux',
+-        PATH='/Users/sun/.local/bin:'+env['PATH'],V64_TEMP_ROOT=str(temp),
+-        V64_NATIVE_CONTAINER=container,V64_BUILD_EVIDENCE=str(evidence),
+-        V64_PHYSICAL_FLOOR=str(temp/'physical_floor.f32'),
++        PATH='/Users/sun/.local/bin:'+env['PATH'],V65_TEMP_ROOT=str(temp),
++        V65_NATIVE_CONTAINER=container,V65_BUILD_EVIDENCE=str(evidence),
++        V65_PHYSICAL_FLOOR=str(temp/'physical_floor.f32'),
+         PYTHONDONTWRITEBYTECODE='1',PYTHONUNBUFFERED='1',
+         PYTHONPATH=str(BASE/'runtime_sources/bridge')+':'+env.get('PYTHONPATH',''))
+     request={'host':'Mac','gpu5070ti_used':False,'started_utc':datetime.now(timezone.utc).isoformat(),
+-        'authorization':'Dr Sun: u can test on newton on mac','version':'v64','native_parent':'v63',
++        'authorization':'Dr Sun: u can test on newton on mac','version':'v65','native_parent':'v63',
+         'runtime_parent':'v59','trials':args.trials,'simulation_seconds_per_trial':args.seconds,
+         'bulk_root':str(temp),'compact_return_root':str(evidence),'bulk_is_outside_repository':True,
+         'source_manifest_sha256':sha(BASE/'versions/v63/manifest.json'),
+@@ -90,7 +90,7 @@
+             '-v',str(temp)+':'+str(temp)+':rw','--entrypoint','/bin/bash',IMAGE,
+             '-c','exec sleep infinity']
+         for trial in range(1,args.trials+1):
+-            run=f'v64_mac_trial{trial:02d}_attempt{args.attempt:02d}'
++            run=f'v65_mac_trial{trial:02d}_attempt{args.attempt:02d}'
+             index=cmd.index('--entrypoint')
+             cmd[index:index]=['--tmpfs',str(temp/'runs'/run/'artifacts/external_episode')+':rw,size=8m']
+         request['container_command']=cmd;(evidence/'request.json').write_text(json.dumps(request,indent=2)+'\n')
+@@ -98,22 +98,30 @@
+         with (evidence/'build_driver.log').open('w') as log:
+             subprocess.run([DOCKER,'exec',container,'/bin/bash',str(HERE/'mac_build_inside.sh')],
+                 env=env,stdout=log,stderr=subprocess.STDOUT,timeout=1200,check=True)
+-        subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V64_PHYSICAL_FLOOR']],
++        subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V65_PHYSICAL_FLOOR']],
+             env=env,capture_output=True,text=True,timeout=30,check=True)
+         shutil.copyfile(temp/'physical_floor.provenance.json',evidence/'physical_floor_provenance.json')
+-        manifest=freeze(evidence/'build_receipt.json')
++        from mac_native_gate import verify
++        receipt_path=evidence/'build_receipt.json'
++        receipt=json.loads(receipt_path.read_text())
++        provisional={'native_source_sha256':receipt['native_source_sha256'],
++            'mac_build_receipt_sha256':sha(receipt_path),
++            'mac_subset_qualification_sha256':sha(BASE/'versions/v63/component_qualification.json')}
++        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V65_BUILD_EVIDENCE','V65_NATIVE_CONTAINER')})
++        verify(NATIVE,provisional)
++        manifest=freeze(receipt_path)
+         result['integration_manifest_sha256']=sha(HERE/'manifest.json')
+         from mac_native_gate import verify
+-        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V64_BUILD_EVIDENCE','V64_NATIVE_CONTAINER')})
++        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V65_BUILD_EVIDENCE','V65_NATIVE_CONTAINER')})
+         (evidence/'entry_gate.json').write_text(json.dumps(verify(NATIVE,manifest),indent=2)+'\n')
+         for trial in range(1,args.trials+1):
+-            run=f'v64_mac_trial{trial:02d}_attempt{args.attempt:02d}'
++            run=f'v65_mac_trial{trial:02d}_attempt{args.attempt:02d}'
+             command=[str(PYTHON),str(HERE/'mac_managed.py'),'--run-id',run,'--deadline','540',
+                 '--retention','archive','--',str(PYTHON),str(HERE/'run_local_episode.py'),
+                 '--backend-executor','single','--applied-transport','zmq','--geometry-obstacles',
+                 '--scene','building_full','--building-route','historical_full',
+                 '--goal-wall-budget','180','--startup-mode','factory_pd','--stance-hold',
+-                '--integration-version','v64','--real-time-factor','1',
++                '--integration-version','v65','--real-time-factor','1',
+                 '--recording-sim-seconds',str(args.seconds)]
+             with (evidence/(run+'.execution.log')).open('w') as log:
+                 process=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=580)
+--- a/run_local_episode.py
++++ b/run_local_episode.py
+@@ -122,7 +122,7 @@
+     parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v64 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v65 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -160,8 +160,8 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v64":
+-        raise ValueError("This entry point requires frozen integration version v64")
++    if integration_version != "v65":
++        raise ValueError("This entry point requires frozen integration version v65")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+@@ -184,7 +184,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v64 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v65 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -250,7 +250,7 @@
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
+     for name in ("run_local_episode.py", "native_graph.py", "native_backend_entry.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v64_" + name))
++        shutil.copyfile(VERSION / name, out / ("executed_v65_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -274,8 +274,8 @@
+         "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+     name = "vla-newton-" + out.name.replace("_", "-")
+-    name = os.environ["V64_NATIVE_CONTAINER"]
+-    command = ["docker", "exec", "-e", "V64_PHYSICAL_FLOOR=" + os.environ["V64_PHYSICAL_FLOOR"],
++    name = os.environ["V65_NATIVE_CONTAINER"]
++    command = ["docker", "exec", "-e", "V65_PHYSICAL_FLOOR=" + os.environ["V65_PHYSICAL_FLOOR"],
+         name, "/bin/bash", str(out / "native_inside.sh")]
+     (out / "container_command.json").write_text(json.dumps(command, indent=2) + "\n")
+     with (out / "native_graph.log").open("w") as log:
+--- a/native_graph.py
++++ b/native_graph.py
+@@ -19,8 +19,8 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v64":
+-        raise ValueError("v64 graph requires the frozen v64 integration identity")
++    if request.get("integration_version") != "v65":
++        raise ValueError("v65 graph requires the frozen v65 integration identity")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+--- a/physical_floor_publisher.py
++++ b/physical_floor_publisher.py
+@@ -16,7 +16,7 @@
+         super().__init__('pct_physical_floor_publisher')
+         info=json.loads((HERE/'physical_floor_input.json').read_text())
+         assert info['role']=='physical_floor_presence_only' and not info['traversal_authority'] and not info['terrain_return_classification_authority']
+-        data=Path(os.environ['V64_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
++        data=Path(os.environ['V65_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
+         self.points=np.frombuffer(data,dtype='<f4').reshape(-1,4)
+         assert len(self.points)==info['files']['physical_floor.f32']['points'] and np.isfinite(self.points).all()
+         self.gate=SimClockGate();qos=QoSProfile(depth=1,reliability=QoSReliabilityPolicy.RELIABLE,durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)

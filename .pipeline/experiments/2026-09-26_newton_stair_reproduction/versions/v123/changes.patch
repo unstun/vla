@@ -1,0 +1,160 @@
+--- v122/physical_floor_publisher.py
++++ v123/physical_floor_publisher.py
+@@ -16,7 +16,7 @@
+         super().__init__('pct_physical_floor_publisher')
+         info=json.loads((HERE/'physical_floor_input.json').read_text())
+         assert info['role']=='physical_floor_presence_only' and not info['traversal_authority'] and not info['terrain_return_classification_authority']
+-        data=Path(os.environ['V122_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
++        data=Path(os.environ['V123_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
+         self.points=np.frombuffer(data,dtype='<f4').reshape(-1,4)
+         assert len(self.points)==info['files']['physical_floor.f32']['points'] and np.isfinite(self.points).all()
+         self.gate=SimClockGate();qos=QoSProfile(depth=1,reliability=QoSReliabilityPolicy.RELIABLE,durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+--- v122/mac_supervisor.py
++++ v123/mac_supervisor.py
+@@ -15,14 +15,19 @@
+     text=source.read_text();old='out.mkdir(parents=True, exist_ok=False)'
+     assert text.count(old)==1
+     index=sys.argv.index('--run-id');run_id=sys.argv[index+1]
+-    root=Path(os.environ['V122_TEMP_ROOT'])
+-    assert root.parent==Path('/private/tmp') and root.name.startswith('vla_newton_v122_')
++    root=Path(os.environ['V123_TEMP_ROOT'])
++    assert root.parent==Path('/data/sun/vla_mppi_20261009/trials') and root.name.startswith('v123_')
+     verify_prepared_mount(root/'runs'/run_id)
+-    spec=importlib.util.spec_from_file_location('v122_original_supervisor',source)
++    spec=importlib.util.spec_from_file_location('v123_original_supervisor',source)
+     module=importlib.util.module_from_spec(spec)
+     # Only Docker's pre-created empty tmpfs-parent directories are accepted.
+     # Original process group, deadline, child/environment and results stay exact.
+-    exec(compile(text.replace(old,'out.mkdir(parents=True, exist_ok=True)'),str(source),'exec'),module.__dict__)
++    text=text.replace(old,'out.mkdir(parents=True, exist_ok=True)')
++    # Linux reports ru_maxrss in KiB; retain the evidence field's byte unit.
++    rss='resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss'
++    assert text.count(rss)==1
++    text=text.replace(rss,'('+rss+' * 1024)')
++    exec(compile(text,str(source),'exec'),module.__dict__)
+     module.BASE=root;module.MAX_DEADLINE_S=1800;module.main()
+ 
+ if __name__=='__main__':main()
+--- v122/mac_managed.py
++++ v123/mac_managed.py
+@@ -14,6 +14,6 @@
+ namespace['verify_prepared_mount']=verify_prepared_mount
+ exec(compile(text.replace(old,'verify_prepared_mount(run)'),str(source),'exec'),namespace)
+ managed_run.main=namespace['main']
+-managed_run.a.BASE=Path(os.environ['V122_TEMP_ROOT'])
++managed_run.a.BASE=Path(os.environ['V123_TEMP_ROOT'])
+ managed_run.a.AUDIT=managed_run.a.BASE/'artifact_audit'
+ raise SystemExit(managed_run.main())
+--- v122/native_graph.py
++++ v123/native_graph.py
+@@ -19,8 +19,8 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v122":
+-        raise ValueError("v122 graph requires the frozen v122 integration identity")
++    if request.get("integration_version") != "v123":
++        raise ValueError("v123 graph requires the frozen v123 integration identity")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+--- v122/derive_mac_floor.py
++++ v123/derive_mac_floor.py
+@@ -24,7 +24,7 @@
+ assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
+ assert not a.output.exists();a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_bytes(data)
+ a.output.with_suffix('.provenance.json').write_text(json.dumps({
+-    'host':'Mac','role':info['role'],'traversal_authority':False,
++    'host':'gpu5070ti','role':info['role'],'traversal_authority':False,
+     'terrain_return_classification_authority':False,'path':str(a.output),
+     'sha256':sha(a.output),'bytes':len(data),'points':len(physical),
+     'inputs':info['inputs'],'producer':info['producer'],'selected_surface_unchanged':True,
+--- v122/run_local_episode.py
++++ v123/run_local_episode.py
+@@ -15,7 +15,7 @@
+ BASE = VERSION.parents[1]
+ PROJECT = BASE.parents[2]
+ BUILD = VERSION
+-IMAGE = os.environ.get("V122_EXECUTION_IMAGE")  # The owned launcher pins the qualified Foxy image.
++IMAGE = os.environ.get("V123_EXECUTION_IMAGE")  # The owned launcher pins the qualified Foxy image.
+ 
+ 
+ def return_linux_state(name, out):
+@@ -83,7 +83,7 @@
+ 
+ 
+ def verify_native_build(build, frozen):
+-    from mac_native_gate import verify
++    from native_gate import verify
+     return verify(build, frozen)
+ 
+ 
+@@ -137,7 +137,7 @@
+     parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v122 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v123 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -175,18 +175,18 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v122":
+-        raise ValueError("This entry point requires frozen integration version v122")
++    if integration_version != "v123":
++        raise ValueError("This entry point requires frozen integration version v123")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+         qualification = json.loads((VERSION / "quality.json").read_text())
+         if not qualification["passed"] or qualification.get("native_packages_available", qualification.get("native_packages_built")) != 14:
+-            raise ValueError("Mac diagnostic physics requires actual native/recorded component tests")
++            raise ValueError("Linux diagnostic physics requires actual native/recorded component tests")
+         (out / "qualification_scope.json").write_text(json.dumps({
+-            "mode": "user_authorized_mac_physics_validation",
+-            "mac_component_subset_passed": True, "full_component_qualification": False,
+-            "missing_original_corner_fixtures": ["Full Mac corner navigation and steady 30 Hz acceptance"],
++            "mode": "user_authorized_gpu5070ti_physics_validation",
++            "linux_component_subset_passed": True, "full_component_qualification": False,
++            "missing_original_corner_fixtures": ["Full Linux corner navigation and steady 30 Hz acceptance"],
+             "live_safety_gates": "original occupancy, stair support, PVA, dynamics, freshness and backend stop gates",
+             "reference_version": "v48", "physics_acceptance": False,
+         }, indent=2) + "\n")
+@@ -199,7 +199,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v122 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v123 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -265,7 +265,7 @@
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
+     for name in ("run_local_episode.py", "native_graph.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py", "native_observer.py", "nav2_recorder.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v122_" + name))
++        shutil.copyfile(VERSION / name, out / ("executed_v123_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -283,13 +283,13 @@
+     sources = BASE / "runtime_sources"
+     pythonpath = "/task/foxy_python:" + str(sources / "bridge")
+     script = "\n".join(["set -e", "source /opt/ros/foxy/setup.bash",
+-        "source /task/v122_workspace/install/setup.bash",
++        "source /task/" + os.environ["V123_VARIANT"] + "/install/setup.bash",
+         "export PYTHONPATH=" + shlex.quote(pythonpath) + ':"${PYTHONPATH:-}"',
+         "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+     name = "vla-newton-" + out.name.replace("_", "-")
+-    name = os.environ["V122_NATIVE_CONTAINER"]
+-    command = ["docker", "exec", "-e", "V122_PHYSICAL_FLOOR=" + os.environ["V122_PHYSICAL_FLOOR"],
++    name = os.environ["V123_NATIVE_CONTAINER"]
++    command = ["docker", "exec", "-e", "V123_PHYSICAL_FLOOR=" + os.environ["V123_PHYSICAL_FLOOR"],
+         name, "/bin/bash", str(out / "native_inside.sh")]
+     (out / "container_command.json").write_text(json.dumps(command, indent=2) + "\n")
+     with (out / "native_graph.log").open("w") as log:

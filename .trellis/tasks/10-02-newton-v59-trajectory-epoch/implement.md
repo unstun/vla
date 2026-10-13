@@ -1,0 +1,1 @@
+Actual parent controller red test, local manager/controller delta, isolated remote build and contract/replay checks, freeze, resource-gated 90-second physics, original-data analysis and compact return.

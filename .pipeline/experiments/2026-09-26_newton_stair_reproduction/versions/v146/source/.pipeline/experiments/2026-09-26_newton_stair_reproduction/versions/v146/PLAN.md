@@ -1,0 +1,3 @@
+# v146 read-only diagnosis of the failed original full route
+
+Stage: experiment + analysis. Preserve failedv144_full_candidate_attempt01: original spatial start,23.126m measured travel,61.858s native, no fall, FAILED action. Reconstruct ordered published sensor prefix and actual torso pose at the first persistent final-position initial-spline rejection. Query the installed unchanged nativev139 map at measured versus candidate headings; report support and raw occupied contributors. This counterfactual reconstruction does not restore original asynchronous scheduling. No navigation changes, new physics, gate relaxation or full-route success claim. Bulk inputs and builds stay on5070ti; return compact cause/identity logs.

@@ -1,0 +1,29 @@
+--- native_v147/full_trajectory_collision.h
++++ native_v151/full_trajectory_collision.h
+@@ -78,10 +78,24 @@
+     result.status = TrajectoryCheckStatus::SampleBudgetExceeded;
+     return result;
+   }
+-  const size_t count = static_cast<size_t>(divisions);
++  // Preserve every legacy sample exactly; add interior samples so a curve
++  // cannot pass solely because a narrow blocked interval lies between them.
++  constexpr size_t subdivisions = 5;
++  const size_t coarse_count = static_cast<size_t>(divisions);
++  if (coarse_count > (maximum_samples - 1) / subdivisions) {
++    result.status = TrajectoryCheckStatus::SampleBudgetExceeded;
++    return result;
++  }
++  const size_t count = coarse_count * subdivisions;
+   for (size_t i = 0; i <= count; ++i) {
+     // Set the final endpoint explicitly, avoiding cumulative floating drift.
+-    const double t = i == count ? duration : begin + (duration - begin) * (static_cast<double>(i) / count);
++    const size_t coarse_index = i / subdivisions;
++    const size_t interior_index = i % subdivisions;
++    // The boundary branch retains the legacy floating-point expression.
++    const double fraction = coarse_count == 0 ? 0.0 : interior_index == 0
++        ? static_cast<double>(coarse_index) / coarse_count
++        : (static_cast<double>(coarse_index) + static_cast<double>(interior_index) / subdivisions) / coarse_count;
++    const double t = i == count ? duration : begin + (duration - begin) * fraction;
+     const Eigen::Vector3d pos = trajectory.evaluateDeBoorT(t);
+     const Eigen::Vector3d ahead = trajectory.evaluateDeBoorT(std::min(t + lookahead_s, duration));
+     const Eigen::Vector3d vel = velocity.evaluateDeBoorT(t);

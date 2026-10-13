@@ -1,0 +1,305 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan71_remaining_curve_v48/src/bspline_opt/src/bspline_optimizer.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan73_v48_continuity_v50/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -975,6 +975,7 @@
+ 
+   bool BsplineOptimizer::rebound_optimize()
+   {
++    reactive_stair::PlanningProfile::Scope profile(grid_map_->planning_profile_, reactive_stair::PlanningProfile::Optimizer);
+     iter_num_ = 0;
+     int start_id = order_;
+     int end_id = this->cps_.size - order_;
+@@ -1088,6 +1089,7 @@
+ 
+   bool BsplineOptimizer::refine_optimize()
+   {
++    reactive_stair::PlanningProfile::Scope profile(grid_map_->planning_profile_, reactive_stair::PlanningProfile::Refine);
+     iter_num_ = 0;
+     int start_id = order_;
+     int end_id = this->cps_.points.cols() - order_;
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan71_remaining_curve_v48/src/path_searching/include/path_searching/dyn_a_star.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan73_v48_continuity_v50/src/path_searching/include/path_searching/dyn_a_star.h
+@@ -122,6 +122,9 @@
+     // within the same total budget, ordered by complete reached-path cost.
+     // The default keeps the optimizer's existing adjusted-endpoint behavior.
+     bool use_upstream_search_plane{false};
++    // Disable only for paired component profiling against the original search.
++    bool goal_region_precheck_enabled{true};
++    unsigned long goal_region_rejections{0};
+     int goal_approach_max_iterations{1000};
+     ASTAR_RET AstarSearch(const double step_size, Eigen::Vector3d start_pt,
+                          Eigen::Vector3d end_pt, bool exact_endpoint = false, double goal_tolerance = 0.0);
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan71_remaining_curve_v48/src/path_searching/src/dyn_a_star.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan73_v48_continuity_v50/src/path_searching/src/dyn_a_star.cpp
+@@ -1,3 +1,4 @@
++#include <plan_env/goal_region_bounds.h>
+ #include "path_searching/dyn_a_star.h"
+ #include <algorithm>
+ #include <chrono>
+@@ -179,6 +180,18 @@
+     // if ( start_pt(0) > -1 && start_pt(0) < 0 )
+     //     cout << "start_pt=" << start_pt.transpose() << " end_pt=" << end_pt.transpose() << endl;
+ 
++    if (goal_region_precheck_enabled && exact_endpoint && goal_tolerance > 0.0) {
++        reactive_stair::PlanningProfile::Scope proof(grid_map_->planning_profile_, reactive_stair::PlanningProfile::GoalProof);
++        Eigen::Vector3d lower, upper;
++        if (grid_map_->bodyCenterBounds(lower, upper) &&
++            !reactive_stair::goalRegionMayFit(end_pt, goal_tolerance, lower, upper,
++                center_, step_size_, POOL_SIZE_, CENTER_IDX_, start_idx, end_idx, use_upstream_search_plane)) {
++            ++goal_region_rejections;
++            RCLCPP_INFO(rclcpp::get_logger("path_searching"), "V50_GOAL_REGION_EMPTY bounds_certificate=1");
++            return ASTAR_RET::SEARCH_ERR;
++        }
++    }
++
+     const Eigen::Vector3d search_start = Index2Coord(start_idx);
+     const Eigen::Vector3d search_end = Index2Coord(end_idx);
+     const Eigen::Vector2d search_start_xy = search_start.head<2>();
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan73_v48_continuity_v50/src/plan_env/include/plan_env/goal_region_bounds.h
+@@ -0,0 +1,62 @@
++#pragma once
++#include <Eigen/Eigen>
++#include <cmath>
++#include <algorithm>
++namespace reactive_stair {
++// False is a geometric impossibility certificate, never a safety verdict.
++// The box is a necessary condition for BOTH symmetric cylinder footprints.
++inline bool goalRegionMayFit(const Eigen::Vector3d &goal, double tolerance,
++    const Eigen::Vector3d &lower, const Eigen::Vector3d &upper,
++    const Eigen::Vector3d &center, double step,
++    const Eigen::Vector3i &pool, const Eigen::Vector3i &center_index,
++    const Eigen::Vector3i &start_index, const Eigen::Vector3i &end_index,
++    bool search_plane) {
++  if (!goal.allFinite() || !lower.allFinite() || !upper.allFinite() || !center.allFinite() ||
++      !std::isfinite(tolerance) || tolerance <= 0 || !std::isfinite(step) || step <= 0 ||
++      (pool.array() <= 0).any() || (pool.array() > 10000).any()) return true;
++  if (goal.cwiseAbs().maxCoeff()>1e6 || center.cwiseAbs().maxCoeff()>1e6 ||
++      lower.cwiseAbs().maxCoeff()>1e6 || upper.cwiseAbs().maxCoeff()>1e6 ||
++      static_cast<long long>(pool.x())*pool.y()>1000000) return true;
++  // Expand outward for floating-point operations in the original footprint test.
++  const double slack=1e-6;
++  const Eigen::Vector3d lo=lower-Eigen::Vector3d::Constant(slack);
++  const Eigen::Vector3d hi=upper+Eigen::Vector3d::Constant(slack);
++  if ((lo.array()>hi.array()).any()) return false;
++  auto inside=[&](const Eigen::Vector3d &p) {
++    return (p.array()>=lo.array()).all() && (p.array()<=hi.array()).all();
++  };
++  // Exact terminal connectors may return the exact goal from any reached node.
++  if (inside(goal)) return true;
++  const Eigen::Vector3d nearest=goal.cwiseMax(lo).cwiseMin(hi);
++  if ((nearest-goal).norm()>tolerance+slack) return false;
++  if (!search_plane) return true; // Uncertain 3D lattice: retain native search.
++  auto point=[&](const Eigen::Vector3i &i) -> Eigen::Vector3d {
++    return (i-center_index).cast<double>()*step+center;
++  };
++  const Eigen::Vector3d start=point(start_index), end=point(end_index);
++  if (inside(start) && (start-goal).norm()<=tolerance+slack) return true;
++  const Eigen::Vector2d delta=end.head<2>()-start.head<2>();
++  const double length2=delta.squaredNorm();
++  // Enumerate a superset of every native neighbor endpoint; boundary indices
++  // are included conservatively even though native neighbors exclude them.
++  for(int x=0;x<pool.x();++x) for(int y=0;y<pool.y();++y) {
++    Eigen::Vector3i i(x,y,start_index.z());
++    const Eigen::Vector3d xy=point(i);
++    if (std::abs(xy.x()-goal.x())>tolerance+slack ||
++        std::abs(xy.y()-goal.y())>tolerance+slack ||
++        xy.x()<lo.x() || xy.x()>hi.x() || xy.y()<lo.y() || xy.y()>hi.y()) continue;
++    if (length2>=1e-8) {
++      double ratio=(xy.head<2>()-start.head<2>()).dot(delta)/length2;
++      ratio=std::max(0.0,std::min(1.0,ratio));
++      const double z=start.z()+ratio*(end.z()-start.z());
++      const double z_index=(z-center.z())*(1.0/step)+0.5;
++      if (!std::isfinite(z_index) || std::abs(z_index)>1e8) return true;
++      i.z()=static_cast<int>(z_index)+center_index.z();
++    }
++    if(i.z()<0 || i.z()>=pool.z()) continue;
++    const Eigen::Vector3d p=point(i);
++    if(inside(p) && (p-goal).norm()<=tolerance+slack) return true;
++  }
++  return false;
++}
++} // namespace reactive_stair
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan71_remaining_curve_v48/src/plan_env/include/plan_env/grid_map.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan73_v48_continuity_v50/src/plan_env/include/plan_env/grid_map.h
+@@ -153,11 +153,25 @@
+   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+ };
+ 
++#include <plan_env/planning_profile.h>
++
+ class GridMap {
+ public:
+   GridMap() {}
+   ~GridMap() {}
+ 
++  reactive_stair::PlanningProfile planning_profile_;
++  // Necessary body-center bounds only; every actual collision query stays live.
++  bool bodyCenterBounds(Eigen::Vector3d &lower, Eigen::Vector3d &upper) const {
++    if (!mp_.map_min_boundary_.allFinite() || !mp_.map_max_boundary_.allFinite() ||
++        !std::isfinite(mp_.double_cylinder_radius_) || mp_.double_cylinder_radius_<0 ||
++        !std::isfinite(mp_.double_cylinder_offset_) ||
++        !std::isfinite(mp_.obstacles_inflation_z_down) || mp_.obstacles_inflation_z_down<0 ||
++        !std::isfinite(mp_.obstacles_inflation_z_up) || mp_.obstacles_inflation_z_up<0) return false;
++    lower=mp_.map_min_boundary_+Eigen::Vector3d(mp_.double_cylinder_radius_,mp_.double_cylinder_radius_,mp_.obstacles_inflation_z_down);
++    upper=mp_.map_max_boundary_-Eigen::Vector3d(mp_.double_cylinder_radius_,mp_.double_cylinder_radius_,mp_.obstacles_inflation_z_up);
++    return true;
++  }
+   enum { INVALID_IDX = -10000 };
+ 
+   // Only raw occupied-source classification is memoized; query-specific
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan73_v48_continuity_v50/src/plan_env/include/plan_env/planning_profile.h
+@@ -0,0 +1,48 @@
++#pragma once
++#include <array>
++#include <chrono>
++#include <ctime>
++#include <iomanip>
++#include <sstream>
++namespace reactive_stair {
++// Observation only: no deadlines, cancellation, eligibility or stop decisions.
++struct PlanningProfile {
++  enum Stage { Target, GoalSearch, GoalProof, Inputs, Cloud, SlidingMap, Seed,
++               WarmSeed, Optimizer, Refine, FinalCheck, Count };
++  struct Reading { double wall_ms{0}, cpu_ms{0}; unsigned long calls{0}; };
++  using Snapshot = std::array<Reading, Count>;
++  Snapshot values{};
++  static double cpuMs() {
++    timespec ts{};
++    return clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) == 0
++        ? ts.tv_sec * 1000.0 + ts.tv_nsec * 1e-6 : 0.0;
++  }
++  struct Scope {
++    PlanningProfile &owner; Stage stage;
++    std::chrono::steady_clock::time_point wall;
++    double cpu; bool running{true};
++    Scope(PlanningProfile &p, Stage s) : owner(p), stage(s),
++        wall(std::chrono::steady_clock::now()), cpu(cpuMs()) {}
++    void finish() {
++      if (!running) return;
++      auto &r=owner.values[stage];
++      r.wall_ms+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-wall).count();
++      r.cpu_ms+=cpuMs()-cpu; ++r.calls; running=false;
++    }
++    ~Scope() { finish(); }
++    Scope(const Scope&)=delete; Scope& operator=(const Scope&)=delete;
++  };
++  std::string since(const Snapshot &before) const {
++    static const char *names[Count]={"target","goal_search","goal_proof","inputs",
++      "cloud","sliding_map","seed","warm_seed","optimizer","refine","final_check"};
++    std::ostringstream out; out<<std::setprecision(9)<<"{";
++    for (int i=0;i<Count;++i) {
++      if(i)out<<",";
++      out<<"\""<<names[i]<<"\":{\"wall_ms\":"<<values[i].wall_ms-before[i].wall_ms
++         <<",\"cpu_ms\":"<<values[i].cpu_ms-before[i].cpu_ms
++         <<",\"calls\":"<<values[i].calls-before[i].calls<<"}";
++    }
++    out<<"}";return out.str();
++  }
++};
++} // namespace reactive_stair
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan71_remaining_curve_v48/src/plan_env/src/grid_map.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan73_v48_continuity_v50/src/plan_env/src/grid_map.cpp
+@@ -366,7 +366,8 @@
+ }
+ 
+ void GridMap::updateSlidingMap(const Eigen::Vector3d& center)
+-{
++{
++  reactive_stair::PlanningProfile::Scope profile(planning_profile_, reactive_stair::PlanningProfile::SlidingMap);
+   invalidateRawContributorCache();
+   if (!mp_.map_sliding_en_)
+     return;
+@@ -928,6 +929,7 @@
+ 
+ void GridMap::refreshSensorInputs(const char *site, int fsm_odometry)
+ {
++  reactive_stair::PlanningProfile::Scope profile(planning_profile_, reactive_stair::PlanningProfile::Inputs);
+   // Actual occupancy/ground mutations invalidate. An empty input drain does not.
+   // v31: SCAN serves its planning and safety timers and these subscriptions on
+   // one single-threaded executor, timers first, while the simulation clock runs
+@@ -1010,6 +1012,7 @@
+ 
+ void GridMap::cloudCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr img)
+ {
++  reactive_stair::PlanningProfile::Scope profile(planning_profile_, reactive_stair::PlanningProfile::Cloud);
+   invalidateRawContributorCache();
+   if (!reactiveSurfaceGroundReady()) return;
+   if (mp_.sensor_type_ != "lidar")
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan71_remaining_curve_v48/src/plan_manage/src/planner_manager.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan73_v48_continuity_v50/src/plan_manage/src/planner_manager.cpp
+@@ -118,6 +118,7 @@
+       const Eigen::Vector3d &velocity, const Eigen::Vector3d &acceleration,
+       const Eigen::Vector3d &target, vector<Eigen::Vector3d> &path, double &interval, std::string &reason)
+   {
++    reactive_stair::PlanningProfile::Scope profile(grid_map_->planning_profile_, reactive_stair::PlanningProfile::WarmSeed);
+     path.clear();
+     interval = 0.0;
+     auto reject = [&](const char *why) { reason = why; invalidateWarmStart(); return false; };
+@@ -274,6 +275,7 @@
+     auto t_start = std::chrono::steady_clock::now();
+     double t_init = 0.0, t_opt = 0.0, t_refine = 0.0;
+ 
++    reactive_stair::PlanningProfile::Scope seed_profile(grid_map_->planning_profile_, reactive_stair::PlanningProfile::Seed);
+     /*** STEP 1: INIT ***/
+     double ts = (start_pt - local_target_pt).norm() > 0.1 ? pp_.ctrl_pt_dist / pp_.max_vel_ * 1.2 : pp_.ctrl_pt_dist / pp_.max_vel_ * 5; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
+     vector<Eigen::Vector3d> point_set, start_end_derivatives;
+@@ -392,6 +394,7 @@
+     vector<vector<Eigen::Vector3d>> a_star_paths;
+     a_star_paths = bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
+ 
++    seed_profile.finish();
+     t_init = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();
+ 
+     static int vis_id = 0;
+@@ -478,6 +481,7 @@
+ 
+     t_refine = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();
+ 
++    reactive_stair::PlanningProfile::Scope final_profile(grid_map_->planning_profile_, reactive_stair::PlanningProfile::FinalCheck);
+     // v31: judge the final curve against the newest received inputs.
+     grid_map_->refreshSensorInputs("final_check");
+     const auto collision_started = std::chrono::steady_clock::now();
+@@ -517,6 +521,7 @@
+ 
+   std::vector<Eigen::Vector3d> SCANPlannerManager::findGoalNeighborhoodPath(
+       const Eigen::Vector3d &start, const Eigen::Vector3d &goal, double tolerance) {
++    reactive_stair::PlanningProfile::Scope profile(grid_map_->planning_profile_, reactive_stair::PlanningProfile::GoalSearch);
+     if (!grid_map_ || !bspline_optimizer_rebound_ || !bspline_optimizer_rebound_->a_star_) return {};
+     const auto search = bspline_optimizer_rebound_->a_star_;
+     if (search->AstarSearch(grid_map_->getResolution(), start, goal, true, tolerance) != ASTAR_RET::SUCCESS) return {};
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan71_remaining_curve_v48/src/plan_manage/src/scan_replan_fsm.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan73_v48_continuity_v50/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -840,7 +840,9 @@
+   {
+     if (go2_execution_frozen_ || !nominalReplanDue(true)) return;
+     const auto started = std::chrono::steady_clock::now();
++    const auto profile_before=planner_manager_->grid_map_->planning_profile_.values;
+     const bool success = planFromCurrentTraj();
++    RCLCPP_INFO(node_->get_logger(), "V50_PROFILE %s", planner_manager_->grid_map_->planning_profile_.since(profile_before).c_str());
+     const double elapsed = std::chrono::duration<double>(
+         std::chrono::steady_clock::now() - started).count();
+     RCLCPP_INFO(node_->get_logger(), "nominal_replan_result success=%d wall_s=%.9f budget_s=%.9f overrun=%d",
+@@ -922,7 +924,14 @@
+       else
+         flag_random_poly_init = true;
+ 
++      const auto initial_started=std::chrono::steady_clock::now();
++      const auto profile_before=planner_manager_->grid_map_->planning_profile_.values;
+       bool success = callReboundReplan(true, flag_random_poly_init);
++      RCLCPP_INFO(node_->get_logger(), "V50_PROFILE %s", planner_manager_->grid_map_->planning_profile_.since(profile_before).c_str());
++      const double initial_elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-initial_started).count();
++      if(replan_frequency_>0.0)
++        RCLCPP_INFO(node_->get_logger(), "nominal_replan_result success=%d wall_s=%.9f budget_s=%.9f overrun=%d",
++            success, initial_elapsed, 1.0/replan_frequency_, initial_elapsed>1.0/replan_frequency_);
+       if (success)
+       {
+ 
+@@ -1471,6 +1480,7 @@
+ 
+   bool SCANReplanFSM::getLocalTarget()
+   {
++    reactive_stair::PlanningProfile::Scope profile(planner_manager_->grid_map_->planning_profile_, reactive_stair::PlanningProfile::Target);
+     const double max_vel = planner_manager_->pp_.max_vel_;
+     const double max_acc = planner_manager_->pp_.max_acc_;
+     const bool reference = navi_mode_ == NAVI_MODE::REFERENCE_PATH;

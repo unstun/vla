@@ -1,0 +1,419 @@
+--- v70/test_managed_path.py
++++ v74/test_managed_path.py
+@@ -3,10 +3,10 @@
+ import json,os,subprocess,sys,tempfile
+ 
+ HERE=Path(__file__).resolve().parent
+-root=Path(tempfile.mkdtemp(prefix='vla_newton_v70_contract_',dir='/private/tmp'))
++root=Path(tempfile.mkdtemp(prefix='vla_newton_v74_contract_',dir='/private/tmp'))
+ (root/'scripts').mkdir();(root/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+-run='v70_manager_contract';(root/'runs'/run/'artifacts/external_episode').mkdir(parents=True)
+-env=os.environ.copy();env['V70_TEMP_ROOT']=str(root)
++run='v74_manager_contract';(root/'runs'/run/'artifacts/external_episode').mkdir(parents=True)
++env=os.environ.copy();env['V74_TEMP_ROOT']=str(root)
+ child="from pathlib import Path;import json,os;Path(os.environ['NEWTON_RUN_DIR'],'result.json').write_text(json.dumps({'status':'component_contract','physics_run':False}))"
+ command=[sys.executable,str(HERE/'mac_managed.py'),'--run-id',run,'--deadline','10',
+     '--retention','archive','--',sys.executable,'-c',child]
+@@ -16,4 +16,4 @@
+ assert json.loads((root/'runs'/run/'retention_result.json').read_text())['status']=='completed'
+ repeated=subprocess.run(command,env=env,capture_output=True,text=True,timeout=20)
+ assert repeated.returncode!=0 and 'Run already contains data' in repeated.stderr
+-print('V70_COMPLETE_MANAGER_SUPERVISOR_RETENTION_PASS',root)
++print('V74_COMPLETE_MANAGER_SUPERVISOR_RETENTION_PASS',root)
+--- v70/preparation.json
++++ v74/preparation.json
+@@ -1,32 +1,12 @@
+ {
+-  "version": "v70",
+-  "parent": "v68",
++  "version": "v74",
++  "parent": "v70",
+   "native_parent": "v63",
+   "runtime_parent": "v59",
+-  "kind": "diagnostic_only",
+-  "one_change": "Observe original backend callback/applied-read/HTTP-serializer/GC timings",
+-  "parent_manifest_sha256": "a2e0b7da1f41e7cfeaa1c62e448fd4f34398e6a8309e2c54446113a5b6bc307c",
+-  "native_manifest_sha256": "e9f4ed1c8b54c8e3fe4bc6ca2aec593342af21323a591244262f7a89d3662652",
+-  "safety_stop_dynamics_goal_yaw_sensor_thresholds_unchanged": true,
+-  "configuration_and_physics_files_byte_exact_to_v68": [
+-    "building_planner.yaml",
+-    "controller.yaml",
+-    "navigation_contract.json",
+-    "newton_episode.py",
+-    "realtime_pacer.py",
+-    "frequency_observer.py"
+-  ],
+-  "mac_host_identity_mapping": "v68/V68 to v70/V70 only in copied launch helpers",
+-  "prepared_cache_source": "/private/tmp/vla_newton_v70_cache_hdx0kanf/runtime/warp-cache",
+-  "gpu5070ti_used": false,
+-  "tests": {
+-    "actual_backend_trace_gate_and_json_seam": "passed",
+-    "entry_gate_tests": 4,
+-    "actual_managed_chain": "passed"
+-  },
+-  "navigation_validated": false,
+-  "diagnostic_trace_overhead": "Compact bytes buffer and background quarter-second drain; measured callback spans exclude record encoding; no full-route-history copies added",
+-  "cache_regeneration_physics_steps": 0,
+-  "prior_raw_roots_currently_unavailable": true,
+-  "attempt01_build_failure": "Docker engine stopped before build receipt; no physics. Preserved original attempt01 result."
++  "one_change": "Explicit fresh corner_start profile in the original full Building, retaining historical final goal",
++  "spawn_fixture_sha256": "d2bd7294f45f3819c2d4155711ae3639e1ee812feed6631abf87883a4d22d5d0",
++  "factory_policy_physics_sensor_controller_backend_unchanged": true,
++  "native_source_unchanged": true,
++  "prior_trajectory_or_policy_state_restored": false,
++  "gpu_execution": false
+ }
+--- v70/physical_floor_publisher.py
++++ v74/physical_floor_publisher.py
+@@ -16,7 +16,7 @@
+         super().__init__('pct_physical_floor_publisher')
+         info=json.loads((HERE/'physical_floor_input.json').read_text())
+         assert info['role']=='physical_floor_presence_only' and not info['traversal_authority'] and not info['terrain_return_classification_authority']
+-        data=Path(os.environ['V70_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
++        data=Path(os.environ['V74_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
+         self.points=np.frombuffer(data,dtype='<f4').reshape(-1,4)
+         assert len(self.points)==info['files']['physical_floor.f32']['points'] and np.isfinite(self.points).all()
+         self.gate=SimClockGate();qos=QoSProfile(depth=1,reliability=QoSReliabilityPolicy.RELIABLE,durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+--- v70/mac_supervisor.py
++++ v74/mac_supervisor.py
+@@ -15,10 +15,10 @@
+     text=source.read_text();old='out.mkdir(parents=True, exist_ok=False)'
+     assert text.count(old)==1
+     index=sys.argv.index('--run-id');run_id=sys.argv[index+1]
+-    root=Path(os.environ['V70_TEMP_ROOT'])
+-    assert root.parent==Path('/private/tmp') and root.name.startswith('vla_newton_v70_')
++    root=Path(os.environ['V74_TEMP_ROOT'])
++    assert root.parent==Path('/private/tmp') and root.name.startswith('vla_newton_v74_')
+     verify_prepared_mount(root/'runs'/run_id)
+-    spec=importlib.util.spec_from_file_location('v70_original_supervisor',source)
++    spec=importlib.util.spec_from_file_location('v74_original_supervisor',source)
+     module=importlib.util.module_from_spec(spec)
+     # Only Docker's pre-created empty tmpfs-parent directories are accepted.
+     # Original process group, deadline, child/environment and results stay exact.
+--- v70/mac_trial.py
++++ v74/mac_trial.py
+@@ -20,7 +20,7 @@
+ def freeze(receipt_path):
+     """Pin this host integration without claiming physics/full qualification."""
+     assert not (HERE/'manifest.json').exists(),'Frozen source cannot be replaced'
+-    parent=json.loads((BASE/'versions/v68/manifest.json').read_text())
++    parent=json.loads((BASE/'versions/v70/manifest.json').read_text())
+     runtime=json.loads((BASE/'versions/v59/manifest.json').read_text())
+     selected=dict(runtime['source_files']);locations=dict(runtime['snapshot_locations'])
+     selected.update(parent['source_files']);locations.update(parent['snapshot_locations'])
+@@ -35,8 +35,8 @@
+             assert not target.exists();shutil.copyfile(path,target);location=str(target.relative_to(ROOT))
+         selected[name]=h;locations[name]=location
+     receipt=json.loads(receipt_path.read_text())
+-    manifest={'version':'v70','parent':'v68','native_source_parent':'v63','runtime_source_parent':'v59',
+-        'parent_manifest_sha256':sha(BASE/'versions/v68/manifest.json'),
++    manifest={'version':'v74','parent':'v70','native_source_parent':'v63','runtime_source_parent':'v59',
++        'parent_manifest_sha256':sha(BASE/'versions/v70/manifest.json'),
+         'runtime_parent_manifest_sha256':sha(BASE/'versions/v59/manifest.json'),
+         'status':'frozen_user_authorized_mac_physics_validation_pending',
+         'source_files':dict(sorted(selected.items())),'snapshot_locations':dict(sorted(locations.items())),
+@@ -53,34 +53,34 @@
+ 
+ def main():
+     p=argparse.ArgumentParser();p.add_argument('--attempt',type=int,required=True)
+-    p.add_argument('--trials',type=int,choices=(1,2),default=2)
+-    p.add_argument('--seconds',type=float,default=90.)
++    p.add_argument('--trials',type=int,choices=(1,2),default=1)
++    p.add_argument('--seconds',type=float,default=40.)
+     p.add_argument('--reuse-workspace',type=Path)
+     args=p.parse_args();assert sys.platform=='darwin' and 20<=args.seconds<=90
+     evidence=HERE/'mac_trials'/f'attempt{args.attempt:02d}';evidence.mkdir(parents=True,exist_ok=False)
+     assert shutil.disk_usage(HERE).free>12*1024**3
+     for port in (46200,46201,46202,46203):
+         with socket.socket() as s:s.bind(('127.0.0.1',port))
+-    temp=Path(tempfile.mkdtemp(prefix='vla_newton_v70_',dir='/private/tmp'))
++    temp=Path(tempfile.mkdtemp(prefix='vla_newton_v74_',dir='/private/tmp'))
+     workspace=args.reuse_workspace.resolve() if args.reuse_workspace else temp/'native_workspace'
+     if args.reuse_workspace:
+         assert workspace.parent.parent==Path('/private/tmp') and workspace.parent.name.startswith('vla_newton_')
+         assert (workspace/'install').is_dir() and (workspace/'src').is_dir()
+     else:workspace.mkdir()
+-    cache=Path(os.environ['V70_PREPARED_WARP_CACHE']).resolve()
++    cache=Path(os.environ['V74_PREPARED_WARP_CACHE']).resolve()
+     assert cache.is_dir() and cache.name=='warp-cache' and cache.parent.parent.parent==Path('/private/tmp')
+     shutil.copytree(cache,temp/'runtime/warp-cache')
+     (temp/'scripts').mkdir();(temp/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+-    container=f'vla-v70-mac-physics-{args.attempt:02d}'
++    container=f'vla-v74-mac-physics-{args.attempt:02d}'
+     env=os.environ.copy();env.update(DOCKER_CONTEXT='desktop-linux',
+-        PATH='/Users/sun/.local/bin:'+env['PATH'],V70_TEMP_ROOT=str(temp),
+-        V70_NATIVE_CONTAINER=container,V70_BUILD_EVIDENCE=str(evidence),
+-        V70_PHYSICAL_FLOOR=str(temp/'physical_floor.f32'),
++        PATH='/Users/sun/.local/bin:'+env['PATH'],V74_TEMP_ROOT=str(temp),
++        V74_NATIVE_CONTAINER=container,V74_BUILD_EVIDENCE=str(evidence),
++        V74_PHYSICAL_FLOOR=str(temp/'physical_floor.f32'),
+         PYTHONDONTWRITEBYTECODE='1',PYTHONUNBUFFERED='1',
+         PYTHONPATH=str(BASE/'runtime_sources/bridge')+':'+env.get('PYTHONPATH',''))
+     request={'host':'Mac','gpu5070ti_used':False,'started_utc':datetime.now(timezone.utc).isoformat(),
+-        'authorization':'Dr Sun: u can test on newton on mac','version':'v70','native_parent':'v63',
+-        'runtime_parent':'v59','trials':args.trials,'simulation_seconds_per_trial':args.seconds,
++        'authorization':'Dr Sun: initialize and start the simulation right near that specific corner/scene','version':'v74','native_parent':'v63',
++        'runtime_parent':'v59','trials':args.trials,'simulation_seconds_per_trial':args.seconds,'route_profile':'corner_start',
+         'diagnostic_only':True,'prepared_warp_cache':str(cache),'original_algorithm_and_stop_rules_unchanged':True,
+         'bulk_root':str(temp),'compact_return_root':str(evidence),'bulk_is_outside_repository':True,
+         'temporary_native_workspace':str(workspace),'reuse_workspace':bool(args.reuse_workspace),
+@@ -101,7 +101,7 @@
+             '-v',str(temp)+':'+str(temp)+':rw','--entrypoint','/bin/bash',IMAGE,
+             '-c','exec sleep infinity']
+         for trial in range(1,args.trials+1):
+-            run=f'v70_mac_trial{trial:02d}_attempt{args.attempt:02d}'
++            run=f'v74_mac_trial{trial:02d}_attempt{args.attempt:02d}'
+             index=cmd.index('--entrypoint')
+             cmd[index:index]=['--tmpfs',str(temp/'runs'/run/'artifacts/external_episode')+':rw,size=8m']
+         index=cmd.index('--entrypoint');cmd[index:index]=['-v',str(workspace)+':/workspace:rw']
+@@ -114,7 +114,7 @@
+             shutil.copyfile(evidence/'build_receipt.json',workspace.parent/'native_build_receipt.json')
+         else:
+             shutil.copyfile(workspace.parent/'native_build_receipt.json',evidence/'build_receipt.json')
+-        subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V70_PHYSICAL_FLOOR']],
++        subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V74_PHYSICAL_FLOOR']],
+             env=env,capture_output=True,text=True,timeout=30,check=True)
+         shutil.copyfile(temp/'physical_floor.provenance.json',evidence/'physical_floor_provenance.json')
+         from mac_native_gate import verify
+@@ -123,23 +123,23 @@
+         provisional={'native_source_sha256':receipt['native_source_sha256'],
+             'mac_build_receipt_sha256':sha(receipt_path),
+             'mac_subset_qualification_sha256':sha(BASE/'versions/v63/component_qualification.json')}
+-        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V70_BUILD_EVIDENCE','V70_NATIVE_CONTAINER')})
++        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V74_BUILD_EVIDENCE','V74_NATIVE_CONTAINER')})
+         verify(NATIVE,provisional)
+-        manifest=freeze(receipt_path)
++        manifest=json.loads((HERE/'manifest.json').read_text()) if (HERE/'manifest.json').exists() else freeze(receipt_path)
+         result['integration_manifest_sha256']=sha(HERE/'manifest.json')
+         from mac_native_gate import verify
+-        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V70_BUILD_EVIDENCE','V70_NATIVE_CONTAINER')})
++        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V74_BUILD_EVIDENCE','V74_NATIVE_CONTAINER')})
+         (evidence/'entry_gate.json').write_text(json.dumps(verify(NATIVE,manifest),indent=2)+'\n')
+         for trial in range(1,args.trials+1):
+             if trial>1:
+                 subprocess.run(cmd,env=env,capture_output=True,text=True,timeout=30,check=True)
+-            run=f'v70_mac_trial{trial:02d}_attempt{args.attempt:02d}'
++            run=f'v74_mac_trial{trial:02d}_attempt{args.attempt:02d}'
+             command=[str(PYTHON),str(HERE/'mac_managed.py'),'--run-id',run,'--deadline','540',
+                 '--retention','archive','--',str(PYTHON),str(HERE/'run_local_episode.py'),
+                 '--backend-executor','single','--applied-transport','zmq','--geometry-obstacles',
+-                '--scene','building_full','--building-route','historical_full',
++                '--scene','building_full','--building-route','corner_start',
+                 '--goal-wall-budget','180','--startup-mode','factory_pd','--stance-hold',
+-                '--integration-version','v70','--real-time-factor','1',
++                '--integration-version','v74','--real-time-factor','1',
+                 '--recording-sim-seconds',str(args.seconds)]
+             with (evidence/(run+'.execution.log')).open('w') as log:
+                 process=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=580)
+--- v70/mac_managed.py
++++ v74/mac_managed.py
+@@ -14,6 +14,6 @@
+ namespace['verify_prepared_mount']=verify_prepared_mount
+ exec(compile(text.replace(old,'verify_prepared_mount(run)'),str(source),'exec'),namespace)
+ managed_run.main=namespace['main']
+-managed_run.a.BASE=Path(os.environ['V70_TEMP_ROOT'])
++managed_run.a.BASE=Path(os.environ['V74_TEMP_ROOT'])
+ managed_run.a.AUDIT=managed_run.a.BASE/'artifact_audit'
+ raise SystemExit(managed_run.main())
+--- v70/native_graph.py
++++ v74/native_graph.py
+@@ -19,8 +19,8 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v70":
+-        raise ValueError("v70 graph requires the frozen v70 integration identity")
++    if request.get("integration_version") != "v74":
++        raise ValueError("v74 graph requires the frozen v74 integration identity")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+@@ -90,7 +90,7 @@
+         backend.setdefault("arrival", {}).update(xy_tolerance_m=contract["xy_goal_tolerance_m"],
+             z_tolerance_m=contract["z_goal_tolerance_m"], yaw_tolerance_rad=contract["yaw_goal_tolerance_rad"],
+             monitor_period_s=1/contract["controller_frequency"])
+-        if request.get("building_route_profile") == "historical_full":
++        if request.get("building_route_profile") in ("historical_full", "corner_start"):
+             if request.get("scene") != "building_full":
+                 raise ValueError("Historical profile requires the full Building geometry")
+             backend["map"]["pct_layer"] = None  # Existing native multi-floor selection.
+--- v70/mac_native_gate.py
++++ v74/mac_native_gate.py
+@@ -28,8 +28,8 @@
+ 
+ def verify(build, manifest):
+     if build.resolve()!=NATIVE.resolve():
+-        raise ValueError('v70 requires the unchanged v63 native source')
+-    receipt_path=Path(os.environ['V70_BUILD_EVIDENCE'])/'build_receipt.json'
++        raise ValueError('v74 requires the unchanged v63 native source')
++    receipt_path=Path(os.environ['V74_BUILD_EVIDENCE'])/'build_receipt.json'
+     receipt=json.loads(receipt_path.read_text())
+     validate_receipt(receipt,manifest)
+     if sha(receipt_path)!=manifest['mac_build_receipt_sha256']:
+@@ -52,12 +52,12 @@
+ for group in ('native_source_sha256','native_install_sha256'):
+  for name,h in receipt[group].items():
+   assert hashlib.sha256((root/name).read_bytes()).hexdigest()==h,name
+-print('V70_ACTUAL_SOURCE_INSTALL_GATE_PASS')
++print('V74_ACTUAL_SOURCE_INSTALL_GATE_PASS')
+ """
+-    checked=subprocess.run(['docker','exec',os.environ['V70_NATIVE_CONTAINER'],
++    checked=subprocess.run(['docker','exec',os.environ['V74_NATIVE_CONTAINER'],
+         'python3','-c',script,str(receipt_path)],capture_output=True,text=True,timeout=30)
+     checked.check_returncode()
+-    if 'V70_ACTUAL_SOURCE_INSTALL_GATE_PASS' not in checked.stdout:
++    if 'V74_ACTUAL_SOURCE_INSTALL_GATE_PASS' not in checked.stdout:
+         raise ValueError('Actual installed byte gate has no success evidence')
+     return {'actual_native_source_install_gate_passed':True,
+         'mac_component_subset_passed':True,'full_component_qualification':False,
+--- v70/PLAN.md
++++ v74/PLAN.md
+@@ -1,31 +1,49 @@
+-# Focused Mac backend timing diagnosis
++# Corner-local upstream/current comparison
+ 
+-Stage: experiment + analysis. Dr Sun requested root causes of heartbeat_stale
+-and unstable30Hz. One logical change: observe backend callback, applied read,
+-HTTP serialization and Python GC spans. Parent v68; exact native v63 and v59
+-runtime/control/physics/safety. v69 is a display-only sibling. This package is
+-diagnostic and cannot be promoted to an accepted navigation repair.
++Stage: experiment + analysis. Dr Sun explicitly requested initialization beside
++the corner instead of traversing the entire route. Preserve previous versions.
+ 
+-Delegate every original method once, preserving its return value, exceptions,
+-messages and effects. Collect compact identity-bearing timing events in a
+-bounded memory buffer; a background writer periodically drains them outside
+-callback timing spans. Keep original body callback/error traces. Record both
+-wall and per-thread CPU time, callback heartbeat age and gate reason. A trace
+-cannot infer OS runnable wait without a scheduler trace; identify that boundary.
++Use the late landing event at v70 native time78.488495s (1316.856ms solve).
++Spawn from the original measured approach pose near76.009857s, about1.1m before
++the event: XY(6.538910,-6.003162), yaw-1.425451. Original Building triangle-ray
++preflight gives floor3.041690m with five footprint samples spanning19.2mm.
++Retain the original final goal and goal/stop/dynamics contracts. Keep the full
++Building mesh/map, sensor rig, native factory/PD/RL startup and policy. The
++route prefix is omitted; initial policy/planner/map state is fresh. This is a
++local-scene test, not restoration of the historical recurrent or warm state.
+ 
+-Rebuild/qualify exact frozen v63 in the original cached amd64 ROS image on Mac.
+-The original temporary cache is now unavailable. Regenerate the same Warp1.17
+-CPU model/raycast kernels through prepare_cache.py with zero physics steps,
+-then preload them as the v68 prepared retry did. No sensor deadline or physics
+-computation changes. Preserve the failed initial cache-helper import attempt. Keep original6CPU/
+-6GB limits, original factory/route/goal/yaw/configuration and every stop/freshness
+-rule. Freeze source and installed identity before the bounded90s diagnostic
+-trial. Earlier frozen versions and failed runs remain immutable. gpu5070ti is
+-busy and must not be used.
++v74 parentv70 introduces only the explicit corner_start profile (scenario,
++native multi-floor selection equivalent to historical_full, source binding and
++scenario checks). Its native source stays exactv63. v75 selects the pinned v71
++upstream probe in the same host/physical condition. The upstream planner's own
++terrain/dynamics acceptance and event scheduling remain different. No v49
++timeout, safety relaxation, altered emergency stop or artificial warm curve.
+ 
+-Temporary build/physics/archive data go to unique private/tmp; return compact
+-traces, analysis, hashes and a report. Verify owned-container shutdown and
+-archive integrity; remove only regenerable owned build products after analysis.
+-No new render or raw capture transfer into the repository. The tracing run is
+-not a performance improvement trial. If the intermittent fault does not recur,
+-report that and preserve the full trace rather than inventing a root cause.
++Ranked predictions:
++1. If local recovery amplification is the tail source, currentv63 can produce
++   multi-attempt cold-recovery spikes at this scene while original upstream's
++   complete reference chain has at most three initialization modes.
++2. If the corner geometry alone drives expensive inherited search/optimization,
++   original upstream can exceed33.3ms here even without our outer recovery.
++3. If missing preceding state matters, a fresh corner episode may fail or take
++   a different path; then it is not a historical same-state latency reproduction.
++
++Owned changes: new version host/profile/check/freeze helpers; this audit;
++versioned display-only video helpers/results; task/spec/journal/version index.
++Core native source, frozen parents and currentv48 reference stay unchanged.
++Use the existing entry/source/build/clock/supervisor/retention gates. Build exact
++native arms in the same cached amd64 Humble image; pin fresh installed bytes.
++Check the actual scenario seam and source/profile negatives before freezing.
++Run one bounded40s total physical episode per arm, about29s navigation after
++the normal factory stand. Preserve early failures. Measure complete-round
++latency, attempts, successful wallHz, physical progress and terminal cause.
++Render actual recorded states directly to MP4, verify decode/causality/hashes,
++and visually inspect the corner. Further retries retain frozen bytes or use
++the next integer for a logical change.
++
++Mac execution exception: unique /private/tmp build/capture/cache roots outside
++repo. Bulk destination gpu5070ti:/home/sun/vla_artifacts/2026-10-04_corner_start/.
++Use storage-only SSH/rsync; no GPU job. Return source/config, compact reports,
++metrics/plots/hash receipts, three video samples and finished review MP4s,
++expected less20MB of new result/media bytes. Verify remote hashes before local
++cleanup. Independent trajectories and fresh state limit causal claims.
+--- v70/run_local_episode.py
++++ v74/run_local_episode.py
+@@ -94,6 +94,11 @@
+ 
+ def building_scenario(profile, wall_budget):
+     """Select an explicit immutable route profile within the same Building."""
++    if profile == "corner_start":
++        from corner_fixture import load_corner
++        scenario = load_corner()
++        scenario.update(max_sim_seconds=40., max_wall_seconds=wall_budget)
++        return scenario
+     if profile not in ("short_stair", "historical_full"):
+         raise ValueError("Unknown Building route profile")
+     historical = profile == "historical_full"
+@@ -118,7 +123,7 @@
+     parser.add_argument("--static-human", action="store_true")
+     parser.add_argument("--planner-config", type=Path)
+     parser.add_argument("--scene", choices=("building", "building_full", "flat_static", "flat_box", "flat_empty_long"), default="building")
+-    parser.add_argument("--building-route", choices=("short_stair", "historical_full"), default="short_stair")
++    parser.add_argument("--building-route", choices=("short_stair", "historical_full", "corner_start"), default="short_stair")
+     parser.add_argument("--integration-version")
+     parser.add_argument("--goal-wall-budget", type=float, default=35.0)
+     parser.add_argument("--startup-mode", choices=("policy", "pd_stand", "factory_pd"), default="policy")
+@@ -128,7 +133,7 @@
+     parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v70 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v74 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -166,8 +171,8 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v70":
+-        raise ValueError("This entry point requires frozen integration version v70")
++    if integration_version != "v74":
++        raise ValueError("This entry point requires frozen integration version v74")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+@@ -190,7 +195,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v70 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v74 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -256,7 +261,7 @@
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
+     for name in ("run_local_episode.py", "native_graph.py", "native_backend_entry.py", "backend_timing_trace.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v70_" + name))
++        shutil.copyfile(VERSION / name, out / ("executed_v74_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -280,8 +285,8 @@
+         "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+     name = "vla-newton-" + out.name.replace("_", "-")
+-    name = os.environ["V70_NATIVE_CONTAINER"]
+-    command = ["docker", "exec", "-e", "V70_PHYSICAL_FLOOR=" + os.environ["V70_PHYSICAL_FLOOR"],
++    name = os.environ["V74_NATIVE_CONTAINER"]
++    command = ["docker", "exec", "-e", "V74_PHYSICAL_FLOOR=" + os.environ["V74_PHYSICAL_FLOOR"],
+         name, "/bin/bash", str(out / "native_inside.sh")]
+     (out / "container_command.json").write_text(json.dumps(command, indent=2) + "\n")
+     with (out / "native_graph.log").open("w") as log:

@@ -1,0 +1,92 @@
+{
+  "run": "v48_realtime_trial01",
+  "source_sha256": {
+    "scan.log": "bac497c6543e018cf0b50168d79e821ee9cf52717e1d55374d72c3e59a41a07b",
+    "v48_rounds.json": "ab84f68fa0c622fbe9489d39b77d3634e1f347c7ab83d472ad7656a0374e0cd1"
+  },
+  "completed_rounds": 1311,
+  "groups": {
+    "all": {
+      "round_ms": {
+        "count": 1311,
+        "median": 3.091636,
+        "p95": 126.49563549999999,
+        "maximum": 1090.481155,
+        "sum": 47706.950078
+      },
+      "pre_manager_ms": {
+        "count": 1311,
+        "median": 0.756476,
+        "p95": 111.909768,
+        "maximum": 302.335015,
+        "sum": 35595.509412
+      },
+      "pre_manager_share_of_group_wall_time": 0.7461283807454047,
+      "rounds_with_logged_pre_manager_astar": 28,
+      "logged_pre_manager_astar_ms_lower_bound": 3166.0
+    },
+    "warm_only": {
+      "round_ms": {
+        "count": 1207,
+        "median": 2.754879,
+        "p95": 113.3376714,
+        "maximum": 199.253327,
+        "sum": 34386.353428
+      },
+      "pre_manager_ms": {
+        "count": 1207,
+        "median": 0.743529,
+        "p95": 109.8805985,
+        "maximum": 164.71965,
+        "sum": 30869.400809
+      },
+      "pre_manager_share_of_group_wall_time": 0.8977224314766615,
+      "rounds_with_logged_pre_manager_astar": 23,
+      "logged_pre_manager_astar_ms_lower_bound": 2521.0
+    },
+    "warm_only_over_100ms": {
+      "round_ms": {
+        "count": 113,
+        "median": 115.08239400000001,
+        "p95": 180.5566106,
+        "maximum": 199.253327,
+        "sum": 14013.622636
+      },
+      "pre_manager_ms": {
+        "count": 113,
+        "median": 110.911067,
+        "p95": 146.18671339999997,
+        "maximum": 164.71965,
+        "sum": 13041.503863
+      },
+      "pre_manager_share_of_group_wall_time": 0.9306304445145615,
+      "rounds_with_logged_pre_manager_astar": 23,
+      "logged_pre_manager_astar_ms_lower_bound": 2521.0
+    },
+    "no_warm_only": {
+      "round_ms": {
+        "count": 104,
+        "median": 92.282265,
+        "p95": 445.16068529999984,
+        "maximum": 1090.481155,
+        "sum": 13320.59665
+      },
+      "pre_manager_ms": {
+        "count": 104,
+        "median": 28.4362295,
+        "p95": 131.55430015,
+        "maximum": 302.335015,
+        "sum": 4726.108603
+      },
+      "pre_manager_share_of_group_wall_time": 0.35479706556537766,
+      "rounds_with_logged_pre_manager_astar": 5,
+      "logged_pre_manager_astar_ms_lower_bound": 645.0
+    }
+  },
+  "definitions": {
+    "first_manager_entry_prefix_ms": "RCLCPP wall timestamp difference from nominal start to first replan_start refresh completion. Includes target selection, goal-neighborhood A*, other checks, first input refresh, logging and scheduling; not an isolated function or CPU timer.",
+    "logged_goal_search_ms": "Native A-star elapsed warning inside that prefix. Warnings emitted only above 0.1 s; values rounded to milliseconds. Sum is a censored lower-bound estimate, not all goal-search time.",
+    "warm_only": "At least one V48_WARM_RESULT accepted=1 and no warm-to-graph fallback, matching prior v48 analysis.",
+    "claim_boundary": "Attribution from one recorded run. Does not prove cache hits, CPU cost, diagnostic output share, numerical equivalence of any optimization, or future 30 Hz."
+  }
+}

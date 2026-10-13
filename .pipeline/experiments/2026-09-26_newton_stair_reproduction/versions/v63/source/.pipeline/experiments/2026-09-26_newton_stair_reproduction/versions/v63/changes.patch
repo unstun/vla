@@ -1,0 +1,55 @@
+--- a/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
++++ b/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
+@@ -79,7 +79,9 @@
+     AStar::Ptr a_star_;
+     std::vector<Eigen::Vector3d> ref_pts_;
+ 
+-    std::vector<std::vector<Eigen::Vector3d>> initControlPoints(Eigen::MatrixXd &init_points, bool flag_first_init = true);
++    enum class ControlPointInitializationStatus { Success, SearchFailure, InvalidSearchPath };
++    std::vector<std::vector<Eigen::Vector3d>> initControlPoints(Eigen::MatrixXd &init_points,
++        bool flag_first_init = true, ControlPointInitializationStatus *status = nullptr);
+     bool BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double ts); // must be called after initControlPoints()
+     bool BsplineOptimizeTrajRefine(const Eigen::MatrixXd &init_points, const double ts, Eigen::MatrixXd &optimal_points);
+ 
+--- a/src/bspline_opt/src/bspline_optimizer.cpp
++++ b/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -64,8 +64,10 @@
+   /* This function is very similar to check_collision_and_rebound(). 
+    * It was written separately, just because I did it once and it has been running stably since March 2020.
+    * But I will merge then someday.*/
+-  std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Eigen::MatrixXd &init_points, bool flag_first_init /*= true*/)
+-  {
++  std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Eigen::MatrixXd &init_points, bool flag_first_init,
++      ControlPointInitializationStatus *status)
++  {
++    if (status) *status = ControlPointInitializationStatus::Success;
+ 
+     if (flag_first_init)
+     {
+@@ -148,6 +150,7 @@
+         if (path.size() < 2)
+         {
+           RCLCPP_WARN(rclcpp::get_logger("bspline_opt"), "A-star path has fewer than 2 points");
++          if (status) *status = ControlPointInitializationStatus::InvalidSearchPath;
+           return a_star_paths;
+         }
+         a_star_paths.push_back(path);
+@@ -155,6 +158,7 @@
+       else
+       {
+         RCLCPP_ERROR(rclcpp::get_logger("bspline_opt"), "A-star failed; aborting optimization");
++        if (status) *status = ControlPointInitializationStatus::SearchFailure;
+         return a_star_paths;
+       }
+     }
+@@ -1062,7 +1066,9 @@
+         else // restart
+         {
+           restart_nums++;
+-          initControlPoints(cps_.points, false);
++          ControlPointInitializationStatus initialization_status;
++          initControlPoints(cps_.points, false, &initialization_status);
++          if (initialization_status != ControlPointInitializationStatus::Success) return false;
+           new_lambda2_ *= 2;
+ 
+           printf("\033[32miter(+1)=%d,time(ms)=%5.3f,keep optimizing\n\033[0m", iter_num_, time_ms);

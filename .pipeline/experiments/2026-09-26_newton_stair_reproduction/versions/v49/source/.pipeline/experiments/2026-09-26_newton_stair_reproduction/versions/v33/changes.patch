@@ -1,0 +1,219 @@
+--- v32/runtime_sources/backend_adapter/backend_adapter/contracts.py
++++ v33/runtime_sources/backend_adapter/backend_adapter/contracts.py
+@@ -296,6 +296,8 @@
+     map_epoch: str
+     map_revision: int
+     source: str = "diagnostic_sim_truth"
++    # v33: the pose's header stamp in simulation seconds, when the source provides one.
++    stamp_s: Optional[float] = None
+ 
+     def __post_init__(self) -> None:
+         require_int("state_sequence", self.state_sequence, 1)
+@@ -305,6 +307,8 @@
+         require_identifier("map_epoch", self.map_epoch)
+         require_int("map_revision", self.map_revision, 0)
+         require_identifier("source", self.source)
++        if self.stamp_s is not None:
++            require_finite("stamp_s", self.stamp_s)
+ 
+     @property
+     def horizontal_speed_mps(self) -> float:
+@@ -317,12 +321,22 @@
+     heartbeat_stale_s: float = 0.20
+     still_speed_mps: float = 0.05
+     still_window_s: float = 0.50
++    # v33: "simulation" judges body-pose freshness by its simulation-time age against /clock, plus a
++    # wall-time backstop for a stopped simulator or a stalled pose path; "wall" keeps the wall time between
++    # receipts.
++    odom_time_base: str = "wall"
++    odom_wall_backstop_s: float = 2.0
+ 
+     def __post_init__(self) -> None:
+         require_nonnegative("odom_stale_s", self.odom_stale_s)
+         require_nonnegative("heartbeat_stale_s", self.heartbeat_stale_s)
+         require_nonnegative("still_speed_mps", self.still_speed_mps)
+         require_nonnegative("still_window_s", self.still_window_s)
++        if self.odom_time_base not in ("wall", "simulation"):
++            raise ContractError("invalid_odom_time_base")
++        require_nonnegative("odom_wall_backstop_s", self.odom_wall_backstop_s)
++        if self.odom_time_base == "simulation" and self.odom_wall_backstop_s < self.odom_stale_s:
++            raise ContractError("invalid_odom_wall_backstop_s")
+ 
+ 
+ def _require_mapping(name: str, value: Any) -> Mapping[str, Any]:
+--- v32/runtime_sources/backend_adapter/backend_adapter/control_gate.py
++++ v33/runtime_sources/backend_adapter/backend_adapter/control_gate.py
+@@ -27,7 +27,12 @@
+     :meth:`gate_raw_command` before publishing to the bridge topic.
+     """
+ 
+-    def __init__(self, config: Optional[GateConfig] = None, clock: Callable[[], float] = time.monotonic) -> None:
++    def __init__(
++        self,
++        config: Optional[GateConfig] = None,
++        clock: Callable[[], float] = time.monotonic,
++        sim_clock: Optional[Callable[[], Optional[float]]] = None,
++    ) -> None:
+         self.config = config or GateConfig()
+         self.clock = clock
+         self.owner = None  # type: Optional[CommandIdentity]
+@@ -39,6 +44,7 @@
+         self.last_measurement = None  # type: Optional[MeasuredState]
+         self.still_since_s = None  # type: Optional[float]
+         self.events = []  # type: List[Dict[str, Any]]
++        self.sim_clock = sim_clock  # v33: newest /clock in seconds, or None before the first
+ 
+     def admit(self, identity: CommandIdentity) -> None:
+         self.owner = identity
+@@ -135,13 +141,31 @@
+         if self.last_heartbeat_s is None or now - self.last_heartbeat_s > self.config.heartbeat_stale_s:
+             self.closed_reason = "heartbeat_stale"
+             return "heartbeat_stale"
+-        if self.last_measurement is None or now - self.last_measurement.monotonic_s > self.config.odom_stale_s:
++        if self.measurement_stale(self.last_measurement, now):
+             self.closed_reason = "odom_stale"
+             return "odom_stale"
+         if self.last_measurement.map_epoch != self.owner.map_epoch or self.last_measurement.map_revision != self.owner.map_revision:
+             self.closed_reason = "measured_map_mismatch"
+             return "measured_map_mismatch"
+         return None
++
++    def measurement_stale(self, measurement: Optional[MeasuredState], now: float) -> bool:
++        """Whether a body pose is too old to steer by.
++
++        Wall base: its wall-time age exceeds odom_stale_s. Simulation base (v33): its simulation-time age
++        against the newest /clock exceeds odom_stale_s, or its wall-time age exceeds odom_wall_backstop_s
++        (/clock stops with a stopped simulator and with a stalled pose path, as it travels with the poses);
++        a missing stamp or clock counts as stale.
++        """
++        if measurement is None:
++            return True
++        if self.config.odom_time_base == "wall":
++            return now - measurement.monotonic_s > self.config.odom_stale_s
++        sim_now = self.sim_clock() if self.sim_clock is not None else None
++        if measurement.stamp_s is None or sim_now is None:
++            return True
++        return (max(0.0, sim_now - measurement.stamp_s) > self.config.odom_stale_s
++                or now - measurement.monotonic_s > self.config.odom_wall_backstop_s)
+ 
+     def snapshot(self) -> Dict[str, Any]:
+         return {
+--- v32/runtime_sources/backend_ros/p2b_backend_ros/node.py
++++ v33/runtime_sources/backend_ros/p2b_backend_ros/node.py
+@@ -55,6 +55,17 @@
+         self.raw_sub = node.create_subscription(self.P2BStampedTwist, topics.get("raw_cmd_topic", "/quad_0/raw_scan_cmd_vel"), self._on_raw_command, 50)
+         self.odom_sub = node.create_subscription(self.Odometry, topics.get("body_pose_topic", "/quad_0/body_pose"), self._on_body_pose, self.qos_profile_sensor_data)
+         self.watchdog_timer = node.create_timer(0.02, self._watchdog_tick)
++        # v33: in the simulator, body-pose freshness is judged against /clock. The bridge publishes /clock from
++        # the state sample of each pose (reliable, depth 1); node timers keep wall time.
++        self._sim_clock_ns = None  # type: Optional[int]
++        self._sim_clock_backward = 0
++        if gate.config.odom_time_base == "simulation":
++            from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
++            from rosgraph_msgs.msg import Clock
++            clock_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
++                                   durability=DurabilityPolicy.VOLATILE, history=HistoryPolicy.KEEP_LAST)
++            self.clock_sub = node.create_subscription(Clock, topics.get("clock_topic", "/clock"), self._on_sim_clock, clock_qos)
++            gate.sim_clock = self.sim_now
+ 
+     def _load_ros_types(self) -> None:
+         try:
+@@ -77,11 +88,26 @@
+     def measurement_provider(self) -> MeasuredState:
+         if self._last_measurement is None:
+             raise RuntimeError("body_pose_not_ready")
++        if self.gate.config.odom_time_base == "simulation":
++            if self.gate.measurement_stale(self._last_measurement, time.monotonic()):
++                raise RuntimeError("body_pose_stale")
++            return self._last_measurement
+         age_s = time.monotonic() - self._last_measurement.monotonic_s
+         stale_s = float(self.config.get("gate", {}).get("odom_stale_s", 0.25))
+         if age_s > stale_s:
+             raise RuntimeError("body_pose_stale")
+         return self._last_measurement
++
++    def sim_now(self) -> Optional[float]:
++        clock_ns = self._sim_clock_ns
++        return None if clock_ns is None else clock_ns / 1e9
++
++    def _on_sim_clock(self, msg: Any) -> None:
++        clock_ns = int(msg.clock.sec) * 1000000000 + int(msg.clock.nanosec)
++        if self._sim_clock_ns is not None and clock_ns < self._sim_clock_ns:
++            self._sim_clock_backward += 1
++            return
++        self._sim_clock_ns = clock_ns
+ 
+     def pct_start_provider(self) -> MeasuredState:
+         return pct_start_from_body_pose(self.measurement_provider(), self.nominal_body_height_m)
+@@ -125,6 +151,11 @@
+             "last_admission": self._last_admission,
+             "faults": list(self._faults[-20:]),
+             "last_body_pose_age_s": None if self._last_measurement is None else time.monotonic() - self._last_measurement.monotonic_s,
++            "odom_time_base": self.gate.config.odom_time_base,
++            "sim_clock_s": self.sim_now(),
++            "sim_clock_backward_events": self._sim_clock_backward,
++            "last_body_pose_sim_age_s": (None if self._last_measurement is None or self._last_measurement.stamp_s is None
++                                         or self.sim_now() is None else self.sim_now() - self._last_measurement.stamp_s),
+         }
+ 
+     def _route_to_path(self, route: NativeRoute) -> Any:
+@@ -235,6 +266,7 @@
+                 map_epoch=self.map_epoch,
+                 map_revision=self.map_revision,
+                 source="diagnostic_sim_truth_body_pose",
++                stamp_s=self._last_odom_stamp_ns / 1e9,
+             )
+         except Exception as exc:
+             self.gate.close("invalid_body_pose")
+--- v32/scripts/native_graph.py
++++ v33/scripts/native_graph.py
+@@ -85,6 +85,10 @@
+                 raise ValueError("Historical profile requires the full Building geometry")
+             backend["map"]["pct_layer"] = None  # Existing native multi-floor selection.
+         backend["service"]["command_timeout_s"] = request.get("goal_wall_budget_s", 35.0)
++        # v33: in this simulator the backend judges body-pose freshness by simulation time, with a 2.0 s wall-time
++        # backstop for a stopped simulator or a stalled pose path (Dr Sun, 2026-09-29). Every other gate keeps
++        # wall time.
++        backend["gate"].update(odom_time_base="simulation", odom_wall_backstop_s=2.0)
+         backend["applied_evidence"].update(current_command_path=str(out / "artifacts/external_episode/current_command.json"),
+                                            finish_request_path=str(out / "artifacts/external_episode/finish_request.json"))
+         (out / "backend_config.json").write_text(json.dumps(backend, indent=2) + "\n")
+--- v32/setup/runtime_sources.json
++++ v33/setup/runtime_sources.json
+@@ -21,14 +21,18 @@
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/backend_adapter/backend_adapter/contracts.py",
+       "path": "runtime_sources/backend_adapter/backend_adapter/contracts.py",
+-      "bytes": 13585,
+-      "sha256": "a404bed4446b376567d35dfaac8d3eb2e8127edb224ee685880d47ede0e0cfac"
++      "bytes": 14455,
++      "sha256": "372363794bd2de4c0f49d97c5d363354f9c2fc761addaa529456fd34e507618c",
++      "archived_sha256": "a404bed4446b376567d35dfaac8d3eb2e8127edb224ee685880d47ede0e0cfac",
++      "local_modification": "v33 simulation-time body-pose freshness (GateConfig.odom_time_base and odom_wall_backstop_s, MeasuredState.stamp_s); preimage and patch in versions/v33"
+     },
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/backend_adapter/backend_adapter/control_gate.py",
+       "path": "runtime_sources/backend_adapter/backend_adapter/control_gate.py",
+-      "bytes": 7291,
+-      "sha256": "603597103fbafe7bd2d9eeccfad3018ec9adfd6664b3f2578165397a2993ed3f"
++      "bytes": 8471,
++      "sha256": "b4dffb8c9b6db183cdd0264919c6b9f5f6c61b9684595ec19b97f5dbd5bf6a91",
++      "archived_sha256": "603597103fbafe7bd2d9eeccfad3018ec9adfd6664b3f2578165397a2993ed3f",
++      "local_modification": "v33 simulation-time body-pose freshness (CommandGate.sim_clock and measurement_stale); preimage and patch in versions/v33"
+     },
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/backend_adapter/backend_adapter/materialize_overlay.py",
+@@ -107,10 +111,10 @@
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/backend_ros/p2b_backend_ros/node.py",
+       "path": "runtime_sources/backend_ros/p2b_backend_ros/node.py",
+-      "bytes": 23345,
+-      "sha256": "c7cc60de5a7269997b87d8fb4f7dcf34c3770fe2532956ffa2acdd0922040cc3",
++      "bytes": 25357,
++      "sha256": "c94c901051fd6b86c83982e0eaee445ae081f62ad597a15ad6b9bc3254acc84f",
+       "archived_sha256": "c54fa4b3afb893c741db37c203937cf15cd67339f1079dd0c28df7babe355639",
+-      "local_modification": "v11 fault propagation; v14 consumer-scoped replies; preimages and patches in versions/v11 and versions/v14"
++      "local_modification": "v11 fault propagation; v14 consumer-scoped replies; v33 /clock subscription and simulation-time body-pose freshness; preimages and patches in versions/v11, versions/v14 and versions/v33"
+     },
+     {
+       "source": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/walk_scan28_height030_right_v1/backend_ros/p2b_backend_ros/runtime.py",

@@ -1,0 +1,1 @@
+Build01 compiled and passed source identity; not frozen or physically tested. Review found that clearing an already empty unordered_map can still reset all retained buckets on each occupancy update, so build02 adds the same nonempty guard already used by the raw-contributor cache. No query semantics change.

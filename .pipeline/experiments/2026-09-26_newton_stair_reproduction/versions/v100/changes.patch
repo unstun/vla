@@ -1,0 +1,224 @@
+--- v99-export/plan_env/include/plan_env/grid_map.h
++++ v100/plan_env/include/plan_env/grid_map.h
+@@ -301,7 +301,7 @@
+   inline bool isKnownFree(const Eigen::Vector3i& id);
+   inline bool isKnownOccupied(const Eigen::Vector3i& id);
+ 
+-  void initMap(rclcpp::Node* node);
++  void initMap(rclcpp::Node* node, rclcpp::CallbackGroup::SharedPtr callback_group = nullptr);
+ 
+   void publishMap();
+   void publishMapInflate(bool all_info = false);
+--- v99-export/plan_env/src/grid_map.cpp
++++ v100/plan_env/src/grid_map.cpp
+@@ -15,7 +15,7 @@
+ }
+ }  // namespace
+ 
+-void GridMap::initMap(rclcpp::Node *node)
++void GridMap::initMap(rclcpp::Node *node, rclcpp::CallbackGroup::SharedPtr callback_group)
+ {
+   invalidateRawContributorCache();
+   node_ = node;
+@@ -156,10 +156,15 @@
+   mutableMapState().md_.proj_points_cnt = 0;
+ 
+   /* init callback */
++  rclcpp::SubscriptionOptions subscription_options;
++  subscription_options.callback_group = callback_group;
+   tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(*node_);
+ 
+   if (mutableMapState().mp_.sensor_type_ == "depth")
+   {
++    // Foxy's message_filters::Subscriber has no callback-group overload.
++    // The plugin retains the original executor for this unmodified input mode.
++    if (callback_group) throw std::runtime_error("Isolated Foxy clock requires lidar input callbacks");
+     depth_sub_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>();
+     depth_pose_sub_ = std::make_shared<message_filters::Subscriber<nav_msgs::msg::Odometry>>();
+     depth_sub_->subscribe(node_, "depth", rmw_qos_profile_sensor_data);
+@@ -174,32 +179,32 @@
+   {
+     lidar_pose_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+         "sensor_pose", rclcpp::SensorDataQoS(),
+-        std::bind(&GridMap::sensorPoseCallback, this, std::placeholders::_1));
++        std::bind(&GridMap::sensorPoseCallback, this, std::placeholders::_1), subscription_options);
+     cloud_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+         "cloud", rclcpp::SensorDataQoS(),
+-        std::bind(&GridMap::cloudCallback, this, std::placeholders::_1));
++        std::bind(&GridMap::cloudCallback, this, std::placeholders::_1), subscription_options);
+   }
+ 
+   sliding_map_frame_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+       "body_pose", rclcpp::SensorDataQoS(),
+-      std::bind(&GridMap::slidingMapFrameCallback, this, std::placeholders::_1));
++      std::bind(&GridMap::slidingMapFrameCallback, this, std::placeholders::_1), subscription_options);
+ 
+   reactive_tomogram_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+       "/pct_tomogram", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
+-      std::bind(&GridMap::reactiveTomogramCallback, this, std::placeholders::_1));
++      std::bind(&GridMap::reactiveTomogramCallback, this, std::placeholders::_1), subscription_options);
+   if (!mutableMapState().reactive_surface_ground_topic_.empty())
+     reactive_surface_ground_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+         mutableMapState().reactive_surface_ground_topic_, rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
+-        std::bind(&GridMap::reactiveSurfaceGroundCallback, this, std::placeholders::_1));
++        std::bind(&GridMap::reactiveSurfaceGroundCallback, this, std::placeholders::_1), subscription_options);
+   if (!mutableMapState().reactive_physical_floor_topic_.empty())
+     reactive_physical_floor_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+         mutableMapState().reactive_physical_floor_topic_, rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
+-        std::bind(&GridMap::reactivePhysicalFloorCallback, this, std::placeholders::_1));
++        std::bind(&GridMap::reactivePhysicalFloorCallback, this, std::placeholders::_1), subscription_options);
+ 
+   occ_timer_ = node_->create_wall_timer(std::chrono::milliseconds(50),
+-                                        std::bind(&GridMap::updateOccupancyCallback, this));
++                                        std::bind(&GridMap::updateOccupancyCallback, this), callback_group);
+   vis_timer_ = node_->create_wall_timer(std::chrono::milliseconds(50),
+-                                        std::bind(&GridMap::visCallback, this));
++                                        std::bind(&GridMap::visCallback, this), callback_group);
+ 
+   map_pub_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>("grid_map/occupancy", rclcpp::SensorDataQoS());
+   map_inf_pub_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>("grid_map/occupancy_inflate", rclcpp::SensorDataQoS());
+--- v99-export/plan_manage/include/plan_manage/planner_manager.h
++++ v100/plan_manage/include/plan_manage/planner_manager.h
+@@ -52,7 +52,8 @@
+                                  const std::vector<Eigen::Vector3d> &waypoints, const Eigen::Vector3d &end_vel, const Eigen::Vector3d &end_acc, bool preserve_binding = false);
+ 
+     std::vector<Eigen::Vector3d> findGoalNeighborhoodPath(const Eigen::Vector3d &start, const Eigen::Vector3d &goal, double tolerance);
+-    void initPlanModules(rclcpp::Node *node, PlanningVisualization::Ptr vis = nullptr);
++    void initPlanModules(rclcpp::Node *node, PlanningVisualization::Ptr vis = nullptr,
++                         rclcpp::CallbackGroup::SharedPtr callback_group = nullptr);
+ 
+     PlanParameters pp_;
+     LocalTrajData local_data_;
+--- v99-export/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ v100/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -207,7 +207,7 @@
+     {
+     }
+ 
+-    void init(rclcpp::Node *node);
++    void init(rclcpp::Node *node, rclcpp::CallbackGroup::SharedPtr callback_group = nullptr);
+ 
+     // Called only on this planner's executor. Consumers borrow the same immutable
+     // map snapshot as native collision checks; no second mapper is constructed.
+--- v99-export/plan_manage/src/planner_manager.cpp
++++ v100/plan_manage/src/planner_manager.cpp
+@@ -20,7 +20,8 @@
+ 
+   SCANPlannerManager::~SCANPlannerManager() { std::cout << "des manager" << std::endl; }
+ 
+-  void SCANPlannerManager::initPlanModules(rclcpp::Node *node, PlanningVisualization::Ptr vis)
++  void SCANPlannerManager::initPlanModules(rclcpp::Node *node, PlanningVisualization::Ptr vis,
++                                          rclcpp::CallbackGroup::SharedPtr callback_group)
+   {
+     node_ = node;
+     /* read algorithm parameters */
+@@ -54,7 +55,7 @@
+ 
+     local_data_.traj_id_ = 0;
+     grid_map_.reset(new GridMap);
+-    grid_map_->initMap(node_);
++    grid_map_->initMap(node_, callback_group);
+ 
+     bspline_optimizer_rebound_.reset(new BsplineOptimizer);
+     bspline_optimizer_rebound_->setParam(node_);
+--- v99-export/plan_manage/src/scan_replan_fsm.cpp
++++ v100/plan_manage/src/scan_replan_fsm.cpp
+@@ -65,7 +65,7 @@
+ namespace scan_planner
+ {
+ 
+-  void SCANReplanFSM::init(rclcpp::Node *node)
++  void SCANReplanFSM::init(rclcpp::Node *node, rclcpp::CallbackGroup::SharedPtr callback_group)
+   {
+     node_ = node;
+     current_wp_ = 0;
+@@ -127,29 +127,31 @@
+     /* initialize main modules */
+     visualization_.reset(new PlanningVisualization(node_));
+     planner_manager_.reset(new SCANPlannerManager);
+-    planner_manager_->initPlanModules(node_, visualization_);
++    planner_manager_->initPlanModules(node_, visualization_, callback_group);
+ 
+     /* callback */
++    rclcpp::SubscriptionOptions subscription_options;
++    subscription_options.callback_group = callback_group;
+     exec_timer_ = node_->create_wall_timer(std::chrono::milliseconds(10),
+-                                           std::bind(&SCANReplanFSM::execFSMCallback, this));
++                                           std::bind(&SCANReplanFSM::execFSMCallback, this), callback_group);
+     safety_timer_ = node_->create_wall_timer(std::chrono::milliseconds(50),
+-                                             std::bind(&SCANReplanFSM::checkCollisionCallback, this));
++                                             std::bind(&SCANReplanFSM::checkCollisionCallback, this), callback_group);
+     odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+         "body_pose", rclcpp::SensorDataQoS(),
+-        std::bind(&SCANReplanFSM::odometryCallback, this, std::placeholders::_1));
++        std::bind(&SCANReplanFSM::odometryCallback, this, std::placeholders::_1), subscription_options);
+     go2_execution_frozen_sub_ = node_->create_subscription<std_msgs::msg::Bool>(
+         "planning/go2_execution_frozen", 10,
+-        std::bind(&SCANReplanFSM::go2ExecutionFrozenCallback, this, std::placeholders::_1));
++        std::bind(&SCANReplanFSM::go2ExecutionFrozenCallback, this, std::placeholders::_1), subscription_options);
+ 
+     bspline_pub_ = node_->create_publisher<scan_planner_msgs::msg::Bspline>("planning/bspline", 10);
+     nav2_safety_pub_ = node_->create_publisher<scan_planner_msgs::msg::P2BExecutionSafety>("planning/execution_safety", 10);
+     p2b_admission_pub_ = node_->create_publisher<scan_planner_msgs::msg::P2BAdmission>("/p2b/scan_admission", 10);
+     p2b_route_sub_ = node_->create_subscription<scan_planner_msgs::msg::P2BRoute>(
+         "/p2b/route", rclcpp::QoS(1).reliable(),
+-        std::bind(&SCANReplanFSM::p2bRouteCallback, this, std::placeholders::_1));
++        std::bind(&SCANReplanFSM::p2bRouteCallback, this, std::placeholders::_1), subscription_options);
+     p2b_cancel_sub_ = node_->create_subscription<scan_planner_msgs::msg::P2BCancel>(
+         "/p2b/scan_cancel", rclcpp::QoS(10).reliable(),
+-        std::bind(&SCANReplanFSM::p2bCancelCallback, this, std::placeholders::_1));
++        std::bind(&SCANReplanFSM::p2bCancelCallback, this, std::placeholders::_1), subscription_options);
+     data_disp_pub_ = node_->create_publisher<scan_planner_msgs::msg::DataDisp>("planning/data_display", 100);
+     self_inflation_pub_ = node_->create_publisher<visualization_msgs::msg::Marker>(
+         "self_inflation", rclcpp::QoS(1).reliable().transient_local());
+@@ -157,11 +159,11 @@
+     if (navi_mode_ == NAVI_MODE::MANUAL_TARGET)
+       goal_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
+           "move_base_simple/goal", 1,
+-          std::bind(&SCANReplanFSM::rvizGoalCallback, this, std::placeholders::_1));
++          std::bind(&SCANReplanFSM::rvizGoalCallback, this, std::placeholders::_1), subscription_options);
+     else if (navi_mode_ == NAVI_MODE::REFERENCE_PATH)
+       path_sub_ = node_->create_subscription<nav_msgs::msg::Path>(
+           "initial_path", rclcpp::QoS(1).reliable().transient_local(),
+-          std::bind(&SCANReplanFSM::pathCallback, this, std::placeholders::_1));
++          std::bind(&SCANReplanFSM::pathCallback, this, std::placeholders::_1), subscription_options);
+     else if (navi_mode_ == NAVI_MODE::PRESET_TARGET)
+       RCLCPP_INFO(node_->get_logger(), "Preset waypoint mode will start after the first odometry message");
+     else
+--- v99-export/scan_nav2_controller/src/controller.cpp
++++ v100/scan_nav2_controller/src/controller.cpp
+@@ -35,11 +35,20 @@
+     parameters.emplace_back("use_sim_time",use_sim_time);
+     options.parameter_overrides(parameters);
+     node_=std::make_shared<rclcpp::Node>("scan_planner_node","/quad_0",options);
++    const bool isolated_clock = use_sim_time && std::any_of(parameters.begin(),parameters.end(),
++      [](const rclcpp::Parameter &p) { return p.get_name()=="grid_map.sensor_type" &&
++        p.get_type()==rclcpp::ParameterType::PARAMETER_STRING && p.as_string()=="lidar"; });
++    if (isolated_clock)
++      work_group_=node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+     planner_=std::make_unique<scan_planner::SCANReplanFSM>();
+-    planner_->init(node_.get());
++    planner_->init(node_.get(),work_group_);
+     terrain_pub_=node_->create_publisher<nav_msgs::msg::OccupancyGrid>("/nav2_scan/terrain_slice",1);
+-    terrain_timer_=node_->create_wall_timer(std::chrono::milliseconds(100),[this] { publishTerrain(); });
+-    executor_=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
++    terrain_timer_=node_->create_wall_timer(std::chrono::milliseconds(100),[this] { publishTerrain(); },work_group_);
++    // Foxy schedules /clock in the default callback group. Keep native data and
++    // planning serialized, while its real ROS clock can progress during a solve.
++    if (isolated_clock)
++      executor_=std::make_shared<rclcpp::executors::MultiThreadedExecutor>(rclcpp::ExecutorOptions(),2);
++    else executor_=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+     executor_->add_node(node_);
+     worker_=std::thread([this,fault] {
+       try { executor_->spin(); }
+@@ -92,8 +101,9 @@
+   rclcpp::TimerBase::SharedPtr terrain_timer_;
+   double terrain_stamp_{0.0};
+   rclcpp::Node::SharedPtr node_;
++  rclcpp::CallbackGroup::SharedPtr work_group_;
+   std::unique_ptr<scan_planner::SCANReplanFSM> planner_;
+-  std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
++  std::shared_ptr<rclcpp::Executor> executor_;
+   std::thread worker_;
+   std::atomic<bool> healthy_{true};
+ };

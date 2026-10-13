@@ -4,6 +4,9 @@ reviewed: false
 date: 2026-08-18
 ---
 
+> [摘要] Pinned OmniVLA-edge ran on macOS CPU with recorded patches; the original 8B result here is manifest-only. This is historical, not current runtime state.
+
+
 # OmniVLA Pinned Import And Edge Offline Smoke
 
 ## Decision

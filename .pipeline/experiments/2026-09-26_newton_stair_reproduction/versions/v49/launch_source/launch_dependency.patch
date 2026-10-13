@@ -1,0 +1,13 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v48/native_graph.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v49/native_graph.py
+@@ -19,8 +19,8 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v48":
+-        raise ValueError("v48 graph requires the frozen v48 integration identity")
++    if request.get("integration_version") != "v49":
++        raise ValueError("v49 graph requires the frozen v49 integration identity")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"

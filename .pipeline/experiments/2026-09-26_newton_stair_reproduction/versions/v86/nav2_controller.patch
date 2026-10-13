@@ -1,0 +1,121 @@
+--- upstream/nav2_controller/CMakeLists.txt
++++ v86/nav2_controller/CMakeLists.txt
+@@ -3,6 +3,7 @@
+ 
+ find_package(ament_cmake REQUIRED)
+ find_package(nav2_core REQUIRED)
++find_package(scan_nav2_controller REQUIRED)
+ find_package(nav2_common REQUIRED)
+ find_package(angles REQUIRED)
+ find_package(rclcpp REQUIRED)
+@@ -35,6 +36,7 @@
+ target_compile_definitions(${library_name} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
+ 
+ set(dependencies
++  scan_nav2_controller
+   angles
+   rclcpp
+   rclcpp_action
+--- upstream/nav2_controller/package.xml
++++ v86/nav2_controller/package.xml
+@@ -18,6 +18,7 @@
+   <depend>nav_2d_utils</depend>
+   <depend>nav_2d_msgs</depend>
+   <depend>nav2_core</depend>
++  <depend>scan_nav2_controller</depend>
+   <depend>pluginlib</depend>
+ 
+   <test_depend>ament_lint_common</test_depend>
+--- upstream/nav2_controller/src/nav2_controller.cpp
++++ v86/nav2_controller/src/nav2_controller.cpp
+@@ -1,3 +1,4 @@
++#include <scan_nav2_controller/command_output.hpp>
+ // Copyright (c) 2019 Intel Corporation
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+@@ -142,6 +143,8 @@
+       controller->configure(
+         node, controller_ids_[i],
+         costmap_ros_->getTfBuffer(), costmap_ros_);
++      if (auto *output = dynamic_cast<scan_nav2_controller::CommandOutput *>(controller.get()))
++        output->bindOutputOwner();
+       controllers_.insert({controller_ids_[i], controller});
+     } catch (const pluginlib::PluginlibException & ex) {
+       RCLCPP_FATAL(
+@@ -231,6 +234,9 @@
+ ControllerServer::on_shutdown(const rclcpp_lifecycle::State &)
+ {
+   RCLCPP_INFO(get_logger(), "Shutting down");
++  if (vel_publisher_) publishZeroVelocity();
++  if (action_server_) action_server_->deactivate();
++  for (auto &entry : controllers_) entry.second->deactivate();
+   return nav2_util::CallbackReturn::SUCCESS;
+ }
+ 
+@@ -270,6 +276,7 @@
+     if (findControllerId(c_name, current_controller)) {
+       current_controller_ = current_controller;
+     } else {
++      publishZeroVelocity();
+       action_server_->terminate_current();
+       return;
+     }
+@@ -281,6 +288,7 @@
+     while (rclcpp::ok()) {
+       if (action_server_ == nullptr || !action_server_->is_server_active()) {
+         RCLCPP_DEBUG(get_logger(), "Action server unavailable or inactive. Stopping.");
++        publishZeroVelocity();
+         return;
+       }
+ 
+@@ -385,15 +393,23 @@
+       RCLCPP_INFO(
+         get_logger(), "Terminating action, invalid controller %s requested.",
+         goal->controller_id.c_str());
+-      action_server_->terminate_current();
++      throw nav2_core::PlannerException("Invalid controller during path preemption");
++    }
++    setPlannerPath(goal->path);
++  }
++}
++
++void ControllerServer::publishVelocity(const geometry_msgs::msg::TwistStamped & velocity)
++{
++  auto controller = controllers_.find(current_controller_);
++  if (controller != controllers_.end()) {
++    auto *output = dynamic_cast<scan_nav2_controller::CommandOutput *>(controller->second.get());
++    if (output) {
++      if (vel_publisher_->is_activated()) output->publishCommand(velocity);
++      else output->stop("nav2_output_inactive");
+       return;
+     }
+-    setPlannerPath(goal->path);
+-  }
+-}
+-
+-void ControllerServer::publishVelocity(const geometry_msgs::msg::TwistStamped & velocity)
+-{
++  }
+   auto cmd_vel = std::make_unique<geometry_msgs::msg::Twist>(velocity.twist);
+   if (
+     vel_publisher_->is_activated() &&
+@@ -405,6 +421,19 @@
+ 
+ void ControllerServer::publishZeroVelocity()
+ {
++  auto controller = controllers_.find(current_controller_);
++  if (controller != controllers_.end()) {
++    auto *output = dynamic_cast<scan_nav2_controller::CommandOutput *>(controller->second.get());
++    if (output) { output->stop("nav2_server_stop"); return; }
++  } else {
++    bool all_tagged = !controllers_.empty();
++    for (auto &entry : controllers_) {
++      auto *output = dynamic_cast<scan_nav2_controller::CommandOutput *>(entry.second.get());
++      if (output) output->stop("nav2_no_selected_controller");
++      else all_tagged = false;
++    }
++    if (all_tagged) return;
++  }
+   geometry_msgs::msg::TwistStamped velocity;
+   velocity.twist.angular.x = 0;
+   velocity.twist.angular.y = 0;

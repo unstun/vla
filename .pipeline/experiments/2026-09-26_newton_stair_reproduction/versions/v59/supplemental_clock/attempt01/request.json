@@ -1,0 +1,32 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--network=none",
+    "--name",
+    "vla-v59-supplemental-clock",
+    "--cpus=2",
+    "--memory=3g",
+    "-e",
+    "ROS_DOMAIN_ID=221",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-v",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan80_trajectory_epoch_v59:/workspace:ro",
+    "-v",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v59/supplemental_clock:/contract:ro",
+    "-v",
+    "/home/sun/vla_exec/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v59/supplemental_clock/attempt01:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "-c",
+    "source /opt/ros/humble/setup.bash && source /workspace/install/setup.bash && cmake -S /contract -B /attempt/build -DCMAKE_BUILD_TYPE=Release && cmake --build /attempt/build --target controller_epoch_probe -j2 && /attempt/build/controller_epoch_probe --ros-args -p use_sim_time:=true"
+  ],
+  "deadline_s": 180,
+  "probe_sha256": "5e2e7683b7b36983e906bd08d822c38c58dc50aee29a32d03a1c3dba543d213d",
+  "frozen_controller_sha256": "a64b7c35c99fd0dcd14a523e7309ec6e419a450d27fe4cae6b3b57d6c1b2485c",
+  "physics": false
+}

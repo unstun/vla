@@ -1,0 +1,91 @@
+Diagonal heuristic is used
+Astar initialized, max_x: 184, max_y: 189, max_layers: 11, time elapsed: 4.625000 ms
+max layers: 11, max_x: 184, max_y: 189
+start searching
+path found, time elapsed: 3.393000 ms
+num segs: 23, new interval: 10.347826
+tau: 0.383253
+x0:          36          -1           0         145 1.22465e-16           0
+xN:        66 -0.707107         0        99 -0.707107         0
+Creating graph...
+Graph created.
+Init values created.
+Matrices resized. N=24
+Processing node 0/24
+Inserted value 0
+Processing node 1/24
+Inserted value 1
+Processing node 2/24
+Inserted value 2
+Processing node 3/24
+Inserted value 3
+Processing node 4/24
+Inserted value 4
+Processing node 5/24
+Inserted value 5
+Processing node 6/24
+Inserted value 6
+Processing node 7/24
+Inserted value 7
+Processing node 8/24
+Inserted value 8
+Processing node 9/24
+Inserted value 9
+Processing node 10/24
+Inserted value 10
+Processing node 11/24
+Inserted value 11
+Processing node 12/24
+Inserted value 12
+Processing node 13/24
+Inserted value 13
+Processing node 14/24
+Inserted value 14
+Processing node 15/24
+Inserted value 15
+Processing node 16/24
+Inserted value 16
+Processing node 17/24
+Inserted value 17
+Processing node 18/24
+Inserted value 18
+Processing node 19/24
+Inserted value 19
+Processing node 20/24
+Inserted value 20
+Processing node 21/24
+Inserted value 21
+Processing node 22/24
+Inserted value 22
+Processing node 23/24
+Inserted value 23
+Loop finished.
+Adding PriorFactor6...
+Added PriorFactor6.
+Processing factor loop 1
+Added GPPriorFactor 1
+Factor loop finished.
+Adding goal prior...
+Added goal prior.
+Creating optimizer...
+Optimizer created.
+Optimizing...
+Optimization finished.
+shape: 208, 6
+smooth height
+Optimization finished for N = 24 at iteration 30, time elapsed: 33.555000 ms, cost: 185.587328
+Traceback (most recent call last):
+  File "/task/recovery_v134/install/lite3_nav2_bridge/lib/python3.8/site-packages/backend_adapter/pct_worker.py", line 50, in __init__
+    self._planner.loadTomogram(tomo_file=config.tomo_file, tomogram_path=config.tomogram_path)
+  File "/task/recovery_v134/install/pct_planner/lib/python3.8/site-packages/pct_planner/planner_wrapper.py", line 75, in loadTomogram
+    data_dict = pickle.load(handle)
+ModuleNotFoundError: No module named 'numpy._core'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v135/probe_pct.py", line 11, in <module>
+    planner=NativePctPlanner(NativePctConfig(Path(pct_planner.__file__).resolve().parents[1],str(path.parent),tomogram_path=str(path)),.3)
+  File "/task/recovery_v134/install/lite3_nav2_bridge/lib/python3.8/site-packages/backend_adapter/pct_worker.py", line 52, in __init__
+    raise RuntimeError("pct_tomogram_load_failed") from exc
+RuntimeError: pct_tomogram_load_failed

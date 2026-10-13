@@ -1,0 +1,76 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v117/build_report.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v118/build_report.py
+@@ -45,7 +45,7 @@
+         seen.add(owner(event['data']));stops.append(dict(t=event['host_wall_s']-origin,reason=event['data'].get('reason','')))
+     video=a.render/'newton_stair_recorded.mp4';video_bytes=video.read_bytes();sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+     values=np.array([r['ms'] for r in rows]);metrics=json.loads((a.analysis/'metrics.json').read_text());status=metrics['terminal']['backend_terminal_status']
+-    meta=dict(run=a.source.name,physical_version='v116',native_version='v114',display_version='v117',terminal=status,rounds=len(rows),successes=sum(r['success'] for r in rows),median_ms=float(np.median(values)),p95_ms=float(np.percentile(values,95)),maximum_ms=float(values.max()),budget_ms=1000/30,over_budget=int((values>1000/30).sum()),source_splines=overlay.total_splines,visible_curve_frames=sum(r['trajectory_id'] is not None for r in frames),video_seconds=duration,video_sha256=sha(video),latency_csv_sha256=sha(a.analysis/'latency.csv'),source_states_sha256=sha(a.source/'video_states.json'),clock_mapping=metrics['clock_mapping'],prior_attempt='attempt01 transport timeout; preserved, not included in these curves/timings')
++    meta=dict(run=a.source.name,physical_version='v116',native_version='v114',display_version='v118',terminal=status,rounds=len(rows),successes=sum(r['success'] for r in rows),median_ms=float(np.median(values)),p95_ms=float(np.percentile(values,95)),maximum_ms=float(values.max()),budget_ms=1000/30,over_budget=int((values>1000/30).sum()),source_splines=overlay.total_splines,visible_curve_frames=sum(r['trajectory_id'] is not None for r in frames),video_seconds=duration,video_sha256=sha(video),latency_csv_sha256=sha(a.analysis/'latency.csv'),source_states_sha256=sha(a.source/'video_states.json'),clock_mapping=metrics['clock_mapping'],prior_attempt='attempt01 transport timeout; preserved, not included in these curves/timings')
+     data=dict(meta=meta,rounds=rows,frames=[dict(t=r['display_time_s'],id=r['trajectory_id'],ms=r['latest_completed_solve_ms']) for r in frames],stops=stops)
+     (a.output/'timing_data.json').write_text(json.dumps(data,ensure_ascii=False,separators=(',',':'))+'\n')
+     (a.output/'latency.csv').write_bytes((a.analysis/'latency.csv').read_bytes())
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v117/run_review.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v118/run_review.py
+@@ -9,8 +9,8 @@
+ 
+ 
+ def temporary_root():
+-    root = Path(os.environ['V117_RENDER_ROOT'])
+-    if root.resolve() != root or root.parent != Path('/private/tmp') or not root.name.startswith('vla_newton_v117_'):
++    root = Path(os.environ['V118_RENDER_ROOT'])
++    if root.resolve() != root or root.parent != Path('/private/tmp') or not root.name.startswith('vla_newton_v118_'):
+         raise ValueError('Expected an owned external temporary render root')
+     return root
+ 
+@@ -27,7 +27,7 @@
+ 
+ def main():
+     from render_capture import verify_manifest
+-    verify_manifest('v117')
++    verify_manifest('v118')
+     root = temporary_root()
+     scripts = root / 'scripts'
+     scripts.mkdir()
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v117/render_capture.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v118/render_capture.py
+@@ -54,8 +54,11 @@
+             if curve_points is not None:
+                 viewer.log_lines("native_curve", wp.array(curve_points[:-1], dtype=wp.vec3),
+                                  wp.array(curve_points[1:], dtype=wp.vec3), colors=(0.0, 0.85, 1.0))
++                viewer.log_points("native_curve_tube", wp.array(curve_points, dtype=wp.vec3),
++                                  radii=0.025, colors=wp.array(np.tile(np.array([0.02, 0.92, 1.0], dtype=np.float32), (len(curve_points), 1)), dtype=wp.vec3))
+             else:
+                 viewer.log_lines("native_curve", None, None, None)
++                viewer.log_points("native_curve_tube", None)
+ """
+     renderer_text = replace_once(renderer_text, old_curve, new_curve)
+     renderer_text = replace_once(renderer_text,
+@@ -79,8 +82,8 @@
+ 
+ 
+ def main():
+-    contract = json.loads(Path(os.environ['V117_DISPLAY_CONTRACT']).read_text())
+-    verify_manifest('v117')
++    contract = json.loads(Path(os.environ['V118_DISPLAY_CONTRACT']).read_text())
++    verify_manifest('v118')
+     for version, expected in contract['parent_manifests'].items():
+         if verify_manifest(version) != expected:
+             raise ValueError('Parent manifest changed: ' + version)
+@@ -91,7 +94,7 @@
+         if digest(path) != expected:
+             raise ValueError('Recorded input changed: ' + path)
+     out = Path(os.environ['NEWTON_RUN_DIR'])
+-    if not out.is_dir() or out.parent.parent != Path(os.environ['V117_RENDER_ROOT']):
++    if not out.is_dir() or out.parent.parent != Path(os.environ['V118_RENDER_ROOT']):
+         raise ValueError('Expected managed temporary output')
+     # ViewerGL(headless=True) already requests an invisible window. Mac needs
+     # its native Cocoa context; pyglet's global headless option requests EGL.
+@@ -124,7 +127,7 @@
+         'TRAIL_M, HEIGHT_M, AHEAD_M, DOWN_M, TAU_S = 1.8, 1.2, 1.0, 0.12, 0.5')
+     (out / 'executed_render_episode_host.py').write_text(renderer_text)
+     (out / 'executed_render_heading_host.py').write_text(heading_text)
+-    (out / 'display_contract.json').write_bytes(Path(os.environ['V117_DISPLAY_CONTRACT']).read_bytes())
++    (out / 'display_contract.json').write_bytes(Path(os.environ['V118_DISPLAY_CONTRACT']).read_bytes())
+     remaining = sys.argv[1:]
+     sys.argv = [str(heading_path), '--source-run', source.name, *remaining]
+     exec(compile(heading_text, str(heading_path), 'exec'),

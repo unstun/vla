@@ -1,0 +1,3 @@
+# v56 physical floor presence
+
+Approved D3, parent qualified frozen v55. Physical-floor existence uses a distinct typed snapshot without Support labels, only for neighbor drop/height association. Exact pinned input/source/grid identities and original static freshness are required. Existing selected <=20 navigation/evidence bytes, central traversal, LiDAR terrain classification, step/drop limits, footprint, PVA/yaw/goal and stop protocol remain unchanged. Missing/mismatched/stale configured physical input rejects admission; absent optional input preserves original behavior. Native safety and sequential corner/reserve gates precede two approved idle-host 90-s Building recordings.

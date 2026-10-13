@@ -77,6 +77,41 @@
   v27 native seed regressions pass but full-route physics segfaults near13.24s.
   Execution archived/stopped; v28 not created. [未门控] Inline main-session archive.
 
+- [`2026-09-26_newton_stair_reproduction/`](2026-09-26_newton_stair_reproduction/README.md)
+  — Local Newton continuation with the original Building, sensor rig and official
+  animated human. Unchanged SCAN33 builds in cached Humble and produces one
+  moving curve on each original recorded-input condition; native PCT executes.
+  Original-scene stance and upstream-backed geometric sensor controls pass.
+  MAVROS-derived clock mapping and original-schema ZeroMQ state transfer now
+  connect the actual local loop. `stair_native_walk_v2` generates two moving
+  curves and advances about0.375m, then fails on unchanged command timeout;
+  measured stop and28s video are verified. Stair/person navigation remains
+  incomplete. The server remains shut down; original Isaac A4 stays open.
+  Status through v188 (2026-10-13; [version index](2026-09-26_newton_stair_reproduction/versions/README.md),
+  [archive brief](../handoffs/2026-10-13_newton_v47_v188_archive/SESSION_SUMMARY.md)):
+  v47–v85 did not reach sustained 30 Hz local planning (best v58/v59
+  27.53/26.43 Hz, maxima 659.526/1236.709 ms); v48 stays `current`. v86–v121
+  integrate actual Foxy Nav2; v114 arrives once from the original corner start.
+  v139 is validated for its declared fixed corner scenario (6/6 vs 5/6). v147 is
+  the first original-start full-route arrival (gpu5070ti, 76.883 m; repeats did
+  not hold); v160 is the first Mac finish (1/2); v174 passes the Mac gate with
+  qualified stop proofs. v177 (gpu5070ti) arrives 5/5 on the original map/start
+  with 30 measured-stop handoffs and no falls: declared-scenario repetition only.
+  Terminal-capture candidates v185 3/5 and v186 2/5 are rejected and v187 3/5 is
+  not accepted; the unchanged v177 binary control arrived 5/5 and the
+  unchanged-source v188 rebuild 3/5, so the cause of the variation is open.
+  30 Hz, tails, zero-command drift, other maps, Jetson, robot and VLA
+  integration remain unvalidated.
+
+- [`2026-09-23_scan_reactive_stair/`](../handoffs/2026-09-26_scan_stair_handoff.md)
+  — Sequential native SCAN stair/observed-person repairs. Old corrected input
+  retains one accepted curve through scan32; fresh input still has zero moving
+  curves. scan33 reference-target/prefix policy passes15 native cases locally
+  and in Foxy, independent code review and full build. Installation identity,
+  actual optimizer replay and live qualification are pending after user-reported
+  server shutdown. Latest real scan28 video records standing, not stair success.
+  [未门控] Main-session archival under inline mode; external archive gate unrun.
+
 - [`2026-09-16_pi_cortex_harnessvln/stance_hold_qualification/`](2026-09-16_pi_cortex_harnessvln/stance_hold_qualification/RESULT.md)
   — Isaac runner PD stance hold (task `.trellis/tasks/archive/2026-09/09-17-isaac-runner-stance-hold/`), Isaac Lab on
   gpu5070ti with V12 `model_149999.pt`; selected entry `xfade1s`. 60 s stand in FIXED_STAND: yaw rate
@@ -169,3 +204,11 @@ Before a behavior-changing run, record the parent implementation, motivation,
 exact change, expected signals, failure signals, command, local source commit,
 and artifact destination. Append results after the run; do not rewrite
 pre-run expectations.
+
+- 2026-10-01: [Newton v49 bounded-solve result](2026-09-26_newton_stair_reproduction/versions/v49/RESULTS.md) — rejected: 3.825 Hz attempts /2.883 Hz new plans, max37.998 ms, no >=100 ms tails, timeout reason ignored by backend gate; raw artifacts returned and verified. [Time-series comparison](2026-09-26_newton_stair_reproduction/versions/v49/analysis/time_series/v48_v49_planning_time_series.png).
+
+- 2026-10-01: [v50 upfront-search performance result](2026-09-26_newton_stair_reproduction/versions/v50/RESULTS.md) — frozen directly from v48; build and component safety tests pass, paired replay max107.481→4.827ms with exact geometry. Live maxima1829.626/858.031ms and long corridor stalls fail tail/continuity/30Hz acceptance; v48 remains the experimental reference. Includes a fresh unchanged-v48 control and disclosed v50 trial02 transfer overlap. [All-run time series](2026-09-26_newton_stair_reproduction/versions/v50/analysis/v48_v50_time_series.png).
+
+- 2026-10-01: [Newton v51 artifact storage](2026-09-26_newton_stair_reproduction/versions/v51/RESULTS.md) —62,371 redundant PNGs removed after full verification;152 closed logs compressed byte-exactly;10,260 raw members archived losslessly. About27 GiB free versus948 MiB initially. New renders stream to MP4 with three previews; managed post-run retention and21 tests pass. Navigation remains v48; no new physics.
+
+- 2026-10-02: [Newton v57 two-run validation](2026-09-26_newton_stair_reproduction/versions/v57/RESULTS.md) — old corner passed, 46.20/46.62 m paths without pauses over one second; successful planning25.65/25.76Hz, maximum660.975/290.149ms. Strict30Hz and tail elimination remain unmet. Verified plots and one8.4MiB review MP4 delivered; raw data stays on gpu5070ti.

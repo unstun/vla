@@ -1,0 +1,11 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan72_solve_budget_v49/src/plan_manage/src/scan_replan_fsm.cpp
++++ proposed_next_version/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -917,7 +917,7 @@
+         // Stop publication is never suppressed by an exhausted compute budget.
+         // Backend controller hold and measured stillness remain separate gates.
+         GridMap::PlanningDeadlineScope stop_scope(*map, nullptr);
+-        publishP2BAdmission("rejected", "native_solve_timeout");
++        publishP2BAdmission("rejected", "native_replan_exhausted");
+         need_hover_stop_ = true;
+         replan_fail_count_ = 0;
+         callEmergencyStop(odom_pos_);

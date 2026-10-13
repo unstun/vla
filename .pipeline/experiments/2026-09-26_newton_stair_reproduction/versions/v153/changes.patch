@@ -1,0 +1,139 @@
+--- v151/applied_channel.py
++++ v153/applied_channel.py
+@@ -20,37 +20,96 @@
+ class AppliedClient:
+     def __init__(self, port=46203):
+         self.context = zmq.Context()
++        self.port = port
++        self.socket = None
++        self._connect()
++
++    def _connect(self):
++        if self.socket is not None:
++            self.socket.close(linger=0)
+         self.socket = self.context.socket(zmq.REQ)
+         self.socket.setsockopt(zmq.LINGER, 0)
+         self.socket.setsockopt(zmq.SNDTIMEO, 100)
+         self.socket.setsockopt(zmq.RCVTIMEO, 100)
+-        self.socket.connect(f"tcp://127.0.0.1:{port}")
++        self.socket.connect(f"tcp://127.0.0.1:{self.port}")
+ 
+     def publish(self, payload):
+         raw = json.dumps(payload, separators=(",", ":"), allow_nan=False).encode()
+         digest = hashlib.sha256(raw).hexdigest()
+         self.last_attempt = {"sha256": digest, "sequence": payload["state_epoch"]["state_sequence"],
+-                             "send_started_monotonic_ns": time.monotonic_ns(), "timeout_ms": 100}
+-        self.socket.send(raw)
+-        self.last_attempt["send_completed_monotonic_ns"] = time.monotonic_ns()
+-        reply = self.socket.recv_json()
+-        self.last_attempt["reply_received_monotonic_ns"] = time.monotonic_ns()
+-        if not reply.get("ok") or reply.get("sha256") != digest or reply.get("sequence") != payload["state_epoch"]["state_sequence"]:
+-            raise RuntimeError(f"Applied evidence not acknowledged: {reply}")
+-        return reply
++                             "timeout_ms": 100, "attempts": []}
++        # No physics step runs while this synchronous call is pending. An ACK
++        # timeout is ambiguous: resend the same bytes, never a new source time.
++        for attempt in range(3):
++            timing = {"send_started_monotonic_ns": time.monotonic_ns()}
++            self.last_attempt["attempts"].append(timing)
++            try:
++                self.socket.send(raw)
++                timing["send_completed_monotonic_ns"] = time.monotonic_ns()
++                reply = self.socket.recv_json()
++                timing["reply_received_monotonic_ns"] = time.monotonic_ns()
++            except zmq.Again:
++                timing["timed_out_monotonic_ns"] = time.monotonic_ns()
++                if attempt == 2:
++                    raise
++                self._connect()
++                continue
++            if not reply.get("ok") or reply.get("sha256") != digest or reply.get("sequence") != payload["state_epoch"]["state_sequence"]:
++                raise RuntimeError(f"Applied evidence not acknowledged: {reply}")
++            self.last_attempt.update(timing)
++            return reply
+ 
+     def close(self):
+         self.socket.close()
+         self.context.term()
+ 
+ 
++class AppliedStore:
++    """One atomic writer; duplicate requests can only read back its exact head."""
++    def __init__(self, out):
++        self.out = out
++        self.request = json.loads((out / "episode_request.json").read_text())
++        self.external = out / "artifacts/external_episode"
++        self.external.mkdir(parents=True, exist_ok=True)
++        self.last_sequence = -1
++        self.last_digest = None
++
++    def accept(self, raw):
++        from backend_adapter.applied_evidence import AppliedCommandSnapshot, AppliedEvidenceReader
++        snapshot = AppliedCommandSnapshot.from_mapping(json.loads(raw))
++        age = (time.monotonic_ns() - snapshot.wall_monotonic_ns) / 1e9
++        if snapshot.run_id != self.out.name or snapshot.run_epoch_ns != self.request["run_epoch_ns"]:
++            raise ValueError("Applied state run identity mismatch")
++        if not 0 <= age <= snapshot.max_reader_age_s:
++            raise ValueError("Applied state stale or future")
++        digest = hashlib.sha256(raw).hexdigest()
++        duplicate = snapshot.state_sequence == self.last_sequence
++        if snapshot.state_sequence < self.last_sequence or (duplicate and digest != self.last_digest):
++            raise ValueError("Applied state reordered or altered duplicate")
++        current = self.external / "current_command.json"
++        if not duplicate:
++            temporary = self.external / "current_command.json.tmp"
++            temporary.write_bytes(raw)
++            temporary.replace(current)
++            self.last_sequence, self.last_digest = snapshot.state_sequence, digest
++        elif not current.is_file() or hashlib.sha256(current.read_bytes()).hexdigest() != digest:
++            raise ValueError("Applied state read-back differs from committed bytes")
++        checked = AppliedEvidenceReader(current).read()
++        if checked.state_sequence != snapshot.state_sequence:
++            raise ValueError("Applied state reader sequence mismatch")
++        reply = {"ok": True, "sequence": snapshot.state_sequence, "sha256": digest,
++                 "receive_age_s": age, "linux_receive_ns": time.monotonic_ns(),
++                 "original_reader_sequence": checked.state_sequence, "duplicate": duplicate}
++        finish = self.external / "finish_request.json"
++        if finish.exists():
++            reply["finish_request"] = json.loads(finish.read_text())
++        return reply
++
++
+ def serve(out):
+     sys.path.insert(0, str(BASE / "runtime_sources/backend_adapter"))
+-    from backend_adapter.applied_evidence import AppliedCommandSnapshot, AppliedEvidenceReader
+-    request = json.loads((out / "episode_request.json").read_text())
+-    external = out / "artifacts/external_episode"
+-    external.mkdir(parents=True, exist_ok=True)
+-    last_sequence = -1
++    store = AppliedStore(out)
++    external = store.external
+     # Keep per-control-step I/O inside Linux tmpfs. The existing verified
+     # exec/tar copyback returns this audit after the episode, before teardown.
+     with zmq.Context() as context, context.socket(zmq.REP) as socket, (external / "applied_channel.jsonl").open("w") as log:
+@@ -60,24 +119,7 @@
+             raw = socket.recv()
+             received_ns = time.monotonic_ns()
+             try:
+-                data = json.loads(raw)
+-                snapshot = AppliedCommandSnapshot.from_mapping(data)
+-                age = (time.monotonic_ns() - snapshot.wall_monotonic_ns) / 1e9
+-                if snapshot.run_id != out.name or snapshot.run_epoch_ns != request["run_epoch_ns"]:
+-                    raise ValueError("Applied state run identity mismatch")
+-                if not 0 <= age <= snapshot.max_reader_age_s or snapshot.state_sequence <= last_sequence:
+-                    raise ValueError("Applied state stale, future or reordered")
+-                temporary = external / "current_command.json.tmp"
+-                temporary.write_bytes(raw)
+-                temporary.replace(external / "current_command.json")
+-                last_sequence = snapshot.state_sequence
+-                checked = AppliedEvidenceReader(external / "current_command.json").read()
+-                reply = {"ok": True, "sequence": last_sequence, "sha256": hashlib.sha256(raw).hexdigest(),
+-                         "receive_age_s": age, "linux_receive_ns": time.monotonic_ns()}
+-                reply["original_reader_sequence"] = checked.state_sequence
+-                finish = external / "finish_request.json"
+-                if finish.exists():
+-                    reply["finish_request"] = json.loads(finish.read_text())
++                reply = store.accept(raw)
+             except Exception as error:
+                 reply = {"ok": False, "error": str(error)}
+             reply["server_received_monotonic_ns"] = received_ns

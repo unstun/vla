@@ -1,0 +1,1 @@
+One live negative certificate in native A*: enumerate every possible exact/tolerance endpoint under the original search plane. Only reject when all are necessarily inadmissible. Same final checks; no reusable safety result. Timing remains a separately versioned follow-up.

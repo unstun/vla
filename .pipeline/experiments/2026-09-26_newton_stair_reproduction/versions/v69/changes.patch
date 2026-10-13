@@ -1,0 +1,229 @@
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v69/PLAN.md
+@@ -0,0 +1,21 @@
++# Mac recorded-state review
++
++Stage: experiment + analysis. Dr Sun requested a video of the latest Mac trial.
++v69 is one display-only host adaptation, parent v68; the physical source is
++v68_mac_trial01_attempt02 with frozen v63 native planning and v59 physics.
++
++Reuse the frozen v51 renderer, streaming encoder, causal 30 FPS wall timeline
++and original robot/Building materials. Reuse v61's close heading camera. Select
++the already recorded external Mac run without copying or modifying it. Read
++the verified Mac analysis for the overlay, preserving cross-OS clock mapping.
++Use the Mac Cocoa OpenGL context with a hidden viewport instead of Linux EGL.
++No physics, sensing, control, planning, safety or stopping changes are made.
++
++Run through the original managed retention and bounded supervisor, with output
++and caches at a unique /private/tmp/vla_newton_v69_* root. Before execution,
++freeze owned source and pin renderer/physical manifests plus source-state,
++geometry and analysis hashes. Inspect three sample frames; decode the complete
++MP4 and verify causal source indices, final stop and unchanged source bytes.
++Return only the requested review MP4 (under 128 MiB), three samples and compact
++receipts. Keep all original raw captures outside the repository. Preserve failed
++render attempts separately. Display FPS is not a planner-frequency claim.
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v69/display_contract.json
+@@ -0,0 +1,36 @@
++{
++  "version": "v69",
++  "kind": "display_only",
++  "physical_source_version": "v68",
++  "native_source_version": "v63",
++  "physical_source_run": "v68_mac_trial01_attempt02",
++  "physical_source_root": "/private/tmp/vla_newton_v68_ooqtmr__/runs/v68_mac_trial01_attempt02",
++  "analysis_metrics": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-04_mac_newton/trial02/metrics.json",
++  "parent_manifests": {
++    "v51": "07b08e47e7ba0b2b9239eed3fa2702d081c8bb27d41d07411e6449c37c89e5b2",
++    "v61": "c653f4fb74d1d305ee137ce2c95059ff8c0942f955ec002a93cefeafaaa59ba9",
++    "v68": "a2e0b7da1f41e7cfeaa1c62e448fd4f34398e6a8309e2c54446113a5b6bc307c"
++  },
++  "input_files": {
++    "/private/tmp/vla_newton_v68_ooqtmr__/runs/v68_mac_trial01_attempt02/video_states.json": "f4f668e5e56b37a8f079f293d0e3b4333dc54fa896c689db1862c5faea61d4f3",
++    "/private/tmp/vla_newton_v68_ooqtmr__/runs/v68_mac_trial01_attempt02/episode_request.json": "e9fc9efbd03e757a2baabf6830a6cd8fed784ca2c8a9a6eaab123318abeafdfc",
++    "/private/tmp/vla_newton_v68_ooqtmr__/runs/v68_mac_trial01_attempt02/result.json": "c371d8c29dcb873e822e74dd7b504a31dee96729e5eaa248c23b586a02940c03",
++    "/private/tmp/vla_newton_v68_ooqtmr__/runs/v68_mac_trial01_attempt02/raw_capture.zip": "f1d77f34ea283591a7f54bafe81e49d9840a7c7561a1e84299578b532c5d274a",
++    "/private/tmp/vla_newton_v68_ooqtmr__/runs/v68_mac_trial01_attempt02/raw_capture_manifest.json": "73362dbb7f1ab34b12cff545b3697f595b5efd26d1920985ae18364ce5d4a2be",
++    "/private/tmp/vla_newton_v68_ooqtmr__/runs/v68_mac_trial01_attempt02/inputs/stair_scenario.json": "278c033dd80b86b50520e84654ab475511f1180a2b40eb89ded2813c2d5574e4",
++    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-04_mac_newton/trial02/metrics.json": "fdd0dc59b268f58cf13b6028e9ef5e23216e883d0b9d8e86dd359fd1b4e8b431",
++    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-04_mac_newton/trial02/provenance.json": "40cc7c29eaf11c029e60087d9424405dd7bdcaa11281b905673f85bb230858ea"
++  },
++  "camera": {
++    "trail_m": 1.1,
++    "height_m": 0.6,
++    "ahead_m": 0.25,
++    "down_m": 0.2,
++    "yaw_time_constant_s": 0.5
++  },
++  "display_fps": 30,
++  "time_source": "causal sampling of recorded Mac monotonic timestamps",
++  "interpolation": false,
++  "physics_reexecuted": false,
++  "maximum_local_review_bytes": 134217728
++}
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v69/render_review.py
+@@ -0,0 +1,113 @@
++"""Display-only Mac port of the frozen causal renderer and close camera."""
++import hashlib
++import json
++import os
++from pathlib import Path
++import sys
++import types
++
++HERE = Path(__file__).resolve().parent
++BASE = HERE.parents[1]
++ROOT = BASE.parents[2]
++
++
++def digest(path):
++    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++
++
++def verify_manifest(version):
++    path = BASE / 'versions' / version / 'manifest.json'
++    data = json.loads(path.read_text())
++    for name, expected in data['source_files'].items():
++        if digest(ROOT / name) != expected:
++            raise ValueError('Frozen source changed: ' + name)
++        snapshot = data.get('snapshot_locations', {}).get(name)
++        if snapshot and digest(ROOT / snapshot) != expected:
++            raise ValueError('Frozen snapshot changed: ' + name)
++    return digest(path)
++
++
++def replace_once(text, old, new):
++    if text.count(old) != 1:
++        raise ValueError('Renderer adaptation does not match its frozen source')
++    return text.replace(old, new)
++
++
++def main():
++    contract = json.loads((HERE / 'display_contract.json').read_text())
++    verify_manifest('v69')
++    for version, expected in contract['parent_manifests'].items():
++        if verify_manifest(version) != expected:
++            raise ValueError('Parent manifest changed: ' + version)
++    source = Path(contract['physical_source_root'])
++    if source.resolve() != source or source.name != contract['physical_source_run']:
++        raise ValueError('Wrong recorded source')
++    for path, expected in contract['input_files'].items():
++        if digest(path) != expected:
++            raise ValueError('Recorded input changed: ' + path)
++    out = Path(os.environ['NEWTON_RUN_DIR'])
++    if not out.is_dir() or out.parent.parent != Path(os.environ['V69_TEMP_ROOT']):
++        raise ValueError('Expected managed temporary output')
++    # ViewerGL(headless=True) already requests an invisible window. Mac needs
++    # its native Cocoa context; pyglet's global headless option requests EGL.
++    os.environ.pop('PYGLET_HEADLESS', None)
++    os.environ['PYOPENGL_PLATFORM'] = 'darwin'
++    parent = BASE / 'versions/v51'
++    sys.path.insert(0, str(BASE / 'scripts'))
++    sys.path.insert(0, str(parent))
++
++    renderer_path = parent / 'render_episode_v51.py'
++    renderer_text = replace_once(renderer_path.read_text(),
++        'source = BASE / "runs" / args.source_run',
++        'source = Path(' + repr(str(source)) + ')')
++    renderer_text = replace_once(renderer_text,
++        'source.parent != BASE / "runs"',
++        'source.name != args.source_run')
++    renderer_text = replace_once(renderer_text,
++        "RTF {timing['actual_navigation_rtf']:.4f} | local {timing['local_hz']:.2f} Hz | control {timing['controller_hz']:.2f} Hz | overruns {timing['local_overruns']}",
++        "Mac RTF {timing['actual_navigation_rtf']:.3f} | successful local {timing['local_hz']:.2f} Hz | max round {timing['max_solve_ms']:.0f} ms")
++    renderer = types.ModuleType('render_episode_v51')
++    renderer.__file__ = str(renderer_path)
++    sys.modules[renderer.__name__] = renderer
++    exec(compile(renderer_text, str(renderer_path), 'exec'), renderer.__dict__)
++    metrics = json.loads(Path(contract['analysis_metrics']).read_text())
++    renderer.load_measurements = lambda unused_source: {
++        'actual_navigation_rtf': metrics['actual_rtf'],
++        'local_hz': metrics['planning']['successful_wall_hz'],
++        'max_solve_ms': metrics['planning']['solve_ms']['maximum'],
++        'definition': metrics['frequency_definition'],
++        'analysis_metrics_sha256': contract['input_files'][contract['analysis_metrics']],
++    }
++    heading_path = parent / 'render_heading_v51.py'
++    heading_text = replace_once(heading_path.read_text(),
++        'render_episode.load_recorded_rows(EXPERIMENT / "runs" / args.source_run)',
++        'render_episode.load_recorded_rows(Path(' + repr(str(source)) + '))')
++    heading_text = replace_once(heading_text,
++        'TRAIL_M, HEIGHT_M, AHEAD_M, DOWN_M, TAU_S = 1.4, 1.0, 0.6, 0.1, 0.5',
++        'TRAIL_M, HEIGHT_M, AHEAD_M, DOWN_M, TAU_S = 1.1, 0.60, 0.25, 0.20, 0.5')
++    (out / 'executed_render_episode_host.py').write_text(renderer_text)
++    (out / 'executed_render_heading_host.py').write_text(heading_text)
++    (out / 'display_contract.json').write_bytes((HERE / 'display_contract.json').read_bytes())
++    remaining = sys.argv[1:]
++    sys.argv = [str(heading_path), '--source-run', source.name, *remaining]
++    exec(compile(heading_text, str(heading_path), 'exec'),
++         {'__name__': '__main__', '__file__': str(heading_path)})
++    result = json.loads((out / 'result.json').read_text())
++    if not result['render_only_no_physics_steps']:
++        raise ValueError('Display unexpectedly executed physics')
++    for path, expected in contract['input_files'].items():
++        if digest(path) != expected:
++            raise ValueError('Recorded input changed during rendering: ' + path)
++    (out / 'host_port_verification.json').write_text(json.dumps({
++        'kind': 'display_only', 'physical_source_version': 'v68',
++        'native_source_version': 'v63', 'source_unchanged': True,
++        'render_only_no_physics_steps': True,
++        'adapted_renderer_sha256': digest(out / 'executed_render_episode_host.py'),
++        'adapted_heading_sha256': digest(out / 'executed_render_heading_host.py'),
++        'graphics_context': 'Mac Cocoa, invisible ViewerGL window',
++        'physics_acceptance': False,
++    }, indent=2) + '\n')
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v69/run_review.py
+@@ -0,0 +1,47 @@
++"""Reuse original bounded supervision and retention at an external render root."""
++import importlib.util
++import os
++from pathlib import Path
++import sys
++
++HERE = Path(__file__).resolve().parent
++BASE = HERE.parents[1]
++
++
++def temporary_root():
++    root = Path(os.environ['V69_TEMP_ROOT'])
++    if root.resolve() != root or root.parent != Path('/private/tmp') or not root.name.startswith('vla_newton_v69_'):
++        raise ValueError('Expected an owned external temporary render root')
++    return root
++
++
++def supervise():
++    source = BASE.parent / '2026-09-26_newton_macos_policy/scripts/run_bounded.py'
++    spec = importlib.util.spec_from_file_location('original_render_supervisor', source)
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    module.BASE = temporary_root()
++    module.MAX_DEADLINE_S = 1800
++    module.main()
++
++
++def main():
++    from render_review import verify_manifest
++    verify_manifest('v69')
++    root = temporary_root()
++    scripts = root / 'scripts'
++    scripts.mkdir()
++    (scripts / 'run_bounded.py').write_text(
++        'import sys\n'
++        'sys.path.insert(0, ' + repr(str(HERE)) + ')\n'
++        'from run_review import supervise\n'
++        'supervise()\n')
++    sys.path.insert(0, str(BASE / 'versions/v51'))
++    import managed_run
++    managed_run.a.BASE = root
++    managed_run.a.AUDIT = root / 'artifact_audit'
++    return managed_run.main()
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())

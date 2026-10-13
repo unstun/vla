@@ -1,0 +1,70 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v102/src/scan_nav2_controller/test/test_controller.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v103/src/scan_nav2_controller/test/test_controller.cpp
+@@ -144,6 +144,30 @@
+   EXPECT_THROW(plugin->setPlan(changed),nav2_core::PlannerException);
+ }
+ TEST_F(PluginTest, RealPluginTracksNativeSplineAndTagsOutput) { moving(); }
++TEST_F(PluginTest, ReplacementBetweenComputeAndPublishDropsOldCommandWithoutCancelling)
++{
++  std::vector<sm::P2BAdmission> admissions;
++  auto ack=io->create_subscription<sm::P2BAdmission>("/p2b/scan_admission",10,
++    [&](sm::P2BAdmission::ConstSharedPtr m) { admissions.push_back(*m); });
++  moving();
++  auto old=plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist());
++  ASSERT_GT(old.twist.linear.x,0.0);
++  auto replacement=curve();replacement.traj_id=2;spline->publish(replacement);
++  ASSERT_TRUE(wait([&] {return std::any_of(admissions.begin(),admissions.end(),
++    [](const auto &a) {return a.traj_id==2 && a.consumer=="controller" && a.status=="accepted";});}));
++  received.clear();output->publishCommand(old);
++  ASSERT_TRUE(wait([&] {return !received.empty();}));
++  EXPECT_EQ(received.back().twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(received.back().traj_id,2);
++  sm::P2BExecutionSafety proof;identity(proof.binding);proof.binding.traj_id=2;
++  proof.binding.consumer="native_safety";proof.clear=true;proof.local_map_revision=1;
++  ASSERT_TRUE(wait([&] {
++    proof.stamp=parent->now();proof.observation_stamp_s=parent->now().seconds();safety->publish(proof);
++    auto next=plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist());
++    if(next.twist.linear.x>0) {output->publishCommand(next);return true;}return false;
++  },0.08));
++  ASSERT_TRUE(wait([&] {return received.back().traj_id==2 && received.back().twist.linear.x>0;}));
++}
+ TEST_F(PluginTest, RepeatedAdmittedPathIsIdempotentButChangedPathNeedsBinding)
+ {
+   plan();
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v102/src/scan_nav2_controller/src/controller.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v103/src/scan_nav2_controller/src/controller.cpp
+@@ -337,7 +337,9 @@
+   if (tracker_->receive_traj_ && message->traj_id<=tracker_->traj_id_) return;
+   if (!valid) { stopLocked("invalid_scan_spline"); return; }
+   tracker_->bsplineCallback(message); spline_received_s_=now;
+-  safety_.reset(); ticket_ready_=false;
++  // Preserve the sampled ticket until publication can identify and discard it
++  // as superseded. A normal curve replacement is not a forged output ticket.
++  safety_.reset();
+   if (message->emergency_stop) stopLocked("scan_emergency_stop");
+ }
+ 
+@@ -450,13 +452,22 @@
+     stopLocked("nav2_command_ticket_mismatch"); return;
+   }
+   const double now=parent_->now().seconds();
++  const bool superseded=ticket_identity_.traj_id!=tracker_->traj_id_;
+   if (!fresh(now,stampSeconds(ticket_.header.stamp),pose_timeout_s_) ||
+-      (command.twist!=geometry_msgs::msg::Twist() &&
++      (!superseded && command.twist!=geometry_msgs::msg::Twist() &&
+        (!safety_ || !safety_->clear || !fresh(now,stampSeconds(safety_->stamp),safety_timeout_s_) ||
+         !fresh(now,safety_->observation_stamp_s,observation_timeout_s_)))) {
+     stopLocked("nav2_command_evidence_expired"); return;
+   }
+   ticket_ready_=false;
++  if (superseded) {
++    // Never publish a nonzero command sampled from the replaced trajectory.
++    // The next control tick must obtain the new trajectory's own fresh proof.
++    scan_planner_msgs::msg::P2BStampedTwist zero;
++    copyIdentity(*state_->route,zero);zero.traj_id=tracker_->traj_id_;zero.stamp=parent_->now();
++    command_pub_->publish(zero);
++    return;
++  }
+   if (state_->stopping) ticket_identity_.twist=geometry_msgs::msg::Twist();
+   command_pub_->publish(ticket_identity_);
+ }

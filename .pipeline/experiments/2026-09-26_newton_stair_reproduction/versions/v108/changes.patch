@@ -1,0 +1,19 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v107/src/scan_nav2_controller/src/controller.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v108/src/scan_nav2_controller/src/controller.cpp
+@@ -474,7 +474,15 @@
+   if (!safety_ && now>=spline_received_s_ && now-spline_received_s_<=safety_timeout_s_)
+     return ticket(geometry_msgs::msg::Twist());
+   if (!safety_ || !safety_->clear || !fresh(now,stampSeconds(safety_->stamp),safety_timeout_s_) ||
+-      !fresh(now,safety_->observation_stamp_s,observation_timeout_s_)) fail("scan_safety_evidence_stale");
++      !fresh(now,safety_->observation_stamp_s,observation_timeout_s_)) {
++    RCLCPP_ERROR(parent_->get_logger(),
++      "SCAN evidence rejected now=%.9f active=%lld proof=%lld clear=%d proof_stamp=%.9f proof_age=%.9f observation_stamp=%.9f observation_age=%.9f pending_curves=%zu pending_proofs=%zu",
++      now,static_cast<long long>(tracker_->traj_id_),safety_?static_cast<long long>(safety_->binding.traj_id):-1LL,
++      safety_ && safety_->clear,safety_?stampSeconds(safety_->stamp):0.0,
++      safety_?now-stampSeconds(safety_->stamp):-1.0,safety_?safety_->observation_stamp_s:0.0,
++      safety_?now-safety_->observation_stamp_s:-1.0,candidate_curves_.size(),candidate_proofs_.size());
++    fail("scan_safety_evidence_stale");
++  }
+   if (atGoal(pose.pose,*state_)) {
+     stopLocked("requested_goal_reached"); return ticket(geometry_msgs::msg::Twist());
+   }

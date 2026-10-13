@@ -1,0 +1,1 @@
+Attempt01 was deliberately stopped (exit137) during build after review identified an uninitialized native search pool in the scripted fixture. The subsequent initialization change exposed the static-link collision recorded in attempt02. No production code was changed between these attempts.

@@ -1,0 +1,121 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v109/src/plan_manage/src/scan_replan_fsm.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v110/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1284,6 +1284,24 @@
+     }
+   }
+ 
++  void SCANReplanFSM::publishExecutionSafety(int64_t trajectory,const rclcpp::Time &checked_at,
++      double observation_stamp,uint64_t map_revision,bool clear)
++  {
++    if (!have_p2b_identity_) return;
++    scan_planner_msgs::msg::P2BExecutionSafety out;
++    out.stamp=checked_at;out.observation_stamp_s=observation_stamp;
++    out.local_map_revision=static_cast<int64_t>(map_revision);
++    scan_planner_msgs::msg::Bspline bound;attachP2BIdentity(bound);
++    out.binding.run_id=bound.run_id;out.binding.epoch=bound.epoch;
++    out.binding.request_id=bound.request_id;out.binding.goal_id=bound.goal_id;
++    out.binding.route_id=bound.route_id;out.binding.command_id=bound.command_id;
++    out.binding.generation=bound.generation;out.binding.map_epoch=bound.map_epoch;
++    out.binding.map_revision=bound.map_revision;out.binding.traj_id=trajectory;
++    out.binding.consumer="native_safety";out.clear=clear && planner_manager_->grid_map_->mapperHealthy();
++    out.binding.status=out.clear?"clear":"blocked";
++    nav2_safety_pub_->publish(out);
++  }
++
+   void SCANReplanFSM::checkCollisionCallback()
+   {
+     GridMap::RawContributorCacheScope callback_cache(*planner_manager_->grid_map_);
+@@ -1300,22 +1318,7 @@
+ 
+     const auto checked_at = node_->now();
+     const auto report_safety = [&](bool clear) {
+-      if (!have_p2b_identity_) return;
+-      scan_planner_msgs::msg::P2BExecutionSafety out;
+-      out.stamp = checked_at;
+-      out.observation_stamp_s = map->observationStamp();
+-      out.local_map_revision = static_cast<int64_t>(map->mapRevision());
+-      scan_planner_msgs::msg::Bspline bound;
+-      attachP2BIdentity(bound);
+-      out.binding.run_id = bound.run_id; out.binding.epoch = bound.epoch;
+-      out.binding.request_id = bound.request_id; out.binding.goal_id = bound.goal_id;
+-      out.binding.route_id = bound.route_id; out.binding.command_id = bound.command_id;
+-      out.binding.generation = bound.generation; out.binding.map_epoch = bound.map_epoch;
+-      out.binding.map_revision = bound.map_revision; out.binding.traj_id = info->traj_id_;
+-      out.binding.consumer = "native_safety";
+-      out.clear = clear && map->mapperHealthy();
+-      out.binding.status = out.clear ? "clear" : "blocked";
+-      nav2_safety_pub_->publish(out);
++      publishExecutionSafety(info->traj_id_,checked_at,map->observationStamp(),map->mapRevision(),clear);
+     };
+     if (exec_state_ == WAIT_TARGET || info->start_time_.seconds() < 1e-5) {
+       report_safety(false);
+@@ -1460,6 +1463,12 @@
+       }
+ 
+       bspline_pub_->publish(bspline);
++      const auto &check=planner_manager_->publication_check_;
++      if (check.clear && check.traj_id==bspline.traj_id)
++        publishExecutionSafety(check.traj_id,check.checked_at,check.observation_stamp_s,check.map_revision,true);
++      else
++        RCLCPP_ERROR(node_->get_logger(),"Missing exact final validation for published trajectory %lld",
++          static_cast<long long>(bspline.traj_id));
+       planner_manager_->publication_lease_.reset();
+ 
+       visualization_->displayOptimalTraj(info->position_traj_, 0);
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v109/src/plan_manage/src/planner_manager.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v110/src/plan_manage/src/planner_manager.cpp
+@@ -247,6 +247,7 @@
+                                         const rclcpp::Time *retry_origin)
+   {
+     publication_lease_.reset();
++    publication_check_.clear=false;
+     GridMap::RawContributorCacheScope raw_cache_scope(*grid_map_);
+     // The FSM owns a checked sample epoch for its entire synchronous retry chain.
+     // A later expiry of the source curve does not resample the retained PVA.
+@@ -537,6 +538,9 @@
+     // v31: judge the final curve against the newest received inputs.
+     grid_map_->refreshSensorInputs("final_check");
+     auto publication_lease = grid_map_->beginPublication();
++    const auto checked_at=node_->now();
++    const double checked_observation=grid_map_->observationStamp();
++    const uint64_t checked_revision=grid_map_->mapRevision();
+     const auto collision_started = std::chrono::steady_clock::now();
+     const auto collision = reactive_stair::checkFullCubicTrajectory(
+         pos, 0.0, grid_map_->getResolution(), GridMap::collision_heading_lookahead_s,
+@@ -581,6 +585,9 @@
+     // success. YoY
+     continuous_failures_count_ = 0;
+     publication_lease_ = std::move(publication_lease);
++    // This is the actual existing final whole-curve validation, not a timer
++    // receipt or a new freshness grant. The publication lease still pins it.
++    publication_check_={true,local_data_.traj_id_,checked_at,checked_observation,checked_revision};
+     return true;
+   }
+ 
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v109/src/plan_manage/include/plan_manage/planner_manager.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v110/src/plan_manage/include/plan_manage/planner_manager.h
+@@ -60,6 +60,13 @@
+     GlobalTrajData global_data_;
+     GridMap::Ptr grid_map_;
+     std::unique_ptr<GridMap::PublicationLease> publication_lease_;
++    struct PublicationCheck {
++      bool clear{false};
++      int64_t traj_id{0};
++      rclcpp::Time checked_at{0,0,RCL_ROS_TIME};
++      double observation_stamp_s{0.0};
++      uint64_t map_revision{0};
++    } publication_check_;
+ 
+   private:
+     bool reboundReplanAttempt(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v109/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v110/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -194,6 +194,8 @@
+     bool p2bIdentityMatches(const scan_planner_msgs::msg::P2BCancel &msg) const;
+     void publishP2BAdmission(const std::string &status, const std::string &message, bool hold_confirmed=false, bool measured_stillness_confirmed=false);
+     void attachP2BIdentity(scan_planner_msgs::msg::Bspline &bspline) const;
++    void publishExecutionSafety(int64_t trajectory,const rclcpp::Time &checked_at,
++      double observation_stamp,uint64_t map_revision,bool clear);
+     void odometryCallback(nav_msgs::msg::Odometry::ConstSharedPtr msg);
+     void applyDueOdometry();
+     void applyOdometry(nav_msgs::msg::Odometry::ConstSharedPtr msg);

@@ -1,0 +1,3 @@
+# v76 corner recording with immediate evidence closeout
+
+Parent v74 had a successful corner-local current-planner test, but private/tmp captures disappeared following an interrupted turn before rendering/remote archival. Retain compact metrics/frozen source and record raw unavailability. Change only closeout orchestration: archive/verify the closed physical capture on5070ti before display, render actual states with unchanged v51/v61 Mac renderer, copy requested MP4 locally and archive render evidence before completion. Same corner scenario, exact nativev63, physics/policy/sensors/controller/backend/stop rules. Rebuild and qualify fresh installed bytes; no v49 timeout or goal/safety change.

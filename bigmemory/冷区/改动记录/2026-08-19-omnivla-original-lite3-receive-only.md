@@ -1,3 +1,5 @@
+> [摘要] Pinned official-CUDA forward and one Lite3 receive-only camera request passed; no robot motion or navigation claim.
+
 # OmniVLA-original CUDA and Lite3 receive-only milestone
 
 Date: 2026-08-19

@@ -1,0 +1,213 @@
+--- v160/src/lite3_nav2_plugins/CMakeLists.txt
++++ v163/src/lite3_nav2_plugins/CMakeLists.txt
+@@ -20,5 +20,7 @@
+   find_package(ament_cmake_gtest REQUIRED)
+   ament_add_gtest(test_terrain_layer test/test_terrain_layer.cpp TIMEOUT 30)
+   ament_target_dependencies(test_terrain_layer ${dependencies})
++  ament_add_gtest(test_reference_cache test/test_reference_cache.cpp TIMEOUT 30)
++  ament_target_dependencies(test_reference_cache ${dependencies})
+ endif()
+ ament_package()
+--- v160/src/lite3_nav2_plugins/test/test_reference_cache.cpp
++++ v163/src/lite3_nav2_plugins/test/test_reference_cache.cpp
+@@ -0,0 +1,25 @@
++#include <gtest/gtest.h>
++#include "../src/bind_route.cpp"
++TEST(ReferenceCache, ExactGeometryAndOriginalStampOnlyForSameGoal) {
++ BT::BehaviorTreeFactory factory;
++ factory.registerNodeType<lite3_nav2::RememberGlobalPath>("RememberGlobalPath");
++ factory.registerNodeType<lite3_nav2::RestoreGlobalPath>("RestoreGlobalPath");
++ auto bb=BT::Blackboard::create();geometry_msgs::msg::PoseStamped goal;goal.header.frame_id="world";goal.pose.position.x=9;goal.pose.orientation.w=1;
++ nav_msgs::msg::Path path;path.header.frame_id="world";path.header.stamp.sec=7;path.poses={goal,goal};path.poses[0].pose.position.x=1;
++ bb->set("goal",goal);bb->set("candidate",path);
++ auto save=factory.createTreeFromText(R"(<root main_tree_to_execute="Main"><BehaviorTree ID="Main"><RememberGlobalPath goal="{goal}" path="{candidate}"/></BehaviorTree></root>)",bb);
++ auto restore=factory.createTreeFromText(R"(<root main_tree_to_execute="Main"><BehaviorTree ID="Main"><RestoreGlobalPath goal="{goal}" path="{restored}"/></BehaviorTree></root>)",bb);
++ EXPECT_EQ(restore.tickRoot(),BT::NodeStatus::FAILURE);
++ EXPECT_EQ(save.tickRoot(),BT::NodeStatus::SUCCESS);
++ path.poses[0].pose.position.x=100;bb->set("candidate",path);
++ EXPECT_EQ(restore.tickRoot(),BT::NodeStatus::SUCCESS);
++ auto recovered=bb->get<nav_msgs::msg::Path>("restored");EXPECT_DOUBLE_EQ(recovered.poses[0].pose.position.x,1);EXPECT_EQ(recovered.header.stamp.sec,7);
++ goal.pose.position.x=10;bb->set("goal",goal);EXPECT_EQ(restore.tickRoot(),BT::NodeStatus::FAILURE);
++}
++TEST(ReferenceCache, InvalidNewPathDoesNotBecomeACachedReference) {
++ BT::BehaviorTreeFactory factory;factory.registerNodeType<lite3_nav2::RememberGlobalPath>("RememberGlobalPath");
++ auto bb=BT::Blackboard::create();geometry_msgs::msg::PoseStamped goal;goal.header.frame_id="world";goal.pose.orientation.w=1;nav_msgs::msg::Path path;path.header.frame_id="world";
++ bb->set("goal",goal);bb->set("path",path);
++ auto tree=factory.createTreeFromText(R"(<root main_tree_to_execute="Main"><BehaviorTree ID="Main"><RememberGlobalPath goal="{goal}" path="{path}"/></BehaviorTree></root>)",bb);
++ EXPECT_EQ(tree.tickRoot(),BT::NodeStatus::FAILURE);lite3_nav2::GlobalReference saved;EXPECT_FALSE(bb->get("lite3_previous_pct_reference",saved));
++}
+--- v160/src/lite3_nav2_plugins/src/bind_route.cpp
++++ v163/src/lite3_nav2_plugins/src/bind_route.cpp
+@@ -3,8 +3,51 @@
+ #include <lite3_nav2_interfaces/srv/bind_route.hpp>
+ #include <rclcpp/rclcpp.hpp>
+ #include <std_srvs/srv/trigger.hpp>
++#include <cmath>
+ 
+ namespace lite3_nav2 {
++struct GlobalReference {
++  geometry_msgs::msg::PoseStamped goal;
++  nav_msgs::msg::Path path;
++};
++class RememberGlobalPath : public BT::SyncActionNode {
++public:
++  RememberGlobalPath(const std::string &name,const BT::NodeConfiguration &config)
++    : BT::SyncActionNode(name,config) {}
++  static BT::PortsList providedPorts() {
++    return {BT::InputPort<geometry_msgs::msg::PoseStamped>("goal"),BT::InputPort<nav_msgs::msg::Path>("path")};
++  }
++  BT::NodeStatus tick() override {
++    GlobalReference saved;
++    if(!getInput("goal",saved.goal)||!getInput("path",saved.path)||saved.path.poses.size()<2||
++       saved.path.header.frame_id.empty()||saved.path.header.frame_id!=saved.goal.header.frame_id)
++      return BT::NodeStatus::FAILURE;
++    for(const auto &pose:saved.path.poses) {
++      const auto &p=pose.pose.position;
++      if(pose.header.frame_id!=saved.path.header.frame_id||
++         !std::isfinite(p.x)||!std::isfinite(p.y)||!std::isfinite(p.z))return BT::NodeStatus::FAILURE;
++    }
++    config().blackboard->set("lite3_previous_pct_reference",saved);
++    return BT::NodeStatus::SUCCESS;
++  }
++};
++class RestoreGlobalPath : public BT::SyncActionNode {
++public:
++  RestoreGlobalPath(const std::string &name,const BT::NodeConfiguration &config)
++    : BT::SyncActionNode(name,config) {}
++  static BT::PortsList providedPorts() {
++    return {BT::InputPort<geometry_msgs::msg::PoseStamped>("goal"),BT::OutputPort<nav_msgs::msg::Path>("path")};
++  }
++  BT::NodeStatus tick() override {
++    GlobalReference saved;geometry_msgs::msg::PoseStamped goal;
++    if(!getInput("goal",goal)||!config().blackboard->get("lite3_previous_pct_reference",saved)||saved.goal!=goal)
++      return BT::NodeStatus::FAILURE;
++    // Geometry and source timestamp remain exact. The gateway independently
++    // requires the same mission/map and a physically released old owner.
++    setOutput("path",saved.path);
++    return BT::NodeStatus::SUCCESS;
++  }
++};
+ class BindScanRoute : public BT::StatefulActionNode {
+   using Service = lite3_nav2_interfaces::srv::BindRoute;
+   rclcpp::Node::SharedPtr node_;
+@@ -82,6 +125,8 @@
+ };
+ }
+ BT_REGISTER_NODES(factory) {
++  factory.registerNodeType<lite3_nav2::RememberGlobalPath>("RememberGlobalPath");
++  factory.registerNodeType<lite3_nav2::RestoreGlobalPath>("RestoreGlobalPath");
+   factory.registerNodeType<lite3_nav2::BindScanRoute>("BindScanRoute");
+   factory.registerNodeType<lite3_nav2::WaitForScanStop>("WaitForScanStop");
+ }
+--- v160/src/lite3_nav2_bridge/config/navigate.xml
++++ v163/src/lite3_nav2_bridge/config/navigate.xml
+@@ -2,7 +2,13 @@
+  <BehaviorTree ID="MainTree">
+   <RecoveryNode number_of_retries="6" name="NavigateWithMeasuredStop">
+    <Sequence>
+-    <ComputePathToPose goal="{goal}" path="{path}" planner_id="PCT" server_name="/compute_path_to_pose" server_timeout="1000"/>
++    <Fallback>
++     <Sequence>
++      <ComputePathToPose goal="{goal}" path="{path}" planner_id="PCT" server_name="/compute_path_to_pose" server_timeout="1000"/>
++      <RememberGlobalPath goal="{goal}" path="{path}"/>
++     </Sequence>
++     <RestoreGlobalPath goal="{goal}" path="{path}"/>
++    </Fallback>
+     <BindScanRoute goal="{goal}" path="{path}" bound_path="{bound_path}"/>
+     <FollowPath path="{bound_path}" controller_id="SCAN" server_name="/follow_path" server_timeout="1000"/>
+    </Sequence>
+--- v160/src/lite3_nav2_bridge/lite3_nav2_bridge/gateway.py
++++ v163/src/lite3_nav2_bridge/lite3_nav2_bridge/gateway.py
+@@ -24,7 +24,7 @@
+ from backend_adapter.applied_evidence import AppliedEvidenceReader, StopEvidenceConfig, StopEvidenceWindow
+ from backend_adapter.contracts import CommandIdentity, GateConfig, PlannerRequest
+ from backend_adapter.control_gate import CommandGate
+-from backend_adapter.pct_ipc import PctIpcClient, PctIpcClientConfig
++from backend_adapter.pct_ipc import PctIpcClient, PctIpcClientConfig, PlannerRejected
+ from p2b_backend_ros.config import load_runtime_config
+ from p2b_backend_ros.node import RosScanPort
+ 
+@@ -92,6 +92,8 @@
+         self.reserved = self.closing = self.stopping = False
+         self.stop_verified_at = 0.0
+         self.generation = 0
++        self.last_released_route = None
++        self.plan_bind_ready = self.plan_bind_reuse = False
+         self.mission_id = ''
+         self.request_id = self.goal_id = ''
+         self.binding_goal = None
+@@ -216,6 +218,9 @@
+     def release(self):
+         if not self.stopped():
+             raise RuntimeError('Owner release requires fresh measured-stop proof')
++        if self.binding is not None:
++            self.last_released_route = (self.mission_id, self.binding.route_id, self.binding.generation)
++        self.plan_bind_ready = self.plan_bind_reuse = False
+         self.gate.owner = None
+         self.gate.closed_reason = 'no_owner'
+         self.gate.cancel_pending = self.gate.hold_ack = False
+@@ -241,6 +246,16 @@
+         response.message = 'Measured stop not established'
+         return response
+ 
++    def cached_reference_after_stop(self):
++        if (self.planned is None or self.binding is not None or self.gate.owner is not None
++                or self.closing or self.stopping):
++            return False
++        route = self.planned[1]
++        return (self.last_released_route == (self.mission_id, route.route_id, self.generation)
++                and route.goal_id == self.goal_id and route.frame_id == self.frame
++                and route.map_epoch == self.config['map']['epoch']
++                and route.map_revision == self.config['map']['revision'])
++
+     def plan_route(self, request, response):
+         try:
+             with self.lock:
+@@ -254,7 +269,17 @@
+                 query = PlannerRequest(self.request_id, self.goal_id, (start.x, start.y, start.z - self.height),
+                     (target.x, target.y, target.z - self.height), self.frame,
+                     self.config['map']['epoch'], self.config['map']['revision'], layer, layer, True)
+-            route = self.pct.plan(query)
++                self.plan_bind_ready = self.plan_bind_reuse = False
++            try:
++                route = self.pct.plan(query)
++            except PlannerRejected as exc:
++                with self.lock:
++                    # Nav2 may explicitly restore the original PCT reference.
++                    # This is a binding permit, never a fabricated new route.
++                    if (str(exc) == 'pct_no_route' and self.mission_id == mission
++                            and self.cached_reference_after_stop()):
++                        self.plan_bind_ready = self.plan_bind_reuse = True
++                raise
+             with self.lock:
+                 if self.mission_id != mission or self.closing or self.goal is None:
+                     raise ValueError('Discarded late PCT result')
+@@ -268,6 +293,8 @@
+                     pose.pose.orientation.w = 1.0
+                     path.poses.append(pose)
+                 self.planned = (copy.deepcopy(path), route)
++                self.plan_bind_ready = True
++                self.plan_bind_reuse = False
+                 if self.path_heading and not self.heading_resolved:
+                     end = route.waypoints_m[-1]
+                     for point in reversed(route.waypoints_m[:-1]):
+@@ -289,10 +316,18 @@
+         try:
+             with self.lock:
+                 if (self.goal is None or self.closing or request.goal.pose != self.goal.pose
+-                        or self.planned is None or request.path != self.planned[0] or self.binding is not None):
++                        or self.planned is None or request.path != self.planned[0] or self.binding is not None
++                        or not self.plan_bind_ready):
+                     raise ValueError('Unplanned path, active prior owner, or closing mission')
+                 route = self.planned[1]
++                reuse = self.plan_bind_reuse
++                if reuse and not self.cached_reference_after_stop():
++                    raise ValueError('Cached reference no longer matches a released owner')
++                self.plan_bind_ready = self.plan_bind_reuse = False
+                 self.generation += 1
++                if reuse:
++                    self.get_logger().warning('V163_REFERENCE_REUSED route=' + route.route_id
++                        + ' generation=' + str(self.generation))
+                 binding = P2BRoute()
+                 identity = CommandIdentity(self.config['run_id'], self.config['run_epoch_ns'],
+                     self.request_id, self.goal_id, route.route_id, 'cmd-' + str(self.generation),

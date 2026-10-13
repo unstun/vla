@@ -1,0 +1,14 @@
+--- a/src/plan_manage/src/scan_replan_fsm.cpp
++++ b/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1468,7 +1468,10 @@
+     const auto &manager = *planner_manager_;
+     auto &curve = planner_manager_->local_data_;
+     const auto binding = manager.warmStartBinding();
+-    const double age = (node_->now() - curve.start_time_).seconds();
++    const auto now = node_->now();
++    if (curve.traj_id_ < 1 || binding.trajectory_id != curve.traj_id_ ||
++        now.get_clock_type() != curve.start_time_.get_clock_type()) return false;
++    const double age = (now - curve.start_time_).seconds();
+     return navi_mode_ == NAVI_MODE::REFERENCE_PATH && have_requested_goal_pose_ &&
+         curve.traj_id_ >= 1 && binding.trajectory_id == curve.traj_id_ &&
+         binding.context == warmStartIdentity() &&

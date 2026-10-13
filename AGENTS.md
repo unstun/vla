@@ -69,10 +69,11 @@ source of truth for VLA code and project state.
   commit. Do not silently copy its uncommitted working-tree changes.
 - Do not edit `machine-dog-nav` from a VLA task unless Dr Sun explicitly opens a
   separate task in that repository.
-- Remote machines and simulator workspaces are execution copies only.
+- Remote code and simulator workspaces are execution copies only.
 - Temporary remote diagnostic edits are allowed, but final changes must return
   to the same local paths and be visible in local `git diff`.
-- A remote-only success is not reproducible evidence.
+- A remote-only success claim without locally returned provenance and verified
+  results is not reproducible evidence.
 - VLA-to-navigation integration must pin the imported `machine-dog-nav`
   baseline, and navigation-to-locomotion integration must pin the sibling
   `machine-dog` interface version or commit instead of copying unidentified
@@ -96,8 +97,8 @@ source of truth for VLA code and project state.
    - exact sync gate;
    - expected artifacts;
    - claim boundary if the run is incomplete.
-8. Store research PDFs, source snapshots, run logs, configurations, models, and
-   evaluation artifacts inside the project using date/topic/purpose paths.
+8. Keep heavy files and data on gpu5070ti, retaining only source/configuration,
+   compact reports and provenance, and review videos in the local repository.
 9. Do not hide research evidence with repository-wide extension ignores. Large
    local-only bytes require a reviewed path-specific ignore entry plus tracked
    provenance, SHA-256, storage location, and regeneration instructions.

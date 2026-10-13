@@ -1,0 +1,93 @@
+--- native_v151/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ native_v158/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -134,6 +134,8 @@
+       Eigen::Vector3d goal{Eigen::Vector3d::Zero()};
+       double span{0.0}, projection{0.0}, measured_projection{0.0}, growth_projection{0.0}, stamp{0.0};
+     } feasible_window_;
++    int64_t steering_prefix_generation_{-1};
++    bool trySteeringPrefix(bool random_initialization, const rclcpp::Time *origin);
+     void rememberFeasibleWindow();
+     bool reuseFeasibleWindow(double projection, double nominal_target, double step,
+                             double &target, Eigen::Vector3d &point);
+--- native_v151/src/plan_manage/src/scan_replan_fsm.cpp
++++ native_v158/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1460,6 +1460,67 @@
+     return planner_manager_->grid_map_->getInflateOccupancy(candidate, yaw);
+   }
+ 
++  bool SCANReplanFSM::trySteeringPrefix(bool random_initialization, const rclcpp::Time *origin)
++  {
++    // One ordinary, fully checked short curve per new owner, only from rest.
++    if (navi_mode_ != NAVI_MODE::REFERENCE_PATH || exec_state_ != GEN_NEW_TRAJ ||
++        steering_prefix_generation_ == active_p2b_identity_.generation ||
++        !start_pt_.allFinite() || !start_vel_.allFinite() || !start_acc_.allFinite() ||
++        !odom_vel_.allFinite() || odom_vel_.norm() >= 0.1 || start_vel_.norm() >= 0.1)
++      return false;
++    takePendingOdometry(odom_sub_, node_->get_logger(),
++        [this](const auto &message) { odometryCallback(message); });
++    applyDueOdometry();
++    auto map=planner_manager_->grid_map_;
++    map->refreshSensorInputs("steering_prefix");
++    const double resolution=map->getResolution();
++    if (!map->planningInputsReady() || !std::isfinite(resolution) || resolution<=0 ||
++        !odom_pos_.allFinite() || !odom_vel_.allFinite() || odom_vel_.norm()>=0.1 ||
++        (start_pt_-odom_pos_).norm()>0.5*resolution) return false;
++    const double measured_yaw=map->collisionSegmentYaw(odom_pos_,odom_pos_);
++    if(!std::isfinite(measured_yaw))return false;
++    struct Proposal { double reach; Eigen::Vector3d target; };
++    std::vector<Proposal> proposals;
++    for(double offset:{0.,std::acos(-1.0)/32.,-std::acos(-1.0)/32.,std::acos(-1.0)/16.,-std::acos(-1.0)/16.}) {
++      const double yaw=measured_yaw+offset;
++      const Eigen::Vector3d direction(std::cos(yaw),std::sin(yaw),0);
++      const Eigen::Vector3d target=start_pt_+resolution*direction;
++      bool rotation_clear=true;
++      for(int j=0;j<=8;++j) {
++        const double intermediate=measured_yaw+offset*j/8.0;
++        if(map->getInflateOccupancy(start_pt_,intermediate)!=0 ||
++           map->getInflateOccupancy(odom_pos_,intermediate)!=0)rotation_clear=false;
++      }
++      if(!rotation_clear || !planner_manager_->hasLocalTranslation(start_pt_,target) ||
++         !map->collisionFreeSegment(start_pt_,target) || map->getInflateOccupancy(target,measured_yaw)!=0)continue;
++      double reach=resolution;
++      for(int cells=2;cells<=4;++cells) {
++        if(!map->collisionFreeSegment(start_pt_,start_pt_+cells*resolution*direction))break;
++        reach=cells*resolution;
++      }
++      if(reach>resolution)proposals.push_back({reach,target});
++    }
++    std::stable_sort(proposals.begin(),proposals.end(),[](const Proposal&a,const Proposal&b){return a.reach>b.reach;});
++    for(const auto &proposal:proposals) {
++      // Refresh evidence, not the immutable start PVA or its original epoch.
++      recoveryTargetOccupancy(proposal.target,measured_yaw);
++      if(!map->planningInputsReady() || !std::isfinite(map->collisionSegmentYaw(odom_pos_,odom_pos_)))return false;
++      if(!planner_manager_->reboundReplan(start_pt_,start_vel_,start_acc_,proposal.target,
++          Eigen::Vector3d::Zero(),true,random_initialization,origin))continue;
++      local_target_pt_=proposal.target;
++      local_target_vel_.setZero();
++      local_target_time_=-1.0; // Off-reference steering is not reference progress.
++      feasible_window_.valid=false;
++      steering_prefix_generation_=active_p2b_identity_.generation;
++      planner_manager_->invalidateWarmStart();
++      RCLCPP_INFO(node_->get_logger(),"V158_STEERING_PREFIX generation=%ld length=%.9f corridor=%.9f target=[%.9f,%.9f,%.9f]",
++        static_cast<long>(steering_prefix_generation_),(proposal.target-start_pt_).norm(),proposal.reach,
++        proposal.target.x(),proposal.target.y(),proposal.target.z());
++      return true;
++    }
++    return false;
++  }
++
+   bool SCANReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget, double warm_curve_time, const rclcpp::Time *retry_origin)
+   {
+ 
+@@ -1507,7 +1568,10 @@
+       plan_success = planner_manager_->reboundReplan(start_pt_, start_vel_, start_acc_,
+           local_target_pt_, local_target_vel_, true, flag_randomPolyTraj, retry_origin);
+     }
+-    if (plan_success && reference) {
++    const bool steering_prefix = !plan_success && reference &&
++        trySteeringPrefix(flag_randomPolyTraj,retry_origin);
++    if(steering_prefix)plan_success=true;
++    if (plan_success && reference && !steering_prefix) {
+       rememberFeasibleWindow();
+       // This marks the accepted planning window end, not measured execution.
+       planner_manager_->global_data_.last_progress_time_ = local_target_time_;

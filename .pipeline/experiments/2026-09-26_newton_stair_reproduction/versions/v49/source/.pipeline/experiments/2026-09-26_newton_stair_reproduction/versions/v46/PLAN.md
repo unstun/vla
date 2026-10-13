@@ -1,0 +1,3 @@
+# v46: actual wall-time replay for human inspection
+
+Parent version v45; renderer source parent v43. Replay the actual initialized-navigation wall timeline at 30 FPS, choosing only the latest physical frame recorded by each display timestamp. No physical pose interpolation, simulation steps, modified native timestamps or accelerated gaps. One second of recorded wall time is one second of video, even when native simulation lags. Keep native time visible and show actual navigation RTF and actual local/controller Hz. This delivers a faithful human inspection video; it does not claim the v45 RTF 0.94 or local 16.86 Hz satisfy the requested simulation/30 Hz targets. Startup is retained separately and omitted from the initialized-navigation view.

@@ -1,0 +1,5 @@
+builtin_interfaces/Time stamp
+float64 observation_stamp_s
+int64 local_map_revision
+scan_planner_msgs/P2BAdmission binding
+bool clear

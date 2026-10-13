@@ -1,0 +1,56 @@
+{
+  "run": "v48_realtime_trial01",
+  "host": "gpu5070ti",
+  "inputs": [
+    {
+      "path": "runs/v48_realtime_trial01/scan.log",
+      "sha256": "bac497c6543e018cf0b50168d79e821ee9cf52717e1d55374d72c3e59a41a07b"
+    },
+    {
+      "path": "versions/v48/analysis/v48_rounds.json",
+      "sha256": "ab84f68fa0c622fbe9489d39b77d3634e1f347c7ab83d472ad7656a0374e0cd1"
+    },
+    {
+      "path": "versions/v48/analysis/metrics.json",
+      "sha256": "de1b71548ca5081f0102673125cc6aca5e65bfff298597589e5f8250c1767fde"
+    }
+  ],
+  "script_sha256": "38fcc8ffeeb736353c951b0feaaf8c111e81dceb3a1ae9ffd7be3246da9b9397",
+  "raw_log_crosscheck": "All 1311 completed round timestamps, latencies, success flags, and warm counters match their raw log segments.",
+  "frequency_definition": "At wall time t: count nominal attempt starts in (t - 1.0 s, t] / 1.0 s. Sample every 0.05 wall seconds; append final start. Exclude the first partial window.",
+  "frequency_x_definition": "Simulation clock linearly interpolated from logged start_schedule_s / ros_s pairs; no extrapolation.",
+  "latency_definition": "nominal_replan_result wall_s * 1000, including failed completed rounds; x = the matching nominal start ros_s. This is full-round wall duration, not optimizer-only latency.",
+  "warm_only_definition": "warm_accepts > 0 and warm_graph_fallbacks == 0; fast strictly < 10 ms.",
+  "log_simulation_start_s": 12.381373405,
+  "log_simulation_end_s": 89.962188721,
+  "attempt_starts": 1312,
+  "completed_rounds": 1311,
+  "failed_rounds": 8,
+  "overall_attempt_hz": 15.858531335107074,
+  "rolling_rate_min_hz": 0.0,
+  "rolling_rate_max_hz": 31.0,
+  "latency_ms": {
+    "median": 3.091636,
+    "p95": 126.49563549999999,
+    "p99": 207.1750073000008,
+    "maximum": 1090.481155
+  },
+  "group_counts": {
+    "warm_only_fast": 731,
+    "warm_only_slow": 476,
+    "no_warm_acceptance": 94,
+    "warm_to_graph_fallback": 10
+  },
+  "peak_round_simulation_start_s": 78.998214722,
+  "output_sha256": {
+    "v48_frequency.csv": "cd9c5f927dc0299f6d6466f19aaa7f097ec69c576a5d8aa54dfc60839957e374",
+    "v48_planning_time_series.pdf": "e3adf0e06f125fd98f60ceab00cf9d6e3fa52d233d26ab02af1511fc36c61796",
+    "v48_planning_time_series.png": "9036753eae6a729d79c996b2d3c199e32685decfa3c4f7ae96bce7a11186ae19",
+    "v48_planning_time_series.svg": "3a6823386d2d624f8cf097818bc5706338fd1be5b2324b5eb55cc7307f387830",
+    "v48_round_latency.csv": "fee4b7d1922741ffab86f8c06e9d93631d70b187a7628a1eb14811fc3ae308fb"
+  },
+  "rendering_versions": {
+    "matplotlib": "3.10.8",
+    "numpy": "2.4.4"
+  }
+}

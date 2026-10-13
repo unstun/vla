@@ -4,6 +4,9 @@ reviewed: false
 date: 2026-08-18
 ---
 
+> [摘要] The VLA repository moved to phdproject/vla with verified file/link/hash preservation; historical paths were retained in prior evidence.
+
+
 # VLA Repository Path Migration
 
 ## Decision

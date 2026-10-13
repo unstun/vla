@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Reuse the previously qualified rootless ARM factory environment only for factory calls.
+set -euo pipefail
+for argument in "$@"; do
+  case "$argument" in
+    sha256:1c102582b40d5305e310788c79e963e4b6cde13aea2bc5db3b7c1800e821935d|vla-factory-algorithm-*)
+      exec /home/sun/vla_exec/bin/docker "$@" ;;
+  esac
+done
+exec /usr/bin/docker "$@"

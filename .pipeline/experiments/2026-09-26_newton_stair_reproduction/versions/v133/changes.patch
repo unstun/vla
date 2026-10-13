@@ -1,0 +1,14 @@
+--- v132/src/plan_manage/src/scan_replan_fsm.cpp
++++ v133/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -445,6 +445,11 @@
+         }
+       }
+     }
++
++    // Goal-neighborhood search may outlive body/map validity. Apply inputs
++    // already received before checking the fallback reference points. Their
++    // original stamps and all collision/freshness rules remain unchanged.
++    if (reference) map->refreshSensorInputs("target_fallback");
+ 
+     for (int i = sample_num; i >= 0; --i)
+     {

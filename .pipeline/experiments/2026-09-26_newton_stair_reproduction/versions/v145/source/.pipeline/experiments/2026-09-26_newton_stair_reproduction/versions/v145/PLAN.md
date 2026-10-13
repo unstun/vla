@@ -1,0 +1,5 @@
+# v145 partial diagnostic video of failed original-start episode
+
+Stage: experiment + analysis. v144_full_candidate_attempt01 fails after23.126m at61.858s native time, no fall and verified copyback. The previously prepared completed-route gate is preserved under history/proposed_complete_display; it was not executed or frozen. v145 now displays this actual failure for diagnosis and retention. It cannot satisfy Dr Sun's full-route request.
+
+Reusev143 causal full startup/navigation display and local-curve/solve-time overlay. Physical sourcev144, nativev139 build02. Keep all waits, revoked curves and terminal failure visible; no reset, stitched video, accelerated motion or pose interpolation. Require the actual historical_full request, source failure and first-state witness. Rendering runs on gpu5070ti EGL with zero physics steps; raw/master stay on/data. Return the regular partial MP4 and compact/hash/three-frame evidence, without acceptance promotion. Full-route repair and a future full video remain required.

@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "verdict": "FAIL",
+  "reviewer": "independent read-only subagent (general-purpose), 2026-09-29",
+  "blocking": [
+    {
+      "id": "B1",
+      "section": "Answer in brief (Reproduction); \u00a72 Reproduction",
+      "finding": "'exactly' and 'every event' overclaim: analyze.py compared only an event signature. v32's replay differed from live in start velocity (1.3e-08 -8.88e-08 9.47e-09 live vs 0 0 0), optimizer iterations (86/78 vs 83/83), post-opt durations and rejection times; v33's printed frontier time differs in calls 2-3 (14.540880500718 live vs 14.490911839203) because the live map took a new cloud mid-cycle (scan.log:1136).",
+      "fix": "Claim the event signature, disclose detail differences, or re-freeze v32 (B2) and re-check."
+    },
+    {
+      "id": "B2",
+      "section": "\u00a71 table; \u00a72 freeze moment; prepare_inputs.py",
+      "finding": "v32's live REPLAN_TRAJ began at 39.919689 s, 0.27 ms before traj 12's end (the printed start velocity equals the curve's velocity there; cloud_age 0.1099 gives now 39.9197; a body pose exists at 39.919689). The replay state was frozen 5 ms later (39.924686) with zero start velocity.",
+      "fix": "Re-freeze v32 at 39.919689 s and re-run, or correct the text."
+    },
+    {
+      "id": "B3",
+      "section": "\u00a74; Answer in brief 'v32'",
+      "finding": "For a successful attempt the probe reads post-refine control points (BsplineOptimizeTrajRefine overwrites cps_.points and bspline_interval_). The -101.32\u00b0 heading belongs to the minimum-cruise curve; in the rebound phase index 2 was at about -118\u00b0 and two rebound rounds ran.",
+      "fix": "State that index 2 was never the first new collision (no 'inside' in v32's stand cycles); quote the rebound-stage heading; disclose what the probe reads."
+    },
+    {
+      "id": "B4",
+      "section": "\u00a76; Answer in brief 'The band'",
+      "finding": "At body height (z 1.85-2.55) the wall returns are at x = -4.198; -4.24..-4.26 only at z >= 2.55. Gaps to the band edge are 0.60 m (rows 45-50) and 0.70 m (rows 51-53). The surface floor reaches -4.395 (rows 47-53) or -4.295 (rows 44-46).",
+      "fix": "Give the body-height face and per-row gaps."
+    },
+    {
+      "id": "B5",
+      "section": "\u00a77",
+      "finding": "Only 21 of the 97 narrow poses lie in 79-96 and 200-207; 76 lie in five other groups (290-312, 413-437, 454-461, 510-521, 535-556).",
+      "fix": "List all groups."
+    },
+    {
+      "id": "B6",
+      "section": "Answer in brief",
+      "finding": "diag_v32_clock01 stopped at (7.42, -4.29), about 0.25 m before the first narrow corner pose (200 at 7.666, -4.237); the nearest route pose 198 is not narrow.",
+      "fix": "Say so."
+    },
+    {
+      "id": "B7",
+      "section": "Answer in brief; \u00a73 'The repair'",
+      "finding": "Only the A* exit index is measured. A scratch replica reproduces the exit index after 50 steps: the rear circle fails at the first 4 positions over (22,51)/(22,52), then the snapped reference point's own cell has no navigation layer near body level.",
+      "fix": "Move the per-step description out of 'measured' or instrument it."
+    }
+  ],
+  "non_blocking": [
+    {
+      "id": "N1",
+      "finding": "Three attempted targets plus one rejected candidate (-4.39, -4.15); (-1.66, -4.14) is the local target; the reference frontier is at t~14.49 (-0.47, -4.25)."
+    },
+    {
+      "id": "N2",
+      "finding": "The kept prefix also adds 5 include lines."
+    },
+    {
+      "id": "N3",
+      "finding": "The probe passes flag_polyInit=true, live passes false; the flag is unused inside reboundReplanAttempt."
+    },
+    {
+      "id": "N4",
+      "finding": "Attempt 1 wording: the chosen pose (33.1484 s) fell 2.6 ms before the curve end."
+    },
+    {
+      "id": "N5",
+      "finding": "0.062 m is the wrong-height cell's distance from the route polyline, not the samples' offset."
+    },
+    {
+      "id": "N6",
+      "finding": "'planning timing' decides the stand position is an inference; the logged chain differs in replan start, projection and occupied prefixes."
+    },
+    {
+      "id": "N7",
+      "finding": "The entry_filled recovery differs from the first attempt by height mode, not timing."
+    },
+    {
+      "id": "N8",
+      "finding": "Cost profile not monotone; wall-cost cause is a hypothesis."
+    },
+    {
+      "id": "N9",
+      "finding": "Option 3's effect is asserted from a model only; decide() runs before association, so a fallback must reach the decision."
+    },
+    {
+      "id": "N10",
+      "finding": "'still faces (47,41)' after the hop is inferred."
+    },
+    {
+      "id": "N11",
+      "finding": "cells_fixed changed four cells; say 'the four wrong-height cells (including (47,41)) let v32's frozen first cycle plan'."
+    },
+    {
+      "id": "N12",
+      "finding": "Static screen blind spots: route poses only, footprint check accepts the 1.419 layer, metric is not the stand mechanism, fallback tolerance."
+    },
+    {
+      "id": "N13",
+      "finding": "Boundary 'not proposals' vs \u00a78 option 2."
+    },
+    {
+      "id": "N14",
+      "finding": "For the body cell the screen targets z - 0.30."
+    },
+    {
+      "id": "N15",
+      "finding": "Name the machine behind each cited run."
+    },
+    {
+      "id": "N16",
+      "finding": "No path-specific .gitignore entries for the local-only bytes."
+    },
+    {
+      "id": "N17",
+      "finding": "Narrow 'any turn needs headings past the edge' to east-facing headings at the start."
+    },
+    {
+      "id": "N18",
+      "finding": "Say 'with the same start, every cycle printed the same event sequence' (the live map changed)."
+    },
+    {
+      "id": "N19",
+      "finding": "The app-quit note has no artifact; mark it as an operator note."
+    }
+  ],
+  "checks_reported": [
+    "probe regenerated byte-identical",
+    "native code paths read",
+    "own parsers for cycles and details",
+    "counts recomputed",
+    "v32 live replan time derived two ways",
+    "control-point tables vs result JSON and captures",
+    "yaw windows and blocking cells",
+    "grids, bands, costs, surface layers",
+    "make_grounds outputs",
+    "\u00a75 against results",
+    "wall face from world points in 9 clouds",
+    "route offsets",
+    "A* start-adjustment replica",
+    "route_support_margin and analyze reruns byte-identical in scratch",
+    "exit codes, attempts, planner YAML identity",
+    "LOCAL_ONLY_BYTES hashes (1,642 files) and git-ignore status"
+  ],
+  "note": "Condensed by the author from the reviewer's JSON report (findings, evidence and fixes kept in substance); each finding was checked before being applied (RESULT.md, Review)."
+}

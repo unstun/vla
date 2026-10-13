@@ -1,0 +1,1814 @@
+{
+  "protocol": "BAAB / ABBA / BAAB, six fresh trials per arm, no navigation-failure early stopping",
+  "versions": {
+    "baseline": "v122",
+    "candidate": "v127"
+  },
+  "host": "gpu5070ti",
+  "statistics": {
+    "baseline": {
+      "trials": 6,
+      "arrivals": 0,
+      "failures": 6,
+      "arrival_wilson_95": [
+        2.7755575615628914e-17,
+        0.3903342879021653
+      ],
+      "stale_evidence_runs": 4,
+      "progress_failure_runs": 3,
+      "median_p95_ms": 4.261977449999997,
+      "median_p99_ms": 14.06740129999993,
+      "median_maximum_ms": 149.339697,
+      "median_longest_pause_s": 6.3465118408203125,
+      "falls": 1
+    },
+    "candidate": {
+      "trials": 6,
+      "arrivals": 1,
+      "failures": 5,
+      "arrival_wilson_95": [
+        0.030053369748306635,
+        0.5635028221864702
+      ],
+      "stale_evidence_runs": 4,
+      "progress_failure_runs": 6,
+      "median_p95_ms": 4.589223574999991,
+      "median_p99_ms": 16.754802714999972,
+      "median_maximum_ms": 289.33957399999997,
+      "median_longest_pause_s": 10.444263458251953,
+      "falls": 0
+    }
+  },
+  "fisher_two_sided_p": 1.0,
+  "rows": [
+    {
+      "run": "v127_candidate_attempt02",
+      "order": 1,
+      "variant": "candidate",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 14.988633094919942,
+      "final_xyz": [
+        8.01849365234375,
+        5.838178634643555,
+        4.822150230407715
+      ],
+      "end_sim_s": 49.02468490600586,
+      "navigation_duration_s": 38.00386142730713,
+      "longest_pause_s": 10.99395751953125,
+      "pauses": [
+        {
+          "start_sim_s": 33.813045501708984,
+          "end_sim_s": 35.612056732177734,
+          "duration_sim_s": 1.79901123046875
+        },
+        {
+          "start_sim_s": 38.010738372802734,
+          "end_sim_s": 49.004695892333984,
+          "duration_sim_s": 10.99395751953125
+        }
+      ],
+      "solve_ms": {
+        "count": 612,
+        "mean": 3.5008310996732024,
+        "median": 1.7955195000000002,
+        "p95": 4.84925579999999,
+        "p99": 33.82795207999971,
+        "maximum": 288.246322
+      },
+      "over_60ms": {
+        "rounds": 5,
+        "successful": 3,
+        "failed": 2
+      },
+      "failed_rounds": 5,
+      "completed_rounds": 612,
+      "emergency_transitions": 7,
+      "actual_rtf": 0.9995613254931045,
+      "mapping": {
+        "snapshots": 434,
+        "maximum_queued_clouds": 4,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 434,
+          "mean": 19.5261866359447,
+          "median": 18.22,
+          "p95": 23.8158,
+          "p99": 32.190170000000144,
+          "maximum": 364.646
+        },
+        "copy_ms": {
+          "count": 434,
+          "mean": 5.796334101382488,
+          "median": 4.8294999999999995,
+          "p95": 11.13435,
+          "p99": 12.457680000000002,
+          "maximum": 14.68
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_trajectory_missing": 2,
+        "scan_safety_evidence_stale": 2,
+        "Failed to make progress": 1,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 33.633144379,
+          "active": 542.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 33.513210297,
+          "observation_age": 0.119934082,
+          "line": 22087,
+          "body_xyz": [
+            8.422657012939453,
+            4.780501842498779,
+            4.696067810058594
+          ],
+          "nearest_pose_delta_s": -0.019989014009766493
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 305,
+          "message": "[controller_server-3] [ERROR] [1791623127.439552136] [controller_server]: scan_trajectory_missing"
+        },
+        {
+          "line": 22086,
+          "message": "[controller_server-3] [ERROR] [1791623146.730297564] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.009995 first=2.432300 samples=244"
+        },
+        {
+          "line": 22087,
+          "message": "[controller_server-3] [ERROR] [1791623146.730326328] [controller_server]: SCAN evidence rejected now=33.633144379 active=542 proof=542 clear=0 proof_stamp=33.633144379 proof_age=0.000000000 observation_stamp=33.513210297 observation_age=0.119934082 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 22093,
+          "message": "[controller_server-3] [ERROR] [1791623146.730392913] [controller_server]: scan_safety_evidence_stale"
+        },
+        {
+          "line": 25393,
+          "message": "[controller_server-3] [ERROR] [1791623160.955911034] [controller_server]: Failed to make progress"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 304,
+          "reason": "scan_trajectory_missing"
+        },
+        {
+          "line": 22091,
+          "reason": "scan_safety_evidence_stale"
+        },
+        {
+          "line": 25153,
+          "reason": "scan_safety_rejected"
+        }
+      ],
+      "sensor_count": 380,
+      "scan_audit_outcomes": {
+        "published_sequentially": 380
+      },
+      "max_sensor_compute_ms": 27.599330991506577,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 1,
+        "tag": "v127_candidate_attempt02",
+        "unix_s": 1791623080.546048,
+        "load": [
+          0.0,
+          0.00927734375,
+          0.1279296875
+        ],
+        "free_bytes": 202602024960,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v127_baseline_attempt02",
+      "order": 2,
+      "variant": "baseline",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 23.20984086606951,
+      "final_xyz": [
+        3.9027063846588135,
+        -0.408438503742218,
+        4.825587272644043
+      ],
+      "end_sim_s": 58.719356536865234,
+      "navigation_duration_s": 47.698533058166504,
+      "longest_pause_s": 9.5947265625,
+      "pauses": [
+        {
+          "start_sim_s": 42.608211517333984,
+          "end_sim_s": 52.202938079833984,
+          "duration_sim_s": 9.5947265625
+        },
+        {
+          "start_sim_s": 53.802059173583984,
+          "end_sim_s": 58.69936752319336,
+          "duration_sim_s": 4.897308349609375
+        }
+      ],
+      "solve_ms": {
+        "count": 924,
+        "mean": 2.750727438311688,
+        "median": 1.7561205,
+        "p95": 4.709162099999989,
+        "p99": 13.710698959999966,
+        "maximum": 162.94807
+      },
+      "over_60ms": {
+        "rounds": 4,
+        "successful": 2,
+        "failed": 2
+      },
+      "failed_rounds": 16,
+      "completed_rounds": 924,
+      "emergency_transitions": 9,
+      "actual_rtf": 0.9997113545478749,
+      "mapping": {
+        "snapshots": 568,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 568,
+          "mean": 26.329350352112677,
+          "median": 21.4775,
+          "p95": 39.827349999999996,
+          "p99": 48.283600000000476,
+          "maximum": 439.435
+        },
+        "copy_ms": {
+          "count": 568,
+          "mean": 5.165021126760563,
+          "median": 4.955,
+          "p95": 8.26825,
+          "p99": 8.776210000000006,
+          "maximum": 12.898
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "Failed to make progress": 1,
+        "scan_safety_evidence_stale": 2,
+        "scan_trajectory_missing": 2,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 53.257358551,
+          "active": 911.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 53.002498627,
+          "observation_age": 0.254859924,
+          "line": 40071,
+          "body_xyz": [
+            3.943685531616211,
+            -0.3400970697402954,
+            4.823461532592773
+          ],
+          "nearest_pose_delta_s": 0.04497528078710644
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 38830,
+          "message": "[controller_server-3] [ERROR] [1791623309.937692323] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 40070,
+          "message": "[controller_server-3] [ERROR] [1791623311.180915204] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.139923 first=0.139923 samples=1"
+        },
+        {
+          "line": 40071,
+          "message": "[controller_server-3] [ERROR] [1791623311.180943497] [controller_server]: SCAN evidence rejected now=53.257358551 active=911 proof=911 clear=0 proof_stamp=53.257358551 proof_age=0.000000000 observation_stamp=53.002498627 observation_age=0.254859924 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 40073,
+          "message": "[controller_server-3] [ERROR] [1791623311.181009651] [controller_server]: scan_safety_evidence_stale"
+        },
+        {
+          "line": 40234,
+          "message": "[controller_server-3] [ERROR] [1791623314.504245234] [controller_server]: scan_trajectory_missing"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 38588,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 40072,
+          "reason": "scan_safety_evidence_stale"
+        },
+        {
+          "line": 40233,
+          "reason": "scan_trajectory_missing"
+        }
+      ],
+      "sensor_count": 477,
+      "scan_audit_outcomes": {
+        "published_sequentially": 477
+      },
+      "max_sensor_compute_ms": 25.901963002979755,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 2,
+        "tag": "v127_baseline_attempt02",
+        "unix_s": 1791623172.998351,
+        "load": [
+          1.7587890625,
+          0.58154296875,
+          0.3212890625
+        ],
+        "free_bytes": 202451513344,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v127_baseline_attempt03",
+      "order": 3,
+      "variant": "baseline",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 23.51258883825442,
+      "final_xyz": [
+        2.924004077911377,
+        -0.09639166295528412,
+        4.827422618865967
+      ],
+      "end_sim_s": 58.199642181396484,
+      "navigation_duration_s": 47.178818702697754,
+      "longest_pause_s": 13.9923095703125,
+      "pauses": [
+        {
+          "start_sim_s": 32.813594818115234,
+          "end_sim_s": 34.012935638427734,
+          "duration_sim_s": 1.1993408203125
+        },
+        {
+          "start_sim_s": 44.207332611083984,
+          "end_sim_s": 58.199642181396484,
+          "duration_sim_s": 13.9923095703125
+        }
+      ],
+      "solve_ms": {
+        "count": 885,
+        "mean": 3.322143343502825,
+        "median": 1.763958,
+        "p95": 5.2362009999999914,
+        "p99": 17.064782959999988,
+        "maximum": 243.367897
+      },
+      "over_60ms": {
+        "rounds": 7,
+        "successful": 4,
+        "failed": 3
+      },
+      "failed_rounds": 8,
+      "completed_rounds": 885,
+      "emergency_transitions": 7,
+      "actual_rtf": 0.9993474216501451,
+      "mapping": {
+        "snapshots": 564,
+        "maximum_queued_clouds": 4,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 564,
+          "mean": 25.754257092198582,
+          "median": 21.2915,
+          "p95": 39.7227,
+          "p99": 45.77412000000004,
+          "maximum": 354.052
+        },
+        "copy_ms": {
+          "count": 564,
+          "mean": 4.962058510638298,
+          "median": 4.7315000000000005,
+          "p95": 6.2986,
+          "p99": 13.003169999999999,
+          "maximum": 14.112
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_safety_evidence_stale": 2,
+        "Failed to make progress": 1,
+        "scan_trajectory_missing": 2,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 32.533748627,
+          "active": 589.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 32.413814545,
+          "observation_age": 0.119934082,
+          "line": 24143,
+          "body_xyz": [
+            8.08716106414795,
+            5.833395004272461,
+            4.828714370727539
+          ],
+          "nearest_pose_delta_s": -0.01998901396289199
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 24142,
+          "message": "[controller_server-3] [ERROR] [1791623445.792692441] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.000000 first=2.037211 samples=205"
+        },
+        {
+          "line": 24143,
+          "message": "[controller_server-3] [ERROR] [1791623445.792713160] [controller_server]: SCAN evidence rejected now=32.533748627 active=589 proof=589 clear=0 proof_stamp=32.533748627 proof_age=0.000000000 observation_stamp=32.413814545 observation_age=0.119934082 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 24145,
+          "message": "[controller_server-3] [ERROR] [1791623445.792774675] [controller_server]: scan_safety_evidence_stale"
+        },
+        {
+          "line": 37082,
+          "message": "[controller_server-3] [ERROR] [1791623467.165117299] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 37168,
+          "message": "[controller_server-3] [ERROR] [1791623469.265195021] [controller_server]: scan_trajectory_missing"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 24144,
+          "reason": "scan_safety_evidence_stale"
+        },
+        {
+          "line": 36832,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 37167,
+          "reason": "scan_trajectory_missing"
+        }
+      ],
+      "sensor_count": 472,
+      "scan_audit_outcomes": {
+        "published_sequentially": 472
+      },
+      "max_sensor_compute_ms": 26.63202997064218,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 3,
+        "tag": "v127_baseline_attempt03",
+        "unix_s": 1791623329.7118955,
+        "load": [
+          1.95556640625,
+          0.96142578125,
+          0.4931640625
+        ],
+        "free_bytes": 202263392256,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v127_candidate_attempt03",
+      "order": 4,
+      "variant": "candidate",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 23.476826469368522,
+      "final_xyz": [
+        3.8239378929138184,
+        -0.6147412061691284,
+        4.816039085388184
+      ],
+      "end_sim_s": 66.315185546875,
+      "navigation_duration_s": 55.29436206817627,
+      "longest_pause_s": 10.394290924072266,
+      "pauses": [
+        {
+          "start_sim_s": 32.71364974975586,
+          "end_sim_s": 35.012386322021484,
+          "duration_sim_s": 2.298736572265625
+        },
+        {
+          "start_sim_s": 35.11233139038086,
+          "end_sim_s": 44.50716781616211,
+          "duration_sim_s": 9.39483642578125
+        },
+        {
+          "start_sim_s": 55.90090560913086,
+          "end_sim_s": 66.29519653320312,
+          "duration_sim_s": 10.394290924072266
+        }
+      ],
+      "solve_ms": {
+        "count": 950,
+        "mean": 2.688485246315789,
+        "median": 1.5945055,
+        "p95": 3.9362687499999978,
+        "p99": 10.636174859999992,
+        "maximum": 300.53018999999995
+      },
+      "over_60ms": {
+        "rounds": 5,
+        "successful": 4,
+        "failed": 1
+      },
+      "failed_rounds": 3,
+      "completed_rounds": 950,
+      "emergency_transitions": 10,
+      "actual_rtf": 0.9997441034220065,
+      "mapping": {
+        "snapshots": 646,
+        "maximum_queued_clouds": 4,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 646,
+          "mean": 24.200835913312694,
+          "median": 22.3405,
+          "p95": 38.496249999999996,
+          "p99": 39.49295,
+          "maximum": 296.675
+        },
+        "copy_ms": {
+          "count": 646,
+          "mean": 5.068204334365325,
+          "median": 4.7905,
+          "p95": 6.99,
+          "p99": 12.560249999999998,
+          "maximum": 15.53
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_safety_evidence_stale": 2,
+        "Failed to make progress": 2,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 32.548740387,
+          "active": 602.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 32.413814545,
+          "observation_age": 0.134925842,
+          "line": 24261,
+          "body_xyz": [
+            8.045726776123047,
+            5.860293865203857,
+            4.827392101287842
+          ],
+          "nearest_pose_delta_s": -0.0349807739628929
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 24260,
+          "message": "[controller_server-3] [ERROR] [1791623601.609549269] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.009995 first=2.079442 samples=208"
+        },
+        {
+          "line": 24261,
+          "message": "[controller_server-3] [ERROR] [1791623601.609568986] [controller_server]: SCAN evidence rejected now=32.548740387 active=602 proof=602 clear=0 proof_stamp=32.548740387 proof_age=0.000000000 observation_stamp=32.413814545 observation_age=0.134925842 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 24263,
+          "message": "[controller_server-3] [ERROR] [1791623601.609631674] [controller_server]: scan_safety_evidence_stale"
+        },
+        {
+          "line": 24890,
+          "message": "[controller_server-3] [ERROR] [1791623612.955254446] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 38872,
+          "message": "[controller_server-3] [ERROR] [1791623634.265239119] [controller_server]: Failed to make progress"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 24262,
+          "reason": "scan_safety_evidence_stale"
+        },
+        {
+          "line": 24658,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 38632,
+          "reason": "scan_safety_rejected"
+        }
+      ],
+      "sensor_count": 553,
+      "scan_audit_outcomes": {
+        "published_sequentially": 553
+      },
+      "max_sensor_compute_ms": 27.637440944090486,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 4,
+        "tag": "v127_candidate_attempt03",
+        "unix_s": 1791623484.3067718,
+        "load": [
+          2.09033203125,
+          1.22265625,
+          0.64599609375
+        ],
+        "free_bytes": 202078064640,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v127_baseline_attempt04",
+      "order": 5,
+      "variant": "baseline",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 23.25024600534628,
+      "final_xyz": [
+        3.860804557800293,
+        -0.46298274397850037,
+        4.82111930847168
+      ],
+      "end_sim_s": 58.97921371459961,
+      "navigation_duration_s": 47.95839023590088,
+      "longest_pause_s": 16.790771484375,
+      "pauses": [
+        {
+          "start_sim_s": 42.10848617553711,
+          "end_sim_s": 58.89925765991211,
+          "duration_sim_s": 16.790771484375
+        }
+      ],
+      "solve_ms": {
+        "count": 870,
+        "mean": 2.7701059839080457,
+        "median": 1.9081139999999999,
+        "p95": 3.718618399999996,
+        "p99": 13.786833799999904,
+        "maximum": 135.73132399999997
+      },
+      "over_60ms": {
+        "rounds": 5,
+        "successful": 3,
+        "failed": 2
+      },
+      "failed_rounds": 8,
+      "completed_rounds": 870,
+      "emergency_transitions": 4,
+      "actual_rtf": 0.9999740694420872,
+      "mapping": {
+        "snapshots": 568,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 568,
+          "mean": 27.103836267605633,
+          "median": 21.916,
+          "p95": 40.062,
+          "p99": 42.305610000000016,
+          "maximum": 429.6
+        },
+        "copy_ms": {
+          "count": 568,
+          "mean": 5.8836461267605635,
+          "median": 5.0985,
+          "p95": 12.48935,
+          "p99": 13.20699,
+          "maximum": 13.91
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "Failed to make progress": 1,
+        "scan_trajectory_missing": 4,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [],
+      "controller_errors": [
+        {
+          "line": 36304,
+          "message": "[controller_server-3] [ERROR] [1791623783.488062441] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 36392,
+          "message": "[controller_server-3] [ERROR] [1791623785.594700318] [controller_server]: scan_trajectory_missing"
+        },
+        {
+          "line": 36498,
+          "message": "[controller_server-3] [ERROR] [1791623788.744653211] [controller_server]: scan_trajectory_missing"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 36068,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 36391,
+          "reason": "scan_trajectory_missing"
+        },
+        {
+          "line": 36497,
+          "reason": "scan_trajectory_missing"
+        }
+      ],
+      "sensor_count": 479,
+      "scan_audit_outcomes": {
+        "published_sequentially": 479
+      },
+      "max_sensor_compute_ms": 27.177322015631944,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 5,
+        "tag": "v127_baseline_attempt04",
+        "unix_s": 1791623649.449922,
+        "load": [
+          1.3193359375,
+          1.1484375,
+          0.7080078125
+        ],
+        "free_bytes": 201866510336,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v127_candidate_attempt04",
+      "order": 6,
+      "variant": "candidate",
+      "arrived": true,
+      "terminal": "FINISHED",
+      "fallen": false,
+      "outcome_class": "arrived",
+      "follow_path_aborts": 2,
+      "path_m": 26.541825068235852,
+      "final_xyz": [
+        2.0574707984924316,
+        -2.887357711791992,
+        4.821993350982666
+      ],
+      "end_sim_s": 70.65280151367188,
+      "navigation_duration_s": 59.631978034973145,
+      "longest_pause_s": 10.29434585571289,
+      "pauses": [
+        {
+          "start_sim_s": 46.406124114990234,
+          "end_sim_s": 56.600521087646484,
+          "duration_sim_s": 10.19439697265625
+        },
+        {
+          "start_sim_s": 60.29848861694336,
+          "end_sim_s": 70.59283447265625,
+          "duration_sim_s": 10.29434585571289
+        }
+      ],
+      "solve_ms": {
+        "count": 1017,
+        "mean": 2.5244991238938055,
+        "median": 1.728832,
+        "p95": 3.889403,
+        "p99": 12.855329600000019,
+        "maximum": 146.795892
+      },
+      "over_60ms": {
+        "rounds": 5,
+        "successful": 4,
+        "failed": 1
+      },
+      "failed_rounds": 2,
+      "completed_rounds": 1017,
+      "emergency_transitions": 6,
+      "actual_rtf": 0.9999786606631685,
+      "mapping": {
+        "snapshots": 696,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 696,
+          "mean": 27.872617816091953,
+          "median": 23.9595,
+          "p95": 40.832499999999996,
+          "p99": 42.16339999999997,
+          "maximum": 429.388
+        },
+        "copy_ms": {
+          "count": 696,
+          "mean": 5.406219827586207,
+          "median": 5.0945,
+          "p95": 9.54275,
+          "p99": 12.966999999999969,
+          "maximum": 15.172
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_trajectory_missing": 2,
+        "Failed to make progress": 1
+      },
+      "safety_rejections": [],
+      "controller_errors": [
+        {
+          "line": 306,
+          "message": "[controller_server-3] [ERROR] [1791623903.359231277] [controller_server]: scan_trajectory_missing"
+        },
+        {
+          "line": 36526,
+          "message": "[controller_server-3] [ERROR] [1791623945.322331181] [controller_server]: Failed to make progress"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 305,
+          "reason": "scan_trajectory_missing"
+        },
+        {
+          "line": 36280,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 40150,
+          "reason": "requested_goal_reached"
+        }
+      ],
+      "sensor_count": 596,
+      "scan_audit_outcomes": {
+        "published_sequentially": 596
+      },
+      "max_sensor_compute_ms": 25.923974986653775,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 6,
+        "tag": "v127_candidate_attempt04",
+        "unix_s": 1791623803.7651215,
+        "load": [
+          2.27685546875,
+          1.40869140625,
+          0.859375
+        ],
+        "free_bytes": 201678811136,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v127_candidate_attempt05",
+      "order": 7,
+      "variant": "candidate",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 23.612331707182072,
+      "final_xyz": [
+        3.1765670776367188,
+        -0.5150375366210938,
+        4.82017707824707
+      ],
+      "end_sim_s": 65.49563598632812,
+      "navigation_duration_s": 54.474812507629395,
+      "longest_pause_s": 10.49423599243164,
+      "pauses": [
+        {
+          "start_sim_s": 32.31386947631836,
+          "end_sim_s": 33.613155364990234,
+          "duration_sim_s": 1.299285888671875
+        },
+        {
+          "start_sim_s": 39.409969329833984,
+          "end_sim_s": 49.204586029052734,
+          "duration_sim_s": 9.79461669921875
+        },
+        {
+          "start_sim_s": 55.001399993896484,
+          "end_sim_s": 65.49563598632812,
+          "duration_sim_s": 10.49423599243164
+        }
+      ],
+      "solve_ms": {
+        "count": 924,
+        "mean": 2.965962176406926,
+        "median": 1.7639939999999998,
+        "p95": 4.620304799999984,
+        "p99": 18.01640759999998,
+        "maximum": 191.179046
+      },
+      "over_60ms": {
+        "rounds": 6,
+        "successful": 3,
+        "failed": 3
+      },
+      "failed_rounds": 5,
+      "completed_rounds": 924,
+      "emergency_transitions": 11,
+      "actual_rtf": 0.999436916818203,
+      "mapping": {
+        "snapshots": 632,
+        "maximum_queued_clouds": 4,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 632,
+          "mean": 27.32384018987342,
+          "median": 22.735500000000002,
+          "p95": 39.59345,
+          "p99": 42.066449999999996,
+          "maximum": 356.567
+        },
+        "copy_ms": {
+          "count": 632,
+          "mean": 5.563379746835443,
+          "median": 4.8815,
+          "p95": 13.67914999999999,
+          "p99": 15.088569999999997,
+          "maximum": 17.012
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_safety_evidence_stale": 2,
+        "Failed to make progress": 2,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 32.103984833,
+          "active": 586.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 32.014034271,
+          "observation_age": 0.089950562,
+          "line": 23778,
+          "body_xyz": [
+            8.164947509765625,
+            5.758923530578613,
+            4.8307576179504395
+          ],
+          "nearest_pose_delta_s": 0.009994506599610986
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 23777,
+          "message": "[controller_server-3] [ERROR] [1791624087.993286877] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.000000 first=2.212300 samples=223"
+        },
+        {
+          "line": 23778,
+          "message": "[controller_server-3] [ERROR] [1791624087.993303167] [controller_server]: SCAN evidence rejected now=32.103984833 active=586 proof=586 clear=0 proof_stamp=32.103984833 proof_age=0.000000000 observation_stamp=32.014034271 observation_age=0.089950562 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 23780,
+          "message": "[controller_server-3] [ERROR] [1791624087.993376565] [controller_server]: scan_safety_evidence_stale"
+        },
+        {
+          "line": 30718,
+          "message": "[controller_server-3] [ERROR] [1791624104.745482680] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 37523,
+          "message": "[controller_server-3] [ERROR] [1791624120.292149918] [controller_server]: Failed to make progress"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 23779,
+          "reason": "scan_safety_evidence_stale"
+        },
+        {
+          "line": 30462,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 37289,
+          "reason": "scan_safety_rejected"
+        }
+      ],
+      "sensor_count": 545,
+      "scan_audit_outcomes": {
+        "published_sequentially": 545
+      },
+      "max_sensor_compute_ms": 25.814581022132188,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 7,
+        "tag": "v127_candidate_attempt05",
+        "unix_s": 1791623974.167971,
+        "load": [
+          2.1806640625,
+          1.6103515625,
+          1.0126953125
+        ],
+        "free_bytes": 201450774528,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v127_baseline_attempt05",
+      "order": 8,
+      "variant": "baseline",
+      "arrived": false,
+      "terminal": null,
+      "fallen": true,
+      "outcome_class": "fall",
+      "follow_path_aborts": 1,
+      "path_m": 16.052307147488026,
+      "final_xyz": [
+        7.402116775512695,
+        5.826318264007568,
+        4.726139068603516
+      ],
+      "end_sim_s": 37.99074935913086,
+      "navigation_duration_s": 26.96992588043213,
+      "longest_pause_s": 0.3001213073730469,
+      "pauses": [],
+      "solve_ms": {
+        "count": 694,
+        "mean": 2.09751189481268,
+        "median": 1.515698,
+        "p95": 3.764969150000002,
+        "p99": 10.773569520000084,
+        "maximum": 91.40595
+      },
+      "over_60ms": {
+        "rounds": 2,
+        "successful": 2,
+        "failed": 0
+      },
+      "failed_rounds": 0,
+      "completed_rounds": 694,
+      "emergency_transitions": 0,
+      "actual_rtf": 0.9731350173191846,
+      "mapping": {
+        "snapshots": 332,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 332,
+          "mean": 18.04949096385542,
+          "median": 16.729,
+          "p95": 22.552599999999998,
+          "p99": 33.03682999999999,
+          "maximum": 523.536
+        },
+        "copy_ms": {
+          "count": 332,
+          "mean": 5.339638554216868,
+          "median": 4.3955,
+          "p95": 10.73475,
+          "p99": 11.38683,
+          "maximum": 12.694
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_trajectory_missing": 2
+      },
+      "safety_rejections": [],
+      "controller_errors": [
+        {
+          "line": 305,
+          "message": "[controller_server-3] [ERROR] [1791624230.280355613] [controller_server]: scan_trajectory_missing"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 304,
+          "reason": "scan_trajectory_missing"
+        }
+      ],
+      "sensor_count": 269,
+      "scan_audit_outcomes": {
+        "published_sequentially": 269
+      },
+      "max_sensor_compute_ms": 26.94926201365888,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 8,
+        "tag": "v127_baseline_attempt05",
+        "unix_s": 1791624135.2381172,
+        "load": [
+          1.93798828125,
+          1.6181640625,
+          1.10302734375
+        ],
+        "free_bytes": 201240412160,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v127_candidate_attempt06",
+      "order": 9,
+      "variant": "candidate",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 23.74803930088445,
+      "final_xyz": [
+        3.6662797927856445,
+        -0.8007628321647644,
+        4.8308820724487305
+      ],
+      "end_sim_s": 67.31463623046875,
+      "navigation_duration_s": 56.29381275177002,
+      "longest_pause_s": 10.69412612915039,
+      "pauses": [
+        {
+          "start_sim_s": 44.607112884521484,
+          "end_sim_s": 54.70156478881836,
+          "duration_sim_s": 10.094451904296875
+        },
+        {
+          "start_sim_s": 56.600521087646484,
+          "end_sim_s": 67.29464721679688,
+          "duration_sim_s": 10.69412612915039
+        }
+      ],
+      "solve_ms": {
+        "count": 879,
+        "mean": 4.711132275312855,
+        "median": 1.8116180000000002,
+        "p95": 9.368460799999985,
+        "p99": 87.49132646000096,
+        "maximum": 293.588075
+      },
+      "over_60ms": {
+        "rounds": 14,
+        "successful": 9,
+        "failed": 5
+      },
+      "failed_rounds": 29,
+      "completed_rounds": 879,
+      "emergency_transitions": 10,
+      "actual_rtf": 0.9997512111661325,
+      "mapping": {
+        "snapshots": 650,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 650,
+          "mean": 27.240715384615385,
+          "median": 22.941,
+          "p95": 40.02895,
+          "p99": 42.023959999999995,
+          "maximum": 360.443
+        },
+        "copy_ms": {
+          "count": 650,
+          "mean": 5.417266153846154,
+          "median": 4.9350000000000005,
+          "p95": 8.7352,
+          "p99": 10.000119999999999,
+          "maximum": 12.728
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_trajectory_missing": 2,
+        "Failed to make progress": 2,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [],
+      "controller_errors": [
+        {
+          "line": 306,
+          "message": "[controller_server-3] [ERROR] [1791624365.502238674] [controller_server]: scan_trajectory_missing"
+        },
+        {
+          "line": 39731,
+          "message": "[controller_server-3] [ERROR] [1791624405.592044999] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 42008,
+          "message": "[controller_server-3] [ERROR] [1791624417.368597817] [controller_server]: Failed to make progress"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 305,
+          "reason": "scan_trajectory_missing"
+        },
+        {
+          "line": 39472,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 41760,
+          "reason": "scan_safety_rejected"
+        }
+      ],
+      "sensor_count": 563,
+      "scan_audit_outcomes": {
+        "published_sequentially": 563
+      },
+      "max_sensor_compute_ms": 29.58335296716541,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 9,
+        "tag": "v127_candidate_attempt06",
+        "unix_s": 1791624264.5433445,
+        "load": [
+          1.4375,
+          1.4755859375,
+          1.1083984375
+        ],
+        "free_bytes": 201125609472,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v127_baseline_attempt06",
+      "order": 10,
+      "variant": "baseline",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 2,
+      "path_m": 15.692648617255678,
+      "final_xyz": [
+        7.660297870635986,
+        6.074127197265625,
+        4.685356616973877
+      ],
+      "end_sim_s": 41.66872787475586,
+      "navigation_duration_s": 30.64790439605713,
+      "longest_pause_s": 3.098297119140625,
+      "pauses": [
+        {
+          "start_sim_s": 36.811397552490234,
+          "end_sim_s": 39.90969467163086,
+          "duration_sim_s": 3.098297119140625
+        },
+        {
+          "start_sim_s": 40.409420013427734,
+          "end_sim_s": 41.608760833740234,
+          "duration_sim_s": 1.1993408203125
+        }
+      ],
+      "solve_ms": {
+        "count": 612,
+        "mean": 3.2687989526143792,
+        "median": 1.7121819999999999,
+        "p95": 4.455440899999995,
+        "p99": 51.13674696999996,
+        "maximum": 173.071772
+      },
+      "over_60ms": {
+        "rounds": 6,
+        "successful": 3,
+        "failed": 3
+      },
+      "failed_rounds": 6,
+      "completed_rounds": 612,
+      "emergency_transitions": 2,
+      "actual_rtf": 0.9590385233321376,
+      "mapping": {
+        "snapshots": 367,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 367,
+          "mean": 17.704291553133515,
+          "median": 17.099,
+          "p95": 21.3632,
+          "p99": 24.270499999999977,
+          "maximum": 364.608
+        },
+        "copy_ms": {
+          "count": 367,
+          "mean": 5.374095367847411,
+          "median": 4.641,
+          "p95": 8.745899999999999,
+          "p99": 9.938699999999985,
+          "maximum": 13.294
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_trajectory_missing": 2,
+        "scan_safety_evidence_stale": 2,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 36.286685944,
+          "active": 605.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 36.211727142,
+          "observation_age": 0.074958802,
+          "line": 26775,
+          "body_xyz": [
+            7.6451497077941895,
+            6.032172679901123,
+            4.69195032119751
+          ],
+          "nearest_pose_delta_s": 0.024986266693360903
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 306,
+          "message": "[controller_server-3] [ERROR] [1791624529.521206433] [controller_server]: scan_trajectory_missing"
+        },
+        {
+          "line": 26774,
+          "message": "[controller_server-3] [ERROR] [1791624551.521397656] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.004997 first=1.340703 samples=135"
+        },
+        {
+          "line": 26775,
+          "message": "[controller_server-3] [ERROR] [1791624551.521417383] [controller_server]: SCAN evidence rejected now=36.286685944 active=605 proof=605 clear=0 proof_stamp=36.286685944 proof_age=0.000000000 observation_stamp=36.211727142 observation_age=0.074958802 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 26777,
+          "message": "[controller_server-3] [ERROR] [1791624551.521472637] [controller_server]: scan_safety_evidence_stale"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 305,
+          "reason": "scan_trajectory_missing"
+        },
+        {
+          "line": 26776,
+          "reason": "scan_safety_evidence_stale"
+        }
+      ],
+      "sensor_count": 306,
+      "scan_audit_outcomes": {
+        "published_sequentially": 306
+      },
+      "max_sensor_compute_ms": 28.264690947253257,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 10,
+        "tag": "v127_baseline_attempt06",
+        "unix_s": 1791624432.3869474,
+        "load": [
+          1.64208984375,
+          1.4541015625,
+          1.14892578125
+        ],
+        "free_bytes": 200908361728,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v127_baseline_attempt07",
+      "order": 11,
+      "variant": "baseline",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 1,
+      "path_m": 15.701943697765069,
+      "final_xyz": [
+        7.680146217346191,
+        6.04532527923584,
+        4.705101490020752
+      ],
+      "end_sim_s": 39.290035247802734,
+      "navigation_duration_s": 28.269211769104004,
+      "longest_pause_s": 1.9989013671875,
+      "pauses": [
+        {
+          "start_sim_s": 37.211177825927734,
+          "end_sim_s": 39.210079193115234,
+          "duration_sim_s": 1.9989013671875
+        }
+      ],
+      "solve_ms": {
+        "count": 623,
+        "mean": 2.5758347704654896,
+        "median": 1.7388519999999998,
+        "p95": 4.0685139999999995,
+        "p99": 14.347968799999952,
+        "maximum": 104.86740999999999
+      },
+      "over_60ms": {
+        "rounds": 2,
+        "successful": 1,
+        "failed": 1
+      },
+      "failed_rounds": 1,
+      "completed_rounds": 623,
+      "emergency_transitions": 6,
+      "actual_rtf": 0.9618486468723284,
+      "mapping": {
+        "snapshots": 343,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 343,
+          "mean": 18.416962099125364,
+          "median": 17.369,
+          "p95": 22.394499999999997,
+          "p99": 30.36787999999989,
+          "maximum": 361.399
+        },
+        "copy_ms": {
+          "count": 343,
+          "mean": 6.112206997084549,
+          "median": 4.626,
+          "p95": 11.6406,
+          "p99": 13.054339999999998,
+          "maximum": 13.649
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_safety_evidence_stale": 2,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 33.303325653,
+          "active": 621.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 33.213375092,
+          "observation_age": 0.089950561,
+          "line": 25493,
+          "body_xyz": [
+            7.694832801818848,
+            5.996811389923096,
+            4.701297760009766
+          ],
+          "nearest_pose_delta_s": 0.009994506912107681
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 25488,
+          "message": "[controller_server-3] [ERROR] [1791624687.456333720] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.000000 first=1.816218 samples=183"
+        },
+        {
+          "line": 25493,
+          "message": "[controller_server-3] [ERROR] [1791624687.456372934] [controller_server]: SCAN evidence rejected now=33.303325653 active=621 proof=621 clear=0 proof_stamp=33.303325653 proof_age=0.000000000 observation_stamp=33.213375092 observation_age=0.089950561 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 25496,
+          "message": "[controller_server-3] [ERROR] [1791624687.456436072] [controller_server]: scan_safety_evidence_stale"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 25495,
+          "reason": "scan_safety_evidence_stale"
+        }
+      ],
+      "sensor_count": 282,
+      "scan_audit_outcomes": {
+        "published_sequentially": 282
+      },
+      "max_sensor_compute_ms": 26.488439994864166,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 11,
+        "tag": "v127_baseline_attempt07",
+        "unix_s": 1791624568.1632605,
+        "load": [
+          1.11328125,
+          1.22802734375,
+          1.0986328125
+        ],
+        "free_bytes": 200781225984,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v127_candidate_attempt07",
+      "order": 12,
+      "variant": "candidate",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 22.2831177332093,
+      "final_xyz": [
+        4.623834133148193,
+        0.3111623227596283,
+        4.8213348388671875
+      ],
+      "end_sim_s": 55.321224212646484,
+      "navigation_duration_s": 44.300400733947754,
+      "longest_pause_s": 9.894561767578125,
+      "pauses": [
+        {
+          "start_sim_s": 32.71364974975586,
+          "end_sim_s": 34.11288070678711,
+          "duration_sim_s": 1.39923095703125
+        },
+        {
+          "start_sim_s": 43.10793685913086,
+          "end_sim_s": 53.002498626708984,
+          "duration_sim_s": 9.894561767578125
+        },
+        {
+          "start_sim_s": 53.10244369506836,
+          "end_sim_s": 55.30123519897461,
+          "duration_sim_s": 2.19879150390625
+        }
+      ],
+      "solve_ms": {
+        "count": 870,
+        "mean": 3.0645611218390805,
+        "median": 1.7583034999999998,
+        "p95": 4.558142349999999,
+        "p99": 15.493197829999962,
+        "maximum": 290.432826
+      },
+      "over_60ms": {
+        "rounds": 4,
+        "successful": 3,
+        "failed": 1
+      },
+      "failed_rounds": 10,
+      "completed_rounds": 870,
+      "emergency_transitions": 9,
+      "actual_rtf": 0.9996864843637295,
+      "mapping": {
+        "snapshots": 530,
+        "maximum_queued_clouds": 4,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 530,
+          "mean": 25.664941509433962,
+          "median": 20.490000000000002,
+          "p95": 40.796749999999996,
+          "p99": 42.40187,
+          "maximum": 300.833
+        },
+        "copy_ms": {
+          "count": 530,
+          "mean": 5.919020754716981,
+          "median": 5.259499999999999,
+          "p95": 9.290349999999995,
+          "p99": 14.728860000000006,
+          "maximum": 17.397
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_safety_evidence_stale": 4,
+        "Failed to make progress": 1,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 32.448795319,
+          "active": 588.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 32.313869476,
+          "observation_age": 0.134925843,
+          "line": 24216,
+          "body_xyz": [
+            8.083175659179688,
+            5.8511152267456055,
+            4.820121765136719
+          ],
+          "nearest_pose_delta_s": -0.0349807743222641
+        },
+        {
+          "now": 53.157413483,
+          "active": 866.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 53.002498627,
+          "observation_age": 0.154914856,
+          "line": 36934,
+          "body_xyz": [
+            4.61626672744751,
+            0.30385494232177734,
+            4.820808410644531
+          ],
+          "nearest_pose_delta_s": 0.04497528042773524
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 24215,
+          "message": "[controller_server-3] [ERROR] [1791624821.466821828] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.000000 first=2.135074 samples=215"
+        },
+        {
+          "line": 24216,
+          "message": "[controller_server-3] [ERROR] [1791624821.466840584] [controller_server]: SCAN evidence rejected now=32.448795319 active=588 proof=588 clear=0 proof_stamp=32.448795319 proof_age=0.000000000 observation_stamp=32.313869476 observation_age=0.134925843 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 24218,
+          "message": "[controller_server-3] [ERROR] [1791624821.466899033] [controller_server]: scan_safety_evidence_stale"
+        },
+        {
+          "line": 36461,
+          "message": "[controller_server-3] [ERROR] [1791624841.735939973] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 36933,
+          "message": "[controller_server-3] [ERROR] [1791624842.180252306] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.000000 first=3.224945 samples=324"
+        },
+        {
+          "line": 36934,
+          "message": "[controller_server-3] [ERROR] [1791624842.180283805] [controller_server]: SCAN evidence rejected now=53.157413483 active=866 proof=866 clear=0 proof_stamp=53.157413483 proof_age=0.000000000 observation_stamp=53.002498627 observation_age=0.154914856 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 36936,
+          "message": "[controller_server-3] [ERROR] [1791624842.180335902] [controller_server]: scan_safety_evidence_stale"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 24217,
+          "reason": "scan_safety_evidence_stale"
+        },
+        {
+          "line": 36206,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 36935,
+          "reason": "scan_safety_evidence_stale"
+        }
+      ],
+      "sensor_count": 443,
+      "scan_audit_outcomes": {
+        "published_sequentially": 443
+      },
+      "max_sensor_compute_ms": 26.478932006284595,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 12,
+        "tag": "v127_candidate_attempt07",
+        "unix_s": 1791624704.2688928,
+        "load": [
+          0.82275390625,
+          1.0107421875,
+          1.0263671875
+        ],
+        "free_bytes": 200661680128,
+        "containers": ""
+      }
+    }
+  ],
+  "source": {
+    "v127_candidate_attempt02": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "b4395243e74ee0b05446ccd5b8c92926134f133c9e8a3edd1084b471dc13294b",
+          "bytes": 6623134
+        }
+      },
+      "outcome_sha256": "a3fcd8d1411147bdfc0fdc01d49efe9c8f27e1811fc3d4e15c8f8b622d9a95c0",
+      "sensor_manifest_sha256": "28937dc9b019da5dd63a7eed1c3a2e6ece77cdc6b36a6019bfd055dd925b8320",
+      "bridge_audit_sha256": "034e792e218deed678fa01f3cb41c998267938b4c89d5390a2c888a526d15121"
+    },
+    "v127_baseline_attempt02": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "60b109e1c36ca341c6c6bac04713e362358acac7ca03da29f5045b9d9f4fce3b",
+          "bytes": 10575573
+        }
+      },
+      "outcome_sha256": "b483edaa1a7c9d9de913bd0eefe703bebf50121b5f0a89f0528a5162996ad20b",
+      "sensor_manifest_sha256": "05c0c926c7b8459054cca901e74294306e9881a9efcf3cd4166425a712e8893c",
+      "bridge_audit_sha256": "4e4ac90dc956c6fa3014a743d7adb3123eeee5981f3472d4423d856aba5c34b0"
+    },
+    "v127_baseline_attempt03": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "a1888821bd5363b822acc299c06b9786625b736761bec82451425d6e501053ea",
+          "bytes": 9925741
+        }
+      },
+      "outcome_sha256": "4130e4ef0baad5d307986c37c2582e1f4a646dda428a558a48ba0da3229b271a",
+      "sensor_manifest_sha256": "ac44f84317a5bb8a5fc42af397049dce33f3be02f4277dd76bbd95630dc06bef",
+      "bridge_audit_sha256": "71f4ed95ab3fe5b933bd90793c0c1eb9fbe2385589c25dcb2687ab6d978e0579"
+    },
+    "v127_candidate_attempt03": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "3f7d52d91a07d60a7f07f4b2f99ec0dbbe71fb5797645382b497e7cc7686c6ec",
+          "bytes": 10099094
+        }
+      },
+      "outcome_sha256": "81d8aa426883391da674bb782c3b2a4457aaa90e8f286d4aedf14de8f3b1611c",
+      "sensor_manifest_sha256": "08fff8628ba485fdfaf13c6ab075f82f8fa34de9202d288d438a5528f850c9a7",
+      "bridge_audit_sha256": "7da675c732d8e96886e57cbbab506ea012b117320634bdcfe075438335f18d00"
+    },
+    "v127_baseline_attempt04": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "8cd613cb23bc254f017d2ec980e3526f532035db2867fb795daa8c72e57422f4",
+          "bytes": 9465484
+        }
+      },
+      "outcome_sha256": "da591b9a515d04d9e11d7e61ecc0e76e0336c957723dc9406ee4f5e31a6c95c0",
+      "sensor_manifest_sha256": "23d46519f390860517b02840603126124dcacd98a5bce03202d96879bf30898d",
+      "bridge_audit_sha256": "a09f623c23308d9c85854e300f13d119a2bebbcfbec8f9206facd4b1737363e4"
+    },
+    "v127_candidate_attempt04": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "0b2d2e50bd8b9e2f7dff3f8b914968f4c15043744ae5f315b888c250b499d834",
+          "bytes": 10642100
+        }
+      },
+      "outcome_sha256": "9eefb3ed82c3939ace46fa9d82bed3c21612ce0a932d5dacd0697622612e9251",
+      "sensor_manifest_sha256": "689350405e3ddf7f7d471f450d3d4912299ed7618c257b446e4ca2434b9134b7",
+      "bridge_audit_sha256": "e1fea242eaa895938e149f7e878fb5509ac22bf83020134ec944e540a8779bb0"
+    },
+    "v127_candidate_attempt05": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "f9cb95bb53df62712334f5539e564e0ba16f09cc70fca28eab291c2a5a87c8db",
+          "bytes": 9996005
+        }
+      },
+      "outcome_sha256": "750473e0c914346241def0c4998733ba01978a1464599d62921ee0f5002f616e",
+      "sensor_manifest_sha256": "cbf54d4f2468d1ee92cb1465dbc43cc0049063f816087ed3674ac982872d75e0",
+      "bridge_audit_sha256": "c16e6e2c1ac25ef6ce07683353bd3bca4791e6738c9aab02350e320c5d8d88fc"
+    },
+    "v127_baseline_attempt05": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "7df50114cf084f3373cacd440b78bef024638cb8aaa2b0e252ca2ec5b37ad83e",
+          "bytes": 7519383
+        }
+      },
+      "outcome_sha256": "959f377298d74a43525d10d28d944707639afc0d7148ba75ccf6b5dddc90af48",
+      "sensor_manifest_sha256": "7070f78091a92a0e0cc2986bd5e3401fe3e71a673323bba77997620afe9ce355",
+      "bridge_audit_sha256": "996ae13410deab717115c6185372c55972479796fb2a62cc757dfe624114331f"
+    },
+    "v127_candidate_attempt06": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "4f06b07e179078d14a28234193ecfee8018735dd947d9c560d2af9a486b930f8",
+          "bytes": 10828377
+        }
+      },
+      "outcome_sha256": "4b8e3a5064602ad71b89b769408a7c37ba74678bbbe1070ccf578c1256a5c3e8",
+      "sensor_manifest_sha256": "a4e6ac5ae1f693fc2b6f3cc5c58f2f73e0b06085fe131dc8abc3d13c7e7fc709",
+      "bridge_audit_sha256": "79a25232fb808617182c7b5a370e8f655fafe62739d4ee42108272d5bc49928b"
+    },
+    "v127_baseline_attempt06": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "0fcef9d253ac7b4eeae6565ce7e630fb8761b407c687af551149a5a90b3e29a6",
+          "bytes": 6908623
+        }
+      },
+      "outcome_sha256": "21b82217b8c0eac4b7a71e216494487e0b4c1edf24f728772f34f32610b6aa2d",
+      "sensor_manifest_sha256": "99ded8e1602ed17e74f2e646ca30aab4a01ce84cf6a865e3333fc382ca63d36c",
+      "bridge_audit_sha256": "1a4e2eafad041f129ac3a959212b60181aeeba099396ae0efe00e9536323b944"
+    },
+    "v127_baseline_attempt07": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "69d63e944023e97bd6f6a8da1e627f1bde236486c955ce3e052d5f4540337b73",
+          "bytes": 6814006
+        }
+      },
+      "outcome_sha256": "2b9e25b83f0552b50d44b9892bc9d878a21d3e963fb110ed1256d6bf3d900fb7",
+      "sensor_manifest_sha256": "ab01a8b8b1e67b736300a5496611f54d1cb43089269fe9e1a571cebb68b4e5fe",
+      "bridge_audit_sha256": "6dd23a2d7707c1da484f00442b9964e16c0ce3f09d2eb69f0f5c309e17d3bc20"
+    },
+    "v127_candidate_attempt07": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "bddacc80f5ec478bb48b0331174b1974785a089b0602e3b1f8c22c75f541f6bc",
+          "bytes": 9858231
+        }
+      },
+      "outcome_sha256": "5bf431ef807c20429ee5dc8d6d040184b6eedde729817b02d3f669cd20041815",
+      "sensor_manifest_sha256": "5422abf009e5910b0d63d0d2b647eea456950d02051e3ecb1d05693cdad56377",
+      "bridge_audit_sha256": "4c05a93fe8516c2fa1a6ca9b88c7c873a89457c4e43ac154796e9df04082c684"
+    }
+  },
+  "script_sha256": "0c81d391ac07a8b98049fa746d1ecdd66e084a4c73d9ddbb1c459e1cf07957fb",
+  "limits": [
+    "Non-significant count difference is not proof of equivalence.",
+    "Six trials per arm give broad success-rate uncertainty.",
+    "Recorded curves can be replayed exactly; reconstructed maps do not restore original DDS batching/live revisions.",
+    "No navigation code or threshold changed; no Jetson/hardware validation."
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "candidate": "v126_candidate_attempt01",
+  "direct_sequence": [
+    {
+      "line": 34386,
+      "text": "[controller_server-3] [ERROR] [1791616906.053590533] [controller_server]: Failed to make progress"
+    },
+    {
+      "line": 37087,
+      "text": "[controller_server-3] [ERROR] [1791616908.563473573] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.114937 first=0.114937 samples=1"
+    },
+    {
+      "line": 37088,
+      "text": "[controller_server-3] [ERROR] [1791616908.563514079] [controller_server]: SCAN evidence rejected now=53.262355804 active=863 proof=863 clear=0 proof_stamp=53.262355804 proof_age=0.000000000 observation_stamp=53.002498627 observation_age=0.259857177 pending_curves=0 pending_proofs=0"
+    },
+    {
+      "line": 37089,
+      "text": "[controller_server-3] [WARN] [1791616908.563532423] [controller_server]: SCAN output revoked reason=scan_safety_evidence_stale trajectory=863"
+    },
+    {
+      "line": 37090,
+      "text": "[controller_server-3] [ERROR] [1791616908.563574943] [controller_server]: scan_safety_evidence_stale"
+    },
+    {
+      "line": 37232,
+      "text": "[controller_server-3] [WARN] [1791616911.933442515] [controller_server]: SCAN output revoked reason=scan_trajectory_missing trajectory=863"
+    },
+    {
+      "line": 37233,
+      "text": "[controller_server-3] [ERROR] [1791616911.933503078] [controller_server]: scan_trajectory_missing"
+    },
+    {
+      "line": 37235,
+      "text": "[bt_navigator-5] [ERROR] [1791616911.959765308] [nav2_internal.bt_navigator]: Navigation failed"
+    }
+  ],
+  "maximum_round": {
+    "start_line": 23464,
+    "start_wall_s": 495402.503940724,
+    "ros_s": 31.17949295,
+    "state": 3,
+    "skipped_slots": 3,
+    "rebound_attempts": 8,
+    "prefix_proposals": 3,
+    "fixed_height_attempts": 4,
+    "first_seed_failed": false,
+    "hints": 0,
+    "extensions": 0,
+    "completed": true,
+    "end_line": 23652,
+    "success": false,
+    "wall_s": 0.442959747,
+    "overrun": true,
+    "host_start_s": 495402.5039495232,
+    "host_finish_s": 495402.9469088733,
+    "warm_accepts": 0
+  },
+  "maximum_round_diagnostic": {
+    "success": false,
+    "rejections": 9,
+    "first": {
+      "stage": "target",
+      "detail": "goal_neighborhood_search",
+      "observation": "fresh",
+      "map_revision": 254
+    },
+    "last": {
+      "stage": "dynamics",
+      "detail": "refine_boundary_or_limits",
+      "observation": "fresh",
+      "map_revision": 259
+    },
+    "counts": {
+      "target": 1,
+      "seed_search": 0,
+      "seed_geometry": 0,
+      "optimizer": 3,
+      "dynamics": 4,
+      "final_collision": 1,
+      "epoch": 0,
+      "invalid_input": 0
+    }
+  },
+  "terminal_results": [
+    {
+      "cause": "Nav2 action status 6",
+      "data": {
+        "action_uuid": "3974aa10bfd345588e2e144816926402",
+        "source": "authoritative_nav2_gateway"
+      },
+      "goal_id": "long-goal",
+      "monotonic_s": 495429.031583875,
+      "request_id": "v126_candidate_attempt01-long-goal",
+      "route_id": null,
+      "seq": 1,
+      "status": "failed"
+    }
+  ],
+  "claim": "Observed progress-check abort, then stale native evidence, then missing trajectory and final Nav2 failure. The paired physical trial does not isolate a causal state-equivalent explanation for the regression.",
+  "source": {
+    "nav2.log": {
+      "sha256": "5b0bb1900690c17ecb2dd9b1bb746a701d0d5bd4ac38acedeafc0e7b6103303b",
+      "bytes": 10129921
+    },
+    "backend_latest.json": {
+      "sha256": "276bdda03cbbc74b0718c502b81b2e671eb0d810003b4dd1704cdce0626f234c",
+      "bytes": 1771
+    }
+  },
+  "script_sha256": "ddc0961c819491291c53626617e9b198f93cb00e368781528568eecd67b93379"
+}

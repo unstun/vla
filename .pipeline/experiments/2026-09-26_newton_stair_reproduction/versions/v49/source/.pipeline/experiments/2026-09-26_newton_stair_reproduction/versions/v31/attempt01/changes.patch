@@ -1,0 +1,149 @@
+--- v30/src/plan_env/include/plan_env/grid_map.h
++++ v31/src/plan_env/include/plan_env/grid_map.h
+@@ -175,6 +175,10 @@
+   inline int getOccupancy(Eigen::Vector3i id);
+   inline int getInflateOccupancy(Eigen::Vector3d pos, double yaw);
+   void logInitialSplineCollision(const Eigen::Vector3d &pos, double yaw);
++  // v31: take the pose and scan messages that arrived during a long callback
++  // and apply them, in stamp order, through the unchanged callbacks. Call only
++  // on the executor's thread, between collision-deciding steps.
++  void refreshSensorInputs(const char *site);
+   double collisionSegmentYaw(const Eigen::Vector3d &from, const Eigen::Vector3d &to) const;
+   bool collisionFreeSegment(const Eigen::Vector3d &from, const Eigen::Vector3d &to,
+                             int *blocked_sample = nullptr);
+--- v30/src/plan_env/src/grid_map.cpp
++++ v31/src/plan_env/src/grid_map.cpp
+@@ -916,6 +916,72 @@
+   }
+ }
+ 
++void GridMap::refreshSensorInputs(const char *site)
++{
++  // v31: SCAN serves its planning and safety timers and these subscriptions on
++  // one single-threaded executor, timers first, while the simulation clock runs
++  // on its own thread. Pose and scan messages that arrive during a long callback
++  // therefore wait, and their age can pass the 0.1 s pose and 0.25 s scan limits
++  // before a decision uses them. Take the pending messages here, on the same
++  // thread, and apply them through the unchanged callbacks in stamp order (ties
++  // in subscription creation order), so each collision-deciding step starts
++  // from the newest received inputs. The limits and callbacks are unchanged.
++  struct PendingInput
++  {
++    double stamp_s;
++    int subscription;  // 0 sensor_pose, 1 cloud, 2 body_pose (creation order)
++    nav_msgs::msg::Odometry::ConstSharedPtr pose;
++    sensor_msgs::msg::PointCloud2::ConstSharedPtr cloud;
++  };
++  std::vector<PendingInput> pending;
++  rclcpp::MessageInfo info;
++  const auto take_poses = [&](const rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr &subscription,
++                              int order) {
++    if (!subscription) return;
++    for (;;)
++    {
++      auto message = std::make_shared<nav_msgs::msg::Odometry>();
++      if (!subscription->take(*message, info)) break;
++      pending.push_back({rclcpp::Time(message->header.stamp).seconds(), order, message, nullptr});
++    }
++  };
++  take_poses(lidar_pose_sub_, 0);
++  if (cloud_sub_)
++  {
++    for (;;)
++    {
++      auto message = std::make_shared<sensor_msgs::msg::PointCloud2>();
++      if (!cloud_sub_->take(*message, info)) break;
++      pending.push_back({rclcpp::Time(message->header.stamp).seconds(), 1, nullptr, message});
++    }
++  }
++  take_poses(sliding_map_frame_sub_, 2);
++  if (pending.empty()) return;
++  std::stable_sort(pending.begin(), pending.end(), [](const PendingInput &a, const PendingInput &b) {
++    return a.stamp_s != b.stamp_s ? a.stamp_s < b.stamp_s : a.subscription < b.subscription;
++  });
++  const double now = node_->now().seconds();
++  const double cloud_age = now - reactive_cloud_stamp_s_;
++  const double body_age = now - reactive_body_stamp_s_;
++  int applied[3] = {0, 0, 0};
++  for (const PendingInput &input : pending)
++  {
++    ++applied[input.subscription];
++    if (input.subscription == 0)
++      sensorPoseCallback(input.pose);
++    else if (input.subscription == 1)
++      cloudCallback(input.cloud);
++    else
++      slidingMapFrameCallback(input.pose);
++  }
++  if ((applied[1] > 0 && cloud_age > 0.15) || (applied[2] > 0 && body_age > 0.05))
++    RCLCPP_INFO(node_->get_logger(),
++                "input_refresh site=%s sensor_poses=%d clouds=%d body_poses=%d cloud_age=%.4f->%.4f "
++                "body_age=%.4f->%.4f cloud_ready=%d",
++                site, applied[0], applied[1], applied[2], cloud_age, now - reactive_cloud_stamp_s_,
++                body_age, now - reactive_body_stamp_s_, static_cast<int>(reactive_cloud_ready_));
++}
++
+ void GridMap::cloudCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr img)
+ {
+   if (!reactiveSurfaceGroundReady()) return;
+--- v30/src/plan_manage/src/scan_replan_fsm.cpp
++++ v31/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -356,6 +356,9 @@
+       }
+     }
+ 
++    // v31: the goal-neighbourhood search above can run for its 0.2 s wall-time
++    // budget; walk the route with the newest received inputs.
++    map->refreshSensorInputs("route_walk");
+     for (int i = sample_num; i >= 0; --i)
+     {
+       const double t = duration * i / sample_num;
+@@ -764,6 +767,8 @@
+ 
+   void SCANReplanFSM::execFSMCallback()
+   {
++    // v31: start each planning-timer callback from the newest received inputs.
++    planner_manager_->grid_map_->refreshSensorInputs("exec");
+     updateLocalTrajTimeFreeze();
+ 
+     static int fsm_num = 0;
+@@ -1085,6 +1090,8 @@
+ 
+   void SCANReplanFSM::checkCollisionCallback()
+   {
++    // v31: check the executing curve against the newest received inputs.
++    planner_manager_->grid_map_->refreshSensorInputs("safety");
+     updateLocalTrajTimeFreeze();
+ 
+     LocalTrajData *info = &planner_manager_->local_data_;
+--- v30/src/plan_manage/src/planner_manager.cpp
++++ v31/src/plan_manage/src/planner_manager.cpp
+@@ -126,6 +126,8 @@
+                                         bool &optimization_attempted)
+   {
+     optimization_attempted = false;
++    // v31: each replan attempt starts from the newest received inputs.
++    grid_map_->refreshSensorInputs("replan_start");
+ 
+     static int count = 0;
+     std::cout << endl
+@@ -330,6 +332,8 @@
+ 
+     t_refine = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();
+ 
++    // v31: judge the final curve against the newest received inputs.
++    grid_map_->refreshSensorInputs("final_check");
+     const auto collision_started = std::chrono::steady_clock::now();
+     const auto collision = reactive_stair::checkFullCubicTrajectory(
+         pos, 0.0, grid_map_->getResolution(), GridMap::collision_heading_lookahead_s,
+--- v30/src/bspline_opt/src/bspline_optimizer.cpp
++++ v31/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -992,6 +992,8 @@
+     do
+     {
+       /* ---------- prepare ---------- */
++      // v31: each rebound round starts from the newest received inputs.
++      grid_map_->refreshSensorInputs("rebound_round");
+       min_cost_ = std::numeric_limits<double>::max();
+       iter_num_ = 0;
+       flag_force_return = false;

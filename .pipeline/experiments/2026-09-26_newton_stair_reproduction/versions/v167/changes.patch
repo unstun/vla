@@ -1,0 +1,195 @@
+--- v164/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ v167/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -135,6 +135,7 @@
+       double span{0.0}, projection{0.0}, measured_projection{0.0}, growth_projection{0.0}, stamp{0.0};
+     } feasible_window_;
+     int64_t steering_prefix_generation_{-1};
++    bool steering_prefix_reverse_{false};
+     bool trySteeringPrefix(bool random_initialization, const rclcpp::Time *origin);
+     void rememberFeasibleWindow();
+     bool reuseFeasibleWindow(double projection, double nominal_target, double step,
+--- v164/src/plan_manage/src/scan_replan_fsm.cpp
++++ v167/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1479,19 +1479,21 @@
+         (start_pt_-odom_pos_).norm()>0.5*resolution) return false;
+     const double measured_yaw=map->collisionSegmentYaw(odom_pos_,odom_pos_);
+     if(!std::isfinite(measured_yaw))return false;
+-    struct Proposal { double reach; Eigen::Vector3d target; };
++    struct Proposal { double reach; Eigen::Vector3d target; bool reverse; };
+     std::vector<Proposal> proposals;
+     const double pi=std::acos(-1.0);
+     // Preserve the original near-forward proposals first. From a measured
+     // stop, also consider a checked turn toward a side/back escape direction.
+     for(double offset:{0.,pi/32.,-pi/32.,pi/16.,-pi/16.,pi/8.,-pi/8.,pi/4.,-pi/4.,pi/2.,-pi/2.,pi}) {
++      const bool reverse=std::abs(offset-pi)<1e-12;
++      const double turn=reverse?0.0:offset;
+       const double yaw=measured_yaw+offset;
+       const Eigen::Vector3d direction(std::cos(yaw),std::sin(yaw),0);
+       const Eigen::Vector3d target=start_pt_+resolution*direction;
+       bool rotation_clear=true;
+-      const int rotation_steps=std::max(8,static_cast<int>(std::ceil(std::abs(offset)/(pi/128.))));
++      const int rotation_steps=std::max(8,static_cast<int>(std::ceil(std::abs(turn)/(pi/128.))));
+       for(int j=0;j<=rotation_steps;++j) {
+-        const double intermediate=measured_yaw+offset*j/double(rotation_steps);
++        const double intermediate=measured_yaw+turn*j/double(rotation_steps);
+         if(map->getInflateOccupancy(start_pt_,intermediate)!=0 ||
+            map->getInflateOccupancy(odom_pos_,intermediate)!=0)rotation_clear=false;
+       }
+@@ -1502,7 +1504,7 @@
+         if(!map->collisionFreeSegment(start_pt_,start_pt_+cells*resolution*direction))break;
+         reach=cells*resolution;
+       }
+-      if(reach>resolution)proposals.push_back({reach,target});
++      if(reach>resolution)proposals.push_back({reach,target,reverse});
+     }
+     std::stable_sort(proposals.begin(),proposals.end(),[](const Proposal&a,const Proposal&b){return a.reach>b.reach;});
+     size_t optimizer_attempts=0;
+@@ -1511,16 +1513,33 @@
+       // Refresh evidence, not the immutable start PVA or its original epoch.
+       recoveryTargetOccupancy(proposal.target,measured_yaw);
+       if(!map->planningInputsReady() || !std::isfinite(map->collisionSegmentYaw(odom_pos_,odom_pos_)))return false;
++      const auto prior_local=planner_manager_->local_data_;
+       if(!planner_manager_->reboundReplan(start_pt_,start_vel_,start_acc_,proposal.target,
+           Eigen::Vector3d::Zero(),true,random_initialization,origin))continue;
++      if(proposal.reverse) {
++        // The normal tangent-based footprint is pi-symmetric. Also require the
++        // complete curve to be clear at the measured heading held by this backup.
++        const auto fixed=reactive_stair::checkFullCubicTrajectory(
++          planner_manager_->local_data_.position_traj_,0.0,resolution,GridMap::collision_heading_lookahead_s,
++          [&](const Eigen::Vector3d&,const Eigen::Vector3d&,const Eigen::Vector3d&){return measured_yaw;},
++          [&](const Eigen::Vector3d&p,double yaw){return map->getInflateOccupancy(p,yaw)!=0;});
++        if(!fixed.clear()||!map->mapperHealthy()) {
++          planner_manager_->local_data_=prior_local;
++          planner_manager_->publication_lease_.reset();
++          planner_manager_->publication_check_.clear=false;
++          planner_manager_->invalidateWarmStart();
++          continue;
++        }
++      }
++      steering_prefix_reverse_=proposal.reverse;
+       local_target_pt_=proposal.target;
+       local_target_vel_.setZero();
+       local_target_time_=-1.0; // Off-reference steering is not reference progress.
+       feasible_window_.valid=false;
+       steering_prefix_generation_=active_p2b_identity_.generation;
+       planner_manager_->invalidateWarmStart();
+-      RCLCPP_INFO(node_->get_logger(),"V158_STEERING_PREFIX generation=%ld length=%.9f corridor=%.9f target=[%.9f,%.9f,%.9f]",
+-        static_cast<long>(steering_prefix_generation_),(proposal.target-start_pt_).norm(),proposal.reach,
++      RCLCPP_INFO(node_->get_logger(),"V167_STEERING_PREFIX generation=%ld reverse=%d length=%.9f corridor=%.9f target=[%.9f,%.9f,%.9f]",
++        static_cast<long>(steering_prefix_generation_),steering_prefix_reverse_,(proposal.target-start_pt_).norm(),proposal.reach,
+         proposal.target.x(),proposal.target.y(),proposal.target.z());
+       return true;
+     }
+@@ -1530,6 +1549,7 @@
+   bool SCANReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget, double warm_curve_time, const rclcpp::Time *retry_origin)
+   {
+ 
++    steering_prefix_reverse_=false;
+     if (!getLocalTarget()) {
+       planner_manager_->invalidateWarmStart();
+       feasible_window_.valid = false;
+@@ -1596,6 +1616,7 @@
+       /* publish traj */
+       scan_planner_msgs::msg::Bspline bspline;
+       bspline.order = 3;
++      bspline.reverse_motion=steering_prefix_reverse_;
+       bspline.start_time = info->start_time_;
+       bspline.traj_id = info->traj_id_;
+       attachP2BIdentity(bspline);
+--- v164/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
++++ v167/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
+@@ -105,8 +105,9 @@
+     Eigen::Vector3d direction = traj_[0].evaluateDeBoorT(t_look) - pos_des;
+     if (direction.head<2>().squaredNorm() < 1e-4)
+       direction = traj_[1].evaluateDeBoorT(t_cur);
+-    return direction.head<2>().squaredNorm() < 1e-4
+-        ? odom_yaw_ : std::atan2(direction.y(), direction.x());
++    if(direction.head<2>().squaredNorm()<1e-4)return odom_yaw_;
++    const double tangent=std::atan2(direction.y(),direction.x());
++    return reverse_motion_?normalizeAngle(tangent+M_PI):tangent;
+   }
+ 
+   void fillIdentity(scan_planner_msgs::msg::P2BStampedTwist &out) const
+@@ -257,6 +258,7 @@
+     traj_.push_back(traj_[1].getDerivative());
+     traj_duration_ = traj_[0].getTimeSum();
+     traj_id_ = msg->traj_id;
++    reverse_motion_ = msg->reverse_motion;
+     run_id_ = msg->run_id;
+     epoch_ = msg->epoch;
+     request_id_ = msg->request_id;
+@@ -308,7 +310,7 @@
+       return;
+     }
+     const auto current_time = now();
+-    if (goalIdentityMatches())
++    if (goalIdentityMatches() && !reverse_motion_)
+     {
+       const bool within_xy = (goal_pos_ - odom_pos_).head<2>().norm() <= goal_xy_tolerance_;
+       const bool within_z = std::abs(goal_pos_.z() - odom_pos_.z()) <= goal_z_tolerance_;
+@@ -386,6 +388,7 @@
+   double goal_xy_tolerance_, goal_yaw_tolerance_, goal_z_tolerance_;
+   rclcpp::TimerBase::SharedPtr cmd_timer_;
+   bool receive_traj_{false};
++  bool reverse_motion_{false};
+   bool emergency_stop_{false};
+   bool have_odom_{false};
+   std::vector<UniformBspline> traj_;
+--- v164/src/scan_nav2_controller/src/controller.cpp
++++ v167/src/scan_nav2_controller/src/controller.cpp
+@@ -355,6 +355,17 @@
+   const double origin=stampSeconds(message->start_time), now=parent_->now().seconds();
+   valid=valid && origin>0 && origin<=now && message->start_time.nanosec<1000000000u;
+   if (valid) valid=now-origin<=message->knots[n]-message->knots[3];
++  if(valid && message->reverse_motion) {
++    // Only a short, stopped prefix can request reverse body-heading semantics.
++    // Ordinary paths retain the original direction contract.
++    valid=n>=6 && !message->emergency_stop;
++    if(valid) {
++      const auto point=[&](size_t i){const auto&p=message->pos_pts[i];return Eigen::Vector3d(p.x,p.y,p.z);};
++      double length=0.0;for(size_t i=1;i<n;++i)length+=(point(i)-point(i-1)).norm();
++      valid=length<=0.10 && (point(n-1)-point(0)).head<2>().norm()>1e-4;
++      for(size_t i=1;i<3;++i)valid=valid && (point(i)-point(0)).norm()<1e-6 && (point(n-1-i)-point(n-1)).norm()<1e-6;
++    }
++  }
+   if (tracker_->receive_traj_ && message->traj_id<=tracker_->traj_id_) return;
+   if (!valid) { stopLocked("invalid_scan_spline"); return; }
+   if (message->emergency_stop) {stopLocked("scan_emergency_stop");return;}
+--- v164/src/scan_nav2_controller/test/test_controller.cpp
++++ v167/src/scan_nav2_controller/test/test_controller.cpp
+@@ -541,3 +541,25 @@
+   drifted.pose.orientation.z=std::sin(-0.27/2);drifted.pose.orientation.w=std::cos(-0.27/2);
+   EXPECT_FALSE(goal->isGoalReached(drifted.pose,route.goal_pose,geometry_msgs::msg::Twist()));
+ }
++
++TEST_F(PluginTest, ShortReversePrefixMovesBackwardWithoutTurning) {
++ plan();auto m=curve();m.reverse_motion=true;
++ for(size_t i=0;i<m.pos_pts.size();++i)m.pos_pts[i].x=i<3?0.0:-0.05;
++ for(auto &k:m.knots)k*=0.25;
++ spline->publish(m);geometry_msgs::msg::TwistStamped command;
++ ASSERT_TRUE(wait([&]{sendSafety();command=plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist());return std::abs(command.twist.linear.x)>1e-7 || std::abs(command.twist.angular.z)>0.01;}));
++ EXPECT_LT(command.twist.linear.x,0.0);EXPECT_NEAR(command.twist.angular.z,0.0,1e-6);
++ output->publishCommand(command);
++ auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());ASSERT_NE(actual,nullptr);
++ EXPECT_TRUE(actual->tracker_->reverse_motion_);
++ auto forward=std::make_shared<sm::Bspline>(m);forward->traj_id=2;forward->reverse_motion=false;forward->start_time=parent->now();
++ for(size_t i=0;i<forward->pos_pts.size();++i)forward->pos_pts[i].x=i<3?0.0:0.05;
++ actual->onSpline(forward);auto safe=std::make_shared<sm::P2BExecutionSafety>();identity(safe->binding);safe->binding.consumer="native_safety";safe->binding.traj_id=2;safe->clear=true;safe->stamp=parent->now();safe->observation_stamp_s=parent->now().seconds();actual->onSafety(safe);
++ EXPECT_FALSE(actual->tracker_->reverse_motion_);
++}
++TEST_F(PluginTest, LongReverseModeSplineRejected) {
++ moving();auto bad=std::make_shared<sm::Bspline>(curve());bad->traj_id=2;bad->reverse_motion=true;
++ auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());ASSERT_NE(actual,nullptr);actual->onSpline(bad);
++ EXPECT_TRUE(actual->state_->stopping);
++ EXPECT_EQ(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()).twist,geometry_msgs::msg::Twist());
++}
+--- v164/src/scan_planner_msgs/msg/Bspline.msg
++++ v167/src/scan_planner_msgs/msg/Bspline.msg
+@@ -20,3 +20,7 @@
+ int64 map_revision
+ # Explicit safety stop, distinct from an ordinary trajectory's zero-speed tail.
+ bool emergency_stop
++
++# Explicit short stopped-recovery prefix: track translation with body heading
++# opposite its tangent. The symmetric two-cylinder collision geometry is unchanged.
++bool reverse_motion

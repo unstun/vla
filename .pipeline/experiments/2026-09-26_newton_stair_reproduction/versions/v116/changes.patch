@@ -1,0 +1,417 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/physical_floor_publisher.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v116/physical_floor_publisher.py
+@@ -16,7 +16,7 @@
+         super().__init__('pct_physical_floor_publisher')
+         info=json.loads((HERE/'physical_floor_input.json').read_text())
+         assert info['role']=='physical_floor_presence_only' and not info['traversal_authority'] and not info['terrain_return_classification_authority']
+-        data=Path(os.environ['V114_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
++        data=Path(os.environ['V116_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
+         self.points=np.frombuffer(data,dtype='<f4').reshape(-1,4)
+         assert len(self.points)==info['files']['physical_floor.f32']['points'] and np.isfinite(self.points).all()
+         self.gate=SimClockGate();qos=QoSProfile(depth=1,reliability=QoSReliabilityPolicy.RELIABLE,durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/test_recorder.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v116/test_recorder.py
+@@ -0,0 +1,44 @@
++"""Actual Foxy DDS regression: original recorder misses the namespaced curve."""
++from pathlib import Path
++import argparse,json,tempfile,time
++from types import SimpleNamespace
++import rclpy
++from rclpy.executors import SingleThreadedExecutor
++from rclpy.node import Node
++from scan_planner_msgs.msg import Bspline,P2BCancel,P2BExecutionSafety
++from geometry_msgs.msg import Point
++from rosgraph_msgs.msg import Clock
++from rosidl_runtime_py.convert import message_to_ordereddict
++from lite3_sim_bridge.reactive_health import Recorder as PreviousRecorder
++from nav2_recorder import Recorder
++
++rclpy.init();root=Path(tempfile.mkdtemp(prefix='v116-recorder-',dir='/task'))
++nodes=[];executor=SingleThreadedExecutor()
++try:
++ for name,kind in [('previous',PreviousRecorder),('candidate',Recorder)]:
++  (root/name).mkdir();node=kind(SimpleNamespace(output=root/name/'health.json',run_id='recording-test',epoch=1));nodes.append(node);executor.add_node(node)
++ source=Node('v116_observer_test_source');nodes.append(source);executor.add_node(source)
++ curve=source.create_publisher(Bspline,'/quad_0/planning/bspline',10)
++ stop=source.create_publisher(P2BCancel,'/p2b/scan_cancel',10)
++ proof=source.create_publisher(P2BExecutionSafety,'/quad_0/planning/execution_safety',10)
++ clock=source.create_publisher(Clock,'/clock',10)
++ end=time.monotonic()+3
++ while time.monotonic()<end and curve.get_subscription_count()!=1:executor.spin_once(timeout_sec=.01)
++ assert curve.get_subscription_count()==1
++ m=Bspline();m.traj_id=42;m.order=3;m.start_time.sec=10;m.run_id='recording-test';m.generation=1
++ m.pos_pts=[Point(x=float(i),y=float(i*i),z=.3) for i in range(4)];m.knots=[float(i) for i in range(8)]
++ c=Clock();c.clock.sec=10;clock.publish(c)
++ for i in range(3):
++  curve.publish(m);stop.publish(P2BCancel());proof.publish(P2BExecutionSafety())
++  end=time.monotonic()+.1
++  while time.monotonic()<end:executor.spin_once(timeout_sec=.005)
++ rows={name:[json.loads(x) for x in (root/name/'reactive_observations.jsonl').read_text().splitlines()] for name in ['previous','candidate']}
++ old=[x for x in rows['previous'] if x['event']=='bspline'];new=[x for x in rows['candidate'] if x['event']=='bspline']
++ assert not old and len(new)==3
++ assert all(x['data']==message_to_ordereddict(m) and x['clock_ns']==10_000_000_000 for x in new)
++ assert sum(x['event']=='scan_cancel' for x in rows['candidate'])==3
++ assert sum(x['event']=='execution_safety' for x in rows['candidate'])==3
++ print(json.dumps({'passed':True,'old_namespaced_curves':len(old),'new_exact_curves':len(new),'cancel_and_safety_events':True,'raw_root':str(root)}))
++finally:
++ for node in nodes:node.log.close() if hasattr(node,'log') else None;executor.remove_node(node);node.destroy_node()
++ executor.shutdown();rclpy.shutdown()
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/run_mac_corner.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v116/run_mac_corner.py
+@@ -15,7 +15,7 @@
+ BASE=HERE.parents[1]
+ ROOT=BASE.parents[2]
+ PYTHON=BASE.parent/'2026-09-26_newton_macos_policy/runtime/.venv/bin/python'
+-IMAGE=os.environ['V114_EXECUTION_IMAGE']
++IMAGE=os.environ['V116_EXECUTION_IMAGE']
+ sha=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
+ parser=argparse.ArgumentParser()
+ parser.add_argument('--workspace',type=Path,required=True)
+@@ -27,18 +27,18 @@
+ assert sys.platform=='darwin' and 20<=args.seconds<=90
+ evidence=HERE/'mac_trials'/f'attempt{args.attempt:02d}'
+ evidence.mkdir(parents=True,exist_ok=False)
+-temporary=Path(tempfile.mkdtemp(prefix='vla_newton_v114_',dir='/private/tmp'))
++temporary=Path(tempfile.mkdtemp(prefix='vla_newton_v116_',dir='/private/tmp'))
+ workspace=args.workspace.resolve()
+ assert workspace.parent==Path('/private/tmp') and workspace.name.startswith('vla_nav2_simrepair_')
+ # Kernel caches are rebuilt in this owned temporary root; the old v70 cache was removed.
+ (temporary/'scripts').mkdir()
+ (temporary/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+ shutil.copyfile(args.build_receipt,evidence/'build_receipt.json')
+-container='vla-v114-mac-corner-%02d'%args.attempt
++container='vla-v116-mac-corner-%02d'%args.attempt
+ env=os.environ.copy()
+ env.update(DOCKER_CONTEXT='desktop-linux',PATH='/Users/sun/.local/bin:'+env['PATH'],
+-    V114_TEMP_ROOT=str(temporary),V114_NATIVE_CONTAINER=container,V114_BUILD_EVIDENCE=str(evidence),
+-    V114_PHYSICAL_FLOOR=str(temporary/'physical_floor.f32'),PYTHONDONTWRITEBYTECODE='1',PYTHONUNBUFFERED='1',
++    V116_TEMP_ROOT=str(temporary),V116_NATIVE_CONTAINER=container,V116_BUILD_EVIDENCE=str(evidence),
++    V116_PHYSICAL_FLOOR=str(temporary/'physical_floor.f32'),PYTHONDONTWRITEBYTECODE='1',PYTHONUNBUFFERED='1',
+     PYTHONPATH=str(BASE/'runtime_sources/bridge')+':'+env.get('PYTHONPATH',''))
+ for port in (46200,46201,46202,46203):
+     with socket.socket() as probe:probe.bind(('127.0.0.1',port))
+@@ -50,10 +50,10 @@
+     '-v',str(workspace)+':/task:ro',
+     '-v',str(temporary)+':'+str(temporary)+':rw','-v',str(evidence)+':'+str(evidence)+':rw']
+ for number in range(1,args.trials+1):
+-    run='v114_mac_trial%02d_attempt%02d'%(number,args.attempt)
++    run='v116_mac_trial%02d_attempt%02d'%(number,args.attempt)
+     command+=['--tmpfs',str(temporary/'runs'/run/'artifacts/external_episode')+':rw,size=8m']
+ command+=['--entrypoint','/bin/bash',IMAGE,'-c','exec sleep infinity']
+-request={'version':'v114','host':'Mac','scene':'original Building corner_start','seconds':args.seconds,
++request={'version':'v116','host':'Mac','scene':'original Building corner_start','seconds':args.seconds,
+     'trials':args.trials,'temporary_root':str(temporary),'workspace':str(workspace),'container':container,
+     'command':command,'manifest_sha256':sha(HERE/'manifest.json'),
+     'remote_storage_root':'/home/sun/vla_artifacts/2026-10-08_nav2_sim_repair','gpu_job_started':False}
+@@ -61,14 +61,14 @@
+ created=False;rows=[];started=time.monotonic()
+ try:
+     subprocess.run(command,env=env,capture_output=True,text=True,timeout=30,check=True);created=True
+-    subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V114_PHYSICAL_FLOOR']],env=env,check=True,timeout=30)
++    subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V116_PHYSICAL_FLOOR']],env=env,check=True,timeout=30)
+     for number in range(1,args.trials+1):
+         if number>1:subprocess.run(command,env=env,capture_output=True,text=True,timeout=30,check=True)
+-        run='v114_mac_trial%02d_attempt%02d'%(number,args.attempt)
++        run='v116_mac_trial%02d_attempt%02d'%(number,args.attempt)
+         episode=[str(PYTHON),str(HERE/'mac_managed.py'),'--run-id',run,'--deadline','540','--retention','archive','--',
+             str(PYTHON),str(HERE/'run_local_episode.py'),'--backend-executor','single','--applied-transport','zmq',
+             '--geometry-obstacles','--scene','building_full','--building-route','corner_start','--goal-wall-budget','180',
+-            '--startup-mode','factory_pd','--stance-hold','--integration-version','v114','--real-time-factor','1',
++            '--startup-mode','factory_pd','--stance-hold','--integration-version','v116','--real-time-factor','1',
+             '--recording-sim-seconds',str(args.seconds)]
+         with (evidence/(run+'.log')).open('w') as stream:
+             process=subprocess.run(episode,env=env,stdout=stream,stderr=subprocess.STDOUT,timeout=580)
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/mac_supervisor.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v116/mac_supervisor.py
+@@ -15,10 +15,10 @@
+     text=source.read_text();old='out.mkdir(parents=True, exist_ok=False)'
+     assert text.count(old)==1
+     index=sys.argv.index('--run-id');run_id=sys.argv[index+1]
+-    root=Path(os.environ['V114_TEMP_ROOT'])
+-    assert root.parent==Path('/private/tmp') and root.name.startswith('vla_newton_v114_')
++    root=Path(os.environ['V116_TEMP_ROOT'])
++    assert root.parent==Path('/private/tmp') and root.name.startswith('vla_newton_v116_')
+     verify_prepared_mount(root/'runs'/run_id)
+-    spec=importlib.util.spec_from_file_location('v114_original_supervisor',source)
++    spec=importlib.util.spec_from_file_location('v116_original_supervisor',source)
+     module=importlib.util.module_from_spec(spec)
+     # Only Docker's pre-created empty tmpfs-parent directories are accepted.
+     # Original process group, deadline, child/environment and results stay exact.
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/native_observer.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v116/native_observer.py
+@@ -0,0 +1,25 @@
++"""Original sensor/curve recorder with an independent body-pose observation."""
++import argparse
++from pathlib import Path
++
++import rclpy
++from nav_msgs.msg import Odometry
++from rclpy.qos import qos_profile_sensor_data
++from rosidl_runtime_py.convert import message_to_ordereddict
++from nav2_recorder import Recorder
++
++parser = argparse.ArgumentParser()
++parser.add_argument("--output", type=Path, required=True)
++parser.add_argument("--run-id", required=True)
++parser.add_argument("--epoch", type=int, required=True)
++args, ros_args = parser.parse_known_args()
++rclpy.init(args=ros_args)
++node = Recorder(args)
++node.create_subscription(Odometry, "/quad_0/body_pose",
++    lambda message: node.event("body_pose_observer", message_to_ordereddict(message)), qos_profile_sensor_data)
++try:
++    rclpy.spin(node)
++finally:
++    node.log.close()
++    node.destroy_node()
++    rclpy.shutdown()
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/mac_managed.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v116/mac_managed.py
+@@ -14,6 +14,6 @@
+ namespace['verify_prepared_mount']=verify_prepared_mount
+ exec(compile(text.replace(old,'verify_prepared_mount(run)'),str(source),'exec'),namespace)
+ managed_run.main=namespace['main']
+-managed_run.a.BASE=Path(os.environ['V114_TEMP_ROOT'])
++managed_run.a.BASE=Path(os.environ['V116_TEMP_ROOT'])
+ managed_run.a.AUDIT=managed_run.a.BASE/'artifact_audit'
+ raise SystemExit(managed_run.main())
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/native_graph.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v116/native_graph.py
+@@ -19,8 +19,8 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v114":
+-        raise ValueError("v114 graph requires the frozen v114 integration identity")
++    if request.get("integration_version") != "v116":
++        raise ValueError("v116 graph requires the frozen v116 integration identity")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+@@ -72,7 +72,7 @@
+         if not request.get("geometry_obstacles", False):
+             launch("tracker", ["ros2", "run", "scan_reactive_tracker", "moving_cluster_tracker", "--ros-args", "-p", "use_sim_time:=true",
+                   "-p", "static_background_pcd:=" + str(BASE / "inputs/static_background/building2_9.pcd")])
+-        launch("health", [py, str(BASE / "scripts/native_observer.py"), "--output", str(out / "artifacts/runtime_health.json"),
++        launch("health", [py, str(VERSION / "native_observer.py"), "--output", str(out / "artifacts/runtime_health.json"),
+               "--run-id", out.name, "--epoch", str(epoch), "--ros-args", "-p", "use_sim_time:=true"])
+         launch("body_tf", [py, str(VERSION / "body_tf_bridge.py"), "--ros-args", "-p", "use_sim_time:=true"])
+         launch("bridge", [py, "-c", "from lite3_sim_bridge.foxy_bridge_node import main; main()", "--ros-args", "--params-file", str(cfg / "bridge.yaml"),
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/nav2_recorder.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v116/nav2_recorder.py
+@@ -0,0 +1,102 @@
++"""Read-only ROS health and correction recorder; no actor-truth subscription."""
++import argparse
++import json
++from pathlib import Path
++import time
++
++import rclpy
++from rclpy.node import Node
++from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, qos_profile_sensor_data
++from rosgraph_msgs.msg import Clock
++from sensor_msgs.msg import PointCloud2
++from nav_msgs.msg import Odometry
++from geometry_msgs.msg import Twist
++from scan_planner_msgs.msg import TrackedPersonSnapshot, P2BAdmission, P2BRoute, P2BStampedTwist, Bspline, P2BCancel, P2BExecutionSafety
++from rosidl_runtime_py.convert import message_to_ordereddict
++
++
++def ns(stamp):
++    return stamp.sec * 1_000_000_000 + stamp.nanosec
++
++
++class Recorder(Node):
++    def __init__(self, args):
++        super().__init__("reactive_stair_health")
++        self.args = args
++        self.stamps = {}
++        self.complete = False
++        self.tracks = []
++        self.source = None
++        self.log = (args.output.parent / "reactive_observations.jsonl").open("w")
++        latched = QoSProfile(depth=1, reliability=QoSReliabilityPolicy.RELIABLE,
++                             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
++        self.create_subscription(Clock, "/clock", self.clock, qos_profile_sensor_data)
++        self.create_subscription(PointCloud2, "/pct_tomogram", lambda msg: self.cloud("pct_tomogram", msg), latched)
++        self.create_subscription(PointCloud2, "/tracker_ground", lambda msg: self.cloud("tracker_ground", msg), latched)
++        self.create_subscription(PointCloud2, "/quad_0/cloud", lambda msg: self.cloud("cloud", msg), qos_profile_sensor_data)
++        self.create_subscription(Odometry, "/quad_0/lidar_pose", self.pose, qos_profile_sensor_data)
++        self.create_subscription(TrackedPersonSnapshot, "/tracked_person_snapshot", self.track, qos_profile_sensor_data)
++        for topic, message_type, name in (("/p2b/scan_admission", P2BAdmission, "scan_admission"),
++                                         ("/p2b/route", P2BRoute, "pct_route"),
++                                         ("/quad_0/planning/bspline", Bspline, "bspline"),
++                                         ("/p2b/scan_cancel", P2BCancel, "scan_cancel"),
++                                         ("/quad_0/planning/execution_safety", P2BExecutionSafety, "execution_safety"),
++                                         ("/quad_0/raw_scan_cmd_vel", P2BStampedTwist, "raw_command"),
++                                         ("/quad_0/cmd_vel", Twist, "gated_command")):
++            self.create_subscription(message_type, topic, lambda msg, key=name: self.event(key, message_to_ordereddict(msg)), 50)
++        self.create_timer(0.05, self.flush)
++
++    def event(self, name, data):
++        self.log.write(json.dumps({"event": name, "clock_ns": self.stamps.get("clock"),
++                                   "wall_monotonic_ns": time.monotonic_ns(), "data": data}) + "\n")
++        self.log.flush()
++
++    def clock(self, msg):
++        self.stamps["clock"] = ns(msg.clock)
++
++    def cloud(self, name, msg):
++        self.stamps[name] = ns(msg.header.stamp)
++        self.event(name, {"stamp_ns": ns(msg.header.stamp), "frame": msg.header.frame_id,
++                          "width": msg.width, "height": msg.height, "dense": msg.is_dense})
++
++    def pose(self, msg):
++        self.stamps["lidar_pose"] = ns(msg.header.stamp)
++        self.event("lidar_pose", message_to_ordereddict(msg))
++
++    def track(self, msg):
++        self.stamps["tracked_person_snapshot"] = ns(msg.header.stamp)
++        self.complete = msg.complete
++        self.source = msg.source_id
++        self.tracks = [message_to_ordereddict(t) for t in msg.tracks]
++        self.event("tracks", message_to_ordereddict(msg))
++
++    def flush(self):
++        data = {"schema_version": 1, "run_id": self.args.run_id,
++                "run_epoch_ns": self.args.epoch, "wall_monotonic_ns": time.monotonic_ns(),
++                "stamps_ns": self.stamps, "tracked_person_count": len(self.tracks),
++                "tracks_complete": self.complete, "track_source_id": self.source,
++                "tracks": self.tracks}
++        tmp = self.args.output.with_suffix(".tmp")
++        tmp.write_text(json.dumps(data) + "\n")
++        tmp.replace(self.args.output)
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--run-id", required=True)
++    parser.add_argument("--epoch", type=int, required=True)
++    args, ros_args = parser.parse_known_args()
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    rclpy.init(args=ros_args)
++    node = Recorder(args)
++    try:
++        rclpy.spin(node)
++    finally:
++        node.log.close()
++        node.destroy_node()
++        rclpy.shutdown()
++
++
++if __name__ == "__main__":
++    main()
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/foxy_python_preflight.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v116/foxy_python_preflight.py
+@@ -44,7 +44,7 @@
+         try:
+             if args.mode == 'physical':
+                 from physical_floor_publisher import PhysicalFloorPublisher
+-                os.environ['V114_PHYSICAL_FLOOR'] = str(args.recorded/'physical_floor.f32')
++                os.environ['V116_PHYSICAL_FLOOR'] = str(args.recorded/'physical_floor.f32')
+                 node = PhysicalFloorPublisher()
+                 points = node.points
+                 original = args.recorded/'physical_floor.f32'
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/mac_native_gate.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v116/mac_native_gate.py
+@@ -10,12 +10,12 @@
+ 
+ 
+ def verify(build,manifest):
+-    if build.resolve()!=HERE.resolve():raise ValueError('Wrong v114 source selection')
++    if build.resolve()!=HERE.resolve():raise ValueError('Wrong v116 source selection')
+     if sha(HERE/'quality.json')!=manifest['quality_sha256']:
+         raise ValueError('Component qualification changed')
+     if not json.loads((HERE/'quality.json').read_text())['passed']:
+         raise ValueError('Component qualification missing')
+-    receipt=Path(os.environ['V114_BUILD_EVIDENCE'])/'build_receipt.json'
++    receipt=Path(os.environ['V116_BUILD_EVIDENCE'])/'build_receipt.json'
+     quality=json.loads((HERE/'quality.json').read_text())
+     if sha(receipt)!=quality['runtime_receipt_sha256']:
+         raise ValueError('Execution receipt differs from the qualified build')
+@@ -23,7 +23,7 @@
+     if not expected['passed'] or expected['platform']!='linux/arm64' or expected['ros_distro']!='foxy':
+         raise ValueError('Wrong execution build')
+     actual_image=subprocess.check_output(['docker','inspect','--format','{{.Image}}',
+-        os.environ['V114_NATIVE_CONTAINER']],text=True).strip()
++        os.environ['V116_NATIVE_CONTAINER']],text=True).strip()
+     if actual_image!=expected['execution_image_sha256']:
+         raise ValueError('Execution image differs from the qualified Foxy environment')
+     script='''from pathlib import Path
+@@ -31,10 +31,10 @@
+ receipt=json.loads(Path(sys.argv[1]).read_text())
+ for name,value in receipt['runtime_file_sha256'].items():
+  assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==value,name
+-print('V114_FOXY_SOURCE_INSTALL_GATE_PASS')
++print('V116_FOXY_SOURCE_INSTALL_GATE_PASS')
+ '''
+-    result=subprocess.run(['docker','exec',os.environ['V114_NATIVE_CONTAINER'],'python3','-c',script,str(receipt)],
++    result=subprocess.run(['docker','exec',os.environ['V116_NATIVE_CONTAINER'],'python3','-c',script,str(receipt)],
+                           check=True,capture_output=True,text=True,timeout=45)
+-    if 'V114_FOXY_SOURCE_INSTALL_GATE_PASS' not in result.stdout:
++    if 'V116_FOXY_SOURCE_INSTALL_GATE_PASS' not in result.stdout:
+         raise ValueError('Missing installed identity verification')
+     return {'passed':True,'receipt_sha256':sha(receipt),'physics_acceptance':False}
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/run_local_episode.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v116/run_local_episode.py
+@@ -15,7 +15,7 @@
+ BASE = VERSION.parents[1]
+ PROJECT = BASE.parents[2]
+ BUILD = VERSION
+-IMAGE = os.environ.get("V114_EXECUTION_IMAGE")  # The owned launcher pins the qualified Foxy image.
++IMAGE = os.environ.get("V116_EXECUTION_IMAGE")  # The owned launcher pins the qualified Foxy image.
+ 
+ 
+ def return_linux_state(name, out):
+@@ -137,7 +137,7 @@
+     parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v114 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v116 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -175,8 +175,8 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v114":
+-        raise ValueError("This entry point requires frozen integration version v114")
++    if integration_version != "v116":
++        raise ValueError("This entry point requires frozen integration version v116")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+@@ -199,7 +199,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v114 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v116 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -264,8 +264,8 @@
+         "sensor_preprocessing": "unfiltered planner cloud, as archived unfiltered_planner_cloud=true"}, indent=2) + "\n")
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
+-    for name in ("run_local_episode.py", "native_graph.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v114_" + name))
++    for name in ("run_local_episode.py", "native_graph.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py", "native_observer.py", "nav2_recorder.py"):
++        shutil.copyfile(VERSION / name, out / ("executed_v116_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -288,8 +288,8 @@
+         "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+     name = "vla-newton-" + out.name.replace("_", "-")
+-    name = os.environ["V114_NATIVE_CONTAINER"]
+-    command = ["docker", "exec", "-e", "V114_PHYSICAL_FLOOR=" + os.environ["V114_PHYSICAL_FLOOR"],
++    name = os.environ["V116_NATIVE_CONTAINER"]
++    command = ["docker", "exec", "-e", "V116_PHYSICAL_FLOOR=" + os.environ["V116_PHYSICAL_FLOOR"],
+         name, "/bin/bash", str(out / "native_inside.sh")]
+     (out / "container_command.json").write_text(json.dumps(command, indent=2) + "\n")
+     with (out / "native_graph.log").open("w") as log:

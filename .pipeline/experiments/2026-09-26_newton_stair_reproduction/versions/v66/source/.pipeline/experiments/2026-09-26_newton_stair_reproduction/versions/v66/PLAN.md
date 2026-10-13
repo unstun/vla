@@ -1,0 +1,3 @@
+# v66 complete temporary-root launch check
+
+Stage: experiment + analysis. Parent frozen failed v65; native remains exact v63 and physics/backend v59. Fix the outer managed-run existence check to use the same verified empty-Docker-folder predicate as the supervisor. Exercise the real manager->supervisor->child->closed-retention path before physics; reject any previous run data. No planner/controller/policy/goal/yaw/PVA/dynamics/stair/occupancy/stop changes. Run the authorized two90s Newton Mac trials, retain failure/source evidence and compact plots/metrics, and keep bulk at a bounded temporary root outside the repository. Full original-corner qualification and GPU performance remain separate.

@@ -1,0 +1,32 @@
+{
+  "command": [
+    "/opt/homebrew/bin/ffmpeg",
+    "-nostdin",
+    "-v",
+    "error",
+    "-f",
+    "rawvideo",
+    "-pixel_format",
+    "rgb24",
+    "-video_size",
+    "2560x1440",
+    "-framerate",
+    "30",
+    "-i",
+    "pipe:0",
+    "-vf",
+    "scale=1280:720",
+    "-c:v",
+    "libx264",
+    "-crf",
+    "18",
+    "-pix_fmt",
+    "yuv420p",
+    "-movflags",
+    "+faststart",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/v51_stream_smoke04/newton_stair_recorded.partial.mp4"
+  ],
+  "transport": "bounded OS pipe, RGB24",
+  "max_video_bytes": 536870912,
+  "keep_frames": false
+}

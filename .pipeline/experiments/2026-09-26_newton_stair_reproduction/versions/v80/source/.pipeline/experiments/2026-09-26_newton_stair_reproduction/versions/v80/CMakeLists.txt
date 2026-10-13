@@ -1,0 +1,20 @@
+cmake_minimum_required(VERSION 3.8)
+project(v80_equivalent_map_operations)
+set(CMAKE_CXX_STANDARD 17)
+find_package(ament_cmake REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(OpenSSL REQUIRED)
+find_package(plan_env REQUIRED)
+foreach(target baseline_map_probe optimized_map_probe)
+  add_executable(${target} map_probe.cpp)
+  target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_compile_options(${target} PRIVATE -fno-access-control)
+  ament_target_dependencies(${target} plan_env)
+  target_link_libraries(${target} Eigen3::Eigen OpenSSL::Crypto)
+endforeach()
+target_include_directories(baseline_map_probe BEFORE PRIVATE /task/baseline/install/plan_env/include)
+get_target_property(baseline_dependencies baseline_map_probe LINK_LIBRARIES)
+# plan_env is a static archive: LD_LIBRARY_PATH cannot select the baseline.
+# Resolve its complete GridMap/raycast implementation from the original archive.
+set_property(TARGET baseline_map_probe PROPERTY LINK_LIBRARIES
+  /task/baseline/install/plan_env/lib/libplan_env.a ${baseline_dependencies})

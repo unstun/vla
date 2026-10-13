@@ -1,0 +1,50 @@
+E.EE..E...........
+======================================================================
+ERROR: test_absent_server_remains_bounded_failure (test_applied_transport.Tests.test_absent_server_remains_bounded_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v160/test_applied_transport.py", line 85, in test_absent_server_remains_bounded_failure
+    with socket.socket() as s:s.bind(('127.0.0.1',0));port=s.getsockname()[1]
+                              ^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 1] Operation not permitted
+
+======================================================================
+ERROR: test_clean_real_socket (test_applied_transport.Tests.test_clean_real_socket)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v160/test_applied_transport.py", line 49, in test_clean_real_socket
+    r,t,rs,wire=self.roundtrip(AppliedClient,0,1)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v160/test_applied_transport.py", line 41, in roundtrip
+    client=client_type(data['port']);p=payload(self.out.name)
+                       ~~~~^^^^^^^^
+KeyError: 'port'
+
+======================================================================
+ERROR: test_delayed_commit_reply_recovers_exact_bytes (test_applied_transport.Tests.test_delayed_commit_reply_recovers_exact_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v160/test_applied_transport.py", line 52, in test_delayed_commit_reply_recovers_exact_bytes
+    r,t,rs,wire=self.roundtrip(AppliedClient,.14,2)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v160/test_applied_transport.py", line 41, in roundtrip
+    client=client_type(data['port']);p=payload(self.out.name)
+                       ~~~~^^^^^^^^
+KeyError: 'port'
+
+======================================================================
+ERROR: test_original_client_fails_same_delayed_reply (test_applied_transport.Tests.test_original_client_fails_same_delayed_reply)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v160/test_applied_transport.py", line 60, in test_original_client_fails_same_delayed_reply
+    with self.assertRaises(zmq.Again):self.roundtrip(old.AppliedClient,.14,1)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v160/test_applied_transport.py", line 41, in roundtrip
+    client=client_type(data['port']);p=payload(self.out.name)
+                       ~~~~^^^^^^^^
+KeyError: 'port'
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.052s
+
+FAILED (errors=4)

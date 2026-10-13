@@ -1,0 +1,36 @@
+--- v137/src/plan_env/include/plan_env/grid_map.h
++++ v138/src/plan_env/include/plan_env/grid_map.h
+@@ -78,6 +78,7 @@
+ 
+ struct MappingParameters {
+   std::shared_ptr<const reactive_stair::SupportGapMask> support_gap_mask_;
++  std::shared_ptr<const reactive_stair::SupportGapMask> support_gap_body_mask_;
+ 
+   /* map properties */
+   Eigen::Vector3d map_origin_, map_size_;
+--- v134/src/plan_env/src/grid_map.cpp
++++ v138/src/plan_env/src/grid_map.cpp
+@@ -95,6 +95,9 @@
+       throw std::runtime_error("Static support gap map requires world frame");
+     mutableMapState().mp_.support_gap_mask_=std::make_shared<const reactive_stair::SupportGapMask>(
+         gap_path,gap_fnv,mutableMapState().mp_.double_cylinder_radius_);
++    mutableMapState().mp_.support_gap_body_mask_=std::make_shared<const reactive_stair::SupportGapMask>(
++        gap_path,gap_fnv,mutableMapState().mp_.double_cylinder_radius_+
++            std::abs(mutableMapState().mp_.double_cylinder_offset_));
+   }
+   mutableSupportState().reactive_parameters_.robot_radius_m = mutableMapState().mp_.double_cylinder_radius_;
+   mutableSupportState().reactive_decision_ = reactive_stair::CollisionDecision(mutableSupportState().reactive_parameters_);
+--- v137/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v138/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -419,6 +419,11 @@
+ 
+   if (!reactiveSurfaceGroundReady()) return 1;
+   if (!point.allFinite()) return 1;
++  // Match the global map's all-heading support envelope during local seeding,
++  // optimization and final validation. Keep the original cylinder veto too.
++  if (body_reference && mapState().mp_.support_gap_body_mask_ &&
++      mapState().mp_.support_gap_body_mask_->blocks(body_reference->x(),body_reference->y(),
++          body_reference->z()-supportState().reactive_parameters_.body_clearance_m)) return 1;
+   if (mapState().mp_.support_gap_mask_ && mapState().mp_.support_gap_mask_->blocks(
+       point.x(),point.y(),point.z()-supportState().reactive_parameters_.body_clearance_m)) return 1;
+   const double radius = mapState().mp_.double_cylinder_radius_;

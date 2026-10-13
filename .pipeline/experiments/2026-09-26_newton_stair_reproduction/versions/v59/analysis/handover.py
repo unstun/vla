@@ -1,0 +1,74 @@
+"""Compare old and new PVA at the same native publication time.
+
+Observed curve IDs bind publication geometry to the nominal round. This does not
+reconstruct the controller's exact receipt timestamp or pause state.
+"""
+from pathlib import Path
+import argparse,csv,hashlib,json,re,sys
+import numpy as np
+from scipy.interpolate import BSpline
+HERE=Path(__file__).resolve().parent;BASE=HERE.parents[2]
+sys.path.insert(0,str(BASE/'versions/v51'))
+import artifacts
+from analyze import stats
+
+def process(run_name):
+    version=run_name.split('_')[0];run=BASE/'runs'/run_name
+    candidates=[HERE/(run_name+'_rounds.json'),BASE/'versions'/version/'analysis'/(run_name+'_rounds.json')]
+    rounds_path=next(p for p in candidates if p.exists());rounds=json.loads(rounds_path.read_text())
+    with artifacts.open_text(run,'scan.log') as f:log=f.read()
+    lines=log.splitlines()
+    with artifacts.open_text(run,'artifacts/reactive_observations.jsonl') as f:
+        events=[json.loads(s) for s in f if '"event": "bspline"' in s]
+    metric_path=next(p for p in [HERE/(run_name+'_metrics.json'),BASE/'versions'/version/'analysis'/(run_name+'_metrics.json')] if p.exists())
+    window=json.loads(metric_path.read_text())['whole_window_rates']
+    rounds=[r for r in rounds if window['start_wall_s']<=r['start_wall_s']+r['wall_s']<=window['end_wall_s']]
+    curves=[]
+    for e in events:
+        m=e['data']
+        if m.get('emergency_stop'):continue
+        k=m['knots'];order=m['order'];points=[[p[x] for x in ('x','y','z')] for p in m['pos_pts']]
+        curves.append(dict(id=m['traj_id'],origin=m['start_time']['sec']+m['start_time']['nanosec']*1e-9,
+            duration=k[-order-1]-k[order],zero=k[order],spline=BSpline(k,np.array(points),order),receipt_wall=e['wall_monotonic_ns']*1e-9))
+    rows=[];excluded={}
+    def skip(reason):excluded[reason]=excluded.get(reason,0)+1
+    for old,new in zip(curves,curves[1:]):
+        if not 55<=new['origin']<90 or not window['start_wall_s']<=new['receipt_wall']<=window['end_wall_s']:continue
+        r=min(rounds,key=lambda x:abs(x['start_wall_s']+x['wall_s']-new['receipt_wall']))
+        if abs(r['start_wall_s']+r['wall_s']-new['receipt_wall'])>.02:skip('unmatched_completion');continue
+        if not r['success'] or r['rebound_attempts']!=1 or new['id']!=old['id']+1:skip('not_single_consecutive_success');continue
+        segment='\n'.join(lines[r['start_line']-1:r['end_line']])
+        epochs=re.findall(r'V59_TRAJECTORY_EPOCH sampled=(\d+) origin_s=([\d.]+) publication_s=([\d.]+) age_s=([\d.]+)',segment)
+        if version=='v59':
+            if len(epochs)!=1 or epochs[0][0]!='1':skip('no_sampled_epoch');continue
+            _,sample,publication,_=epochs[0];sample=float(sample);publication=float(publication)
+            if abs(new['origin']-sample)>2e-9:raise AssertionError('Published origin differs from native epoch')
+            new_t=publication-new['origin']
+        else:
+            sample=r['ros_s'];publication=new['origin'];new_t=0.
+        sample_t=sample-old['origin'];old_t=publication-old['origin']
+        if not 0<=sample_t<=old_t<=old['duration'] or not 0<=new_t<=new['duration']:skip('outside_curve_or_clock_shift');continue
+        initial=new['spline'](new['zero'])-old['spline'](old['zero']+sample_t)
+        if np.linalg.norm(initial)>2e-5:skip('initial_boundary_mismatch_or_freeze');continue
+        deltas=[];a=old['spline'];b=new['spline']
+        for derivative in range(3):
+            deltas.append(b(new['zero']+new_t)-a(old['zero']+old_t))
+            if derivative<2:a=a.derivative();b=b.derivative()
+        velocity=old['spline'].derivative()(old['zero']+old_t)[:2];speed=np.linalg.norm(velocity)
+        along=float(deltas[0][:2]@(velocity/speed)) if speed>1e-9 else 0.
+        rows.append(dict(sim_s=sample,traj_id=new['id'],solve_ms=r['wall_s']*1000,
+            sampling_to_publication_ms=(publication-sample)*1000,rebase_delay_ms=(new['origin']-sample)*1000,
+            common_time_position_error_m=float(np.linalg.norm(deltas[0])),common_time_velocity_error_mps=float(np.linalg.norm(deltas[1])),
+            common_time_acceleration_error_mps2=float(np.linalg.norm(deltas[2])),common_time_step_along_m=along))
+    keys=['sampling_to_publication_ms','rebase_delay_ms','common_time_position_error_m','common_time_velocity_error_mps','common_time_acceleration_error_mps2','common_time_step_along_m']
+    bands={f'{lo}-{hi}':{k:stats([r[k] for r in rows if lo<=r['sim_s']<hi]) for k in keys} for lo,hi in [(55,65),(65,70),(70,75),(75,80),(80,85),(85,90)]}
+    summary=dict(run=run_name,matched_pairs=len(rows),excluded_pairs=excluded,bands=bands,
+        source_sha256={'scan.log':hashlib.sha256(log.encode()).hexdigest(),'rounds':hashlib.sha256(rounds_path.read_bytes()).hexdigest(),'script':hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
+        scope='Consecutive observed curves matched to nominal completion and common initial position. Compare PVA at one native publication time. v59 uses its logged sample/publication epoch; earlier versions start the new curve at publication. This is not exact controller receipt/pause reconstruction. New optimized geometry may differ after the common initial PVA.')
+    (HERE/(run_name+'_handover.json')).write_text(json.dumps(summary,indent=2)+'\n')
+    if rows:
+        with (HERE/(run_name+'_handover.csv')).open('w') as f:w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows(rows)
+    print(json.dumps({'run':run_name,'matched_pairs':len(rows),'excluded':excluded,'85-90':bands['85-90']}),flush=True)
+if __name__=='__main__':
+    p=argparse.ArgumentParser();p.add_argument('runs',nargs='*',default=['v58_realtime_trial02','v59_realtime_trial01']);args=p.parse_args()
+    for run in args.runs:process(run)

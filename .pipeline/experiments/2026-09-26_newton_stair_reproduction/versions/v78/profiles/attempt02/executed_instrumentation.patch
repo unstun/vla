@@ -1,0 +1,166 @@
+--- frozen_v63/grid_map.cpp
++++ v78/instrumented_grid_map.cpp
+@@ -1,3 +1,4 @@
++#include "map_meter.h"
+ #include "plan_env/grid_map.h"
+ #include <cmath>
+ #include <limits>
+@@ -307,6 +308,8 @@
+                                    const std::vector<char>* ignore_mask)
+ {
+   invalidateRawContributorCache();
++  ++map_meter::meter.counts[map_meter::InflationCalls];
++  map_meter::meter.counts[map_meter::InflationOffsetVisits] += offsets.size();
+   for (const auto& offset : offsets)
+   {
+     const Eigen::Vector3i inf_id = id + offset;
+@@ -332,6 +335,7 @@
+ 
+ void GridMap::applyOccupancyUpdate(const Eigen::Vector3i& id, double new_log_odds)
+ {
++  ++map_meter::meter.counts[map_meter::OccupancyCalls];
+   invalidateRawContributorCache();
+   if (!isInMap(id))
+     return;
+@@ -346,8 +350,10 @@
+     reactive_nonterrain_history_.erase(key);
+     reactive_terrain_hits_.erase(key);
+   }
+-  if (was_occ != now_occ)
++  if (was_occ != now_occ) {
++    ++map_meter::meter.counts[map_meter::OccupancyTransitions];
+     updateInflation(id, now_occ ? 1 : -1);
++  }
+ }
+ 
+ void GridMap::resetCellByAddress(int addr)
+@@ -384,6 +390,8 @@
+ 
+ void GridMap::updateSlidingMap(const Eigen::Vector3d& center)
+ {
++  map_meter::Scope slide_scope(map_meter::Slide);
++  ++map_meter::meter.counts[map_meter::SlideCalls];
+   reactive_stair::PlanningProfile::Scope profile(planning_profile_, reactive_stair::PlanningProfile::SlidingMap);
+   invalidateRawContributorCache();
+   if (!mp_.map_sliding_en_)
+@@ -395,6 +403,7 @@
+   if (shift_num.cwiseAbs().maxCoeff() < mp_.map_sliding_thresh_vox_)
+     return;
+ 
++  ++map_meter::meter.counts[map_meter::RealSlides];
+   if ((shift_num.cwiseAbs().array() >= mp_.map_voxel_num_.array()).any())
+   {
+     resetAllMapData();
+@@ -405,6 +414,7 @@
+     return;
+   }
+ 
++  map_meter::Scope mask_scope(map_meter::SlideMask);
+   const int buffer_size = mp_.map_voxel_num_(0) * mp_.map_voxel_num_(1) * mp_.map_voxel_num_(2);
+   std::vector<char> clear_mask(buffer_size, 0);
+   std::vector<int> clear_addrs;
+@@ -463,8 +473,13 @@
+     }
+   }
+ 
+-  for (int addr : clear_addrs)
++  mask_scope.finish();
++  map_meter::meter.counts[map_meter::ClearedVoxels] += clear_addrs.size();
++  map_meter::Scope reset_scope(map_meter::SlideReset);
++  for (int addr : clear_addrs) {
++    if (md_.occupancy_buffer_[addr] > mp_.min_occupancy_log_) ++map_meter::meter.counts[map_meter::ClearedOccupied];
+     resetCellByAddressForSliding(addr, clear_mask);
++  }
+ 
+   for (int addr : clear_addrs)
+   {
+@@ -477,6 +492,7 @@
+     md_.flag_traverse_[addr] = -1;
+   }
+ 
++  reset_scope.finish();
+   mp_.map_origin_idx_ = new_origin_idx;
+   updateMapBoundaryFromIndex();
+   boundIndex(md_.local_bound_min_);
+@@ -629,8 +645,10 @@
+   Eigen::Vector3d half = Eigen::Vector3d(0.5, 0.5, 0.5);
+   Eigen::Vector3d ray_pt, pt_w;
+ 
++  map_meter::Scope traversal_scope(map_meter::Traversal);
+   for (int i = 0; i < md_.proj_points_cnt; ++i)
+   {
++    ++map_meter::meter.counts[map_meter::Rays];
+     pt_w = md_.proj_points_[i];
+ 
+     // set flag for projected point
+@@ -683,10 +701,12 @@
+       }
+     }
+ 
++    ++map_meter::meter.counts[map_meter::UniqueRays];
+     raycaster.setInput(pt_w / mp_.resolution_, md_.ray_pos_ / mp_.resolution_);
+ 
+     while (raycaster.step(ray_pt))
+     {
++      ++map_meter::meter.counts[map_meter::RaySteps];
+       Eigen::Vector3d tmp = (ray_pt + half) * mp_.resolution_;
+       length = (tmp - md_.ray_pos_).norm();
+ 
+@@ -706,6 +726,7 @@
+     }
+   }
+ 
++  traversal_scope.finish();
+   min_x = min(min_x, md_.ray_pos_(0));
+   min_y = min(min_y, md_.ray_pos_(1));
+   min_z = min(min_z, md_.ray_pos_(2));
+@@ -732,8 +753,10 @@
+ 
+   // std::cout << "cache all: " << md_.cache_voxel_.size() << std::endl;
+ 
++  map_meter::Scope fusion_scope(map_meter::Fusion);
+   while (!md_.cache_voxel_.empty())
+   {
++    ++map_meter::meter.counts[map_meter::FusedVoxels];
+ 
+     Eigen::Vector3i idx = md_.cache_voxel_.front();
+     int idx_ctns = toAddress(idx);
+@@ -1048,7 +1071,8 @@
+   }
+ 
+   pcl::PointCloud<pcl::PointXYZ> latest_cloud;
+-  pcl::fromROSMsg(*img, latest_cloud);
++  { map_meter::Scope scope(map_meter::Decode); pcl::fromROSMsg(*img, latest_cloud); }
++  map_meter::meter.counts[map_meter::Points] += latest_cloud.points.size();
+ 
+   md_.has_cloud_ = true;
+ 
+@@ -1065,6 +1089,7 @@
+   md_.proj_points_cnt = 0;
+   reactive_nonterrain_hits_.clear();
+ 
++  map_meter::Scope projection_scope(map_meter::Projection);
+   for (size_t i = 0; i < latest_cloud.points.size(); ++i)
+   {
+     const pcl::PointXYZ &pt = latest_cloud.points[i];
+@@ -1095,10 +1120,12 @@
+       md_.proj_points_[md_.proj_points_cnt] = pt_world;
+ 
+     md_.proj_points_cnt++;
++    ++map_meter::meter.counts[map_meter::KeptPoints];
+     if (isInMap(pt_world)) {
+       Eigen::Vector3i reactive_id;
+       posToIndex(pt_world, reactive_id);
+       const auto key = std::make_tuple(reactive_id.x(), reactive_id.y(), reactive_id.z());
++      ++map_meter::meter.counts[map_meter::TerrainCalls];
+       if (reactiveTerrainReturn(pt_world)) reactive_terrain_hits_.insert(key);
+       else {
+         reactive_nonterrain_hits_.insert(key);
+@@ -1107,6 +1134,7 @@
+     }
+   }
+ 
++  projection_scope.finish();
+   if (md_.proj_points_cnt == 0)
+     return;
+ 

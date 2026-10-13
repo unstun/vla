@@ -5,6 +5,17 @@ reviewed: false
 
 # Literature And Upstream Index
 
+## 2026-10-09: Navigation qualification across 18 repositories
+
+[Qualification survey](../survey/2026-10-09_navigation_qualification_upstream_survey.md)
+inspects 15 implementations/frameworks and 3 benchmarks with pinned source
+references and primary evaluation protocols. It finds no shared 30 Hz / 60 ms /
+zero-failed-round acceptance rule. Our native v114 solver has measured
+millisecond-scale ordinary rounds; comparative mission reliability remains
+ungraded, with a recorded failed episode and unresolved freshness/recovery
+coupling. The project's sustained-30-Hz requirement is unchanged. Status:
+`surveyed` only; no new upstream execution or performance ranking.
+
 > ⚠ [未门控] Codex CLI 0.153.3 在当前沙箱初始化 app-server 时返回 Operation not permitted，未产生独立核查结论。主会话已核对摘要、实测字段、视频 SHA 和未实施方案边界；reviewed: false 保留。
 
 ## 2026-10-01: SCAN-Planner frequency source check
@@ -21,6 +32,49 @@ this source check: `surveyed`, not a new upstream reproduction. See the
 paper/code links and the inspected previous-trajectory initialization branch.
 The [Newton timing archive](../experiments/2026-10-01_newton_nav2_timing_archive.md)
 separately records our failed full-stack 30 Hz/1:1 targets and delivered video.
+
+## 2026-09-26: Newton LiDAR self-occlusion and bridge handling
+
+Dr Sun required GitHub source inspection before problem-specific workarounds.
+See `../survey/2026-09-26_newton_lidar_bridge_upstream_survey.md` for pinned
+Robotec RGL, MuJoCo, Livox, Newton, Warp, newton_ros and MAVROS source mappings.
+The local sensor adapter follows sensor-owner exclusion while preserving other
+robot/external occlusion and refitting the actual animated human mesh. The
+analytic/native-MuJoCo and skin controls passed in
+`../experiments/2026-09-26_newton_stair_reproduction/runs/lidar_upstream_contract_v2/`.
+This qualifies one geometric sensor condition, not RTX parity or stair
+navigation. A narrow BSD MAVROS filter port now passes extracted-C++ parity and
+live Mac/Linux tests. rclpy/Docker issue comparisons support the standard
+single-threaded executor and pinned PyZMQ complete-message state transfer;
+the original graph is integrated in a bounded local run, which fails navigation
+on timeout. `newton_ros` remains surveyed only. The survey records all pins,
+licenses, direct controls and the next trajectory-timing diagnosis.
+
+## 2026-09-21: Isaac cloud vs physical MID-360
+
+Dr Sun asked not to invent a MID-360 matcher and to check open-source
+repositories first. Survey:
+`../survey/2026-09-21_isaac_mid360_livox_upstream_survey.md`
+(`surveyed` only; CSV not downloaded; mode not run). Ranked sources:
+Livox-SDK `livox_laser_simulation` `1cce107` MIT `mid360.csv`, already
+ported here as `--lidar-pattern-mode livox_mid360` via Isaac Lab
+`PatternBaseCfg`; stock Isaac Lab `LidarPatternCfg` (what stand_probe
+used); Isaac Sim RTX custom emitters as a different stack. Current
+unmapped-box cloud remains uniform 16×2° / 12 m, not the Livox table.
+
+## 2026-09-20: unmapped box in simulated LiDAR
+
+Dr Sun asked to copy open-source LiDAR-target patterns instead of inventing a
+Building-runner box spawn. Survey:
+`../survey/2026-09-20_unmapped_obstacle_lidar_hits_upstream_survey.md`
+(`surveyed` only; not imported, not reproduced). Ranked sources: Isaac Lab
+v2.3.2 tag `37ddf626` MultiMeshRayCaster (sibling extra prim + string
+`mesh_prim_paths`; BSD-3-Clause) and the already-pinned Lite3 fallback
+`run_isaac_v12_fallback.py` `single_box` at `848b4aec` (Cuboid spawn, extra
+string target, AABB pad 0.01 m). The fallback prim under `/World/ground` is
+unsafe on the Building runner because `/World/ground` is already a merged
+raycast target. No upstream spawn-but-omit zero-hit test was found. Task:
+`.trellis/tasks/09-20-isaac-lidar-unmapped-box-hits/` (planning).
 
 ## 2026-09-17: RL policy to PD stance-hold switching
 
@@ -202,3 +256,57 @@ Full PDF provenance and hashes are tracked in the survey
 
 Use `surveyed`, `imported`, `reproduced`, `integrated`, and `validated` only as
 defined in `AGENTS.md`.
+
+## 2026-10-12 stop and holding source audit
+
+Status: surveyed only. [Thirteen-repository stop/recovery comparison](../survey/2026-10-12_v177_stop_recovery_upstream_survey.md)
+links pinned Nav2Foxy/newerMPPI, move_base, TEB, SCAN/EGO, Fast-Planner, FASTER,
+CMUGo2, ART and field_local_planner sources, plus officialLite3sdk_deploy,
+UnitreeRLgym and legged_gym control/standing references.27existing source files
+were freshly byte-verified; new selected sources have per-file manifests under
+`references/upstream/2026-10-12_stop_hold/`. No implementation import, upstream
+execution or comparative physical success claim.
+
+## 2026-10-12 RL zero-command stopping follow-up
+
+Status: surveyed only. [Seven locomotion repositories and current V12 source](../survey/2026-10-12_rl_zero_command_upstream_survey.md)
+separate velocity tracking, stationary training, foot support and deployment
+mode changes. The pinned V12 command branch clears XY but does not guarantee
+zero yaw; its available stand-still reward is not configured and its posture
+standing multipliers are 1.0. These are source findings, not an original-run
+command distribution or causal policy diagnosis. The per-leg handoff proposal
+remains unvalidated; isolate policy stopping before selecting a repair.
+
+## 2026-10-08 mapping backlog and safe navigation
+
+Status: surveyed only. [Eight-repository mapping/admission survey](../survey/2026-10-08_mapping_backlog_upstream_survey.md)
+reads pinned Nav2, ROG-Map, SUPER, Elevation Mapping CuPy, Isaac ROS nvblox,
+EGO-Planner, SCAN-Planner and PCT-SCAN-ROS2 sources against local v78/v82
+evidence. The inspected upstreams combine bounded or latest-observation input,
+separate mapping/control rates, local/incremental map work and continued
+execution of a committed trajectory; they do not establish that a background
+mapper can keep every observation of an arbitrarily growing stream. Our v82 keeps every
+distinct scan under a 250 ms map-age gate, so it is not equivalent to a
+latest-slot or bounded-drop queue. Recommendations are hypotheses; no upstream
+was cloned or run.
+
+## 2026-10-09 local-planning failure handling
+
+Status: surveyed only. [Four-implementation failure-path survey](../survey/2026-10-09_local_planning_failure_upstream_survey.md)
+checks pinned SCAN-Planner, EGO-Planner, TEB and Nav2 Foxy source: each
+anticipates failed local planning (retries, counters, zero command, emergency
+stop or a FollowPath abort). Three public issue reports are recorded as user
+evidence, not reproduced. Upstream failures do not qualify our latency,
+recovery or reliability.
+
+## 2026-10-13 local trajectory completion (terminal crawl)
+
+Status: surveyed only. [Six-repository completion survey](../survey/2026-10-13_terminal_capture_upstream_survey.md)
+compares Nav2 Foxy SimpleGoalChecker, ROS navigation LatchedStopRotateController,
+CMU Go2 pathFollower, TEB, SCAN closed_loop_controller and EGO traj_server;
+pins and file SHA-256 are under `references/upstream/2026-10-13_terminal_capture/`.
+It motivated the v184/v185 completion latch and the v187 bounded-correction
+timeout (Nav2 controller failure -> recovery). v185 3/5, v186 2/5 and v187 3/5
+full-route arrivals were not accepted (v185/v186 rejected); the unchanged v177
+control arrived 5/5.
+No upstream source was copied or executed.

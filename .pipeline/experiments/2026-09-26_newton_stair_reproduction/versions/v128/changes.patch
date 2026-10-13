@@ -1,0 +1,82 @@
+--- v114/src/scan_nav2_controller/src/controller.cpp
++++ v128/src/scan_nav2_controller/src/controller.cpp
+@@ -386,7 +386,11 @@
+   for(auto candidate=candidate_curves_.rbegin();candidate!=candidate_curves_.rend();++candidate) {
+     const auto proof=candidate_proofs_.find(candidate->first);
+     if(proof==candidate_proofs_.end())continue;
+-    if(!proof->second->clear) {stopLocked("scan_safety_rejected");return;}
++    if(!proof->second->clear) {
++      // Keep the verdict that revoked this owner until a measured-stop handoff.
++      safety_=proof->second;
++      stopLocked("scan_safety_rejected");return;
++    }
+     const auto &curve=*candidate->second;
+     const double origin=stampSeconds(curve.start_time);
+     if(!fresh(now,stampSeconds(proof->second->stamp),safety_timeout_s_) ||
+@@ -472,9 +476,17 @@
+       now,pose_stamp,now-pose_stamp,pose_timeout_s_);
+     fail(now<pose_stamp?"scan_body_pose_future":"scan_body_pose_stale");
+   }
+-  if (state_->stopping) return ticket(geometry_msgs::msg::Twist());
++  const auto stoppedCommand=[&]() {
++    // An asynchronous native rejection must fail FollowPath on this tick.
++    // Returning normal zeros hides the fault until the progress timeout.
++    // Output is already revoked; the existing BT still waits for measured stop.
++    if (safety_ && !safety_->clear)
++      throw nav2_core::PlannerException("scan_safety_rejected");
++    return ticket(geometry_msgs::msg::Twist());
++  };
++  if (state_->stopping) return stoppedCommand();
+   activateProvenCandidate(now);
+-  if (state_->stopping) return ticket(geometry_msgs::msg::Twist());
++  if (state_->stopping) return stoppedCommand();
+   if (!tracker_->receive_traj_) {
+     if (first_candidate_received_s_>0 &&
+         !fresh(now,first_candidate_received_s_,safety_timeout_s_)) fail("scan_safety_evidence_stale");
+--- v114/src/scan_nav2_controller/test/test_controller.cpp
++++ v128/src/scan_nav2_controller/test/test_controller.cpp
+@@ -434,3 +434,44 @@
+   ASSERT_EQ(rcl_set_ros_time_override(clock,origin+2100000000LL),RCL_RET_OK);
+   EXPECT_THROW(plugin->setPlan(route.path),nav2_core::PlannerException);
+ }
++
++// Real plugin callback ordering: native safety revokes output between Nav2 ticks.
++// Nav2 must observe failure on the next tick, without waiting for no-progress.
++TEST_F(PluginTest, NegativeSafetyTriggersRecoveryOnNextTick)
++{
++  moving();
++  auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
++  ASSERT_NE(actual,nullptr);
++  auto negative=std::make_shared<sm::P2BExecutionSafety>(); identity(negative->binding);
++  negative->binding.consumer="native_safety"; negative->binding.traj_id=1;
++  negative->stamp=parent->now();negative->observation_stamp_s=parent->now().seconds();
++  negative->clear=false;actual->onSafety(negative);
++  ASSERT_TRUE(actual->state_->stopping);
++  EXPECT_THROW(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++  spline->publish(curve());sendSafety();wait([] {return false;},0.02);
++  EXPECT_THROW(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++  const auto old=route;
++  route.generation=2;route.command_id="second";route.path.header.stamp=parent->now();
++  actual->onBinding(std::make_shared<sm::P2BRoute>(route));
++  EXPECT_THROW(plugin->setPlan(route.path),nav2_core::PlannerException);
++  route=old;proof(true);route.generation=2;route.command_id="second";
++  route.path.header.stamp=parent->now();
++  actual->onBinding(std::make_shared<sm::P2BRoute>(route));
++  EXPECT_NO_THROW(plugin->setPlan(route.path));
++  EXPECT_EQ(actual->state_->route->generation,2);
++  EXPECT_FALSE(actual->state_->stopping);
++  EXPECT_NO_THROW(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()));
++}
++TEST_F(PluginTest, NegativeCandidateProofTriggersRecoveryInAdmissionTick)
++{
++  plan();
++  auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());ASSERT_NE(actual,nullptr);
++  auto negative=std::make_shared<sm::P2BExecutionSafety>();identity(negative->binding);
++  negative->binding.consumer="native_safety";negative->binding.traj_id=1;
++  negative->stamp=parent->now();negative->observation_stamp_s=parent->now().seconds();
++  negative->clear=false;actual->onSafety(negative);
++  ASSERT_FALSE(actual->state_->stopping);
++  actual->onSpline(std::make_shared<sm::Bspline>(curve()));
++  ASSERT_TRUE(actual->state_->stopping);
++  EXPECT_THROW(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++}

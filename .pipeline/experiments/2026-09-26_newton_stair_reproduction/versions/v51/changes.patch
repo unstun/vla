@@ -1,0 +1,159 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v46/render_episode_v46.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v51/render_episode_v51.py
+@@ -13,6 +13,10 @@
+ import shutil
+ import subprocess
+ import xml.etree.ElementTree as ET
++
++from artifacts import open_text, artifact_exists
++from display_measurements import load as load_measurements
++from video_stream import VideoStream
+ 
+ import numpy as np
+ from PIL import Image, ImageDraw, ImageFont
+@@ -217,18 +221,28 @@
+ def load_recorded_rows(source):
+     """30 FPS causal replay on actual wall timestamps, with no pose interpolation."""
+     original = json.loads((source / "video_states.json").read_text())
++    # Raw episodes prepend factory startup frames without wall stamps. Replay
++    # initialized navigation directly; do not make a duplicate "view" run or
++    # invent timing for that separately recorded startup segment.
++    first_timed = next((i for i, row in enumerate(original) if "wall_monotonic_s" in row), None)
++    if first_timed is None:
++        raise ValueError("No recorded navigation wall timestamps; retain the source without synthesizing timing")
++    original = original[first_timed:]
++    if any("wall_monotonic_s" not in row for row in original):
++        raise ValueError("Missing wall timestamp inside navigation recording")
+     times = np.asarray([row["wall_monotonic_s"] for row in original])
+     if len(times) < 2 or not np.isfinite(times).all() or np.any(np.diff(times) <= 0.):
+         raise ValueError("Expected strictly increasing actual recorded wall times")
+     display = times[0] + np.arange(int(np.floor((times[-1]-times[0])*30.))+1) / 30.
+     indices = np.maximum(0, np.searchsorted(times, display, side="right")-1)
+-    return [dict(original[int(i)], display_time_s=float(t-times[0])) for i,t in zip(indices,display)]
++    return [dict(original[int(i)], source_state_index=first_timed+int(i), display_time_s=float(t-times[0])) for i,t in zip(indices,display)]
+ 
+ 
+ def main():
+     parser = argparse.ArgumentParser()
+     parser.add_argument("--source-run", required=True)
+     parser.add_argument("--limit", type=int)
++    parser.add_argument("--keep-frames", action="store_true", help="Debug only: retain every PNG")
+     parser.add_argument("--view", choices=("original", "rear-right"), default="original")
+     args = parser.parse_args()
+     source = BASE / "runs" / args.source_run
+@@ -238,14 +252,16 @@
+     episode_request = (json.loads((source / "episode_request.json").read_text())
+                        if (source / "episode_request.json").exists() else {})
+     startup_view = episode_request.get("startup_qualification", False)
+-    timing = json.loads((source / "recording_measurements.json").read_text())
++    timing = load_measurements(source)
++    (out / "display_measurements.json").write_text(json.dumps(timing, indent=2) + "\n")
+     verify_inputs()
+     rows = load_recorded_rows(source)
+     if args.limit is not None:
+         rows = rows[:args.limit]
+     if not rows:
+         raise ValueError("No recorded physics frames")
+-    for name in ("render_episode.py", "scene_assets.py", "robot_scene.py", "flat_scene.py"):
++    shutil.copyfile(Path(__file__), out / "executed_render_episode_v51.py")
++    for name in ("scene_assets.py", "robot_scene.py", "flat_scene.py"):
+         shutil.copyfile((BASE / "scripts" / name), out / ("executed_" + name))
+     long_route = episode_request.get("scene") == "flat_empty_long"
+     full_building = episode_request.get("scene") == "building_full"
+@@ -274,17 +290,25 @@
+     xforms = wp.array([wp.transform_identity()], dtype=wp.transform, device="cpu")
+     scales = wp.array([[1., 1., 1.]], dtype=wp.vec3, device="cpu")
+     curves, routes = [], []
+-    backend_states = [json.loads(line) for line in (source / "backend_states.jsonl").read_text().splitlines()]
++    backend_states = []
++    with open_text(source, "backend_states.jsonl") as backend_stream:
++        for line in backend_stream:
++            record = json.loads(line)
++            data = record["data"]
++            # Display only needs job/terminal status, not repeated route/history.
++            backend_states.append({"sim_time_s": record["sim_time_s"], "data": {
++                "terminal_results": data.get("terminal_results", []),
++                "jobs": bool(data.get("jobs"))}})
+     observations = source / "artifacts/reactive_observations.jsonl"
+-    if observations.exists():
+-        for line in observations.open():
++    if artifact_exists(source, "artifacts/reactive_observations.jsonl"):
++        for line in open_text(source, "artifacts/reactive_observations.jsonl"):
+             row = json.loads(line)
+             if row["event"] == "bspline" and row["clock_ns"] is not None:
+                 curves.append(row)
+             elif row["event"] == "pct_route" and row["clock_ns"] is not None:
+                 routes.append(row)
+-    frames = out / "frames"
+-    frames.mkdir()
++    stream = VideoStream(out, 30, len(rows), keep_frames=args.keep_frames)
++    render_finished = False
+     manifest = []
+     font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 28)
+     small = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 23)
+@@ -427,22 +451,20 @@
+                 footer = episode_request["renderer_footer"]
+             draw.text((22, frame.height-68), caption, font=small, fill=(255, 207, 128))
+             draw.text((22, frame.height-35), footer, font=small, fill=(220, 225, 235))
+-            path = frames / f"{i:06d}.png"
+-            frame.save(path)
+-            manifest.append({"file": str(path.relative_to(out)), "sha256": digest(path),
+-                             "physics_time_s": t, "display_time_s": row["display_time_s"], "actor_clip": actor["clip"], "actor_frame": actor["frame"],
+-                             "camera_position_m": position.tolist(), "camera_target_m": target.tolist(),
+-                             "navigation_status": status,
+-                             "shape": list(rgb.shape)})
++            manifest.append(stream.add(frame, {
++                "physics_time_s": t, "display_time_s": row["display_time_s"],
++                "source_state_index": row["source_state_index"],
++                "actor_clip": actor["clip"], "actor_frame": actor["frame"],
++                "camera_position_m": position.tolist(), "camera_target_m": target.tolist(),
++                "navigation_status": status, "shape": list(rgb.shape)}))
+             if i % 50 == 0:
+                 print("Rendered", i, "physics", t, flush=True)
++        render_finished = True
+     finally:
+-        viewer.close()
+-    video = out / "newton_stair_recorded.mp4"
+-    command = ["/opt/homebrew/bin/ffmpeg", "-nostdin", "-v", "error", "-framerate", "30",
+-               "-i", str(frames / "%06d.png"), "-vf", "scale=1280:720", "-c:v", "libx264",
+-               "-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(video)]
+-    subprocess.run(command, check=True, timeout=180)
++        try:
++            viewer.close()
++        finally:
++            video = stream.close(success=render_finished)
+     (out / "frames.json").write_text(json.dumps(manifest, indent=2) + "\n")
+     (out / "result.json").write_text(json.dumps({"source_run": args.source_run,
+         "source_states_sha256": digest(source / "video_states.json"), "video": str(video),
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v46/render_heading_v46.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v51/render_heading_v51.py
+@@ -28,10 +28,10 @@
+ 
+ parser = argparse.ArgumentParser()
+ parser.add_argument("--source-run", required=True)
+-args, _ = parser.parse_known_args()
++args, remaining = parser.parse_known_args()
+ sys.path.insert(0, str(SCRIPTS))
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+-import render_episode_v46 as render_episode
++import render_episode_v51 as render_episode
+ rows = render_episode.load_recorded_rows(EXPERIMENT / "runs" / args.source_run)
+ 
+ # Newton free joint: joint_q = [x, y, z, qx, qy, qz, qw, ...].
+@@ -83,12 +83,13 @@
+ 
+ 
+ render_episode.newton.viewer.ViewerGL = HeadingViewer
+-sys.argv = [str(SCRIPTS / "render_episode.py"), "--source-run", args.source_run]
++sys.argv = [str(Path(__file__).with_name("render_episode_v51.py")), "--source-run", args.source_run, *remaining]
+ render_episode.main()
+ out = Path(os.environ["NEWTON_RUN_DIR"])
+-(out / "executed_render_heading_view.py").write_bytes(Path(__file__).read_bytes())
++cameras = cameras[:json.loads((out / "result.json").read_text())["frames"]]
++(out / "executed_render_heading_v51.py").write_bytes(Path(__file__).read_bytes())
+ (out / "heading_camera.json").write_text(json.dumps({
+-    "wrapper": "render_heading_view.py", "renderer": "versions/v46/render_episode_v46.py (30 FPS wall-time causal replay)",
++    "wrapper": "render_heading_view.py", "renderer": "versions/v51/render_episode_v51.py (30 FPS wall-time causal replay)",
+     "overview_until_s": OVERVIEW_S, "trail_m": TRAIL_M, "height_m": HEIGHT_M, "ahead_m": AHEAD_M, "down_m": DOWN_M,
+     "yaw_time_constant_s": TAU_S, "frames": len(cameras), "cameras": cameras}, indent=1) + "\n")
+ print(json.dumps({"heading_view": str(out), "frames": len(cameras)}))

@@ -1,0 +1,786 @@
+--- v68/PLAN.md
++++ v70/PLAN.md
+@@ -1,3 +1,31 @@
+-# v68 Mac container closure
++# Focused Mac backend timing diagnosis
+ 
+-Stage: experiment + analysis. Parent frozen v67; native remains exact v63 and physics/backend v59. Restore complete owned native runtime container teardown at episode exit, before closed-log retention, preventing ros2-run descendants from retaining log writers. Preserve Linux state copyback first. Reuse only verified installed/source bytes in the temporary workspace. Recreate the same bounded runtime container per independent trial; no controller/stop/watchdog/goal/safety/physics changes. Run the second independently initialized authorized Newton Mac trial and report early heartbeat stopping if reproduced; do not force a90s run by weakening safety. Keep raw/archive/workspace outside repo, remove transient build bytes after validation and retain compact reports/plot/provenance.
++Stage: experiment + analysis. Dr Sun requested root causes of heartbeat_stale
++and unstable30Hz. One logical change: observe backend callback, applied read,
++HTTP serialization and Python GC spans. Parent v68; exact native v63 and v59
++runtime/control/physics/safety. v69 is a display-only sibling. This package is
++diagnostic and cannot be promoted to an accepted navigation repair.
++
++Delegate every original method once, preserving its return value, exceptions,
++messages and effects. Collect compact identity-bearing timing events in a
++bounded memory buffer; a background writer periodically drains them outside
++callback timing spans. Keep original body callback/error traces. Record both
++wall and per-thread CPU time, callback heartbeat age and gate reason. A trace
++cannot infer OS runnable wait without a scheduler trace; identify that boundary.
++
++Rebuild/qualify exact frozen v63 in the original cached amd64 ROS image on Mac.
++The original temporary cache is now unavailable. Regenerate the same Warp1.17
++CPU model/raycast kernels through prepare_cache.py with zero physics steps,
++then preload them as the v68 prepared retry did. No sensor deadline or physics
++computation changes. Preserve the failed initial cache-helper import attempt. Keep original6CPU/
++6GB limits, original factory/route/goal/yaw/configuration and every stop/freshness
++rule. Freeze source and installed identity before the bounded90s diagnostic
++trial. Earlier frozen versions and failed runs remain immutable. gpu5070ti is
++busy and must not be used.
++
++Temporary build/physics/archive data go to unique private/tmp; return compact
++traces, analysis, hashes and a report. Verify owned-container shutdown and
++archive integrity; remove only regenerable owned build products after analysis.
++No new render or raw capture transfer into the repository. The tracing run is
++not a performance improvement trial. If the intermittent fault does not recur,
++report that and preserve the full trace rather than inventing a root cause.
+--- v68/backend_timing_trace.py
++++ v70/backend_timing_trace.py
+@@ -0,0 +1,133 @@
++"""v70 observation-only spans; never change original control or JSON results."""
++from collections import deque
++from contextlib import contextmanager
++import gc
++import json
++from pathlib import Path
++import threading
++import time
++
++REAL_DUMPS = json.dumps
++IDENTITY = ('run_id','epoch','request_id','goal_id','route_id','command_id',
++            'generation','map_epoch','map_revision')
++
++
++class Trace:
++    def __init__(self):
++        self.rows = deque(maxlen=100000)
++        self.finished = threading.Event()
++        self.writer = None
++        self.dropped = 0
++        self.gc_starts = {}
++
++    def add(self, stage, entered, cpu, data=None):
++        # Encoding into a bytes object keeps buffered records untracked by GC.
++        row = {'tag':'DEBUG-mac70','stage':stage,'entered_ns':entered,
++            'finished_ns':time.monotonic_ns(),'cpu_ns':time.thread_time_ns()-cpu,
++            'thread_id':threading.get_ident(), 'thread_name':threading.current_thread().name}
++        if data:
++            row.update(data)
++        if len(self.rows) == self.rows.maxlen:
++            self.dropped += 1
++        self.rows.append((REAL_DUMPS(row,separators=(',',':'))+'\n').encode())
++
++    def gc_callback(self, phase, info):
++        key = (threading.get_ident(),info['generation'])
++        if phase == 'start':
++            self.gc_starts[key] = (time.monotonic_ns(),time.thread_time_ns())
++        elif key in self.gc_starts:
++            entered,cpu = self.gc_starts.pop(key)
++            self.add('gc',entered,cpu,dict(info))
++
++    def start(self, path):
++        path = Path(path)
++        def drain():
++            with path.open('xb') as stream:
++                stream.write((REAL_DUMPS({'tag':'DEBUG-mac70','stage':'trace_start',
++                    'monotonic_ns':time.monotonic_ns(),'capacity':self.rows.maxlen,
++                    'original_method_returns_and_exceptions_preserved':True})+'\n').encode())
++                while not self.finished.is_set() or self.rows:
++                    batch = []
++                    for unused in range(min(len(self.rows),4096)):
++                        try:
++                            batch.append(self.rows.popleft())
++                        except IndexError:
++                            break
++                    if batch:
++                        stream.write(b''.join(batch))
++                        stream.flush()
++                    self.finished.wait(.25)
++                stream.write((REAL_DUMPS({'tag':'DEBUG-mac70','stage':'trace_end',
++                    'monotonic_ns':time.monotonic_ns(),'dropped':self.dropped})+'\n').encode())
++        self.writer = threading.Thread(target=drain,name='mac70-timing-writer',daemon=True)
++        self.writer.start()
++        gc.callbacks.append(self.gc_callback)
++
++    def save(self, unused_path=None):
++        if self.gc_callback in gc.callbacks:
++            gc.callbacks.remove(self.gc_callback)
++        self.finished.set()
++        if self.writer:
++            self.writer.join(timeout=3)
++
++
++def install(port_type, reader_type):
++    from p2b_backend_ros import runtime
++    trace = Trace()
++
++    for method, stage in [('_on_raw_command','raw_callback'),
++                           ('_watchdog_tick','watchdog_callback'),
++                           ('_on_body_pose','body_callback'),
++                           ('_applied_evidence_ready','applied_ready')]:
++        original = getattr(port_type,method)
++        def observed(self, *args, _original=original, _stage=stage, **kwargs):
++            entered,cpu = time.monotonic_ns(),time.thread_time_ns()
++            before = self.gate.last_heartbeat_s
++            data = {'heartbeat_before_s':before,'gate_before':self.gate.closed_reason}
++            if _stage == 'raw_callback':
++                message = args[0]
++                identity = {key:getattr(message,key,None) for key in IDENTITY}
++                owner = self.gate.owner
++                data.update(identity=identity,identity_matches=(owner is not None and identity==owner.to_dict()),
++                    source_stamp_ns=message.stamp.sec*1000000000+message.stamp.nanosec,
++                    traj_id=message.traj_id)
++            try:
++                return _original(self,*args,**kwargs)
++            finally:
++                data.update(heartbeat_after_s=self.gate.last_heartbeat_s,
++                            gate_after=self.gate.closed_reason)
++                trace.add(_stage,entered,cpu,data)
++        setattr(port_type,method,observed)
++
++    original_read = reader_type.read
++    def observed_read(self,*args,**kwargs):
++        entered,cpu = time.monotonic_ns(),time.thread_time_ns()
++        try:
++            return original_read(self,*args,**kwargs)
++        finally:
++            trace.add('applied_read',entered,cpu)
++    reader_type.read = observed_read
++
++    original_state = runtime.NavigationHttpRuntime.state
++    def observed_state(self,*args,**kwargs):
++        entered,cpu = time.monotonic_ns(),time.thread_time_ns()
++        try:
++            return original_state(self,*args,**kwargs)
++        finally:
++            trace.add('http_state_snapshot',entered,cpu)
++    runtime.NavigationHttpRuntime.state = observed_state
++
++    def observed_dumps(data,*args,**kwargs):
++        if not isinstance(data,dict) or 'pct' not in data or 'gate' not in data:
++            return REAL_DUMPS(data,*args,**kwargs)
++        entered,cpu = time.monotonic_ns(),time.thread_time_ns()
++        result = None
++        try:
++            result = REAL_DUMPS(data,*args,**kwargs)
++            return result
++        finally:
++            trace.add('http_state_json',entered,cpu,{
++                'chars':None if result is None else len(result),
++                'pct_history':len(data['pct'].get('plan_history',[]))})
++    json.dumps = observed_dumps
++    return trace
+--- v68/cache_preparation.json
++++ v70/cache_preparation.json
+@@ -0,0 +1,128 @@
++{
++  "scope": "existing CPU model/raycast kernel compilation",
++  "physics_steps": 0,
++  "model_and_sensor_sources_unchanged": true,
++  "files": {
++    "1.17.0/wp__tile_cholesky_factorize_block__locals__kernel_b26c508a_e2a541f/wp__tile_cholesky_factorize_block__locals__kernel_b26c508a_e2a541f.meta": {
++      "bytes": 96,
++      "sha256": "f15914439f939628439c9658fa669b81c68757951c29e4e041a9359f819eb0ea"
++    },
++    "1.17.0/wp__tile_cholesky_factorize_block__locals__kernel_b26c508a_e2a541f/wp__tile_cholesky_factorize_block__locals__kernel_b26c508a_e2a541f.cpp": {
++      "bytes": 5668,
++      "sha256": "c50abf3c8b60b18df75a489a87e4e2b5a459174f8723946b2c4e7c0fe8d08712"
++    },
++    "1.17.0/wp__tile_cholesky_factorize_block__locals__kernel_b26c508a_e2a541f/wp__tile_cholesky_factorize_block__locals__kernel_b26c508a_e2a541f.cpu0dae51f2.o": {
++      "bytes": 2000,
++      "sha256": "02448618135a47e6e418ca933396b9682e8aa7030b4665b496906bcb4a3aee3c"
++    },
++    "1.17.0/wp__tile_cholesky_solve_block__locals__kernel_fcaeb5dd_60f1c27/wp__tile_cholesky_solve_block__locals__kernel_fcaeb5dd_60f1c27.cpp": {
++      "bytes": 5400,
++      "sha256": "6c43e5b4ecc7a35f1f0b2f651cf242143f71008145be116a12bc035d7bbddf6c"
++    },
++    "1.17.0/wp__tile_cholesky_solve_block__locals__kernel_fcaeb5dd_60f1c27/wp__tile_cholesky_solve_block__locals__kernel_fcaeb5dd_60f1c27.cpu0dae51f2.o": {
++      "bytes": 3648,
++      "sha256": "aaed01255e1fbcb4516dd70d60cf78d441607537f9f3b256c7b81741a1574917"
++    },
++    "1.17.0/wp__tile_cholesky_solve_block__locals__kernel_fcaeb5dd_60f1c27/wp__tile_cholesky_solve_block__locals__kernel_fcaeb5dd_60f1c27.meta": {
++      "bytes": 92,
++      "sha256": "7f89be16c2b3eaf098befb1329ba1d41da0632adf056d2e7baa0f87c959e5e41"
++    },
++    "1.17.0/wp_newton._src.geometry.inertia_f6b4bd8/wp_newton._src.geometry.inertia_f6b4bd8.meta": {
++      "bytes": 151,
++      "sha256": "038f809f2ab5060048d7061b5fc36e0443c519b8ee351f47523c77be7f1c8d14"
++    },
++    "1.17.0/wp_newton._src.geometry.inertia_f6b4bd8/wp_newton._src.geometry.inertia_f6b4bd8.cpu0dae51f2.o": {
++      "bytes": 6136,
++      "sha256": "1b6018e7c65d3cf89856943d56eb4a627954ab4d3e12820126653dc23b3198e6"
++    },
++    "1.17.0/wp_newton._src.geometry.inertia_f6b4bd8/wp_newton._src.geometry.inertia_f6b4bd8.cpp": {
++      "bytes": 41074,
++      "sha256": "75251321cfb763a6d50458ad2112578bde058afe9c7228088a4dc0ee3ec63d0d"
++    },
++    "1.17.0/wp_newton._src.geometry.bvh_4a1c07f/wp_newton._src.geometry.bvh_4a1c07f.cpp": {
++      "bytes": 105523,
++      "sha256": "675d2ad63f187edcc0c8617d15c98e2592216ddfe298b1522e8ff7f61a433ae3"
++    },
++    "1.17.0/wp_newton._src.geometry.bvh_4a1c07f/wp_newton._src.geometry.bvh_4a1c07f.cpu0dae51f2.o": {
++      "bytes": 12112,
++      "sha256": "08a6de58efcb88f5c8fae3a9f6f02825fe648ac8041725d202588f1f5af54aed"
++    },
++    "1.17.0/wp_newton._src.geometry.bvh_4a1c07f/wp_newton._src.geometry.bvh_4a1c07f.meta": {
++      "bytes": 435,
++      "sha256": "195efa48ffc6391206ffe96764e49bf2b90e9c8479148eba39fce3104e34b0ae"
++    },
++    "1.17.0/wp_mujoco_warp._src.smooth_15aab42/wp_mujoco_warp._src.smooth_15aab42.meta": {
++      "bytes": 2823,
++      "sha256": "a54a2b2420f802863462e050e50cec1a748bf1e2adf0c5a972d185aa2b911417"
++    },
++    "1.17.0/wp_mujoco_warp._src.smooth_15aab42/wp_mujoco_warp._src.smooth_15aab42.cpp": {
++      "bytes": 816728,
++      "sha256": "5b262d993bfe1916ee5d3b5d17cc0467f71cb5a76cb6e64c74449fd7eb1abded"
++    },
++    "1.17.0/wp_mujoco_warp._src.smooth_15aab42/wp_mujoco_warp._src.smooth_15aab42.cpu0dae51f2.o": {
++      "bytes": 81896,
++      "sha256": "a11b871179ea3c502382e736616d5ffdf7f1f89930b5cd2c04a5ea7e54cd73ac"
++    },
++    "1.17.0/wp_newton._src.sim.articulation_2e73608/wp_newton._src.sim.articulation_2e73608.cpu0dae51f2.o": {
++      "bytes": 138504,
++      "sha256": "0d5760e0f01e0a4d888257810e5feda5469f165a5a951e22bdfd9902d286ad2d"
++    },
++    "1.17.0/wp_newton._src.sim.articulation_2e73608/wp_newton._src.sim.articulation_2e73608.meta": {
++      "bytes": 1065,
++      "sha256": "cac387b8ff9c9ccd09f2a99255f6fdfacd0cbe72d3921270b568c1616364f05b"
++    },
++    "1.17.0/wp_newton._src.sim.articulation_2e73608/wp_newton._src.sim.articulation_2e73608.cpp": {
++      "bytes": 877187,
++      "sha256": "ae7664d84f6119be8315f9813c520b969d51367dd6a32e7ca16dfc489d147fad"
++    },
++    "1.17.0/wp_validate_and_correct_inertia_kernel_1ff2ac62_6ad45b8/wp_validate_and_correct_inertia_kernel_1ff2ac62_6ad45b8.cpu0dae51f2.o": {
++      "bytes": 4368,
++      "sha256": "8d7b41f03341a90ea4090e0741b778144a34b97369b5e4a2ec8e94ce9319cfa3"
++    },
++    "1.17.0/wp_validate_and_correct_inertia_kernel_1ff2ac62_6ad45b8/wp_validate_and_correct_inertia_kernel_1ff2ac62_6ad45b8.cpp": {
++      "bytes": 31945,
++      "sha256": "21a60c77fabd2056e7f9d0f9af5d02959a2083e1facb18353c5e1d2f2c203e56"
++    },
++    "1.17.0/wp_validate_and_correct_inertia_kernel_1ff2ac62_6ad45b8/wp_validate_and_correct_inertia_kernel_1ff2ac62_6ad45b8.meta": {
++      "bytes": 82,
++      "sha256": "def59cb282a3a7ca8afdfdc53b08971d8af58447350957de2c7c75e663d3cfd4"
++    },
++    "1.17.0/wp_mujoco_warp._src.io_66a94ae/wp_mujoco_warp._src.io_66a94ae.cpp": {
++      "bytes": 426302,
++      "sha256": "ea64b83c70ba98acd664ddf97d6b7cac21130998dbda0c8a04ddc6b21ca0f8d5"
++    },
++    "1.17.0/wp_mujoco_warp._src.io_66a94ae/wp_mujoco_warp._src.io_66a94ae.cpu0dae51f2.o": {
++      "bytes": 53352,
++      "sha256": "18ba8dc26fd53ca600368bceea9756c575a3ce47701ccc44234910dca6128bc1"
++    },
++    "1.17.0/wp_mujoco_warp._src.io_66a94ae/wp_mujoco_warp._src.io_66a94ae.meta": {
++      "bytes": 3111,
++      "sha256": "3cbec5a29e8c67ff15f94bcc612c37fadc4b0d875731852610219774bc264d1e"
++    },
++    "1.17.0/wp_intersect_ray__locals___intersect_ray_kernel_962a4840_14d5500/wp_intersect_ray__locals___intersect_ray_kernel_962a4840_14d5500.cpp": {
++      "bytes": 177638,
++      "sha256": "cb4b1a53b6d7350a49b4f336c72acb98f38c21a63c9bee78f244282ffb92e1e3"
++    },
++    "1.17.0/wp_intersect_ray__locals___intersect_ray_kernel_962a4840_14d5500/wp_intersect_ray__locals___intersect_ray_kernel_962a4840_14d5500.cpu0dae51f2.o": {
++      "bytes": 11656,
++      "sha256": "7b88bbefd3b4fa898f245203c26af86fbed672ce0062b8f2daed65ee5eac991a"
++    },
++    "1.17.0/wp_intersect_ray__locals___intersect_ray_kernel_962a4840_14d5500/wp_intersect_ray__locals___intersect_ray_kernel_962a4840_14d5500.meta": {
++      "bytes": 91,
++      "sha256": "1fff33907e13651d78d9296032aa29069099cddb0cc99b89a2c67d64faf354c0"
++    },
++    "1.17.0/wp_newton._src.solvers.mujoco.kernels_90c0c67/wp_newton._src.solvers.mujoco.kernels_90c0c67.cpp": {
++      "bytes": 1569411,
++      "sha256": "bb344ccd122306adba78e610afdd7c57660f3d074702fb7a1a09faa8ff64ee82"
++    },
++    "1.17.0/wp_newton._src.solvers.mujoco.kernels_90c0c67/wp_newton._src.solvers.mujoco.kernels_90c0c67.cpu0dae51f2.o": {
++      "bytes": 227712,
++      "sha256": "6282ed224a3e4ab5e403a037e498f0f35b4b06155baeb5418b434cfd31e61566"
++    },
++    "1.17.0/wp_newton._src.solvers.mujoco.kernels_90c0c67/wp_newton._src.solvers.mujoco.kernels_90c0c67.meta": {
++      "bytes": 7569,
++      "sha256": "44d18db449b57a70846b74a68487f60000dbdd70533b05749e1c324dddebcef2"
++    }
++  },
++  "logical_bytes": 4613775
++}
+--- v68/cache_preparation_attempt01.log
++++ v70/cache_preparation_attempt01.log
+@@ -0,0 +1,15 @@
++ ArchWarn: ARCH_CACHE_LINE_SIZE != Arch_ObtainCacheLineSize()
++ Function: Arch_ValidateAssumptions
++     File: /Users/runner/work/OpenUSD/OpenUSD/pxr/base/arch/assumptions.cpp
++     Line: 140
++Warp 1.17.0 initialized:
++   CUDA not enabled in this build
++   Devices:
++     "cpu"      : "arm"
++   Kernel cache:
++     /private/tmp/vla_newton_v70_cache_hdx0kanf/runtime/warp-cache/1.17.0
++Traceback (most recent call last):
++  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v70/prepare_cache.py", line 26, in <module>
++    robot = StairRobot(startup_mode='factory_pd',stance_hold=True,model_device='cpu',
++            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++TypeError: StairRobot.__init__() got an unexpected keyword argument 'model_device'
+--- v68/cache_preparation_request.json
++++ v70/cache_preparation_request.json
+@@ -0,0 +1,5 @@
++{
++  "temporary_cache_root": "/private/tmp/vla_newton_v70_cache_hdx0kanf",
++  "reason": "Prior temporary runtime/cache roots are now unavailable; compile original scene/raycast kernels without physics before diagnostic launch",
++  "original_temporary_roots_not_deleted_by_this_task": true
++}
+--- v68/derive_mac_floor.py
++++ v70/derive_mac_floor.py
+@@ -9,7 +9,7 @@
+ sha=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
+ assert all(sha(ROOT/name)==digest for name,digest in info['inputs'].items())
+ producer=ROOT/info['producer']['path'];assert sha(producer)==info['producer']['sha256']
+-spec=importlib.util.spec_from_file_location('v68_pinned_floor_producer',producer)
++spec=importlib.util.spec_from_file_location('v70_pinned_floor_producer',producer)
+ module=importlib.util.module_from_spec(spec);sys.modules[spec.name]=module;spec.loader.exec_module(module)
+ products=BASE/'audits/2026-09-27_dense_static_sampling'
+ source=pickle.loads((products/'map.pickle').read_bytes())
+@@ -30,4 +30,4 @@
+     'inputs':info['inputs'],'producer':info['producer'],'selected_surface_unchanged':True,
+     'generator_sha256':sha(Path(__file__)),
+ },indent=2)+'\n')
+-print('V68_EXACT_PHYSICAL_INPUT_PASS',len(data),sha(a.output))
++print('V70_EXACT_PHYSICAL_INPUT_PASS',len(data),sha(a.output))
+--- v68/mac_managed.py
++++ v70/mac_managed.py
+@@ -14,6 +14,6 @@
+ namespace['verify_prepared_mount']=verify_prepared_mount
+ exec(compile(text.replace(old,'verify_prepared_mount(run)'),str(source),'exec'),namespace)
+ managed_run.main=namespace['main']
+-managed_run.a.BASE=Path(os.environ['V68_TEMP_ROOT'])
++managed_run.a.BASE=Path(os.environ['V70_TEMP_ROOT'])
+ managed_run.a.AUDIT=managed_run.a.BASE/'artifact_audit'
+ raise SystemExit(managed_run.main())
+--- v68/mac_native_gate.py
++++ v70/mac_native_gate.py
+@@ -28,8 +28,8 @@
+ 
+ def verify(build, manifest):
+     if build.resolve()!=NATIVE.resolve():
+-        raise ValueError('v68 requires the unchanged v63 native source')
+-    receipt_path=Path(os.environ['V68_BUILD_EVIDENCE'])/'build_receipt.json'
++        raise ValueError('v70 requires the unchanged v63 native source')
++    receipt_path=Path(os.environ['V70_BUILD_EVIDENCE'])/'build_receipt.json'
+     receipt=json.loads(receipt_path.read_text())
+     validate_receipt(receipt,manifest)
+     if sha(receipt_path)!=manifest['mac_build_receipt_sha256']:
+@@ -52,12 +52,12 @@
+ for group in ('native_source_sha256','native_install_sha256'):
+  for name,h in receipt[group].items():
+   assert hashlib.sha256((root/name).read_bytes()).hexdigest()==h,name
+-print('V68_ACTUAL_SOURCE_INSTALL_GATE_PASS')
++print('V70_ACTUAL_SOURCE_INSTALL_GATE_PASS')
+ """
+-    checked=subprocess.run(['docker','exec',os.environ['V68_NATIVE_CONTAINER'],
++    checked=subprocess.run(['docker','exec',os.environ['V70_NATIVE_CONTAINER'],
+         'python3','-c',script,str(receipt_path)],capture_output=True,text=True,timeout=30)
+     checked.check_returncode()
+-    if 'V68_ACTUAL_SOURCE_INSTALL_GATE_PASS' not in checked.stdout:
++    if 'V70_ACTUAL_SOURCE_INSTALL_GATE_PASS' not in checked.stdout:
+         raise ValueError('Actual installed byte gate has no success evidence')
+     return {'actual_native_source_install_gate_passed':True,
+         'mac_component_subset_passed':True,'full_component_qualification':False,
+--- v68/mac_supervisor.py
++++ v70/mac_supervisor.py
+@@ -15,10 +15,10 @@
+     text=source.read_text();old='out.mkdir(parents=True, exist_ok=False)'
+     assert text.count(old)==1
+     index=sys.argv.index('--run-id');run_id=sys.argv[index+1]
+-    root=Path(os.environ['V68_TEMP_ROOT'])
+-    assert root.parent==Path('/private/tmp') and root.name.startswith('vla_newton_v68_')
++    root=Path(os.environ['V70_TEMP_ROOT'])
++    assert root.parent==Path('/private/tmp') and root.name.startswith('vla_newton_v70_')
+     verify_prepared_mount(root/'runs'/run_id)
+-    spec=importlib.util.spec_from_file_location('v68_original_supervisor',source)
++    spec=importlib.util.spec_from_file_location('v70_original_supervisor',source)
+     module=importlib.util.module_from_spec(spec)
+     # Only Docker's pre-created empty tmpfs-parent directories are accepted.
+     # Original process group, deadline, child/environment and results stay exact.
+--- v68/mac_trial.py
++++ v70/mac_trial.py
+@@ -20,7 +20,7 @@
+ def freeze(receipt_path):
+     """Pin this host integration without claiming physics/full qualification."""
+     assert not (HERE/'manifest.json').exists(),'Frozen source cannot be replaced'
+-    parent=json.loads((BASE/'versions/v67/manifest.json').read_text())
++    parent=json.loads((BASE/'versions/v68/manifest.json').read_text())
+     runtime=json.loads((BASE/'versions/v59/manifest.json').read_text())
+     selected=dict(runtime['source_files']);locations=dict(runtime['snapshot_locations'])
+     selected.update(parent['source_files']);locations.update(parent['snapshot_locations'])
+@@ -35,8 +35,8 @@
+             assert not target.exists();shutil.copyfile(path,target);location=str(target.relative_to(ROOT))
+         selected[name]=h;locations[name]=location
+     receipt=json.loads(receipt_path.read_text())
+-    manifest={'version':'v68','parent':'v67','native_source_parent':'v63','runtime_source_parent':'v59',
+-        'parent_manifest_sha256':sha(BASE/'versions/v67/manifest.json'),
++    manifest={'version':'v70','parent':'v68','native_source_parent':'v63','runtime_source_parent':'v59',
++        'parent_manifest_sha256':sha(BASE/'versions/v68/manifest.json'),
+         'runtime_parent_manifest_sha256':sha(BASE/'versions/v59/manifest.json'),
+         'status':'frozen_user_authorized_mac_physics_validation_pending',
+         'source_files':dict(sorted(selected.items())),'snapshot_locations':dict(sorted(locations.items())),
+@@ -61,23 +61,27 @@
+     assert shutil.disk_usage(HERE).free>12*1024**3
+     for port in (46200,46201,46202,46203):
+         with socket.socket() as s:s.bind(('127.0.0.1',port))
+-    temp=Path(tempfile.mkdtemp(prefix='vla_newton_v68_',dir='/private/tmp'))
++    temp=Path(tempfile.mkdtemp(prefix='vla_newton_v70_',dir='/private/tmp'))
+     workspace=args.reuse_workspace.resolve() if args.reuse_workspace else temp/'native_workspace'
+     if args.reuse_workspace:
+         assert workspace.parent.parent==Path('/private/tmp') and workspace.parent.name.startswith('vla_newton_')
+         assert (workspace/'install').is_dir() and (workspace/'src').is_dir()
+     else:workspace.mkdir()
++    cache=Path(os.environ['V70_PREPARED_WARP_CACHE']).resolve()
++    assert cache.is_dir() and cache.name=='warp-cache' and cache.parent.parent.parent==Path('/private/tmp')
++    shutil.copytree(cache,temp/'runtime/warp-cache')
+     (temp/'scripts').mkdir();(temp/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+-    container=f'vla-v68-mac-physics-{args.attempt:02d}'
++    container=f'vla-v70-mac-physics-{args.attempt:02d}'
+     env=os.environ.copy();env.update(DOCKER_CONTEXT='desktop-linux',
+-        PATH='/Users/sun/.local/bin:'+env['PATH'],V68_TEMP_ROOT=str(temp),
+-        V68_NATIVE_CONTAINER=container,V68_BUILD_EVIDENCE=str(evidence),
+-        V68_PHYSICAL_FLOOR=str(temp/'physical_floor.f32'),
++        PATH='/Users/sun/.local/bin:'+env['PATH'],V70_TEMP_ROOT=str(temp),
++        V70_NATIVE_CONTAINER=container,V70_BUILD_EVIDENCE=str(evidence),
++        V70_PHYSICAL_FLOOR=str(temp/'physical_floor.f32'),
+         PYTHONDONTWRITEBYTECODE='1',PYTHONUNBUFFERED='1',
+         PYTHONPATH=str(BASE/'runtime_sources/bridge')+':'+env.get('PYTHONPATH',''))
+     request={'host':'Mac','gpu5070ti_used':False,'started_utc':datetime.now(timezone.utc).isoformat(),
+-        'authorization':'Dr Sun: u can test on newton on mac','version':'v68','native_parent':'v63',
++        'authorization':'Dr Sun: u can test on newton on mac','version':'v70','native_parent':'v63',
+         'runtime_parent':'v59','trials':args.trials,'simulation_seconds_per_trial':args.seconds,
++        'diagnostic_only':True,'prepared_warp_cache':str(cache),'original_algorithm_and_stop_rules_unchanged':True,
+         'bulk_root':str(temp),'compact_return_root':str(evidence),'bulk_is_outside_repository':True,
+         'temporary_native_workspace':str(workspace),'reuse_workspace':bool(args.reuse_workspace),
+         'source_manifest_sha256':sha(BASE/'versions/v63/manifest.json'),
+@@ -97,7 +101,7 @@
+             '-v',str(temp)+':'+str(temp)+':rw','--entrypoint','/bin/bash',IMAGE,
+             '-c','exec sleep infinity']
+         for trial in range(1,args.trials+1):
+-            run=f'v68_mac_trial{trial:02d}_attempt{args.attempt:02d}'
++            run=f'v70_mac_trial{trial:02d}_attempt{args.attempt:02d}'
+             index=cmd.index('--entrypoint')
+             cmd[index:index]=['--tmpfs',str(temp/'runs'/run/'artifacts/external_episode')+':rw,size=8m']
+         index=cmd.index('--entrypoint');cmd[index:index]=['-v',str(workspace)+':/workspace:rw']
+@@ -110,7 +114,7 @@
+             shutil.copyfile(evidence/'build_receipt.json',workspace.parent/'native_build_receipt.json')
+         else:
+             shutil.copyfile(workspace.parent/'native_build_receipt.json',evidence/'build_receipt.json')
+-        subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V68_PHYSICAL_FLOOR']],
++        subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V70_PHYSICAL_FLOOR']],
+             env=env,capture_output=True,text=True,timeout=30,check=True)
+         shutil.copyfile(temp/'physical_floor.provenance.json',evidence/'physical_floor_provenance.json')
+         from mac_native_gate import verify
+@@ -119,23 +123,23 @@
+         provisional={'native_source_sha256':receipt['native_source_sha256'],
+             'mac_build_receipt_sha256':sha(receipt_path),
+             'mac_subset_qualification_sha256':sha(BASE/'versions/v63/component_qualification.json')}
+-        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V68_BUILD_EVIDENCE','V68_NATIVE_CONTAINER')})
++        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V70_BUILD_EVIDENCE','V70_NATIVE_CONTAINER')})
+         verify(NATIVE,provisional)
+         manifest=freeze(receipt_path)
+         result['integration_manifest_sha256']=sha(HERE/'manifest.json')
+         from mac_native_gate import verify
+-        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V68_BUILD_EVIDENCE','V68_NATIVE_CONTAINER')})
++        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V70_BUILD_EVIDENCE','V70_NATIVE_CONTAINER')})
+         (evidence/'entry_gate.json').write_text(json.dumps(verify(NATIVE,manifest),indent=2)+'\n')
+         for trial in range(1,args.trials+1):
+             if trial>1:
+                 subprocess.run(cmd,env=env,capture_output=True,text=True,timeout=30,check=True)
+-            run=f'v68_mac_trial{trial:02d}_attempt{args.attempt:02d}'
++            run=f'v70_mac_trial{trial:02d}_attempt{args.attempt:02d}'
+             command=[str(PYTHON),str(HERE/'mac_managed.py'),'--run-id',run,'--deadline','540',
+                 '--retention','archive','--',str(PYTHON),str(HERE/'run_local_episode.py'),
+                 '--backend-executor','single','--applied-transport','zmq','--geometry-obstacles',
+                 '--scene','building_full','--building-route','historical_full',
+                 '--goal-wall-budget','180','--startup-mode','factory_pd','--stance-hold',
+-                '--integration-version','v68','--real-time-factor','1',
++                '--integration-version','v70','--real-time-factor','1',
+                 '--recording-sim-seconds',str(args.seconds)]
+             with (evidence/(run+'.execution.log')).open('w') as log:
+                 process=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=580)
+--- v68/native_backend_entry.py
++++ v70/native_backend_entry.py
+@@ -16,11 +16,15 @@
+ from p2b_backend_ros.runtime import start_http_server
+ from backend_adapter.applied_evidence import AppliedEvidenceReader
+ 
++from backend_timing_trace import install
++trace = install(RosScanPort, AppliedEvidenceReader)
++
+ parser = argparse.ArgumentParser()
+ parser.add_argument("--config", type=Path, required=True)
+ parser.add_argument("--executor", choices=("multi", "single"), default="multi")
+ args = parser.parse_args()
+ config = load_runtime_config(args.config)
++trace.start(args.config.parent / 'backend_timing_trace.jsonl')
+ log = (args.config.parent / "backend_body_callbacks.jsonl").open("w")
+ original = RosScanPort._on_body_pose
+ original_read = AppliedEvidenceReader.read
+@@ -67,4 +71,5 @@
+     node.destroy_node()
+     log.close()
+     read_errors.close()
++    trace.save(args.config.parent / 'backend_timing_trace.jsonl')
+     rclpy.shutdown()
+--- v68/native_graph.py
++++ v70/native_graph.py
+@@ -19,8 +19,8 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v68":
+-        raise ValueError("v68 graph requires the frozen v68 integration identity")
++    if request.get("integration_version") != "v70":
++        raise ValueError("v70 graph requires the frozen v70 integration identity")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+--- v68/physical_floor_publisher.py
++++ v70/physical_floor_publisher.py
+@@ -16,7 +16,7 @@
+         super().__init__('pct_physical_floor_publisher')
+         info=json.loads((HERE/'physical_floor_input.json').read_text())
+         assert info['role']=='physical_floor_presence_only' and not info['traversal_authority'] and not info['terrain_return_classification_authority']
+-        data=Path(os.environ['V68_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
++        data=Path(os.environ['V70_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
+         self.points=np.frombuffer(data,dtype='<f4').reshape(-1,4)
+         assert len(self.points)==info['files']['physical_floor.f32']['points'] and np.isfinite(self.points).all()
+         self.gate=SimClockGate();qos=QoSProfile(depth=1,reliability=QoSReliabilityPolicy.RELIABLE,durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+--- v68/preparation.json
++++ v70/preparation.json
+@@ -1,12 +1,32 @@
+ {
+-  "version": "v68",
+-  "parent": "v67",
+-  "native_source_parent": "v63",
+-  "runtime_source_parent": "v59",
+-  "native_change": false,
+-  "change": "Close all owned native container descendants before archival, with reusable verified temporary workspace",
+-  "authorization": "Dr Sun: u can test on newton on mac",
+-  "host": "Mac",
+-  "full_qualification": false,
+-  "reference": "v48"
++  "version": "v70",
++  "parent": "v68",
++  "native_parent": "v63",
++  "runtime_parent": "v59",
++  "kind": "diagnostic_only",
++  "one_change": "Observe original backend callback/applied-read/HTTP-serializer/GC timings",
++  "parent_manifest_sha256": "a2e0b7da1f41e7cfeaa1c62e448fd4f34398e6a8309e2c54446113a5b6bc307c",
++  "native_manifest_sha256": "e9f4ed1c8b54c8e3fe4bc6ca2aec593342af21323a591244262f7a89d3662652",
++  "safety_stop_dynamics_goal_yaw_sensor_thresholds_unchanged": true,
++  "configuration_and_physics_files_byte_exact_to_v68": [
++    "building_planner.yaml",
++    "controller.yaml",
++    "navigation_contract.json",
++    "newton_episode.py",
++    "realtime_pacer.py",
++    "frequency_observer.py"
++  ],
++  "mac_host_identity_mapping": "v68/V68 to v70/V70 only in copied launch helpers",
++  "prepared_cache_source": "/private/tmp/vla_newton_v70_cache_hdx0kanf/runtime/warp-cache",
++  "gpu5070ti_used": false,
++  "tests": {
++    "actual_backend_trace_gate_and_json_seam": "passed",
++    "entry_gate_tests": 4,
++    "actual_managed_chain": "passed"
++  },
++  "navigation_validated": false,
++  "diagnostic_trace_overhead": "Compact bytes buffer and background quarter-second drain; measured callback spans exclude record encoding; no full-route-history copies added",
++  "cache_regeneration_physics_steps": 0,
++  "prior_raw_roots_currently_unavailable": true,
++  "attempt01_build_failure": "Docker engine stopped before build receipt; no physics. Preserved original attempt01 result."
+ }
+--- v68/prepare_cache.py
++++ v70/prepare_cache.py
+@@ -0,0 +1,40 @@
++"""Compile the existing CPU scene/raycast kernels; never step physics."""
++import argparse
++import hashlib
++import json
++import os
++from pathlib import Path
++import sys
++
++BASE = Path(__file__).resolve().parents[2]
++p = argparse.ArgumentParser()
++p.add_argument('--root',type=Path,required=True)
++args = p.parse_args()
++root = args.root.resolve()
++assert root.parent == Path('/private/tmp') and root.name.startswith('vla_newton_v70_')
++cache = root/'runtime/warp-cache'
++os.environ['WARP_CACHE_PATH'] = str(cache)
++import warp as wp
++wp.config.kernel_cache_dir = str(cache)
++wp.init()
++wp.set_device('cpu')
++sys.path.insert(0,str(BASE/'scripts'))
++sys.path.insert(0,str(BASE/'versions/v40/physics'))
++from scene_assets import verify_inputs
++from robot_scene_v40 import StairRobot
++from geometric_lidar import GeometricLidar
++verify_inputs()
++robot = StairRobot(startup_mode='factory_pd',stance_hold=True,model_device='cpu',
++    use_solver_graph=True,automatic_contact_capacity=True)
++lidar = GeometricLidar(robot,None,emitter_self_exclusion=True,visible_human_only=True)
++captured = robot.model.state()
++captured.body_q.assign(robot.state.body_q)
++lidar.scan(0,0.,override_pose=robot.body_and_sensor(),captured_state=captured)
++assert robot.steps == 0
++files = {str(p.relative_to(cache)):{'bytes':p.stat().st_size,
++    'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
++    for p in cache.rglob('*') if p.is_file()}
++(root/'cache_preparation.json').write_text(json.dumps({'scope':'existing CPU model/raycast kernel compilation',
++    'physics_steps':0,'model_and_sensor_sources_unchanged':True,'files':files,
++    'logical_bytes':sum(v['bytes'] for v in files.values())},indent=2)+'\n')
++print(json.dumps({'cache':str(cache),'physics_steps':0,'files':len(files)}))
+--- v68/run_local_episode.py
++++ v70/run_local_episode.py
+@@ -128,7 +128,7 @@
+     parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v68 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v70 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -166,8 +166,8 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v68":
+-        raise ValueError("This entry point requires frozen integration version v68")
++    if integration_version != "v70":
++        raise ValueError("This entry point requires frozen integration version v70")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+@@ -190,7 +190,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v68 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v70 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -255,8 +255,8 @@
+         "sensor_preprocessing": "unfiltered planner cloud, as archived unfiltered_planner_cloud=true"}, indent=2) + "\n")
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
+-    for name in ("run_local_episode.py", "native_graph.py", "native_backend_entry.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v68_" + name))
++    for name in ("run_local_episode.py", "native_graph.py", "native_backend_entry.py", "backend_timing_trace.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py"):
++        shutil.copyfile(VERSION / name, out / ("executed_v70_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -280,8 +280,8 @@
+         "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+     name = "vla-newton-" + out.name.replace("_", "-")
+-    name = os.environ["V68_NATIVE_CONTAINER"]
+-    command = ["docker", "exec", "-e", "V68_PHYSICAL_FLOOR=" + os.environ["V68_PHYSICAL_FLOOR"],
++    name = os.environ["V70_NATIVE_CONTAINER"]
++    command = ["docker", "exec", "-e", "V70_PHYSICAL_FLOOR=" + os.environ["V70_PHYSICAL_FLOOR"],
+         name, "/bin/bash", str(out / "native_inside.sh")]
+     (out / "container_command.json").write_text(json.dumps(command, indent=2) + "\n")
+     with (out / "native_graph.log").open("w") as log:
+--- v68/test_backend_timing_trace.py
++++ v70/test_backend_timing_trace.py
+@@ -0,0 +1,69 @@
++"""Actual backend callback/JSON seam: tracing preserves command and failures."""
++import json
++from pathlib import Path
++import sys
++import tempfile
++import time
++from types import SimpleNamespace as NS
++import unittest
++
++BASE = Path(__file__).resolve().parents[2]
++sys.path.insert(0,str(BASE/'runtime_sources/backend_adapter'))
++sys.path.insert(0,str(BASE/'versions/v59/backend_ros'))
++from backend_adapter.contracts import CommandIdentity, GateConfig, MeasuredState
++from backend_adapter.control_gate import CommandGate
++from backend_adapter.applied_evidence import AppliedEvidenceReader
++from p2b_backend_ros.node import RosScanPort
++from backend_timing_trace import install, REAL_DUMPS
++
++
++class TraceTests(unittest.TestCase):
++    def test_actual_raw_gate_error_and_json_behavior(self):
++        trace = install(RosScanPort,AppliedEvidenceReader)
++        with tempfile.TemporaryDirectory() as directory:
++            path = Path(directory)/'trace.jsonl'
++            trace.start(path)
++            identity = CommandIdentity('diagnostic-test',1,'request','goal','route','command',1,'map',1)
++            gate = CommandGate(GateConfig())
++            gate.admit(identity)
++            gate.observe_measurement(MeasuredState(1,time.monotonic(),(0.,0.,.3),(0.,0.,0.),'map',1,'fixture'))
++            port = RosScanPort.__new__(RosScanPort)
++            port.gate = gate
++            port.config = {'run_id':'diagnostic-test'}
++            port.adapter = NS(applied_reader=None)
++            port._owner_first_heartbeat_s = None
++            port._last_raw_command_s = None
++            port._faults = []
++            port.node = NS(get_logger=lambda:NS(warn=lambda unused:None))
++            messages = []
++            port.Twist = lambda:NS(linear=NS(x=0.,y=0.,z=0.),angular=NS(x=0.,y=0.,z=0.))
++            port.gated_pub = NS(publish=messages.append)
++            msg = NS(**identity.to_dict(),stamp=NS(sec=1,nanosec=0),traj_id=1,
++                     twist=NS(linear=NS(x=.3,y=.1),angular=NS(z=.05)))
++            self.assertIsNone(port._on_raw_command(msg))
++            self.assertEqual((messages[-1].linear.x,messages[-1].linear.y,messages[-1].angular.z),(.3,.1,.05))
++            self.assertEqual(gate.closed_reason,'open')
++            msg.run_id = ''
++            port._on_raw_command(msg)
++            self.assertEqual(port._last_block_reason,'invalid_raw_identity')
++            self.assertEqual((messages[-1].linear.x,messages[-1].linear.y,messages[-1].angular.z),(0.,0.,0.))
++            self.assertEqual(port._faults[-1]['kind'],'invalid_raw_identity')
++            missing = AppliedEvidenceReader(Path(directory)/'missing.json')
++            with self.assertRaisesRegex(Exception,'applied_snapshot_missing'):
++                missing.read()
++            data = {'pct':{'plan_history':[[1.,2.,3.]]},'gate':{'reason':'open'}}
++            self.assertEqual(json.dumps(data,sort_keys=True),REAL_DUMPS(data,sort_keys=True))
++            trace.save()
++            rows = [json.loads(s) for s in path.read_text().splitlines()]
++            self.assertEqual(rows[-1]['stage'],'trace_end')
++            self.assertEqual(rows[-1]['dropped'],0)
++            self.assertEqual(sum(r['stage']=='raw_callback' for r in rows),2)
++            raw = next(r for r in rows if r['stage']=='raw_callback')
++            self.assertTrue(raw['identity_matches'])
++            self.assertEqual(raw['gate_after'],'open')
++            self.assertTrue(any(r['stage']=='applied_read' for r in rows))
++            self.assertTrue(any(r['stage']=='http_state_json' for r in rows))
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- v68/test_managed_path.py
++++ v70/test_managed_path.py
+@@ -3,10 +3,10 @@
+ import json,os,subprocess,sys,tempfile
+ 
+ HERE=Path(__file__).resolve().parent
+-root=Path(tempfile.mkdtemp(prefix='vla_newton_v68_contract_',dir='/private/tmp'))
++root=Path(tempfile.mkdtemp(prefix='vla_newton_v70_contract_',dir='/private/tmp'))
+ (root/'scripts').mkdir();(root/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+-run='v68_manager_contract';(root/'runs'/run/'artifacts/external_episode').mkdir(parents=True)
+-env=os.environ.copy();env['V68_TEMP_ROOT']=str(root)
++run='v70_manager_contract';(root/'runs'/run/'artifacts/external_episode').mkdir(parents=True)
++env=os.environ.copy();env['V70_TEMP_ROOT']=str(root)
+ child="from pathlib import Path;import json,os;Path(os.environ['NEWTON_RUN_DIR'],'result.json').write_text(json.dumps({'status':'component_contract','physics_run':False}))"
+ command=[sys.executable,str(HERE/'mac_managed.py'),'--run-id',run,'--deadline','10',
+     '--retention','archive','--',sys.executable,'-c',child]
+@@ -16,4 +16,4 @@
+ assert json.loads((root/'runs'/run/'retention_result.json').read_text())['status']=='completed'
+ repeated=subprocess.run(command,env=env,capture_output=True,text=True,timeout=20)
+ assert repeated.returncode!=0 and 'Run already contains data' in repeated.stderr
+-print('V68_COMPLETE_MANAGER_SUPERVISOR_RETENTION_PASS',root)
++print('V70_COMPLETE_MANAGER_SUPERVISOR_RETENTION_PASS',root)

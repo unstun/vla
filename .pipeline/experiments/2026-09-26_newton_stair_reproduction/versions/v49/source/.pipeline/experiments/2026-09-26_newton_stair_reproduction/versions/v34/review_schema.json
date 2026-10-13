@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "properties": {
+    "passed": {"type": "boolean"},
+    "blocking_findings": {"type": "array", "items": {"type": "object", "properties": {"file": {"type": "string"}, "line": {"type": "integer"}, "reason": {"type": "string"}}, "required": ["file", "line", "reason"], "additionalProperties": false}},
+    "nonblocking_findings": {"type": "array", "items": {"type": "object", "properties": {"file": {"type": "string"}, "line": {"type": "integer"}, "reason": {"type": "string"}}, "required": ["file", "line", "reason"], "additionalProperties": false}},
+    "evidence_checked": {"type": "array", "items": {"type": "string"}},
+    "conclusion": {"type": "string"}
+  },
+  "required": ["passed", "blocking_findings", "nonblocking_findings", "evidence_checked", "conclusion"],
+  "additionalProperties": false
+}

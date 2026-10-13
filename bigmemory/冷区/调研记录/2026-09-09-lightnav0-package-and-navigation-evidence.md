@@ -5,6 +5,10 @@ date: 2026-09-09
 stage: experiment_and_analysis
 ---
 
+> [摘要] Dr Sun chose the official LightNav-0 server-side demo after TIC-VLA's distance-stop failures and mixed
+> DualVLN castle results (3/5, 2/5); this records a prepared rented4090 execution package, not a reproduction.
+> Crossed the 31-day threshold on 2026-10-10; the original text below is preserved unchanged.
+
 # LightNav-0 preparation and navigation evidence boundaries
 
 Archived at 2026-09-09 07:55 PDT for task `09-09-lightnav0-official-demo-rented4090`.

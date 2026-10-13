@@ -1,0 +1,56 @@
+{
+  "schema": "p2b_backend_ros_config_v1",
+  "run_id": "nav2-protocol",
+  "run_epoch_ns": 1,
+  "map": {
+    "epoch": "flat",
+    "revision": 1,
+    "frame_id": "world",
+    "nominal_body_height_m": 0.42,
+    "pct_layer": null
+  },
+  "http": {
+    "host": "127.0.0.1",
+    "port": 8765
+  },
+  "pct_worker": {
+    "host": "127.0.0.1",
+    "port": 38019,
+    "connect_timeout_s": 0.2,
+    "response_timeout_s": 5.0,
+    "optimize": true
+  },
+  "topics": {
+    "route_topic": "/p2b/route",
+    "admission_topic": "/p2b/scan_admission",
+    "cancel_topic": "/p2b/scan_cancel",
+    "raw_cmd_topic": "/quad_0/raw_scan_cmd_vel",
+    "gated_cmd_topic": "/quad_0/cmd_vel",
+    "body_pose_topic": "/quad_0/body_pose"
+  },
+  "gate": {
+    "odom_stale_s": 0.25,
+    "heartbeat_stale_s": 0.2,
+    "still_speed_mps": 0.05,
+    "still_window_s": 0.5,
+    "initial_heartbeat_grace_s": 1.0
+  },
+  "applied_evidence": {
+    "current_command_path": "/dev/shm/nav2-http-protocol01-applied.json",
+    "finish_request_path": "",
+    "stop_command_norm": 0.01,
+    "stop_speed_mps": 0.1,
+    "stop_yaw_rate_radps": 0.15,
+    "stop_dwell_sim_seconds": 1.0
+  },
+  "arrival": {
+    "xy_tolerance_m": 0.25,
+    "z_tolerance_m": 0.2,
+    "monitor_period_s": 0.05
+  },
+  "service": {
+    "max_evidence_age_s": 10.0,
+    "command_timeout_s": 20.0,
+    "body_ready_timeout_s": 5.0
+  }
+}

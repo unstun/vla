@@ -1,0 +1,29 @@
+--- v10/src/plan_manage/src/scan_replan_fsm.cpp
++++ v11/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -979,6 +979,7 @@
+     {
+       RCLCPP_WARN(node_->get_logger(),
+                   "Replan failed %d times; emergency stop and wait for a new target", replan_fail_count_);
++      publishP2BAdmission("rejected", "native_replan_exhausted");
+       replan_fail_count_ = 0;
+       need_hover_stop_ = true;
+       flag_escape_emergency_ = true;
+--- v10/runtime_sources/backend_ros/p2b_backend_ros/node.py
++++ v11/runtime_sources/backend_ros/p2b_backend_ros/node.py
+@@ -174,6 +174,16 @@
+             "message": admission.message,
+             "identity": admission.identity.to_dict(),
+         }
++        owner = self.gate.owner
++        if (admission.status == "rejected" and admission.consumer == "fsm"
++                and admission.message == "native_replan_exhausted"
++                and owner is not None and owner.matches(admission.identity)
++                and not self.gate.cancel_pending):
++            # The existing runtime fault flow obtains controller hold and
++            # measured quiescence; this notice does not claim a physical stop.
++            self.gate.close("native_replan_exhausted")
++            self._last_block_reason = "native_replan_exhausted"
++            self._publish_zero()
+         with self._condition:
+             self._admissions.append(admission)
+             self._condition.notify_all()

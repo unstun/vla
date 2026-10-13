@@ -1,0 +1,116 @@
+--- parent/src/plan_env/include/plan_env/grid_map.h
++++ v134/src/plan_env/include/plan_env/grid_map.h
+@@ -37,6 +37,7 @@
+ #include <plan_env/collision_segment.h>
+ #include <plan_env/eth_step_score_adaptation.h>
+ #include <plan_env/evidence_floor_fill.h>
++#include <plan_env/support_gap_mask.h>
+ #include <set>
+ #include <unordered_map>
+ #include <unordered_set>
+@@ -76,6 +77,7 @@
+ // constant parameters
+ 
+ struct MappingParameters {
++  std::shared_ptr<const reactive_stair::SupportGapMask> support_gap_mask_;
+ 
+   /* map properties */
+   Eigen::Vector3d map_origin_, map_size_;
+--- parent/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v134/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -413,6 +413,8 @@
+ 
+   if (!reactiveSurfaceGroundReady()) return 1;
+   if (!point.allFinite()) return 1;
++  if (mapState().mp_.support_gap_mask_ && mapState().mp_.support_gap_mask_->blocks(
++      point.x(),point.y(),point.z()-supportState().reactive_parameters_.body_clearance_m)) return 1;
+   const double radius = mapState().mp_.double_cylinder_radius_;
+   if (!std::isfinite(radius) || radius < 0.0 ||
+       point.x() - radius < mapState().mp_.map_min_boundary_.x() ||
+--- parent/src/plan_env/include/plan_env/support_gap_mask.h
++++ v134/src/plan_env/include/plan_env/support_gap_mask.h
+@@ -0,0 +1,64 @@
++#pragma once
++// Negative-only static map supplement; cannot grant support or sensor freshness.
++#include <algorithm>
++#include <cmath>
++#include <cstdint>
++#include <fstream>
++#include <iterator>
++#include <map>
++#include <sstream>
++#include <stdexcept>
++#include <string>
++#include <utility>
++#include <vector>
++
++namespace reactive_stair {
++class SupportGapMask {
++ public:
++  SupportGapMask(const std::string &path, const std::string &expected_fnv,
++                 double radius) {
++    if (!std::isfinite(radius) || radius < 0 || radius > 2)
++      throw std::runtime_error("Invalid support gap radius");
++    std::ifstream file(path, std::ios::binary);
++    if (!file) throw std::runtime_error("Missing support gap mask");
++    std::string data((std::istreambuf_iterator<char>(file)), {});
++    if (data.empty() || data.size() > 20*1024*1024)
++      throw std::runtime_error("Invalid support gap mask size");
++    uint64_t fnv=UINT64_C(14695981039346656037);
++    for (unsigned char b:data) { fnv^=b; fnv*=UINT64_C(1099511628211); }
++    if (std::to_string(fnv)!=expected_fnv)
++      throw std::runtime_error("Support gap mask identity mismatch");
++    std::istringstream input(data); std::string line; size_t count=0;
++    while (std::getline(input,line)) {
++      std::istringstream row(line); double x,y,z;std::string extra;
++      if (!(row>>x>>y>>z) || row>>extra || !std::isfinite(x) || !std::isfinite(y) ||
++          !std::isfinite(z) || std::max({std::abs(x),std::abs(y),std::abs(z)})>10000)
++        throw std::runtime_error("Invalid support gap record");
++      ++count;
++      // Conservative square-to-square distance, retaining subcell uncertainty.
++      for (int ix=std::floor((x-.05-radius)/.1);ix<=int(std::floor((x+.05+radius)/.1));++ix)
++        for (int iy=std::floor((y-.05-radius)/.1);iy<=int(std::floor((y+.05+radius)/.1));++iy) {
++          const double dx=std::max({x-.05-(ix+1)*.1,ix*.1-(x+.05),0.0});
++          const double dy=std::max({y-.05-(iy+1)*.1,iy*.1-(y+.05),0.0});
++          if (dx*dx+dy*dy<=radius*radius+1e-12) cells_[{ix,iy}].push_back(z);
++        }
++    }
++    if (!count) throw std::runtime_error("Empty support gap mask");
++    for (auto &cell:cells_) {
++      auto &zs=cell.second;std::sort(zs.begin(),zs.end());
++      zs.erase(std::unique(zs.begin(),zs.end()),zs.end());
++    }
++  }
++  bool blocks(double x,double y,double ground_z) const {
++    if (!std::isfinite(x)||!std::isfinite(y)||!std::isfinite(ground_z)||
++        std::max({std::abs(x),std::abs(y),std::abs(ground_z)})>10000) return true;
++    auto found=cells_.find({int(std::floor(x/.1)),int(std::floor(y/.1))});
++    if (found==cells_.end()) return false;
++    return std::any_of(found->second.begin(),found->second.end(),[&](double z){
++      return std::abs(z-ground_z)<.26;
++    });
++  }
++ private:
++  std::map<std::pair<int,int>,std::vector<double>> cells_;
++};
++} // namespace reactive_stair
+--- parent/src/plan_env/src/grid_map.cpp
++++ v134/src/plan_env/src/grid_map.cpp
+@@ -85,6 +85,17 @@
+   load_parameter(node_, "grid_map.reactive_tomogram_max_age", mutableSupportState().reactive_parameters_.terrain_max_age_s, 86400.0);
+   load_parameter(node_, "grid_map.reactive_body_clearance", mutableSupportState().reactive_parameters_.body_clearance_m, 0.35);
+   load_parameter(node_, "grid_map.reactive_known_lite3_trunk", mutableMapState().reactive_known_trunk_enabled_, false);
++  std::string gap_path, gap_fnv;
++  load_parameter(node_, "grid_map.support_gap_path", gap_path, std::string(""));
++  load_parameter(node_, "grid_map.support_gap_fnv64", gap_fnv, std::string(""));
++  if (gap_path.empty()!=gap_fnv.empty())
++    throw std::runtime_error("Support gap path and identity must be paired");
++  if (!gap_path.empty()) {
++    if (mutableMapState().mp_.frame_id_!="world")
++      throw std::runtime_error("Static support gap map requires world frame");
++    mutableMapState().mp_.support_gap_mask_=std::make_shared<const reactive_stair::SupportGapMask>(
++        gap_path,gap_fnv,mutableMapState().mp_.double_cylinder_radius_);
++  }
+   mutableSupportState().reactive_parameters_.robot_radius_m = mutableMapState().mp_.double_cylinder_radius_;
+   mutableSupportState().reactive_decision_ = reactive_stair::CollisionDecision(mutableSupportState().reactive_parameters_);
+   load_parameter(node_, "grid_map.need_extrinsic", mutableMapState().mp_.need_extrinsic_, true);

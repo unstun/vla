@@ -1,0 +1,46 @@
+--- a/src/plan_manage/src/scan_replan_fsm.cpp
++++ b/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1303,6 +1303,17 @@
+     }
+   }
+ 
++  int SCANReplanFSM::recoveryTargetOccupancy(const Eigen::Vector3d &candidate, double yaw)
++  {
++    // Queued inputs can age out during search. Reuse the original ordered drain
++    // at this decision boundary; the round's spline-derived start PVA is fixed.
++    const int fsm_odometry = takePendingOdometry(
++        odom_sub_, node_->get_logger(), [this](const auto &message) { odometryCallback(message); });
++    planner_manager_->grid_map_->refreshSensorInputs("reference_prefix", fsm_odometry);
++    if (!candidate.allFinite() || !std::isfinite(yaw)) return 1;
++    return planner_manager_->grid_map_->getInflateOccupancy(candidate, yaw);
++  }
++
+   bool SCANReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget, double warm_curve_time)
+   {
+ 
+@@ -1331,12 +1342,13 @@
+       const Eigen::Vector3d candidate = planner_manager_->global_data_.getPosition(candidate_t);
+       if (!candidate.allFinite() || !planner_manager_->hasLocalTranslation(start_pt_, candidate)) continue;
+       const double yaw = estimateYawFromSegment(start_pt_, candidate);
+-      RCLCPP_WARN(node_->get_logger(), "[DEBUG-prefix-01] candidate t=%.12f xyz=[%.12f,%.12f,%.12f] yaw=%.12f occ=%d", candidate_t,candidate.x(),candidate.y(),candidate.z(),yaw,planner_manager_->grid_map_->getInflateOccupancy(candidate,yaw));
++      const int occupancy = recoveryTargetOccupancy(candidate, yaw);
++      RCLCPP_WARN(node_->get_logger(), "[DEBUG-prefix-01] candidate t=%.12f xyz=[%.12f,%.12f,%.12f] yaw=%.12f occ=%d", candidate_t,candidate.x(),candidate.y(),candidate.z(),yaw,occupancy);
+       if (candidate_t > 0.9 && candidate_t < 1.2) {
+         planner_manager_->grid_map_->logInitialSplineCollision(start_pt_, yaw);
+         planner_manager_->grid_map_->logInitialSplineCollision(start_pt_ + Eigen::Vector3d(0.05,0,0), yaw);
+       }
+-      if (!std::isfinite(yaw) || planner_manager_->grid_map_->getInflateOccupancy(candidate, yaw) != 0) continue;
++      if (!std::isfinite(yaw) || occupancy != 0) continue;
+ 
+       local_target_pt_ = candidate;
+       local_target_vel_.setZero();
+--- a/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ b/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -157,6 +157,7 @@
+ 
+     /* helper functions */
+     bool callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget = nullptr, double warm_curve_time = -1.0); // front-end and back-end method
++    int recoveryTargetOccupancy(const Eigen::Vector3d &candidate, double yaw);
+     bool callEmergencyStop(Eigen::Vector3d stop_pos);                          // front-end and back-end method
+     bool planFromCurrentTraj();
+     void setStartStateFromOdomOrCurrentTraj();

@@ -1,0 +1,88 @@
+--- v105/applied_channel.py
++++ v106/applied_channel.py
+@@ -29,8 +29,12 @@
+     def publish(self, payload):
+         raw = json.dumps(payload, separators=(",", ":"), allow_nan=False).encode()
+         digest = hashlib.sha256(raw).hexdigest()
++        self.last_attempt = {"sha256": digest, "sequence": payload["state_epoch"]["state_sequence"],
++                             "send_started_monotonic_ns": time.monotonic_ns(), "timeout_ms": 100}
+         self.socket.send(raw)
++        self.last_attempt["send_completed_monotonic_ns"] = time.monotonic_ns()
+         reply = self.socket.recv_json()
++        self.last_attempt["reply_received_monotonic_ns"] = time.monotonic_ns()
+         if not reply.get("ok") or reply.get("sha256") != digest or reply.get("sequence") != payload["state_epoch"]["state_sequence"]:
+             raise RuntimeError(f"Applied evidence not acknowledged: {reply}")
+         return reply
+@@ -47,11 +51,14 @@
+     external = out / "artifacts/external_episode"
+     external.mkdir(parents=True, exist_ok=True)
+     last_sequence = -1
+-    with zmq.Context() as context, context.socket(zmq.REP) as socket, (out / "applied_channel.jsonl").open("w") as log:
++    # Keep per-control-step I/O inside Linux tmpfs. The existing verified
++    # exec/tar copyback returns this audit after the episode, before teardown.
++    with zmq.Context() as context, context.socket(zmq.REP) as socket, (external / "applied_channel.jsonl").open("w") as log:
+         socket.setsockopt(zmq.LINGER, 0)
+         socket.bind("tcp://0.0.0.0:46203")
+         while True:
+             raw = socket.recv()
++            received_ns = time.monotonic_ns()
+             try:
+                 data = json.loads(raw)
+                 snapshot = AppliedCommandSnapshot.from_mapping(data)
+@@ -73,6 +80,8 @@
+                     reply["finish_request"] = json.loads(finish.read_text())
+             except Exception as error:
+                 reply = {"ok": False, "error": str(error)}
++            reply["server_received_monotonic_ns"] = received_ns
++            reply["server_prepared_monotonic_ns"] = time.monotonic_ns()
+             log.write(json.dumps(reply) + "\n")
+             log.flush()
+             socket.send_json(reply)
+--- v105/newton_episode.py
++++ v106/newton_episode.py
+@@ -139,8 +139,16 @@
+         if request.get("body_publish_substeps", 20) < 20:
+             robot.physics_observer = physical_body_observer
+         if request["applied_transport"] == "zmq":
+-            from applied_channel import AppliedClient
+-            applied_client = AppliedClient()
++            # Scene imports alter sys.path; bind the version-owned client
++            # explicitly instead of silently resolving the older scripts copy.
++            import importlib.util
++            channel_path = Path(__file__).resolve().parent / "applied_channel.py"
++            channel_spec = importlib.util.spec_from_file_location("version_applied_channel", channel_path)
++            channel_module = importlib.util.module_from_spec(channel_spec)
++            channel_spec.loader.exec_module(channel_module)
++            applied_client = channel_module.AppliedClient()
++            atomic_json(out / "applied_client_source.json", {"path": str(channel_path),
++                "sha256": hashlib.sha256(channel_path.read_bytes()).hexdigest()})
+         (out / "initial_clock.json").write_text(json.dumps(asdict(estimate), indent=2) + "\n")
+         atomic_json(out / "startup_pacing.json", pacer.snapshot(robot.physics_time()))
+         # The 1:1 navigation video starts from the measured initialized state.
+@@ -251,7 +259,12 @@
+                     if robot.policy_calls > 0 and (applied_client is None or not asynchronous):
+                         atomic_json(external / "current_command.json", applied)
+                     if applied_client is not None and robot.policy_calls > 0:
+-                        ack = applied_client.publish(applied)
++                        try:
++                            ack = applied_client.publish(applied)
++                        except Exception:
++                            atomic_json(out / "applied_client_failure.json", applied_client.last_attempt)
++                            raise
++                        ack["client_timing"] = dict(applied_client.last_attempt)
+                         record(save_line, applied_log, {"sha256": ack["sha256"], "snapshot": applied, "ack": ack})
+                         finish = ack.get("finish_request")
+                         if finish is not None:
+--- v105/run_local_episode.py
++++ v106/run_local_episode.py
+@@ -45,6 +45,10 @@
+                     target.write_bytes(source.read())
+         hashes = {str(p.relative_to(returned)): hashlib.sha256(p.read_bytes()).hexdigest()
+                   for p in returned.rglob("*") if p.is_file()}
++        audit = returned / "applied_channel.jsonl"
++        if not audit.is_file():
++            raise ValueError("Missing returned Linux applied-state audit")
++        shutil.copyfile(audit, out / "applied_channel.jsonl")
+         last_ack = None
+         with (out / "applied_sent.jsonl").open() as sent:
+             for line in sent:

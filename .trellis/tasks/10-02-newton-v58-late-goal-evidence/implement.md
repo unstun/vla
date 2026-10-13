@@ -1,0 +1,1 @@
+Implement/check inline. Build, inherited contracts, recorded-state paired replay, freeze, bounded physical recording, compact analysis, spec and results. Native inputs and source hashes must pass before execution.

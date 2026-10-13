@@ -1,0 +1,7 @@
+# v145 complete original-route review video
+
+Stage: experiment + analysis. The previous corner video does not satisfy Dr Sun's original-start full-route request. Physical parent:v144, native navigation:v139 build02, display implementation parent:v143. Require a closed continuously evolving historical_full episode with the exact original spawn/yaw and original upper-floor goal, actual arrival, no fall, measured PD hold and verified applied-state copyback.
+
+Reusev143 causal full startup/navigation display, close camera and original controller-admitted local SCAN curves with latest completed solve time. No mid-route reset, teleport, missing route prefix, stitched episodes, accelerated motion, pose interpolation or future planning events. Start at the actual new initial state and continue through final arrival/hold. Rendering executes zero physics steps; gpu5070ti EGL and the existing CPU model are used.
+
+Local source/hash sync gates -> closed raw/member verification -> original spatial route check -> remote rendering -> complete decode/causal/visual checks -> regular local MP4. Keep all raw/master on `/data/sun/vla_mppi_20261009`. Return explicit allowlisted compact records/CSV below3MB, three visual review PNGs below1MB, full review MP4 expected below35MB (allow80MB for a longer actual route). All failed/previous recordings remain preserved. This one new full-route outcome remains separate from old corner6/6acceptance and is not repeated full-route reliability or30Hz evidence.

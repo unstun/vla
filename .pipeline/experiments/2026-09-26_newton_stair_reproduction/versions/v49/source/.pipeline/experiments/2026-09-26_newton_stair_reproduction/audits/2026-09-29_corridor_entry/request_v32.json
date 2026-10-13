@@ -1,0 +1,30 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--cpus=3",
+    "--memory=6g",
+    "--name",
+    "vla-corridor-entry-v32-refreeze",
+    "-e",
+    "ROS_DOMAIN_ID=232",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction:/archive:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan64_input_refresh_v31:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-29_corridor_entry:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside_v32.sh"
+  ],
+  "deadline_s": 2400,
+  "claim": "Independent review round 1, B2: v32_historical_full01 re-frozen at its live replan moment (39.919689 s, the curve's velocity there equals SCAN's printed start velocity) and replayed with the same read-only corridor_probe (scan64) on the pinned and three counterfactual navigation grounds. v33's state and results are unchanged."
+}

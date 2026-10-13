@@ -196,7 +196,7 @@ conclusion is drawn.
 
 ## Lead edits and executor returns must not overlap (added 2026-09-11, round 5)
 
-An executor round returns the whole request directory with `rsync -a`, which overwrites every file at the same path, including
+Historical failure: an executor round returned the whole request directory with `rsync -a`, which overwrote every file at the same path, including
 lead-owned files edited after dispatch (round 5 lost a threshold change and a package section this way). Rules:
 - While a round is in flight, the lead does not edit files under the request directory that the executor will return; queue the
   edits and apply them after the return is verified.
@@ -231,6 +231,12 @@ Learned from `.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/scan_fix_qua
   manifest SHA-256 and `all_match`. The review accepts exactly those paths as absent, and only when all three hashes
   agree. Any other missing, changed or unexpected file still fails `returned_hashes_match`
   (`p2b_execution/test_review_two_goal_remote_only.py`).
+  As of 2026-10-01, `AGENTS.md` makes gpu5070ti the default home for heavy data.
+  New execution plans return only explicitly listed compact evidence and review
+  videos, with remote paths/hashes and retrieval instructions for retained bulk.
+  Run full-data checks on that host and return their results. This does not change
+  any frozen reviewer's missing-file behavior or imply its local return gate
+  passed. See [Newton artifact retention](./newton-artifact-retention.md).
 - **Keep the executed copy of an untracked driver before editing it.** If a series driver changes after it ran, save
   the executed bytes with their hash (`isaac_series/run_isaac_series.executed_6fca2efd.py`) and name them in the
   result.
@@ -300,3 +306,195 @@ Learned from `.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/stance_hold_
 | Local driver died, remote result not final | Do not recover; report the episode as interrupted |
 | Remote result final but `passed` not true | Ledger `execute_failed`, even if the review passes |
 | Launcher default changed | Old packages keep their recorded meaning; reproducing callers pinned explicitly |
+
+## Host outage evidence and partial cohorts (2026-10-12)
+
+### Scope / trigger
+
+Use when SSH loss or a manual reboot interrupts a remote Newton series. The
+manual recovery action cannot establish the earlier fault's cause. The concrete
+examples are the full-route repeat and gpu5070ti-freeze audits dated 2026-10-12.
+
+### Signatures
+
+- `collect_incident.py --output /data/sun/vla_mppi_20261009/results/freeze_20261012_retry02`
+- `summarize.py --observed-only [--batch-root <declared cohort root>]`
+
+These are audit commands, not simulator entry points or permanent services.
+
+### Contracts
+
+Bind historical journal queries to the exact incident boot ID, and convert
+monotonic records with realtime/monotonic pairs from that boot. Record timestamp
+duplicates and backward steps; repeated polls of the same backend snapshot need
+not advance its timestamp. RAM available is distinct from free RAM, and sparse
+sampling cannot disprove an unobserved peak. Later resource monitoring belongs
+to its own interval. Return raw source hashes and a bounded compact manifest.
+
+Observed-only aggregation preserves original progress, request and runner bytes.
+It requires a dead original batch (boot reconciliation or absent runner) and a
+nonempty closed prefix of the declared tags. Validate each closed raw inventory,
+archive, start/goal, native identity, copyback and stop proof. Keep partial and
+unstarted trials outside the closed count and report requested count separately.
+
+### Validation and error matrix
+
+| Condition | Required handling |
+|---|---|
+| Different boot or unstable journal clock offset | Refuse clock alignment |
+| Empty journal grep, exit1 and no stderr | Record no match with original exit code; require other same-boot records as a positive control |
+| Query timeout/error or unavailable journal | Report missing evidence, not no fault |
+| Raw FINISHED result without copyback/retention | Preserve partial arrival; do not qualify or fabricate closeout |
+| Other GPU tasks detected by admission | Pause before next run; preserve prior failures |
+| Observed-only count less than requested count | Keep batch incomplete and acceptance false |
+
+### Good / base / bad cases
+
+Good: distinguish continuously recorded backend computation from an inaccessible
+SSH entry. Base: report sparse memory samples and unresolved cause. Bad: infer
+OOM from a user reboot, attribute old GPU errors to a new incident, or call a
+resource-paused two-trial prefix a completed six-trial cohort.
+
+### Required checks
+
+The actual recorded incident must produce matching clock endpoints/gaps and
+preserve duplicated snapshots. Current source/native hashes must match the
+cohort's original identities. Every returned file must match its remote manifest;
+all navigation failures and interruption state must survive aggregation.
+
+### Wrong versus correct
+
+Wrong: "Reboot restored access, therefore RAM exhaustion caused a host freeze."
+Correct: report the observed access loss, prior computation and resource window,
+the manual recovery operation, and which causal evidence remains unavailable.
+
+## Native stop causes and physical holding (2026-10-12 v177 audit)
+
+### Scope and signatures
+
+Use for stop/recovery diagnosis after complete episodes. The reference is
+`audits/2026-10-12_v177_stop_causes/` under the Newton experiment:
+`inspect_stops.py --output PATH`, `inspect_windows.py --first PATH --output PATH`,
+`audit_drift.py`, and `make_report.py`. These read closed captures, not physics.
+
+### Contracts
+
+- Match native revocation, first cancellation and replacement by generation and
+  reason. Count control revocations separately from measured low-speed intervals
+  and terminal holds. A repeated FSM emergency transition is not a distinct stop.
+- A rejection label may conflate geometry and age. Use actual proof/source
+  stamps and the native predicate. New data at a separate observer does not
+  prove the controller's map consumed or published it.
+- Do not use the last timer safety message as the controller's latest map: its
+  independent validation may continue while the timer stops publishing.
+- Audit `effective_command`, `stance_mode`, `stance_reason` and actual body pose.
+  Zero desired velocity and a passed short stillness window do not establish
+  sustained spatial holding. Retain observed drift, even in an arrival pass.
+- Reconstruct spline control points as production3xN, notNx3. Reject malformed
+  diagnostics before evaluating a point. Preserve failed probe evidence without
+  relabelling it a production crash.
+
+### Validation and error matrix
+
+| Evidence | Permitted conclusion |
+|---|---|
+| Source age exceeds250ms; newer cloud seen by observer | Sufficient age-gate violation; internal delay attribution remains open |
+| Native ordered replay matches rejection phase/sample count | Reproduced predicate on recorded inputs, not exact asynchronous episode |
+| Zero effective command but STAND_SETTLING and body displacement | Holding failure remains open regardless of terminal arrival |
+| Timer proof older than live independent checks | Do not reconstruct the controller map from that timer proof |
+| Probe malformed/aborted | Diagnostic failure; preserve and repair the probe |
+
+### Good/base/bad and required checks
+
+Good:35matched revocations,30intermediate retries,5terminal stops,33low-speed
+intervals and the0.957mzero-command drift reported separately. Base:explicitly
+label a controlled fresh-prefix geometry replay. Bad:infer30Hz, smooth recovery
+or a stable stop from5/5arrival. Assert source hashes, one-to-one event matching,
+native replay status/sample counts, and the actual effective-command timeline.
+
+Wrong:all `scan_safety_evidence_stale` events are data timeouts.
+Correct:the current controller also emits that label for `!proof->clear`; inspect
+the native geometry result and source age independently.
+
+## Policy-only move / stop / restart evidence (v179)
+
+### Scope / trigger
+
+Separate locomotion stopping from navigation failures using the current pinned
+policy, without treating a zero command as a stationary body.
+
+### Signatures
+
+`versions/v179/run_probe.py --terrain {flat,stairs} --attempt 1..6`, under
+`supervise.py --run-id ID --deadline 600 -- ...`, uses
+`V179_TEMP_ROOT=/private/tmp/vla_policy_stop_20261012` and `NEWTON_RUN_DIR`.
+`analyze.py --runs PATH --output PATH` reads closed captures.
+
+### Contracts
+
+Keep the existing factory startup and smooth REJOIN. Detach automatic stance
+only after RL owns the joints during the first nonzero command; keep its contact
+observer read-only. Each stopped sample must have actual effective command zero,
+`stance_mode=POLICY_ONLY`, unchanged20/0.5gains, and target equal to policy target.
+Record command-application start pose/time separately from the post-step pose.
+No pose/history reset within a trial. Preserve partial startup/fall captures.
+
+The5cm late-excursion flag is a declared diagnostic criterion, not robot safety
+qualification. Separate first2s braking from subsequent drift and distinguish
+maximum excursion from final displacement. Label a stair approach stop as such;
+scene name alone does not establish support on different treads. A complete
+script establishes restart execution, not standing or navigation acceptance.
+
+### Validation and error matrix
+
+| Condition | Required result |
+|---|---|
+| Any stop sample has hold ownership or nonzero effective command | Reject policy-only analysis |
+| Fewer than500samples in a requested10s stop | Partial, never a completed stop |
+| Golden input, source, geometry or gain mismatch | Refuse execution/claim |
+| Remote resource gate held | Retain hold; use only an already-authorized local exception |
+| Stop drift also occurs without navigation | Locomotion/deployment/physics limitation; training-only cause unproved |
+| Mac framebuffer larger than declared output | Resize before drawing captions; verify actual output dimensions |
+
+### Good / base / bad cases
+
+Good:v179records12conditions/24stops, all policy-only, with braking separated.
+Base:the first slow stair-scene stop is still on the flat approach. Bad:call all
+24windows independent trials or claim that forcibly freezing the joints fixes
+an RL limitation. v180's Retina caption layout is retained as failed visual QA;
+v181normalizes the frame before annotation.
+
+### Required tests
+
+Schedule tests require two500-step zero windows and a continuous counter.
+Analysis tests reject hold contamination and partial-window completion, and
+distinguish a2s braking fixture from later drift. Render tests reject time
+reversal/nonzero start and forbid future-state selection. Validate original raw
+archive members remotely, then full MP4 decoding and source-frame identities.
+
+### Wrong versus correct
+
+Wrong:zero-command drift proves the neural network's training is the sole cause.
+Correct:record the current model/runtime/physics contract and qualify the
+observed behavior; original training and other simulators remain separate tests.
+
+Before selecting diagnostic speeds, read both the checkpoint-bound training
+command generator/configuration and `newton-minimum-cruise.md`. Label commands
+below the project operating cruise as low-speed controls; include the intended
+operating range before making a general stopping claim. Report planned,
+commanded, effective and measured speed separately. A training sampler's dynamic
+per-axis gap is not a fixed scalar stability threshold, and the planned cruise
+floor does not apply to braking or zero-command holds. Changing speed on stairs
+also changes stopping support geometry; disclose this confound.
+
+For a historical v177 speed audit, verify the actual term-major ONNX command
+history (input[60:90], newest[87:90]) against observation[6:9] and effective
+command before interpreting thresholds. Separate horizontal norm from yaw;
+true-zero holds are not low-speed walking violations. Measure continuous time,
+exclude telemetry gaps, and distinguish finite boundary ramps from prolonged
+endpoint correction using curve identity and the actual error-feedback law.
+Do not shade an entire mixed deceleration/endpoint interval as abnormal: mark
+the endpoint subinterval. Deduplicate shared zero episodes across repeated
+cancel events. A repeated stance-reason string is not a repeated transition.
+An earlier low command and later zero drift are association, not proof that a
+speed-floor change would fix the same physical stop state.

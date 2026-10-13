@@ -1,0 +1,130 @@
+--- a/src/plan_manage/src/closed_loop_controller.cpp
++++ b/src/plan_manage/src/closed_loop_controller.cpp
+@@ -233,6 +233,12 @@
+       RCLCPP_WARN(get_logger(), "Ignoring invalid B-spline");
+       return;
+     }
++    if (msg->start_time.sec < 0 || msg->start_time.nanosec >= 1000000000u) {
++      RCLCPP_WARN(get_logger(), "Ignoring B-spline with invalid time origin");
++      return;
++    }
++    const auto receipt_time = now();
++    const rclcpp::Time trajectory_origin(msg->start_time, receipt_time.get_clock_type());
+     const bool incoming_has_p2b_identity = !msg->command_id.empty() && msg->generation > 0;
+     if (incoming_has_p2b_identity)
+     {
+@@ -280,9 +286,12 @@
+     map_revision_ = msg->map_revision;
+     have_p2b_identity_ = incoming_has_p2b_identity;
+     if (have_p2b_identity_) max_generation_seen_ = std::max(max_generation_seen_, generation_);
+-    exec_time_ = 0.0;
++    // Consume the producer's sampled epoch once. Subsequent command ticks keep
++    // the original incremental phase, including heading/final-yaw freezing.
++    exec_time_ = msg->emergency_stop ? 0.0 :
++        std::clamp((receipt_time - trajectory_origin).seconds(), 0.0, traj_duration_);
+     if (have_p2b_identity_) publishAdmission("accepted", "controller_bspline_accepted", false);
+-    last_update_time_ = now();
++    last_update_time_ = receipt_time;
+     receive_traj_ = true;
+     emergency_stop_ = msg->emergency_stop;
+     if (emergency_stop_)
+--- a/src/plan_manage/src/planner_manager.cpp
++++ b/src/plan_manage/src/planner_manager.cpp
+@@ -222,11 +222,35 @@
+                                         Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj)
+   {
+     GridMap::RawContributorCacheScope raw_cache_scope(*grid_map_);
++    // A spline-derived start PVA belongs to its sampled time, not solve completion.
++    // This also applies when warm initialization falls back to native graph search.
++    auto sampled_origin = node_->now();
++    bool sampled_boundary = false;
++    auto previous = local_data_.position_traj_;
++    if (local_data_.traj_id_ > 0 &&
++        sampled_origin.get_clock_type() == local_data_.start_time_.get_clock_type() &&
++        std::isfinite(warm_curve_time_) && warm_curve_time_ >= 0.0 &&
++        std::isfinite(local_data_.duration_) && warm_curve_time_ < local_data_.duration_ &&
++        reactive_stair::validSplineLayout(previous.getControlPoint(), previous.getKnot(), 3)) {
++      const double age = (sampled_origin - local_data_.start_time_).seconds();
++      auto velocity = previous.getDerivative();
++      auto acceleration = velocity.getDerivative();
++      if (age >= 0.0 && age < local_data_.duration_ && warm_curve_time_ <= age + 1e-6 &&
++          std::abs(previous.getTimeSum() - local_data_.duration_) <= 1e-6 &&
++          start_pt.allFinite() && start_vel.allFinite() && start_acc.allFinite() &&
++          (previous.evaluateDeBoorT(warm_curve_time_) - start_pt).norm() <= 1e-6 &&
++          (velocity.evaluateDeBoorT(warm_curve_time_) - start_vel).norm() <= 1e-6 &&
++          (acceleration.evaluateDeBoorT(warm_curve_time_) - start_acc).norm() <= 1e-6) {
++        sampled_origin = local_data_.start_time_ + rclcpp::Duration::from_seconds(warm_curve_time_);
++        sampled_boundary = true;
++      }
++    }
++    const rclcpp::Time *trajectory_origin = sampled_boundary ? &sampled_origin : nullptr;
+     bool attempted = false;
+     const int failures_before = continuous_failures_count_;
+     bool used_warm = false;
+     if (reboundReplanAttempt(start_pt, start_vel, start_acc, local_target_pt,
+-        local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted, true, &used_warm)) {
++        local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted, true, &used_warm, trajectory_origin)) {
+       if (used_warm) RCLCPP_INFO(node_->get_logger(), "V48_WARM_RESULT accepted=1 graph_fallback=0");
+       return true;
+     }
+@@ -237,7 +261,7 @@
+       continuous_failures_count_ = failures_before;
+       RCLCPP_INFO(node_->get_logger(), "V48_WARM_RESULT accepted=0 graph_fallback=1");
+       if (reboundReplanAttempt(start_pt, start_vel, start_acc, local_target_pt,
+-          local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted)) return true;
++          local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted, false, nullptr, trajectory_origin)) return true;
+     }
+     if (!attempted || !bspline_optimizer_rebound_->optimizesHeight()) {
+       invalidateWarmStart();
+@@ -254,7 +278,7 @@
+     continuous_failures_count_ = failures_before;
+     RCLCPP_INFO(node_->get_logger(), "fixed_height_recovery_attempt; full planning gates retained");
+     const bool accepted = reboundReplanAttempt(start_pt, start_vel, start_acc, local_target_pt,
+-        local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted);
++        local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted, false, nullptr, trajectory_origin);
+     RCLCPP_INFO(node_->get_logger(), "fixed_height_recovery_result accepted=%d", accepted);
+     if (!accepted) invalidateWarmStart();
+     return accepted;
+@@ -264,7 +288,7 @@
+                                         Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
+                                         Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj,
+                                         bool &optimization_attempted, bool allow_warm_start,
+-                                        bool *used_warm_start)
++                                        bool *used_warm_start, const rclcpp::Time *trajectory_origin)
+   {
+     optimization_attempted = false;
+     if (used_warm_start) *used_warm_start = false;
+@@ -515,8 +539,19 @@
+     RCLCPP_INFO(node_->get_logger(), "full_spline_sampled_clear duration=%.9f samples=%zu wall_ms=%.3f",
+                 collision.duration_s, collision.samples, collision_ms);
+ 
+-    // save planned results
+-    updateTrajInfo(pos, node_->now());
++    // Keep the initial PVA's epoch. Publishing an already elapsed curve is an
++    // invalid trajectory, independent of wall solve time; use normal failure.
++    const auto publication_time = node_->now();
++    const auto curve_origin = trajectory_origin ? *trajectory_origin : publication_time;
++    const double elapsed = (publication_time - curve_origin).seconds();
++    if (elapsed < 0.0 || elapsed >= pos.getTimeSum()) {
++      RCLCPP_WARN(node_->get_logger(), "final_spline_time_invalid elapsed=%.9f duration=%.9f", elapsed, pos.getTimeSum());
++      continuous_failures_count_++;
++      return false;
++    }
++    updateTrajInfo(pos, curve_origin);
++    RCLCPP_INFO(node_->get_logger(), "V59_TRAJECTORY_EPOCH sampled=%d origin_s=%.9f publication_s=%.9f age_s=%.9f",
++                trajectory_origin != nullptr, curve_origin.seconds(), publication_time.seconds(), elapsed);
+     if (!warm_context_.empty() && warm_goal_.allFinite()) {
+       accepted_warm_context_ = warm_context_;
+       accepted_warm_goal_ = warm_goal_;
+--- a/src/plan_manage/include/plan_manage/planner_manager.h
++++ b/src/plan_manage/include/plan_manage/planner_manager.h
+@@ -61,7 +61,8 @@
+         Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
+         Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj,
+         bool &optimization_attempted, bool allow_warm_start = false,
+-        bool *used_warm_start = nullptr);
++        bool *used_warm_start = nullptr,
++        const rclcpp::Time *trajectory_origin = nullptr);
+     bool makeWarmStartSeed(const Eigen::Vector3d &start, const Eigen::Vector3d &velocity,
+         const Eigen::Vector3d &acceleration, const Eigen::Vector3d &target,
+         vector<Eigen::Vector3d> &path, double &interval, std::string &reason);

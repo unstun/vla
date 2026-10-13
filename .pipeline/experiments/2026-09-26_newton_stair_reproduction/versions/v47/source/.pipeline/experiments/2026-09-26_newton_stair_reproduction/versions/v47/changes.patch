@@ -1,0 +1,216 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan69_shared_attempt_cache_v44/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan70_feasible_window_v47/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -113,7 +113,18 @@
+     bool reference_neighbor_target_{false};
+     double goal_neighbor_tolerance_{0.5};
+     Eigen::Vector3d reference_neighbor_point_{Eigen::Vector3d::Zero()};
+-    double local_target_time_{-1.0}, local_projection_time_{-1.0};
++    double local_target_time_{-1.0}, local_projection_time_{-1.0}, local_measured_projection_time_{-1.0};
++    // v47: only a target-selection hint. No trajectory or safety verdict is cached.
++    struct FeasibleWindow {
++      bool valid{false};
++      P2BIdentity identity;
++      const GridMap *map{nullptr};
++      Eigen::Vector3d goal{Eigen::Vector3d::Zero()};
++      double span{0.0}, projection{0.0}, measured_projection{0.0}, growth_projection{0.0}, stamp{0.0};
++    } feasible_window_;
++    void rememberFeasibleWindow();
++    bool reuseFeasibleWindow(double projection, double nominal_target, double step,
++                            double &target, Eigen::Vector3d &point);
+     std::vector<Eigen::Vector3d> active_waypoints_;
+     int current_wp_;
+ 
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan69_shared_attempt_cache_v44/src/plan_manage/src/scan_replan_fsm.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan70_feasible_window_v47/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -248,6 +248,7 @@
+ 
+   bool SCANReplanFSM::planGlobalTrajByWaypoints(const std::vector<Eigen::Vector3d> &waypoints)
+   {
++    feasible_window_.valid = false; // Regenerated geometry has a new time parameterization.
+     if (waypoints.size() < 2)
+     {
+       RCLCPP_WARN(node_->get_logger(), "Reference path requires at least two points");
+@@ -1223,6 +1224,7 @@
+         },
+         [&map](const Eigen::Vector3d &p, double yaw) { return map->getInflateOccupancy(p, yaw) != 0; });
+     if (collision.clear()) return;
++    feasible_window_.valid = false;
+     if (collision.status != reactive_stair::TrajectoryCheckStatus::Collision) {
+       // Never evaluate/replan from an invalid old curve or a regressed clock.
+       RCLCPP_ERROR(node_->get_logger(), "remaining_spline_invalid status=%d raw_t=%.9f samples=%zu",
+@@ -1247,7 +1249,10 @@
+   bool SCANReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget)
+   {
+ 
+-    if (!getLocalTarget()) return false;
++    if (!getLocalTarget()) {
++      feasible_window_.valid = false;
++      return false;
++    }
+ 
+     bool plan_success =
+         planner_manager_->reboundReplan(start_pt_, start_vel_, start_acc_, local_target_pt_, local_target_vel_, (have_new_target_ || flag_use_poly_init), flag_randomPolyTraj);
+@@ -1285,12 +1290,14 @@
+           local_target_pt_, local_target_vel_, true, flag_randomPolyTraj);
+     }
+     if (plan_success && reference) {
++      rememberFeasibleWindow();
+       // This marks the accepted planning window end, not measured execution.
+       planner_manager_->global_data_.last_progress_time_ = local_target_time_;
+       RCLCPP_INFO(node_->get_logger(), "reference_window_committed time=%.12f full_duration=%.12f",
+                   local_target_time_, planner_manager_->global_data_.global_duration_);
+     }
+ 
++    if (!plan_success) feasible_window_.valid = false;
+     cout << "final_plan_success=" << plan_success << endl;
+ 
+     if (plan_success)
+@@ -1333,6 +1340,7 @@
+ 
+   bool SCANReplanFSM::callEmergencyStop(Eigen::Vector3d stop_pos)
+   {
++    feasible_window_.valid = false;
+ 
+     planner_manager_->EmergencyStop(stop_pos);
+ 
+@@ -1369,12 +1377,89 @@
+     return true;
+   }
+ 
++  void SCANReplanFSM::rememberFeasibleWindow()
++  {
++    const double span = local_target_time_ - local_projection_time_;
++    if (!have_p2b_identity_ || !std::isfinite(span) || span <= 0.0 ||
++        !std::isfinite(local_measured_projection_time_) || local_measured_projection_time_ < 0.0) {
++      feasible_window_.valid = false;
++      return;
++    }
++    // Keep the growth anchor across equal-span successes; otherwise motion
++    // would never accumulate enough to try extending the window.
++    const double growth = feasible_window_.valid &&
++        std::abs(feasible_window_.span - span) < 1e-9
++        ? feasible_window_.growth_projection : local_measured_projection_time_;
++    feasible_window_.valid = true;
++    feasible_window_.identity = active_p2b_identity_;
++    feasible_window_.map = planner_manager_->grid_map_.get();
++    feasible_window_.goal = end_pt_;
++    feasible_window_.span = span;
++    feasible_window_.projection = local_projection_time_;
++    feasible_window_.measured_projection = local_measured_projection_time_;
++    feasible_window_.growth_projection = growth;
++    feasible_window_.stamp = node_->now().seconds();
++  }
++
++  bool SCANReplanFSM::reuseFeasibleWindow(double projection, double nominal_target,
++                                         double step, double &target, Eigen::Vector3d &point)
++  {
++    auto &hint = feasible_window_;
++    if (!hint.valid) return false;
++    const auto &a = hint.identity;
++    const auto &b = active_p2b_identity_;
++    const double now = node_->now().seconds();
++    auto map = planner_manager_->grid_map_;
++    const bool same_identity = have_p2b_identity_ &&
++        a.run_id == b.run_id && a.epoch == b.epoch && a.request_id == b.request_id &&
++        a.goal_id == b.goal_id && a.route_id == b.route_id && a.command_id == b.command_id &&
++        a.generation == b.generation && a.map_epoch == b.map_epoch && a.map_revision == b.map_revision;
++    if (!same_identity || hint.map != map.get() || !(hint.goal.array() == end_pt_.array()).all() ||
++        !std::isfinite(hint.span) || hint.span <= 0.0 || !std::isfinite(hint.stamp) ||
++        !std::isfinite(hint.projection) || !std::isfinite(hint.measured_projection) ||
++        !std::isfinite(hint.growth_projection) || !std::isfinite(local_measured_projection_time_) ||
++        !std::isfinite(now) || now < hint.stamp || now - hint.stamp > 1.0 ||
++        !std::isfinite(projection) || !std::isfinite(nominal_target) || !std::isfinite(step) || step <= 0.0 ||
++        projection + step < hint.projection || projection - hint.projection > hint.span ||
++        local_measured_projection_time_ + step < hint.measured_projection ||
++        local_measured_projection_time_ - hint.measured_projection > hint.span) {
++      hint.valid = false;
++      return false;
++    }
++    double span = hint.span;
++    if (local_measured_projection_time_ - hint.growth_projection >= 0.5 * span) span += step;
++    const double proposed = std::min(nominal_target, projection + span);
++    if (!std::isfinite(proposed) || proposed <= projection || proposed > reference_frontier_time_) {
++      hint.valid = false;
++      return false;
++    }
++    // Let the unchanged terminal/neighbor handling select an already shorter
++    // nominal target. Never move the final goal or its orientation.
++    if (proposed >= nominal_target) return false;
++    const Eigen::Vector3d candidate = planner_manager_->global_data_.getPosition(proposed);
++    const double yaw = estimateYawFromSegment(start_pt_, candidate);
++    if (!candidate.allFinite() || !std::isfinite(yaw) ||
++        !planner_manager_->hasLocalTranslation(start_pt_, candidate) ||
++        map->getInflateOccupancy(start_pt_, yaw) != 0 ||
++        map->getInflateOccupancy(candidate, yaw) != 0) {
++      hint.valid = false;
++      return false;
++    }
++    target = proposed;
++    point = candidate;
++    RCLCPP_INFO(node_->get_logger(),
++        "V47_WINDOW_HINT projected=%.12f nominal=%.12f selected=%.12f span=%.12f growth=%d measured=%.12f",
++        projection, nominal_target, proposed, span, span > hint.span, local_measured_projection_time_);
++    return true;
++  }
++
+   bool SCANReplanFSM::getLocalTarget()
+   {
+     const double max_vel = planner_manager_->pp_.max_vel_;
+     const double max_acc = planner_manager_->pp_.max_acc_;
+     const bool reference = navi_mode_ == NAVI_MODE::REFERENCE_PATH;
+-    local_target_time_ = local_projection_time_ = -1.0;
++    if (!reference) feasible_window_.valid = false;
++    local_target_time_ = local_projection_time_ = local_measured_projection_time_ = -1.0;
+     if (reference) {
+       local_target_pt_.setZero();
+       local_target_vel_.setZero();
+@@ -1382,7 +1467,10 @@
+           !odom_pos_.allFinite() || !end_pt_.allFinite() ||
+           !std::isfinite(max_vel) || max_vel <= 0.0 || !std::isfinite(max_acc) ||
+           !std::isfinite(planning_horizon_) || planning_horizon_ <= 0.0 ||
+-          !adjustGlobalTargetIfOccupied()) return false;
++          !adjustGlobalTargetIfOccupied()) {
++        feasible_window_.valid = false;
++        return false;
++      }
+     }
+     const double duration = reference ? reference_frontier_time_ : planner_manager_->global_data_.global_duration_;
+     const Eigen::Vector3d selection_end = reference
+@@ -1394,10 +1482,18 @@
+ 
+     double t_proj = 0.0;
+     double min_dist_to_start = 9999.0;
++    double min_dist_to_odom = std::numeric_limits<double>::infinity();
+     for (double t = 0.0; t < duration; t += t_step)
+     {
+       Eigen::Vector3d pos_t = planner_manager_->global_data_.getPosition(t);
+       if (reference && !pos_t.allFinite()) return false;
++      if (reference) {
++        const double dist_to_odom = (pos_t - odom_pos_).norm();
++        if (dist_to_odom < min_dist_to_odom) {
++          min_dist_to_odom = dist_to_odom;
++          local_measured_projection_time_ = t;
++        }
++      }
+       double dist_to_start = (pos_t - start_pt_).norm();
+       if (dist_to_start < min_dist_to_start)
+       {
+@@ -1428,6 +1524,9 @@
+     }
+     if (!reference)
+       planner_manager_->global_data_.last_progress_time_ = target_found ? target_t : duration;
++
++    const bool reused_window = reference && reuseFeasibleWindow(
++        t_proj, target_t, t_step, target_t, local_target_pt_);
+ 
+     auto targetOccupancy = [&](const Eigen::Vector3d &pt) {
+       if (reference && !pt.allFinite()) return 1;
+@@ -1487,7 +1586,7 @@
+     const double braking_distance = max_acc > 1e-6
+         ? (max_vel * max_vel) / (2.0 * max_acc)
+         : std::numeric_limits<double>::infinity();
+-    if ((selection_end - local_target_pt_).norm() < braking_distance)
++    if (reused_window || (selection_end - local_target_pt_).norm() < braking_distance)
+     {
+       // local_target_vel_ = (end_pt_ - init_pt_).normalized() * planner_manager_->pp_.max_vel_ * (( end_pt_ - local_target_pt_ ).norm() / ((planner_manager_->pp_.max_vel_*planner_manager_->pp_.max_vel_)/(2*planner_manager_->pp_.max_acc_)));
+       // cout << "A" << endl;

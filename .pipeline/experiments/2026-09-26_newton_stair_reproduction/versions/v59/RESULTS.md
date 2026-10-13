@@ -1,0 +1,30 @@
+# v59 results: shared trajectory time origin
+
+Stage: experiment + analysis, 2026-10-03. **Direct timing tests pass, but chained retry timing is defective; physical recording completed; sustained 30 Hz, tail elimination and uninterrupted progress fail.** Parent frozen v58; native `runtime/scan80_trajectory_epoch_v59`. v49 is excluded.
+
+The manager retains a checked sampled PVA's time origin through warm and native fallback planning. The controller consumes elapsed time from that origin once on receipt. Existing command, heading/final-yaw freeze, cancellation, emergency, goal and dynamics functions are unchanged. No wall-time solve budget, new stop reason or forced speed floor was introduced.
+
+## Component evidence
+
+The actual parent controller reproduces the phase reset for curves delivered 40, 80 and 600 ms late. With v59, geometrically identical consecutive curves match PVA at a common handover instant to numerical precision (maximum test residual 2.22e-16). Fifteen actual-controller checks pass, including subsequent clock progression, heading freeze/resume, emergency hold and cancellation.
+
+Recorded-map warm and cold replans with an 80 ms delayed sampled state pass all original native gates. Common-time position differences are 0.0157–0.0391 mm, velocity differences 0.000588–0.001465 m/s, and acceleration differences 0.01470–0.03663 m/s² across the two fixture pairs. Reoptimized geometry may differ after its common initial PVA. Already elapsed candidates are rejected before commit through the existing failure flow, without introducing a stop reason.
+
+Build01 and contracts01 pass: 35 native, 64 cache, 47 warm checks per fixture, goal-region, endpoint evidence, freshness, physical-floor and backend gates. Both cold geometries remain exact. Ten native epoch checks pass per fixture. Supplementary actual-controller checks cover malformed timestamps, future clock skew and delayed delivery.
+
+Evidence: [full contracts](tests/attempt01/result.json), [timing details](tests/attempt01/timing_evidence.json), [parent reproduction](tests/controller_red/result.json), [supplementary checks](supplemental_clock/attempt01/result.json), [scope verification](scope_verification.json). The freeze contains 7,734 source entries and 33 copied delta files; source/install/qualification/physical-input gates pass.
+
+## Completed physical validation
+
+After gpu5070ti became free, `v59_realtime_trial01` completed the 90-second request with 90,000 steps, 89.962189 native seconds and no dropped steps. Whole-navigation-window successful planning is **26.43 Hz**; median solve **1.947 ms**, P95 **13.093 ms**, P99 **140.470 ms**, maximum **1,236.709 ms**. Measured 3D path is **55.042 m**; no full-goal arrival.
+
+In the 85–90 s segment, 141 matched consecutive transitions have zero sample-to-origin rebasing and a largest common-publication-time position difference of **0.168 mm**. Median signed along-track error is **+0.064 m**, compared with about −0.97 m in the original v57 trial02 audit. The physical trajectories differ, so this comparison is descriptive; controlled timing tests establish the mechanism separately. Observer data does not reconstruct exact controller receipt/pause state.
+
+At 81.027 s, `target_connector` rejection leads to eight native rebound attempts and a **1.237-second** solve. A **1.099-second** measured hold follows at 81.287–82.386 s. There are no logged emergency transitions or invalid-current-spline events, but this pause fails uninterrupted progress. Both v58 and v59 also include an initial 1.40-second navigation wait. Preserve this failure rather than promoting the component fixes into full acceptance.
+
+[Complete comparison and remaining failure](REPAIR_REPORT.md), [updated figure](analysis/v59_time_series.png), [acceptance flags](acceptance.json), and [final review-video provenance](../v61/REVIEW_VIDEO.json). The final display version v61 replays these exact v59 states; it changes only camera framing. Heavy records and builds remain on gpu5070ti. v48 remains the runnable reference.
+
+
+## Post-delivery diagnosis (2026-10-03)
+
+The [cold-recovery audit](../../audits/2026-10-03_v59_cold_recovery/REPORT.md) proves that the sampled epoch is lost across retry calls once the old curve expires: unchanged initial PVA from81.027099609s is relabeled82.286407471s. This is not an odometry restart. The existing passing direct timing tests and 85–90s single-success comparison remain valid within their narrower scope. Add an expiry-crossing retry regression before accepting a repair. v59 remains frozen and unaccepted.

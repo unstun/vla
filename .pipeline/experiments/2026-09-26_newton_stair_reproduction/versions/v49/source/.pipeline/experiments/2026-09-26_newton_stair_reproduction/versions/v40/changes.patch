@@ -1,0 +1,47 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v38/physics/solver_graph_step.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v40/physics/solver_graph_step.py
+@@ -4,9 +4,9 @@
+ 
+ class SolverGraphStep:
+     def __init__(self, solver, first, second, control, contacts):
+-        if (not solver.model.device.is_cuda or solver.use_mujoco_cpu or
++        if (not solver.model.device.is_cpu or solver.use_mujoco_cpu or
+                 solver.update_data_interval != 0 or solver.enable_sleeping):
+-            raise ValueError("Solver graph requires CUDA, update_data_interval=0 and sleeping disabled")
++            raise ValueError("Solver graph requires CPU, update_data_interval=0 and sleeping disabled")
+         self.solver = solver
+         self.original_step = solver.step
+         self.states = (first, second)
+@@ -21,7 +21,7 @@
+             raise ValueError("Captured solver inputs or fixed physical timestep changed")
+         if self.graphs is None:
+             # This first real integration warms lazy solver buffers/kernels.
+-            # CUDA capture records operations without advancing physical time.
++            # CPU capture defers operations without advancing physical time.
+             self.original_step(state_in, state_out, control, contacts, dt)
+             counter = self.solver._step
+             graphs = {}
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v38/physics/lite3_newton_v38.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v40/physics/lite3_newton_v40.py
+@@ -45,8 +45,8 @@
+                  model_device="cpu", use_solver_graph=False):
+         if not isinstance(use_solver_graph, bool):
+             raise ValueError("use_solver_graph must be bool")
+-        if use_solver_graph and model_device != "cuda:0":
+-            raise ValueError("Solver graph requires cuda:0")
++        if use_solver_graph and model_device != "cpu":
++            raise ValueError("This numerically qualified graph candidate requires cpu")
+         if model_device not in ("cpu", "cuda:0"):
+             raise ValueError("model_device must be cpu or cuda:0")
+         if model_device != "cpu" and not newton_contacts:
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v38/physics/robot_scene_v38.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v40/physics/robot_scene_v40.py
+@@ -13,7 +13,7 @@
+ 
+ QUALIFIED = BASE.parent / "2026-09-26_newton_macos_policy"
+ sys.path.insert(0, str(QUALIFIED / "scripts"))
+-from lite3_newton_v38 import Lite3Newton
++from lite3_newton_v40 import Lite3Newton
+ 
+ 
+ def fixed_frame_transform(urdf, frame):

@@ -4,6 +4,9 @@ reviewed: false
 date: 2026-08-18
 ---
 
+> [摘要] Pinned upstream setup had a TOML comma defect and CPU device-index assumptions; numbered patches preserve pristine-source attribution.
+
+
 # OmniVLA Upstream Packaging And CUDA-Only Blockers
 
 Two upstream defects at commit `5182600cb4a9ee07684e17cdd2a6cbafc56b8a68` block

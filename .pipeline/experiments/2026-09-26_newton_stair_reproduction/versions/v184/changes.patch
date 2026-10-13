@@ -1,0 +1,109 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v167/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp	2026-10-12 13:38:27
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v184/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp	2026-10-13 02:56:14
+@@ -40,6 +40,7 @@
+     max_vy_ = declare_parameter<double>("max_vy", 0.35);
+     max_vyaw_ = std::min(declare_parameter<double>("max_vyaw", 1.0), kMaxVYawLimit);
+     finish_dist_ = declare_parameter<double>("finish_dist", 0.15);
++    stateful_local_capture_ = declare_parameter<bool>("stateful_local_capture", false);
+     goal_xy_tolerance_ = declare_parameter<double>("goal_xy_tolerance", 0.25);
+     goal_yaw_tolerance_ = declare_parameter<double>("goal_yaw_tolerance", 0.25);
+     goal_z_tolerance_ = declare_parameter<double>("goal_z_tolerance", 0.20);
+@@ -80,6 +81,7 @@
+     if (goal_route_ && msg->run_id == goal_route_->run_id && msg->epoch == goal_route_->epoch &&
+         msg->command_id == goal_route_->command_id && msg->generation == goal_route_->generation)
+       return;
++    local_capture_reached_ = false;
+     goal_route_ = msg;
+     goal_pos_ << pose.position.x, pose.position.y, pose.position.z;
+     goal_yaw_ = tf2::getYaw(q);
+@@ -194,6 +196,7 @@
+       return;
+     }
+     cancelled_generation_high_water_ = std::max(cancelled_generation_high_water_, msg->generation);
++    local_capture_reached_ = false;
+     receive_traj_ = false;
+     goal_xy_reached_ = false;
+     exec_time_ = 0.0;
+@@ -254,6 +257,16 @@
+     for (size_t i = 0; i < msg->knots.size(); ++i) knots(i) = msg->knots[i];
+     UniformBspline position(points, msg->order, 0.1);
+     position.setKnot(knots);
++    // Latch belongs to one accepted curve and its complete owner identity.
++    // A new valid curve may deliberately revisit this endpoint: allow it to move.
++    const bool same_capture = local_capture_reached_ && incoming_has_p2b_identity &&
++        have_p2b_identity_ && !msg->emergency_stop && msg->traj_id == traj_id_ &&
++        msg->run_id == run_id_ && msg->epoch == epoch_ && msg->request_id == request_id_ &&
++        msg->goal_id == goal_id_ && msg->route_id == route_id_ &&
++        msg->command_id == command_id_ && msg->generation == generation_ &&
++        msg->map_epoch == map_epoch_ && msg->map_revision == map_revision_ &&
++        (position.evaluateDeBoorT(position.getTimeSum()) - local_capture_endpoint_).norm() <= 1e-6;
++    local_capture_reached_ = same_capture;
+     traj_ = {position, position.getDerivative()};
+     traj_.push_back(traj_[1].getDerivative());
+     traj_duration_ = traj_[0].getTimeSum();
+@@ -330,6 +343,15 @@
+           return;
+         }
+       }
++    }
++    // Completion is a controller state, not proof that the physical body is still.
++    // Preserve the mission yaw and measured-stop checks above/outside this core.
++    if (stateful_local_capture_ && local_capture_reached_)
++    {
++      publishExecutionFrozen(false);
++      publishStop();
++      last_update_time_ = current_time;
++      return;
+     }
+     double dt = (current_time - last_update_time_).seconds();
+     if (dt < 0.0 || dt > 0.2) dt = 0.0;
+@@ -361,7 +383,14 @@
+     command.linear.y = std::clamp(-s * vel_world.x() + c * vel_world.y(), -max_vy_, max_vy_);
+     command.angular.z = yaw_command;
+     if (exec_time_ >= traj_duration_ && pos_error.norm() < finish_dist_)
++    {
+       command = geometry_msgs::msg::Twist();
++      if (stateful_local_capture_)
++      {
++        local_capture_reached_ = true;
++        local_capture_endpoint_ = pos_des;
++      }
++    }
+     publishTaggedCommand(command);
+   }
+ 
+@@ -387,6 +416,9 @@
+   bool goal_xy_reached_{false};
+   double goal_xy_tolerance_, goal_yaw_tolerance_, goal_z_tolerance_;
+   rclcpp::TimerBase::SharedPtr cmd_timer_;
++  bool stateful_local_capture_{false};
++  bool local_capture_reached_{false};
++  Eigen::Vector3d local_capture_endpoint_{Eigen::Vector3d::Zero()};
+   bool receive_traj_{false};
+   bool reverse_motion_{false};
+   bool emergency_stop_{false};
+
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v168/src/scan_nav2_controller/src/controller.cpp	2026-10-12 13:53:09
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v184/src/scan_nav2_controller/src/controller.cpp	2026-10-13 02:56:14
+@@ -215,6 +215,8 @@
+     parameters.emplace_back(entry.first,value);
+   }
+   parameters.emplace_back("use_sim_time",parameter(parent_,"use_sim_time",false));
++  parameters.emplace_back("stateful_local_capture",
++    parameter(parent_,name_+".stateful_local_capture",false));
+   options.parameter_overrides(parameters);
+   options.arguments({"--ros-args", "-r", "planning/go2_execution_frozen:="+
+     parameter(parent_,name_+".execution_frozen_topic",std::string("/quad_0/planning/go2_execution_frozen"))});
+
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v176/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py	2026-10-12 16:06:04
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v184/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py	2026-10-13 02:56:14
+@@ -23,7 +23,8 @@
+     controller['SCAN']['base_frame'] = base_frame
+     # Local curve capture must be tighter than the 5 cm recovery prefix.
+     # Final mission goal tolerances remain independently configured.
+-    controller['SCAN']['finish_dist'] = 0.02
++    controller['SCAN']['finish_dist'] = 0.03
++    controller['SCAN']['stateful_local_capture'] = True
+     controller['odom_topic'] = odom_topic
+     # The unchanged simple progress checker detects a stuck robot independently
+     # of solver activity. No timeout is increased to hide mapper stalls.

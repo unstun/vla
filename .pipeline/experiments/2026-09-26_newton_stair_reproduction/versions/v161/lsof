@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""Skip only Docker-internal filesystem stat, preserving requested file checks."""
+from pathlib import Path
+import os
+import sys
+extra = []
+for line in Path('/proc/self/mountinfo').read_text().splitlines():
+    left, right = line.split(' - ', 1)
+    mount, filesystem = left.split()[4], right.split()[0]
+    if ((filesystem == 'nsfs' and mount.startswith('/run/docker/netns/'))
+            or (filesystem == 'overlay' and mount.startswith('/data/docker/rootfs/overlayfs/'))):
+        extra.extend(['-e', mount])
+os.execv('/usr/bin/lsof', ['lsof', *extra, *sys.argv[1:]])

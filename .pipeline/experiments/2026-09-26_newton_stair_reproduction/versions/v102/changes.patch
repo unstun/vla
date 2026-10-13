@@ -1,0 +1,26 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v101/src/plan_manage/src/scan_replan_fsm.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v102/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1330,7 +1330,11 @@
+           return map->collisionTrajectoryYaw(p, ahead, v);
+         },
+         [&map](const Eigen::Vector3d &p, double yaw) { return map->getInflateOccupancy(p, yaw) != 0; });
+-    report_safety(collision.clear() && exec_state_ == EXEC_TRAJ);
++    // A failed replacement solve does not invalidate the still executing curve.
++    // Revalidate that exact curve here while replanning; stopped/new-goal states
++    // cannot renew its execution lease even when the geometry is clear.
++    const bool executing_curve = exec_state_ == EXEC_TRAJ || exec_state_ == REPLAN_TRAJ;
++    report_safety(collision.clear() && executing_curve);
+     if (collision.clear()) return;
+     planner_manager_->invalidateWarmStart();
+     feasible_window_.valid = false;
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v101/src/scan_nav2_controller/src/controller.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v102/src/scan_nav2_controller/src/controller.cpp
+@@ -473,6 +473,8 @@
+   copyIdentity(*state_->route,zero); zero.traj_id=tracker_->traj_id_; zero.stamp=parent_->now();
+   command_pub_->publish(zero);
+   if (state_->stopping) return;
++  RCLCPP_WARN(parent_->get_logger(), "SCAN output revoked reason=%s trajectory=%lld",
++    reason.c_str(), static_cast<long long>(tracker_->traj_id_));
+   state_->stopping=true; state_->stopped=false; state_->stop_requested_s=parent_->now().seconds();
+   auto cancel=std::make_shared<scan_planner_msgs::msg::P2BCancel>();
+   copyIdentity(*state_->route,*cancel); cancel->reason=reason;

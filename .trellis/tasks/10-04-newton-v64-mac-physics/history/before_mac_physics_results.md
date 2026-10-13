@@ -1,0 +1,11 @@
+# Actual Newton Mac validation — 2026-10-04
+
+Stage: experiment + analysis. Dr Sun explicitly said "u can test on newton on mac". No GPU access is authorized/used here. Native v63 and all frozen predecessors remain unchanged; v48 stays the reference.
+
+Mac Newton1.6/Warp1.17 initialized the exact Building robot model and original CPU graph/contact capacity1000, nq19. v64/v65 are host integration packages using exact v63 native/v59 physics/backend. Their cached-image eight-package builds and exact physical input regeneration pass, but they fail before physical motion: v64 wrong qualification result key, v65 outer manager rejects pre-created empty tmpfs parent directories. These frozen failures/current bytes are verified and retained. A correction raced v64 freeze; its alternate bytes were saved and both current paths restored from untouched frozen snapshots.
+
+v66 owns only the complete empty-mount-folder manager correction and run identity. Its real manager->supervisor->child->retention contract passes and rejects repeated run data; source/qualification schema checks pass. Native build is running in the owned Mac container; after source/install gate and freeze, two independently initialized90s Newton historical-route attempts are authorized. All live collision/stair/freshness/PVA/dynamics/stop/goal/yaw gates remain exact, no v49 timeout. Original recorded-corner component qualification remains separately pending; this is explicit experimental physics validation, not a promotion of partial qualification.
+
+Bulk is in a unique /private/tmp/vla_newton_v66_* root outside the repo. Only compact requests/build receipts/results/plots are returned; raw logs/NPZ/clouds are archived at that bounded root, never downloaded from GPU. Owned temporary native containers/builds must be removed on completion. Current Mac source is the only truth.
+
+Analysis source: audits/2026-10-04_mac_newton/analyze.py. It maps Mac and Docker monotonic origins using converged recorded clock offsets, then rolling1wallsecond counts to actual simulator time. Full-window successful Hz, complete-round latency, RTF, path/pauses, real physical integrations and stop evidence are separate fields. GPU timing is historical context, never a matched-host speedup. Source-only model initialization is not a physics route result.

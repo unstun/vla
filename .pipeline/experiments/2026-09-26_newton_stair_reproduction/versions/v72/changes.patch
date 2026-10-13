@@ -1,0 +1,354 @@
+--- v71/test_managed_path.py
++++ v72/test_managed_path.py
+@@ -3,10 +3,10 @@
+ import json,os,subprocess,sys,tempfile
+ 
+ HERE=Path(__file__).resolve().parent
+-root=Path(tempfile.mkdtemp(prefix='vla_newton_v71_contract_',dir='/private/tmp'))
++root=Path(tempfile.mkdtemp(prefix='vla_newton_v72_contract_',dir='/private/tmp'))
+ (root/'scripts').mkdir();(root/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+-run='v71_manager_contract';(root/'runs'/run/'artifacts/external_episode').mkdir(parents=True)
+-env=os.environ.copy();env['V71_TEMP_ROOT']=str(root)
++run='v72_manager_contract';(root/'runs'/run/'artifacts/external_episode').mkdir(parents=True)
++env=os.environ.copy();env['V72_TEMP_ROOT']=str(root)
+ child="from pathlib import Path;import json,os;Path(os.environ['NEWTON_RUN_DIR'],'result.json').write_text(json.dumps({'status':'component_contract','physics_run':False}))"
+ command=[sys.executable,str(HERE/'mac_managed.py'),'--run-id',run,'--deadline','10',
+     '--retention','archive','--',sys.executable,'-c',child]
+@@ -16,4 +16,4 @@
+ assert json.loads((root/'runs'/run/'retention_result.json').read_text())['status']=='completed'
+ repeated=subprocess.run(command,env=env,capture_output=True,text=True,timeout=20)
+ assert repeated.returncode!=0 and 'Run already contains data' in repeated.stderr
+-print('V71_COMPLETE_MANAGER_SUPERVISOR_RETENTION_PASS',root)
++print('V72_COMPLETE_MANAGER_SUPERVISOR_RETENTION_PASS',root)
+--- v71/preparation.json
++++ v72/preparation.json
+@@ -1,10 +1,10 @@
+ {
+-  "version": "v71",
+-  "parent": "v70",
+-  "native_parent": "pinned_PCT_SCAN_ROS2_1cf45a1",
++  "version": "v72",
++  "parent": "v71",
++  "native_parent": "v71",
+   "runtime_parent": "v59",
+   "kind": "upstream_planning_comparison",
+-  "one_change": "Original upstream ROS2 planning with unchanged backend/controller transport and observational round timing",
++  "one_change": "Repair the inherited physical-floor publisher environment key; upstream native source remains frozen v71",
+   "physics_sensor_route_controller_backend_byte_exact_to_v70": [
+     "newton_episode.py",
+     "realtime_pacer.py",
+@@ -18,5 +18,6 @@
+   "upstream_safety_contract_differs": true,
+   "production_navigation_reference": "v48",
+   "gpu_execution": false,
+-  "authorization": "Dr Sun: test it and show me video"
++  "authorization": "Dr Sun: test it and show me video",
++  "preserved_failure": "v71_mac_trial01_attempt01: missing V70_PHYSICAL_FLOOR before native navigation"
+ }
+--- v71/physical_floor_publisher.py
++++ v72/physical_floor_publisher.py
+@@ -16,7 +16,7 @@
+         super().__init__('pct_physical_floor_publisher')
+         info=json.loads((HERE/'physical_floor_input.json').read_text())
+         assert info['role']=='physical_floor_presence_only' and not info['traversal_authority'] and not info['terrain_return_classification_authority']
+-        data=Path(os.environ['V70_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
++        data=Path(os.environ['V72_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
+         self.points=np.frombuffer(data,dtype='<f4').reshape(-1,4)
+         assert len(self.points)==info['files']['physical_floor.f32']['points'] and np.isfinite(self.points).all()
+         self.gate=SimClockGate();qos=QoSProfile(depth=1,reliability=QoSReliabilityPolicy.RELIABLE,durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+--- v71/mac_supervisor.py
++++ v72/mac_supervisor.py
+@@ -15,10 +15,10 @@
+     text=source.read_text();old='out.mkdir(parents=True, exist_ok=False)'
+     assert text.count(old)==1
+     index=sys.argv.index('--run-id');run_id=sys.argv[index+1]
+-    root=Path(os.environ['V71_TEMP_ROOT'])
+-    assert root.parent==Path('/private/tmp') and root.name.startswith('vla_newton_v71_')
++    root=Path(os.environ['V72_TEMP_ROOT'])
++    assert root.parent==Path('/private/tmp') and root.name.startswith('vla_newton_v72_')
+     verify_prepared_mount(root/'runs'/run_id)
+-    spec=importlib.util.spec_from_file_location('v71_original_supervisor',source)
++    spec=importlib.util.spec_from_file_location('v72_original_supervisor',source)
+     module=importlib.util.module_from_spec(spec)
+     # Only Docker's pre-created empty tmpfs-parent directories are accepted.
+     # Original process group, deadline, child/environment and results stay exact.
+--- v71/mac_trial.py
++++ v72/mac_trial.py
+@@ -23,14 +23,15 @@
+         manifest=json.loads((HERE/'manifest.json').read_text())
+         assert manifest['mac_build_receipt_sha256']==sha(receipt_path)
+         return manifest
+-    parent=json.loads((BASE/'versions/v70/manifest.json').read_text())
++    parent=json.loads((BASE/'versions/v71/manifest.json').read_text())
+     selected=dict(parent['source_files']);locations=dict(parent['snapshot_locations'])
+     assert all(sha(ROOT/name)==h and sha(ROOT/locations[name])==h for name,h in selected.items())
+     owned=[p for p in HERE.iterdir() if p.is_file() and p.name not in ('manifest.json','RESULTS.md')]
+     owned += [p for p in NATIVE.rglob('*') if p.is_file()]
+     for path in owned:
+         name=str(path.relative_to(ROOT));h=sha(path)
+-        inherited=str((BASE/'versions/v70'/path.name).relative_to(ROOT))
++        if selected.get(name)==h:continue
++        inherited=str((BASE/'versions/v71'/path.name).relative_to(ROOT))
+         if path.parent==HERE and parent['source_files'].get(inherited)==h:
+             location=parent['snapshot_locations'][inherited]
+         else:
+@@ -39,8 +40,8 @@
+         selected[name]=h;locations[name]=location
+     receipt=json.loads(receipt_path.read_text())
+     smoke=receipt_path.parent/'native_transport_smoke.json'
+-    manifest={'version':'v71','parent':'v70','native_source_parent':'PCT-SCAN-ROS2@1cf45a1c12ca785ce533293302be09d51daf0ccb',
+-        'runtime_source_parent':'v59','parent_manifest_sha256':sha(BASE/'versions/v70/manifest.json'),
++    manifest={'version':'v72','parent':'v71','native_source_parent':'PCT-SCAN-ROS2@1cf45a1c12ca785ce533293302be09d51daf0ccb',
++        'runtime_source_parent':'v59','parent_manifest_sha256':sha(BASE/'versions/v71/manifest.json'),
+         'status':'frozen_user_authorized_upstream_comparison_pending',
+         'source_files':dict(sorted(selected.items())),'snapshot_locations':dict(sorted(locations.items())),
+         'native_source_sha256':receipt['native_source_sha256'],'native_install_sha256':receipt['native_install_sha256'],
+@@ -62,25 +63,25 @@
+     assert shutil.disk_usage(HERE).free>12*1024**3
+     for port in (46200,46201,46202,46203):
+         with socket.socket() as s:s.bind(('127.0.0.1',port))
+-    temp=Path(tempfile.mkdtemp(prefix='vla_newton_v71_',dir='/private/tmp'))
++    temp=Path(tempfile.mkdtemp(prefix='vla_newton_v72_',dir='/private/tmp'))
+     workspace=args.reuse_workspace.resolve() if args.reuse_workspace else temp/'native_workspace'
+     if args.reuse_workspace:
+         assert workspace.parent.parent==Path('/private/tmp') and workspace.parent.name.startswith('vla_newton_')
+         assert (workspace/'install').is_dir() and (workspace/'src').is_dir()
+     else:workspace.mkdir()
+-    cache=Path(os.environ['V71_PREPARED_WARP_CACHE']).resolve()
++    cache=Path(os.environ['V72_PREPARED_WARP_CACHE']).resolve()
+     assert cache.is_dir() and cache.name=='warp-cache' and cache.parent.parent.parent==Path('/private/tmp')
+     shutil.copytree(cache,temp/'runtime/warp-cache')
+     (temp/'scripts').mkdir();(temp/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+-    container=f'vla-v71-mac-physics-{args.attempt:02d}'
++    container=f'vla-v72-mac-physics-{args.attempt:02d}'
+     env=os.environ.copy();env.update(DOCKER_CONTEXT='desktop-linux',
+-        PATH='/Users/sun/.local/bin:'+env['PATH'],V71_TEMP_ROOT=str(temp),
+-        V71_NATIVE_CONTAINER=container,V71_BUILD_EVIDENCE=str(evidence),
+-        V71_PHYSICAL_FLOOR=str(temp/'physical_floor.f32'),
++        PATH='/Users/sun/.local/bin:'+env['PATH'],V72_TEMP_ROOT=str(temp),
++        V72_NATIVE_CONTAINER=container,V72_BUILD_EVIDENCE=str(evidence),
++        V72_PHYSICAL_FLOOR=str(temp/'physical_floor.f32'),
+         PYTHONDONTWRITEBYTECODE='1',PYTHONUNBUFFERED='1',
+         PYTHONPATH=str(BASE/'runtime_sources/bridge')+':'+env.get('PYTHONPATH',''))
+     request={'host':'Mac','gpu5070ti_used':False,'started_utc':datetime.now(timezone.utc).isoformat(),
+-        'authorization':'Dr Sun: test it and show me video','version':'v71','native_parent':'PCT-SCAN-ROS2@1cf45a1',
++        'authorization':'Dr Sun: test it and show me video','version':'v72','native_parent':'PCT-SCAN-ROS2@1cf45a1',
+         'runtime_parent':'v59','trials':args.trials,'simulation_seconds_per_trial':args.seconds,
+         'upstream_comparison':True,'prepared_warp_cache':str(cache),'upstream_planning_core_unchanged':True,'current_backend_stop_rules_unchanged':True,
+         'bulk_root':str(temp),'compact_return_root':str(evidence),'bulk_is_outside_repository':True,
+@@ -102,7 +103,7 @@
+             '-v',str(temp)+':'+str(temp)+':rw','--entrypoint','/bin/bash',IMAGE,
+             '-c','exec sleep infinity']
+         for trial in range(1,args.trials+1):
+-            run=f'v71_mac_trial{trial:02d}_attempt{args.attempt:02d}'
++            run=f'v72_mac_trial{trial:02d}_attempt{args.attempt:02d}'
+             index=cmd.index('--entrypoint')
+             cmd[index:index]=['--tmpfs',str(temp/'runs'/run/'artifacts/external_episode')+':rw,size=8m']
+         index=cmd.index('--entrypoint');cmd[index:index]=['-v',str(workspace)+':/workspace:rw']
+@@ -119,7 +120,7 @@
+         with (evidence/'transport_smoke_driver.log').open('w') as log:
+             subprocess.run([DOCKER,'exec',container,'/bin/bash','-c',smoke_script],env=env,
+                 stdout=log,stderr=subprocess.STDOUT,timeout=45,check=True)
+-        subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V71_PHYSICAL_FLOOR']],
++        subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V72_PHYSICAL_FLOOR']],
+             env=env,capture_output=True,text=True,timeout=30,check=True)
+         shutil.copyfile(temp/'physical_floor.provenance.json',evidence/'physical_floor_provenance.json')
+         from mac_native_gate import verify
+@@ -128,23 +129,23 @@
+         provisional={'native_source_sha256':receipt['native_source_sha256'],
+             'mac_build_receipt_sha256':sha(receipt_path),
+             'transport_smoke_sha256':sha(evidence/'native_transport_smoke.json')}
+-        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V71_BUILD_EVIDENCE','V71_NATIVE_CONTAINER')})
++        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V72_BUILD_EVIDENCE','V72_NATIVE_CONTAINER')})
+         verify(NATIVE,provisional)
+         manifest=freeze(receipt_path)
+         result['integration_manifest_sha256']=sha(HERE/'manifest.json')
+         from mac_native_gate import verify
+-        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V71_BUILD_EVIDENCE','V71_NATIVE_CONTAINER')})
++        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V72_BUILD_EVIDENCE','V72_NATIVE_CONTAINER')})
+         (evidence/'entry_gate.json').write_text(json.dumps(verify(NATIVE,manifest),indent=2)+'\n')
+         for trial in range(1,args.trials+1):
+             if trial>1:
+                 subprocess.run(cmd,env=env,capture_output=True,text=True,timeout=30,check=True)
+-            run=f'v71_mac_trial{trial:02d}_attempt{args.attempt:02d}'
++            run=f'v72_mac_trial{trial:02d}_attempt{args.attempt:02d}'
+             command=[str(PYTHON),str(HERE/'mac_managed.py'),'--run-id',run,'--deadline','540',
+                 '--retention','archive','--',str(PYTHON),str(HERE/'run_local_episode.py'),
+                 '--backend-executor','single','--applied-transport','zmq','--geometry-obstacles',
+                 '--scene','building_full','--building-route','historical_full',
+                 '--goal-wall-budget','180','--startup-mode','factory_pd','--stance-hold',
+-                '--integration-version','v71','--real-time-factor','1',
++                '--integration-version','v72','--real-time-factor','1',
+                 '--recording-sim-seconds',str(args.seconds)]
+             with (evidence/(run+'.execution.log')).open('w') as log:
+                 process=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=580)
+--- v71/mac_managed.py
++++ v72/mac_managed.py
+@@ -14,6 +14,6 @@
+ namespace['verify_prepared_mount']=verify_prepared_mount
+ exec(compile(text.replace(old,'verify_prepared_mount(run)'),str(source),'exec'),namespace)
+ managed_run.main=namespace['main']
+-managed_run.a.BASE=Path(os.environ['V71_TEMP_ROOT'])
++managed_run.a.BASE=Path(os.environ['V72_TEMP_ROOT'])
+ managed_run.a.AUDIT=managed_run.a.BASE/'artifact_audit'
+ raise SystemExit(managed_run.main())
+--- v71/native_graph.py
++++ v72/native_graph.py
+@@ -19,8 +19,8 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v71":
+-        raise ValueError("v71 graph requires the frozen v71 integration identity")
++    if request.get("integration_version") != "v72":
++        raise ValueError("v72 graph requires the frozen v72 integration identity")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+--- v71/mac_native_gate.py
++++ v72/mac_native_gate.py
+@@ -28,15 +28,15 @@
+ 
+ def verify(build, manifest):
+     if build.resolve()!=NATIVE.resolve():
+-        raise ValueError('v71 requires its explicitly selected upstream probe')
+-    receipt_path=Path(os.environ['V71_BUILD_EVIDENCE'])/'build_receipt.json'
++        raise ValueError('v72 requires its explicitly selected upstream probe')
++    receipt_path=Path(os.environ['V72_BUILD_EVIDENCE'])/'build_receipt.json'
+     receipt=json.loads(receipt_path.read_text())
+     validate_receipt(receipt,manifest)
+     if sha(receipt_path)!=manifest['mac_build_receipt_sha256']:
+         raise ValueError('Mac build receipt changed after freeze')
+     if not all(sha(build/name)==h for name,h in manifest['native_source_sha256'].items()):
+         raise ValueError('Native upstream source changed')
+-    smoke_path=Path(os.environ['V71_BUILD_EVIDENCE'])/'native_transport_smoke.json'
++    smoke_path=Path(os.environ['V72_BUILD_EVIDENCE'])/'native_transport_smoke.json'
+     if sha(smoke_path)!=manifest['transport_smoke_sha256'] or not json.loads(smoke_path.read_text())['passed']:
+         raise ValueError('Native route/cancel transport smoke did not pass')
+     script='''from pathlib import Path
+@@ -45,12 +45,12 @@
+ for group in ('native_source_sha256','native_install_sha256'):
+  for name,h in receipt[group].items():
+   assert hashlib.sha256((Path('/workspace')/name).read_bytes()).hexdigest()==h,name
+-print('V71_ACTUAL_SOURCE_INSTALL_GATE_PASS')
++print('V72_ACTUAL_SOURCE_INSTALL_GATE_PASS')
+ '''
+-    checked=subprocess.run(['docker','exec',os.environ['V71_NATIVE_CONTAINER'],
++    checked=subprocess.run(['docker','exec',os.environ['V72_NATIVE_CONTAINER'],
+         'python3','-c',script,str(receipt_path)],capture_output=True,text=True,timeout=30)
+     checked.check_returncode()
+-    if 'V71_ACTUAL_SOURCE_INSTALL_GATE_PASS' not in checked.stdout:
++    if 'V72_ACTUAL_SOURCE_INSTALL_GATE_PASS' not in checked.stdout:
+         raise ValueError('Installed source gate has no success evidence')
+     return {'actual_native_source_install_gate_passed':True,'native_transport_smoke_passed':True,
+         'navigation_acceptance':False,'receipt_sha256':sha(receipt_path),
+--- v71/PLAN.md
++++ v72/PLAN.md
+@@ -1,54 +1,3 @@
+-# Upstream SCAN runtime comparison
++# v72 upstream comparison host repair
+ 
+-Stage: experiment + analysis. Dr Sun authorized: "test it and show me video".
+-
+-Use the pinned executable ROS2 port, yagami-light7/PCT-SCAN-ROS2
+-1cf45a1c12ca785ce533293302be09d51daf0ccb. The author ROS1 source used for the
+-preceding source comparison is wuyi2121/SCAN-Planner
+-348e8a590a50a5a6bbab8d8c6dcfd171f009be26. This is a ROS2-port integration test,
+-not a claim that the author's original ROS1 procedure has been reproduced.
+-
+-The smallest gap is missing measured upstream behavior in the actual Mac
+-Newton Building loop. v71 branches from v70's host package and replaces the
+-native planning/map/search/optimization sources with the pinned ROS2 base.
+-Retain the exact current controller, identity messages, backend, physics,
+-factory startup, policy, sensor input and historical route. Native additions
+-are limited to identity/admission/cancellation transport and timing observation.
+-The original upstream three initialization modes and optimizer restarts remain;
+-local warm-cache, fixed-height recovery, shorter-prefix recovery, whole-curve
+-PVA/support contracts and 30Hz scheduling are not added to this baseline.
+-Its own terrain/trajectory contracts therefore differ and must be reported.
+-No v49 timeout or modified stop protocol is permitted.
+-
+-Owned paths: versions/v71 host/transport/test/freeze helpers and receipts;
+-runtime/scan83_upstream_probe_v71 source only; this audit; task execution state;
+-version index; a separately versioned recorded-state video helper if needed.
+-Frozen parents remain immutable and current.json stays v48.
+-
+-Ranked predictions:
+-1. Local outer recovery amplification: upstream has no 11-complete-attempt
+-   round structure; max complete attempts per reference replan should be three.
+-2. Inherited expensive search/optimizer: even without local outer recovery,
+-   individual upstream rounds can exceed 33.3ms and hit the existing 200ms A* limit.
+-3. Different admissibility/progress: upstream may stall or stop before the
+-   later corner; an early termination cannot establish superior full-route tails.
+-
+-Before physics: verify canonical source and generated transport-only diff;
+-build all selected packages in the same cached amd64 Humble image; run actual
+-native identity/cancel smoke and negative source/install gate tests. Freeze
+-source/configuration and installed hashes. Execute one bounded 90s actual Mac
+-Newton trial with the original clock/stop rules. Preserve incomplete output.
+-Compare complete-round timing, retries, successful publication rate and
+-physical progress with the frozen v70 observation; distinguish unmatched
+-trajectory/load and missing-corner evidence. Add a same-input native replay
+-comparison if an early upstream failure prevents the meaningful comparison.
+-
+-Mac exception: build and raw recording under unique /private/tmp roots outside
+-repo. Durable bulk destination:
+-gpu5070ti:/home/sun/vla_artifacts/2026-10-04_upstream_runtime/.
+-Use storage-only transfer; no GPU/simulator job there. Local return allowlist:
+-source/config, compact report/metrics/hash receipts/plots and finished review MP4;
+-expected under 20MB of new result/media bytes. Archive and verify every unique
+-raw member before removing temporary expanded data. Render v51 streaming MP4,
+-verify full decode and original frame/state hashes, and inspect representative
+-frames. Mac latency is not gpu5070ti performance.
++Parent v71 is frozen with a failed launch. Change only the inherited physical-floor publisher environment key from V70_PHYSICAL_FLOOR to V72_PHYSICAL_FLOOR; retain native scan83_upstream_probe_v71, its canonical planning bytes and its transport/cancel behavior. Reuse the exact verified installation. Re-run native transport gates and the authorized 90s Mac Newton comparison. The original upstream planning contracts differ from v63. Return compact evidence and a streaming review MP4; preserve all failures.
+--- v71/run_local_episode.py
++++ v72/run_local_episode.py
+@@ -128,7 +128,7 @@
+     parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v71 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v72 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -166,8 +166,8 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v71":
+-        raise ValueError("This entry point requires frozen integration version v71")
++    if integration_version != "v72":
++        raise ValueError("This entry point requires frozen integration version v72")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+@@ -189,7 +189,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v71 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v72 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -255,7 +255,7 @@
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
+     for name in ("run_local_episode.py", "native_graph.py", "native_backend_entry.py", "backend_timing_trace.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v71_" + name))
++        shutil.copyfile(VERSION / name, out / ("executed_v72_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -279,8 +279,8 @@
+         "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+     name = "vla-newton-" + out.name.replace("_", "-")
+-    name = os.environ["V71_NATIVE_CONTAINER"]
+-    command = ["docker", "exec", "-e", "V71_PHYSICAL_FLOOR=" + os.environ["V71_PHYSICAL_FLOOR"],
++    name = os.environ["V72_NATIVE_CONTAINER"]
++    command = ["docker", "exec", "-e", "V72_PHYSICAL_FLOOR=" + os.environ["V72_PHYSICAL_FLOOR"],
+         name, "/bin/bash", str(out / "native_inside.sh")]
+     (out / "container_command.json").write_text(json.dumps(command, indent=2) + "\n")
+     with (out / "native_graph.log").open("w") as log:

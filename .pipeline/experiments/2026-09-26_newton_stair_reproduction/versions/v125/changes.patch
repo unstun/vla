@@ -1,0 +1,316 @@
+--- v124/physical_floor_publisher.py
++++ v125/physical_floor_publisher.py
+@@ -16,7 +16,7 @@
+         super().__init__('pct_physical_floor_publisher')
+         info=json.loads((HERE/'physical_floor_input.json').read_text())
+         assert info['role']=='physical_floor_presence_only' and not info['traversal_authority'] and not info['terrain_return_classification_authority']
+-        data=Path(os.environ['V124_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
++        data=Path(os.environ['V125_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
+         self.points=np.frombuffer(data,dtype='<f4').reshape(-1,4)
+         assert len(self.points)==info['files']['physical_floor.f32']['points'] and np.isfinite(self.points).all()
+         self.gate=SimClockGate();qos=QoSProfile(depth=1,reliability=QoSReliabilityPolicy.RELIABLE,durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+--- v124/mac_supervisor.py
++++ v125/mac_supervisor.py
+@@ -15,10 +15,10 @@
+     text=source.read_text();old='out.mkdir(parents=True, exist_ok=False)'
+     assert text.count(old)==1
+     index=sys.argv.index('--run-id');run_id=sys.argv[index+1]
+-    root=Path(os.environ['V124_TEMP_ROOT'])
+-    assert root.parent==Path('/data/sun/vla_mppi_20261009/trials') and root.name.startswith('v124_')
++    root=Path(os.environ['V125_TEMP_ROOT'])
++    assert root.parent==Path('/data/sun/vla_mppi_20261009/trials') and root.name.startswith('v125_')
+     verify_prepared_mount(root/'runs'/run_id)
+-    spec=importlib.util.spec_from_file_location('v124_original_supervisor',source)
++    spec=importlib.util.spec_from_file_location('v125_original_supervisor',source)
+     module=importlib.util.module_from_spec(spec)
+     # Only Docker's pre-created empty tmpfs-parent directories are accepted.
+     # Original process group, deadline, child/environment and results stay exact.
+--- v124/mac_managed.py
++++ v125/mac_managed.py
+@@ -14,6 +14,6 @@
+ namespace['verify_prepared_mount']=verify_prepared_mount
+ exec(compile(text.replace(old,'verify_prepared_mount(run)'),str(source),'exec'),namespace)
+ managed_run.main=namespace['main']
+-managed_run.a.BASE=Path(os.environ['V124_TEMP_ROOT'])
++managed_run.a.BASE=Path(os.environ['V125_TEMP_ROOT'])
+ managed_run.a.AUDIT=managed_run.a.BASE/'artifact_audit'
+ raise SystemExit(managed_run.main())
+--- v124/native_graph.py
++++ v125/native_graph.py
+@@ -19,8 +19,8 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v124":
+-        raise ValueError("v124 graph requires the frozen v124 integration identity")
++    if request.get("integration_version") != "v125":
++        raise ValueError("v125 graph requires the frozen v125 integration identity")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+--- v124/run_remote_corner.py
++++ v125/run_remote_corner.py
+@@ -26,7 +26,7 @@
+         raise ValueError('This port requires the declared gpu5070ti execution root')
+     if args.attempt < 1:
+         raise ValueError('Attempt must be positive')
+-    tag = f'v124_{args.variant}_attempt{args.attempt:02d}'
++    tag = f'v125_{args.variant}_attempt{args.attempt:02d}'
+     temporary = TASK/'trials'/tag
+     temporary.mkdir(parents=True, exist_ok=False)
+     (temporary/'scripts').mkdir()
+@@ -36,28 +36,32 @@
+     (temporary/'runs'/tag/'artifacts/external_episode').mkdir(parents=True)
+     evidence = temporary/'evidence'
+     evidence.mkdir()
++    (evidence/'ros_logs').mkdir()
++    (evidence/'ros_home').mkdir()
+     shutil.copyfile(TASK/'results'/f'{args.variant}_receipt.json', evidence/'build_receipt.json')
+     receipt = json.loads((evidence/'build_receipt.json').read_text())
+     container = tag.replace('_', '-')
+     env = os.environ.copy()
+     env.update(PATH=str(HERE)+':'+env['PATH'], PYTHONDONTWRITEBYTECODE='1', PYTHONUNBUFFERED='1',
+-               V124_EXECUTION_IMAGE=receipt['image_id'], V124_VARIANT=args.variant,
+-               V124_TEMP_ROOT=str(temporary), V124_NATIVE_CONTAINER=container,
+-               V124_BUILD_EVIDENCE=str(evidence), V124_PHYSICAL_FLOOR=str(temporary/'physical_floor.f32'),
++               V125_EXECUTION_IMAGE=receipt['image_id'], V125_VARIANT=args.variant,
++               V125_TEMP_ROOT=str(temporary), V125_NATIVE_CONTAINER=container,
++               V125_BUILD_EVIDENCE=str(evidence), V125_PHYSICAL_FLOOR=str(temporary/'physical_floor.f32'),
+                PYTHONPATH=str(TASK/'host_python')+':'+str(BASE/'runtime_sources/bridge')+':'+env.get('PYTHONPATH', ''))
+     for port in (46200, 46201, 46202, 46203, 8785):
+         with socket.socket() as probe:
+             probe.bind(('127.0.0.1', port))
+     command = ['docker', 'run', '-d', '--rm', '--pull=never', '--platform=linux/amd64',
+-               '--name', container, '--memory=6g', '--cpus=6', '--network=host',
++               '--name', container, '--user', f'{os.getuid()}:{os.getgid()}',
++               '-e', 'ROS_LOG_DIR='+str(evidence/'ros_logs'),
++               '-e', 'ROS_HOME='+str(evidence/'ros_home'), '--memory=6g', '--cpus=6', '--network=host',
+                '--add-host', 'host.docker.internal:127.0.0.1', '-e', 'ROS_DOMAIN_ID=192',
+                '-e', 'ROS_LOCALHOST_ONLY=1', '-e', 'PYTHONDONTWRITEBYTECODE=1',
+                '-e', 'OPENBLAS_NUM_THREADS=1', '-e', 'OMP_NUM_THREADS=1',
+                '-v', f'{ROOT}:{ROOT}:ro', '-v', f'{ROOT}:/repo:ro', '-v', f'{TASK}:/task:ro',
+                '-v', f'{temporary}:{temporary}:rw',
+-               '--tmpfs', str(temporary/'runs'/tag/'artifacts/external_episode')+':rw,size=8m',
++               '--tmpfs', str(temporary/'runs'/tag/'artifacts/external_episode')+f':rw,size=8m,uid={os.getuid()},gid={os.getgid()},mode=0700',
+                '--entrypoint', '/bin/bash', receipt['image_id'], '-c', 'exec sleep infinity']
+-    request = {'version': 'v124', 'native_version': 'v114' if args.variant == 'baseline' else 'v122',
++    request = {'version': 'v125', 'native_version': 'v114' if args.variant == 'baseline' else 'v122',
+                'variant': args.variant, 'host': 'gpu5070ti', 'physics_device': 'cpu',
+                'scene': 'original Building corner_start', 'seconds': 90,
+                'manifest_sha256': hashlib.sha256((HERE/'manifest.json').read_bytes()).hexdigest(),
+@@ -69,14 +73,14 @@
+     try:
+         subprocess.run(command, env=env, check=True, capture_output=True, text=True, timeout=30)
+         created = True
+-        subprocess.run([sys.executable, str(HERE/'derive_mac_floor.py'), '--output', env['V124_PHYSICAL_FLOOR']],
++        subprocess.run([sys.executable, str(HERE/'derive_mac_floor.py'), '--output', env['V125_PHYSICAL_FLOOR']],
+                        env=env, check=True, timeout=30)
+         episode = [sys.executable, str(HERE/'mac_managed.py'), '--run-id', tag,
+                    '--deadline', '540', '--retention', 'archive', '--', sys.executable,
+                    str(HERE/'run_local_episode.py'), '--backend-executor', 'single',
+                    '--applied-transport', 'zmq', '--geometry-obstacles', '--scene', 'building_full',
+                    '--building-route', 'corner_start', '--goal-wall-budget', '180',
+-                   '--startup-mode', 'factory_pd', '--stance-hold', '--integration-version', 'v124',
++                   '--startup-mode', 'factory_pd', '--stance-hold', '--integration-version', 'v125',
+                    '--real-time-factor', '1', '--recording-sim-seconds', '90']
+         with (evidence/'execution.log').open('w') as stream:
+             process = subprocess.run(episode, env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=580)
+--- v124/test_output_ownership.py
++++ v125/test_output_ownership.py
+@@ -10,12 +10,14 @@
+ run = root/'runs'/'ownership'
+ external = run/'artifacts/external_episode'
+ external.mkdir(parents=True)
++(root/'ros_logs').mkdir()
+ container = f'vla-mppi-ownership-{os.getpid()}'
+ image = json.loads((TASK/'results/baseline_receipt.json').read_text())['image_id']
+ created = False
+ try:
+     subprocess.run(['docker', 'run', '-d', '--rm', '--name', container, '--network', 'none',
+-                    '-v', f'{root}:{root}:rw', '--tmpfs', f'{external}:rw,size=8m',
++                    '--user', f'{os.getuid()}:{os.getgid()}', '-e', 'ROS_LOG_DIR='+str(root/'ros_logs'),
++                    '-v', f'{root}:{root}:rw', '--tmpfs', f'{external}:rw,size=8m,uid={os.getuid()},gid={os.getgid()},mode=0700',
+                     '--entrypoint', '/bin/sh', image, '-c', 'exec sleep infinity'],
+                    check=True, capture_output=True, timeout=30)
+     created = True
+@@ -26,7 +28,21 @@
+     data = subprocess.check_output(['docker', 'exec', container, 'cat', str(external/'current_command.json')])
+     assert data == b'native'
+     (run/'retention_result.json').write_text('{"host_writer":true}\n')
+-    result = {'passed': True, 'host_uid': os.getuid(), 'run_owner': run.stat().st_uid,
++    here = Path(__file__).resolve().parent
++    with (run/'active_writer.log').open('w') as writer:
++        check = subprocess.run([str(here/'lsof'), '-nP', '-F', 'fan', '--', str(run/'active_writer.log')], capture_output=True, text=True)
++        assert check.returncode == 0 and not check.stderr and 'aw' in check.stdout, (check.stdout, check.stderr)
++    check = subprocess.run([str(here/'lsof'), '-nP', '-F', 'fan', '--', str(run/'active_writer.log')], capture_output=True, text=True)
++    assert check.returncode == 1 and not check.stdout and not check.stderr, (check.stdout, check.stderr)
++    native_script = root/'active_writer_test.py'
++    native_path = run/'native_writer.log'
++    native_script.write_text('import time\nwith open('+repr(str(native_path))+', "w") as f:\n print("READY", flush=True)\n time.sleep(3)\n')
++    native = subprocess.Popen(['docker', 'exec', container, 'python3', str(native_script)], stdout=subprocess.PIPE, text=True)
++    assert native.stdout.readline().strip() == 'READY'
++    check = subprocess.run([str(here/'lsof'), '-nP', '-F', 'fan', '--', str(native_path)], capture_output=True, text=True)
++    assert check.returncode == 0 and not check.stderr and 'aw' in check.stdout, (check.stdout, check.stderr)
++    assert native.wait(timeout=5) == 0
++    result = {'active_writer_detected': True, 'native_writer_detected': True, 'closed_writer_check_passed': True, 'passed': True, 'host_uid': os.getuid(), 'run_owner': run.stat().st_uid,
+               'host_request_and_retention_writable': True, 'container_state_writable': True,
+               'root': str(root), 'image_id': image, 'physics_advanced': False}
+     (TASK/'results/output_ownership_test.json').write_text(json.dumps(result, indent=2)+'\n')
+--- v124/test_host_port.py
++++ v125/test_host_port.py
+@@ -16,7 +16,7 @@
+     def test_physics_and_planner_parameters_unchanged(self):
+         for name in ('newton_episode.py', 'building_planner.yaml', 'corner_scenario.json',
+                      'navigation_contract.json', 'realtime_pacer.py', 'applied_channel.py'):
+-            parent = (HERE.parent/'v122'/name).read_text().replace('v122', 'v124').replace('V122', 'V124')
++            parent = (HERE.parent/'v122'/name).read_text().replace('v122', 'v125').replace('V122', 'V125')
+             self.assertEqual(parent, (HERE/name).read_text(), name)
+ 
+     def test_wrong_receipt_variant_and_image_rejected_before_start(self):
+@@ -31,7 +31,7 @@
+             quality = root/'quality.json'
+             quality.write_text(json.dumps({'passed': True, 'runtime_receipts': {'candidate': sha(path)}}))
+             with patch.object(gate, 'HERE', root), patch.dict(os.environ, {
+-                    'V124_VARIANT': 'candidate', 'V124_BUILD_EVIDENCE': tmp, 'V124_NATIVE_CONTAINER': 'owned'}):
++                    'V125_VARIANT': 'candidate', 'V125_BUILD_EVIDENCE': tmp, 'V125_NATIVE_CONTAINER': 'owned'}):
+                 with self.assertRaisesRegex(ValueError, 'platform/variant'):
+                     gate.verify(root, {'quality_sha256': sha(quality)})
+                 receipt['variant'] = 'candidate'
+--- v124/freeze_host.py
++++ v125/freeze_host.py
+@@ -18,7 +18,7 @@
+             raise ValueError('Source/snapshot changed: '+name)
+     if sha(HERE/'quality.json') != manifest['quality_sha256']:
+         raise ValueError('Quality identity changed')
+-    if sha(HERE.parent/'v123/manifest.json') != manifest['parent_manifest_sha256']:
++    if sha(HERE.parent/'v124/manifest.json') != manifest['parent_manifest_sha256']:
+         raise ValueError('Parent identity changed')
+     inputs = json.loads((HERE/'runtime_sync_manifest.json').read_text())
+     for name, expected in inputs['files'].items():
+@@ -31,11 +31,11 @@
+ def freeze():
+     if (HERE/'manifest.json').exists():
+         raise ValueError('Never overwrite a frozen version')
+-    previous = json.loads((HERE.parent/'v123/manifest.json').read_text())
++    previous = json.loads((HERE.parent/'v124/manifest.json').read_text())
+     files, locations = dict(previous['source_files']), dict(previous['snapshot_locations'])
+     selected = [p for p in HERE.iterdir() if p.is_file() and
+                 (p.suffix in ('.py', '.sh', '.yaml') or p.name in (
+-                    'Dockerfile', 'Dockerfile.dependencies', 'docker', 'corner_scenario.json',
++                    'Dockerfile', 'Dockerfile.dependencies', 'docker', 'lsof', 'corner_scenario.json',
+                     'navigation_contract.json', 'physical_floor_input.json', 'runtime_sync_manifest.json'))]
+     # Capture inherited runtime code as well as the explicit input hash manifest.
+     for name in json.loads((HERE/'runtime_sync_manifest.json').read_text())['files']:
+@@ -51,8 +51,8 @@
+         snapshot.parent.mkdir(parents=True, exist_ok=True)
+         shutil.copyfile(path, snapshot)
+         files[name], locations[name] = digest, str(snapshot.relative_to(ROOT))
+-    manifest = {'version': 'v124', 'parent': 'v123',
+-                'parent_manifest_sha256': sha(HERE.parent/'v123/manifest.json'),
++    manifest = {'version': 'v125', 'parent': 'v124',
++                'parent_manifest_sha256': sha(HERE.parent/'v124/manifest.json'),
+                 'status': 'frozen_component_checked_navigation_not_accepted',
+                 'platform': 'gpu5070ti Linux x86_64 / Ubuntu 20.04 ROS 2 Foxy container / CPU Newton',
+                 'native_variants': {'baseline': 'v114', 'candidate': 'v122'},
+--- v124/run_local_episode.py
++++ v125/run_local_episode.py
+@@ -15,7 +15,7 @@
+ BASE = VERSION.parents[1]
+ PROJECT = BASE.parents[2]
+ BUILD = VERSION
+-IMAGE = os.environ.get("V124_EXECUTION_IMAGE")  # The owned launcher pins the qualified Foxy image.
++IMAGE = os.environ.get("V125_EXECUTION_IMAGE")  # The owned launcher pins the qualified Foxy image.
+ 
+ 
+ def return_linux_state(name, out):
+@@ -137,7 +137,7 @@
+     parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v124 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v125 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -175,8 +175,8 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v124":
+-        raise ValueError("This entry point requires frozen integration version v124")
++    if integration_version != "v125":
++        raise ValueError("This entry point requires frozen integration version v125")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+@@ -199,7 +199,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v124 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v125 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -265,7 +265,7 @@
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
+     for name in ("run_local_episode.py", "native_graph.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py", "native_observer.py", "nav2_recorder.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v124_" + name))
++        shutil.copyfile(VERSION / name, out / ("executed_v125_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -283,13 +283,13 @@
+     sources = BASE / "runtime_sources"
+     pythonpath = "/task/foxy_python:" + str(sources / "bridge")
+     script = "\n".join(["set -e", "source /opt/ros/foxy/setup.bash",
+-        "source /task/" + os.environ["V124_VARIANT"] + "/install/setup.bash",
++        "source /task/" + os.environ["V125_VARIANT"] + "/install/setup.bash",
+         "export PYTHONPATH=" + shlex.quote(pythonpath) + ':"${PYTHONPATH:-}"',
+         "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+     name = "vla-newton-" + out.name.replace("_", "-")
+-    name = os.environ["V124_NATIVE_CONTAINER"]
+-    command = ["docker", "exec", "-e", "V124_PHYSICAL_FLOOR=" + os.environ["V124_PHYSICAL_FLOOR"],
++    name = os.environ["V125_NATIVE_CONTAINER"]
++    command = ["docker", "exec", "-e", "V125_PHYSICAL_FLOOR=" + os.environ["V125_PHYSICAL_FLOOR"],
+         name, "/bin/bash", str(out / "native_inside.sh")]
+     (out / "container_command.json").write_text(json.dumps(command, indent=2) + "\n")
+     with (out / "native_graph.log").open("w") as log:
+--- v124/native_gate.py
++++ v125/native_gate.py
+@@ -12,17 +12,17 @@
+ def verify(build, manifest):
+     if build.resolve() != HERE or sha(HERE/'quality.json') != manifest['quality_sha256']:
+         raise ValueError('Wrong source or component quality identity')
+-    variant = os.environ['V124_VARIANT']
++    variant = os.environ['V125_VARIANT']
+     if variant not in ('baseline', 'candidate'):
+         raise ValueError('Unknown comparison variant')
+-    path = Path(os.environ['V124_BUILD_EVIDENCE'])/'build_receipt.json'
++    path = Path(os.environ['V125_BUILD_EVIDENCE'])/'build_receipt.json'
+     quality = json.loads((HERE/'quality.json').read_text())
+     receipt = json.loads(path.read_text())
+     if not quality['passed'] or sha(path) != quality['runtime_receipts'][variant]:
+         raise ValueError('Unqualified source/install receipt')
+     if not receipt['passed'] or receipt['platform'] != 'linux/amd64' or receipt['variant'] != variant:
+         raise ValueError('Wrong execution platform/variant')
+-    container = os.environ['V124_NATIVE_CONTAINER']
++    container = os.environ['V125_NATIVE_CONTAINER']
+     image = subprocess.check_output(['docker', 'inspect', '--format', '{{.Image}}', container], text=True).strip()
+     if image != receipt['image_id']:
+         raise ValueError('Image differs from tested image')
+@@ -31,10 +31,10 @@
+ r=json.loads(Path(sys.argv[1]).read_text())
+ for name,expected in r['files'].items():
+  assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==expected,name
+-print('V124_NATIVE_IDENTITY_PASS')
++print('V125_NATIVE_IDENTITY_PASS')
+ '''
+     result = subprocess.run(['docker', 'exec', container, 'python3', '-c', script, str(path)],
+                             capture_output=True, text=True, check=True, timeout=90)
+-    if 'V124_NATIVE_IDENTITY_PASS' not in result.stdout:
++    if 'V125_NATIVE_IDENTITY_PASS' not in result.stdout:
+         raise ValueError('Missing native identity witness')
+     return {'passed': True, 'variant': variant, 'receipt_sha256': sha(path), 'physics_acceptance': False}

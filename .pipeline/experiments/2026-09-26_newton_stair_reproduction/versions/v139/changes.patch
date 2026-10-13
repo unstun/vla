@@ -1,0 +1,187 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/../runtime/scan_nav2_foxy_v86/src/bspline_opt/src/bspline_optimizer.cpp
++++ v139/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -1,4 +1,5 @@
+ #include <bspline_opt/rebound_constraint_utils.h>
++#include <bspline_opt/sampled_curve_rebound.h>
+ #include "bspline_opt/bspline_optimizer.h"
+ #include "bspline_opt/gradient_descent_optimizer.h"
+ #include <algorithm>
+@@ -31,6 +32,28 @@
+                 optimize_height_ ? "enabled" : "fixed");
+   }
+ 
++  bool BsplineOptimizer::addFullCurveRebound(UniformBspline &curve) {
++    if(curve.getControlPoint().cols()!=cps_.size) return false;
++    const auto heading=[this](const Eigen::Vector3d&p,const Eigen::Vector3d&a,const Eigen::Vector3d&v) {
++      return grid_map_->collisionTrajectoryYaw(p,a,v);
++    };
++    const auto occupied=[this](const Eigen::Vector3d&p,double yaw) {
++      return grid_map_->getInflateOccupancy(p,yaw)!=0;
++    };
++    const auto full=reactive_stair::checkFullCubicTrajectory(curve,0.0,
++        grid_map_->getResolution(),GridMap::collision_heading_lookahead_s,heading,occupied);
++    if(full.status!=reactive_stair::TrajectoryCheckStatus::Collision) return false;
++    cps_.points=curve.getControlPoint();
++    const auto knots=curve.getKnot();
++    bspline_interval_=knots[4]-knots[3];
++    const size_t added=reactive_stair::appendSampledCurveRebound(cps_,curve,
++        full.first_time_s,bspline_interval_,grid_map_->getResolution(),
++        GridMap::collision_heading_lookahead_s,heading,occupied);
++    RCLCPP_INFO(rclcpp::get_logger("bspline_opt"),
++        "V139_FINAL_FEEDBACK t=%.9f constraints=%zu",full.first_time_s,added);
++    return added>0;
++  }
++
+   void BsplineOptimizer::setEnvironment(const GridMap::Ptr &env)
+   {
+     this->grid_map_ = env;
+@@ -1058,6 +1081,26 @@
+           }
+         }
+ 
++        if (!flag_occ) {
++          const auto heading=[this](const Eigen::Vector3d&p,const Eigen::Vector3d&a,const Eigen::Vector3d&v) {
++            return grid_map_->collisionTrajectoryYaw(p,a,v);
++          };
++          const auto occupied=[this](const Eigen::Vector3d&p,double yaw) {
++            return grid_map_->getInflateOccupancy(p,yaw)!=0;
++          };
++          const auto full=reactive_stair::checkFullCubicTrajectory(traj,0.0,
++              grid_map_->getResolution(),GridMap::collision_heading_lookahead_s,heading,occupied);
++          if(!full.clear()) {
++            if(full.status!=reactive_stair::TrajectoryCheckStatus::Collision) return false;
++            const size_t added=reactive_stair::appendSampledCurveRebound(cps_,traj,
++                full.first_time_s,bspline_interval_,grid_map_->getResolution(),
++                GridMap::collision_heading_lookahead_s,heading,occupied);
++            RCLCPP_INFO(rclcpp::get_logger("bspline_opt"),
++                "V139_SAMPLED_REBOUND t=%.9f constraints=%zu",full.first_time_s,added);
++            if(!added) return false;
++            flag_occ=true;
++          }
++        }
+         if (!flag_occ)
+         {
+           printf("\033[32miter(+1)=%d,time(ms)=%5.3f,total_t(ms)=%5.3f,cost=%5.3f\n\033[0m", iter_num_, time_ms, total_time_ms, final_cost);
+--- /dev/null
++++ v139/src/bspline_opt/include/bspline_opt/sampled_curve_rebound.h
+@@ -0,0 +1,70 @@
++#pragma once
++#include <bspline_opt/full_trajectory_collision.h>
++#include <bspline_opt/rebound_constraint_utils.h>
++#include <array>
++
++namespace reactive_stair {
++// A bounded optimization hint for a sampled collision. It never certifies a
++// curve. The ordinary full-curve, dynamics and publication checks remain due.
++template <typename Controls, typename Heading, typename Occupied>
++size_t appendSampledCurveRebound(Controls& controls,
++    scan_planner::UniformBspline& curve, double time, double interval,
++    double resolution, double lookahead, Heading heading, Occupied occupied) {
++  const int count=controls.points.cols();
++  if (count<7 || !std::isfinite(time) || time<0 ||
++      !std::isfinite(interval) || interval<=0 ||
++      !std::isfinite(resolution) || resolution<=0) return 0;
++  const double duration=curve.getTimeSum();
++  if (time>duration) return 0;
++  const Eigen::Vector3d position=curve.evaluateDeBoorT(time);
++  auto velocity=curve.getDerivative();
++  const Eigen::Vector3d v=velocity.evaluateDeBoorT(time);
++  const Eigen::Vector3d ahead=curve.evaluateDeBoorT(std::min(time+lookahead,duration));
++  const double yaw=heading(position,ahead,v);
++  if (!position.allFinite() || !std::isfinite(yaw) || !occupied(position,yaw)) return 0;
++
++  // Same-height finite neighborhood; no scene coordinates or new map values.
++  // Prefer a lateral displacement when equally near free witnesses exist.
++  Eigen::Vector3d target=position;
++  bool found=false;
++  for(int ring=1;ring<=8 && !found;++ring) {
++    double best=std::numeric_limits<double>::infinity();
++    for(int sector=0;sector<16;++sector) {
++      const double angle=sector*(2.0*std::acos(-1.0)/16.0);
++      const Eigen::Vector3d shift(ring*resolution*std::cos(angle),
++                                  ring*resolution*std::sin(angle),0);
++      const Eigen::Vector3d witness=position+shift;
++      if(occupied(witness,yaw)) continue;
++      const double cost=std::abs(shift.x()*std::cos(yaw)+shift.y()*std::sin(yaw));
++      if(cost<best) {best=cost;target=witness;found=true;}
++    }
++  }
++  if(!found) return 0;
++  const Eigen::Vector3d shift=target-position;
++  const Eigen::Vector3d direction=shift.normalized();
++
++  const double coordinate=time/interval;
++  const int span=std::min(count-4,static_cast<int>(std::floor(coordinate)));
++  const double u=std::clamp(coordinate-span,0.0,1.0);
++  const std::array<double,4> weight={
++      std::pow(1-u,3)/6.0,(3*u*u*u-6*u*u+4)/6.0,
++      (-3*u*u*u+3*u*u+3*u+1)/6.0,u*u*u/6.0};
++  double denominator=0;
++  for(int j=0;j<4;++j) {
++    const int index=span+j;
++    if(index>=3 && index<count-3) denominator+=weight[j]*weight[j];
++  }
++  if(!std::isfinite(denominator) || denominator<1e-8) return 0;
++  size_t added=0;
++  for(int j=0;j<4;++j) {
++    const int index=span+j;
++    if(index<3 || index>=count-3 || weight[j]<1e-8) continue;
++    // Minimum-norm control displacement for the sampled cubic point. Its
++    // directional target uses the existing clearance/cost convention.
++    const Eigen::Vector3d base=controls.points.col(index)+
++        (weight[j]/denominator)*shift;
++    if(appendReboundConstraint(controls,index,base,direction)) ++added;
++  }
++  return added;
++}
++}  // namespace reactive_stair
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/../runtime/scan_nav2_foxy_v86/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
++++ v139/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
+@@ -48,6 +48,7 @@
+   {
+ 
+   public:
++    bool addFullCurveRebound(UniformBspline &curve);
+     bool optimizesHeight() const { return optimize_height_; }
+     void setOptimizeHeight(bool enabled) { optimize_height_ = enabled; }
+     BsplineOptimizer() {}
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v114/src/plan_manage/src/planner_manager.cpp
++++ v139/src/plan_manage/src/planner_manager.cpp
+@@ -456,6 +456,11 @@
+ 
+     t_start = std::chrono::steady_clock::now();
+ 
++    // Refinement and minimum-cruise retiming can reintroduce a collision after
++    // rebound. Give those exact final samples back to the same optimizer.
++    // Each retry preserves boundary PVA and its original execution epoch.
++    for(int final_feedback_attempt=0;final_feedback_attempt<3;++final_feedback_attempt) {
++    t_start = std::chrono::steady_clock::now();
+     /*** STEP 2: OPTIMIZE ***/
+     optimization_attempted = true;
+     bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
+@@ -553,6 +558,15 @@
+     if (!collision.clear()) {
+       RCLCPP_WARN(node_->get_logger(), "final_spline_rejected status=%d t=%.9f duration=%.9f samples=%zu wall_ms=%.3f",
+                   static_cast<int>(collision.status), collision.first_time_s, collision.duration_s, collision.samples, collision_ms);
++      if(final_feedback_attempt<2 &&
++          collision.status==reactive_stair::TrajectoryCheckStatus::Collision &&
++          bspline_optimizer_rebound_->addFullCurveRebound(pos)) {
++        ctrl_pts=pos.getControlPoint();
++        const auto feedback_knots=pos.getKnot();
++        ts=feedback_knots[4]-feedback_knots[3];
++        RCLCPP_INFO(node_->get_logger(), "V139_FINAL_RETRY attempt=%d",final_feedback_attempt+1);
++        continue;
++      }
+       continuous_failures_count_++;
+       return false;
+     }
+@@ -589,6 +603,9 @@
+     // receipt or a new freshness grant. The publication lease still pins it.
+     publication_check_={true,local_data_.traj_id_,checked_at,checked_observation,checked_revision};
+     return true;
++    }
++    continuous_failures_count_++;
++    return false;
+   }
+ 
+   std::vector<Eigen::Vector3d> SCANPlannerManager::findGoalNeighborhoodPath(

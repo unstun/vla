@@ -1,9 +1,9 @@
 {
-  "current": "v45",
-  "status": "v45_recording_complete_timing_and_navigation_gates_failed",
+  "current": "v48",
+  "status": "v48_reference_v59_components_validated_physical_30hz_and_continuity_failed",
   "last_validated_trial_version": "v3",
   "last_validated_condition": "One empty12m trial; not general startup stability",
-  "validated_scope": "v44 actual native/cache/recorded geometry checks and v40 CPU exact closed-loop trace passed. v45 physical stack executed; raw controller29.9648Hz/global0.99998Hz measured, but local16.8619Hz and RTF0.9400 fail requested targets; complete Building arrival failed on global_refresh_failed:pct_no_route.",
+  "validated_scope": "v58 endpoint-evidence and v59 sampled-trajectory epoch pass builds and component safety/timing checks. Both90s recordings complete; successful planning27.53/26.43Hz and max659.526/1236.709ms fail sustained30Hz and tail elimination. v59 has a1.099s late cold-recovery hold. No full-route acceptance; v48 remains the experimental reference and v49 stays frozen/rejected. Subsequent native diagnosis proves the v59 epoch fix is incomplete across retries after parent expiry: unchanged sampled PVA is rebased by1.259308s. No production repair in the diagnosis turn.",
   "measured_06_command_forward_mean_mps": [
     0.566610550435978,
     0.5655182859929156
@@ -36,12 +36,25 @@
     "v34_historical_full01": "600.52s physics; east-end corner reached; no arrival; XYerror5.88m; original driver-final missing, original formal reviewers no verdict; videos decoded/verified",
     "v35_historical_full01": "561.512634s physics,1189.84s wall; native_replan_exhausted at east-end corner; goalXYerror5.94845m; no arrival; returned5602files verified; preview/fullvideos delivered",
     "v42_realtime_preview01": "120000 actual physical steps; native119.9457 s; navigation RTF0.8900; local9.0638 Hz; gated controller30.0055 Hz; 838 overruns; 1207 returned files SHA verified; no complete-route arrival.",
-    "v45_realtime_preview01": "64880 actual steps; native64.856s; initialized-navigation53.835native/57.271wall seconds, RTF0.9400; local16.8619Hz vs30 target; raw controller29.9648Hz, actual global0.99998Hz; 625 budget overruns; global_refresh_failed:pct_no_route; original stop/copyback verified; 661 returned files SHA verified."
+    "v45_realtime_preview01": "64880 actual steps; native64.856s; initialized-navigation53.835native/57.271wall seconds, RTF0.9400; local16.8619Hz vs30 target; raw controller29.9648Hz, actual global0.99998Hz; 625 budget overruns; global_refresh_failed:pct_no_route; original stop/copyback verified; 661 returned files SHA verified.",
+    "v47_realtime_trial01": "Ineligible: missing versioned backend dependency caused old-backend fallback; all 909 originals verified.",
+    "v47_realtime_trial02": "89.962 s physics, 22.732 m path; local16.232Hz/controller30.001Hz/global0.99987Hz/RTF0.94494; no pause >1s; recording bound, no arrival; 909 originals verified.",
+    "v48_realtime_trial01": "89.962s physics;29.794m path;1207warm-only accepts;median3.092ms/P95126.496ms/P99207.175ms;local15.859Hz/controller30.001Hz/global0.99997Hz/RTF0.95282;no arrival at recording bound;909 originals verified.",
+    "v49_realtime_trial01": "Excluded: missing native_graph.py launcher before physics. Original failure preserved; append-only launcher supplement records version-label-only adaptation.",
+    "v49_realtime_trial02": "89.962 native s; 334 rounds,251 new plans,3 continuations,80 timeout stop commands; 0 >=100ms but max37.998ms; 1.432m XY path; gate open, hold_ack false, no stop flow/arrival; acceptance failed.",
+    "v48_realtime_trial02": "89.962 s physics; max 1017.612 ms; full-window attempt/success 12.985/12.804 Hz; path 24.822 m; longest measured pause 4.398 s; no emergency transition or arrival",
+    "v50_realtime_trial01": "89.962 s physics; max 1829.626 ms; full-window attempt/success 11.293/10.387 Hz; path 23.667 m; longest measured pause 42.577 s; no emergency transition or arrival",
+    "v50_realtime_trial02": "89.962 s physics; max 858.031 ms; full-window attempt/success 12.126/10.466 Hz; path 23.662 m; longest measured pause 44.176 s; no emergency transition or arrival; initial artifact-transfer overlap",
+    "v57_realtime_trial01": "90s bound complete;25.64889 successfulHz,max660.974730ms,path46.204714m; no full arrival or30Hz acceptance.",
+    "v57_realtime_trial02": "90s bound complete;25.761639 successfulHz,max290.149078ms,path46.616328m; no full arrival or30Hz acceptance.",
+    "v58_realtime_trial01": "Resource preflight found unrelated GPU evaluation; no physics. Preserved; Dr Sun instructed waiting.",
+    "v58_realtime_trial02": "90s bound complete;27.534281 successfulHz,max659.526460ms,path55.188386m. No>1s late pause after initial1.40s wait; no full arrival or30Hz acceptance.",
+    "v59_realtime_trial01": "90s bound complete;26.425810 successfulHz,max1236.709246ms,path55.041707m;1.099396s late cold-recovery pause, no full arrival or30Hz acceptance."
   },
   "full_building_navigation_validated": false,
   "minimum_measured_body_speed_validated": false,
-  "next_version": "Human video inspection and concrete design for local30Hz/RTF1 are pending; v46 is display-only wall-time replay.",
-  "execution": "v45_failed_timing_recording_complete_v46_wall_video_delivered",
+  "next_version": "v53 is the next logical change. v52 is frozen and physically evaluated; reference remains v48.",
+  "execution": "v50_component_passed_physical_tail_continuity_and_30hz_failed",
   "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md",
   "v28_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md",
   "start_thrash_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v28_start_thrash/RESULT.md",
@@ -66,8 +79,8 @@
   "gpu5070ti_port": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/PORT.md",
   "previous_index_version": "v33",
   "previous_index_validation_scope": "v33 checks passed: K1-K5 (simulation-time odom gate in the simulator only; K4 reproduces 10 of 12 recorded odom_stale ends) and independent review (passed round 2, confirmed rounds 3 and 4). The trial ran on gpu5070ti after the port's validation (P1-P6) and five review rounds; no pose gap over 0.25 s occurred, so it says nothing about the gate's stall tolerance. Physical full route failed; no full-route acceptance",
-  "latest_physical_trial_version": "v35",
-  "latest_physical_trial_run": "v35_historical_full01",
+  "latest_physical_trial_version": "v174",
+  "latest_physical_trial_run": "v174_mac_full_attempt01",
   "local_planning_30hz_validated": false,
   "navigation_contract_fully_validated": false,
   "v36_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/RESULTS.md",
@@ -76,7 +89,7 @@
   "realtime_upstream_survey": ".pipeline/survey/2026-09-30_realtime_clock_upstream_survey.md",
   "v37_plan": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v37/PLAN.md",
   "performance_work": {
-    "state": "actual_video_delivered_timing_targets_unmet_human_inspection_pending",
+    "state": "v52_lookup_improved_cold_recovery_and_continuity_still_fail",
     "cpu_baseline_rtf": [
       0.5344094377109899,
       0.5221500930933396
@@ -126,6 +139,646 @@
       "source_run": "v45_realtime_preview01",
       "video_clock": "Actual monotonic wall; 1 wall second per video second"
     },
-    "v46_wall_video": "output/2026-09-30_lite3_realtime/v45_actual_wall_57s.mp4"
+    "v46_wall_video": "output/2026-09-30_lite3_realtime/v45_actual_wall_57s.mp4",
+    "v47_actual_rates": {
+      "actual_local_attempt_hz": 16.23179695816815,
+      "actual_successful_round_hz": 16.226872747081025,
+      "controller_rates": {
+        "/quad_0/raw_scan_cmd_vel": {
+          "samples": 2506,
+          "hz": 30.000739412598037
+        },
+        "/quad_0/cmd_vel": {
+          "samples": 2575,
+          "hz": 30.824559895111907
+        }
+      },
+      "global_refresh_hz": 0.9998678506495902,
+      "local_solve_ms": {
+        "count": 1355,
+        "mean": 42.66999423837638,
+        "median": 25.267314,
+        "p95": 126.0506543,
+        "p99": 170.25582532000007,
+        "maximum": 300.000588
+      },
+      "local_overruns": 518,
+      "skipped_slots": 1150,
+      "first_seed_failures": 3,
+      "first_seed_failure_fraction": 0.002214022140221402,
+      "realtime_pacing": {
+        "target_rtf": 1.0,
+        "native_elapsed_s": 78.9413652420044,
+        "wall_elapsed_s": 83.54154237598414,
+        "actual_rtf": 0.9449354536300474,
+        "wall_anchor_monotonic_s": 151804.329713584,
+        "native_anchor_s": 11.02082347869873,
+        "physics_steps": 78980,
+        "fixed_step_nominal_elapsed_s": 78.98,
+        "current_lag_s": 4.6001771339797415,
+        "max_lag_s": 4.619752722996054,
+        "lag_over_1ms_steps": 70268,
+        "requested_sleep_s": 1.8256630978139583,
+        "time_source": "actual native solver time",
+        "dropped_physics_steps": 0
+      },
+      "measured_path_length_m": 22.73215507800493,
+      "low_speed_fraction": 0.02318235772687617
+    },
+    "v47_qualified_run": "v47_realtime_trial02",
+    "v47_excluded_run": "v47_realtime_trial01: missing versioned backend dependency",
+    "v47_returned_files_verified": 909,
+    "v48_actual_rates": {
+      "actual_local_attempt_hz": 15.858531335107074,
+      "actual_successful_round_hz": 15.757291970809804,
+      "local_solve_ms": {
+        "count": 1311,
+        "mean": 36.389740715484365,
+        "median": 3.091636,
+        "p95": 126.49563549999999,
+        "p99": 207.1750073000008,
+        "maximum": 1090.481155
+      },
+      "controller_rates": {
+        "/quad_0/raw_scan_cmd_vel": {
+          "samples": 2486,
+          "hz": 30.000532121423987
+        },
+        "/quad_0/cmd_vel": {
+          "samples": 2555,
+          "hz": 30.83335352068047
+        }
+      },
+      "global_refresh_hz": 0.9999696703689435,
+      "realtime_pacing": {
+        "target_rtf": 1.0,
+        "native_elapsed_s": 78.9413652420044,
+        "wall_elapsed_s": 82.8506737179996,
+        "actual_rtf": 0.9528150068000486,
+        "wall_anchor_monotonic_s": 159156.019651125,
+        "native_anchor_s": 11.02082347869873,
+        "physics_steps": 78980,
+        "fixed_step_nominal_elapsed_s": 78.98,
+        "current_lag_s": 3.9093084759952035,
+        "max_lag_s": 3.927961384993978,
+        "lag_over_1ms_steps": 68742,
+        "requested_sleep_s": 2.1683937436318956,
+        "time_source": "actual native solver time",
+        "dropped_physics_steps": 0
+      },
+      "warm_selected_attempts": 1217,
+      "warm_accepted_attempts": 1207,
+      "warm_graph_fallbacks": 10,
+      "local_overruns": 440,
+      "skipped_slots": 1169,
+      "measured_path_length_m": 29.79355937147976
+    },
+    "v48_run": "v48_realtime_trial01",
+    "v48_returned_files_verified": 909,
+    "v50_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v50/RESULTS.md",
+    "v50_status": "upfront_replay_improved_full_run_tail_and_continuity_failed",
+    "v50_actual_results": {
+      "v50_realtime_trial01": {
+        "local_solve_ms": {
+          "count": 964,
+          "mean": 58.95876291701245,
+          "median": 2.260838,
+          "p95": 614.8926469499997,
+          "p99": 665.7222852000001,
+          "maximum": 1829.6264429999999
+        },
+        "whole_window_rates": {
+          "start_wall_s": 175845.779978224,
+          "end_wall_s": 175930.787642738,
+          "duration_s": 85.00766451400705,
+          "attempt_starts": 960,
+          "completed_rounds": 959,
+          "successful_completions": 883,
+          "attempt_hz": 11.293099339787378,
+          "completed_hz": 11.281335694641767,
+          "successful_hz": 10.387298663575267,
+          "definition": "Events within original navigation pacing window, including stalls; success timestamp is round start plus elapsed solve time."
+        },
+        "measured_path_length_m": 23.66735386615934,
+        "pauses_over_1s": [
+          42.576602935791016
+        ],
+        "emergency_transitions": 0,
+        "current_curve_invalid_events": 0,
+        "full_route_accepted": false
+      },
+      "v50_realtime_trial02": {
+        "local_solve_ms": {
+          "count": 1044,
+          "mean": 52.72100441283525,
+          "median": 2.1258310000000002,
+          "p95": 326.13440744999997,
+          "p99": 579.5421794700001,
+          "maximum": 858.030627
+        },
+        "whole_window_rates": {
+          "start_wall_s": 176192.36046361,
+          "end_wall_s": 176277.875692862,
+          "duration_s": 85.51522925199242,
+          "attempt_starts": 1037,
+          "completed_rounds": 1036,
+          "successful_completions": 895,
+          "attempt_hz": 12.126495000606443,
+          "completed_hz": 12.114801177076448,
+          "successful_hz": 10.46597205934693,
+          "definition": "Events within original navigation pacing window, including stalls; success timestamp is round start plus elapsed solve time."
+        },
+        "measured_path_length_m": 23.662448449528046,
+        "pauses_over_1s": [
+          44.175724029541016
+        ],
+        "emergency_transitions": 0,
+        "current_curve_invalid_events": 0,
+        "full_route_accepted": false
+      }
+    },
+    "v52_component_results": {
+      "native_checks": 35,
+      "cache_checks": 64,
+      "paired_rounds": 18,
+      "paired_max_before_ms": 473.51387,
+      "paired_max_after_ms": 422.980529,
+      "paired_max_reduction_percent": 10.671987496374713,
+      "shared_host_load": false,
+      "physics_run": true
+    },
+    "v52_actual_results": {
+      "local_solve_ms": {
+        "count": 981,
+        "mean": 55.84346008358818,
+        "median": 2.039298,
+        "p95": 452.706459,
+        "p99": 486.0628168,
+        "maximum": 711.4040160000001
+      },
+      "whole_window_rates": {
+        "start_wall_s": 238830.14222081,
+        "end_wall_s": 238914.73581892,
+        "duration_s": 84.59359810999013,
+        "attempt_starts": 976,
+        "completed_rounds": 975,
+        "successful_completions": 862,
+        "attempt_hz": 11.537516098215697,
+        "completed_hz": 11.52569487270523,
+        "successful_hz": 10.18989639002247
+      },
+      "measured_path_length_m": 23.189350768185967,
+      "pauses_over_1s": [
+        46.574405670166016
+      ],
+      "emergency_transitions": 0,
+      "current_curve_invalid_events": 0,
+      "controller_rates": {
+        "/quad_0/cmd_vel": {
+          "samples": 2607,
+          "hz": 30.81542731787837
+        },
+        "/quad_0/raw_scan_cmd_vel": {
+          "samples": 2538,
+          "hz": 29.999770616582534
+        }
+      }
+    }
+  },
+  "v47_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v47/RESULTS.md",
+  "v47_manifest": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v47/manifest.json",
+  "v48_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v48/RESULTS.md",
+  "v48_manifest": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v48/manifest.json",
+  "previous_experimental_reference": "v48",
+  "development_version": "v175",
+  "development_parent": "v174 native / v166 Linux host",
+  "development_status": "v175 repeated original-route qualification failed2/5; isolated replay of three first-curve deadlocks active",
+  "last_attempted_version": "v174",
+  "last_attempted_status": "One Mac original-route arrival with6qualified handoffs; not reliability acceptance",
+  "last_candidate_version": "v59",
+  "last_candidate_status": "frozen_not_accepted",
+  "v50_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v50/RESULTS.md",
+  "v50_acceptance": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v50/acceptance.json",
+  "v50_manifest": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v50/manifest.json",
+  "artifact_pipeline_version": "v51",
+  "artifact_pipeline_status": "local_retention_and_recorded_rendering_validated_no_physics_change",
+  "artifact_pipeline_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v51/RESULTS.md",
+  "artifact_default_entry": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/run_managed.py",
+  "v52_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v52/RESULTS.md",
+  "v52_manifest": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v52/manifest.json",
+  "v52_physics_launched": true,
+  "latest_display_version": "v120",
+  "latest_display_source_version": "v116",
+  "latest_display_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v120/RESULTS.md",
+  "latest_review_video_provenance": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v120/results/delivery.json",
+  "latest_repair_report": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-05_safe_mapping_repair/REPORT.md",
+  "v58_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v58/RESULTS.md",
+  "v58_acceptance": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v58/acceptance.json",
+  "v58_manifest": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v58/manifest.json",
+  "v59_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v59/RESULTS.md",
+  "v59_acceptance": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v59/acceptance.json",
+  "v59_manifest": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v59/manifest.json",
+  "post_delivery_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-03_v59_cold_recovery/REPORT.md",
+  "chained_retry_epoch_validated": false,
+  "latest_repair_version": "v82",
+  "latest_repair_status": "frozen_component_passed_physical_continuity_and_30hz_failed",
+  "latest_repair_reference_unchanged": "v48",
+  "latest_component_investigation": "v99",
+  "latest_component_investigation_status": "full_foxy_nav2_components_checked_original_newton_failed_jetson_pending",
+  "latest_component_investigation_report": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-08_nav2_full/REPORT.zh.md",
+  "latest_nav2_plugin_version": "v114",
+  "latest_mapping_policy_version": "v91",
+  "latest_nav2_source_export_version": "v114",
+  "latest_nav2_physical_version": "v127",
+  "latest_nav2_physical_status": "step3_parked_fixed_input_equivalent_candidate_navigation_failed_baseline_v122_arrived",
+  "latest_nav2_jetson_status": "not_connected_user_will_supply_access_later",
+  "latest_nav2_robot_actuated": false,
+  "nav2_sim_repair": {
+    "latest_frozen_candidate": "v114",
+    "stage": "experiment_and_analysis",
+    "full_route_accepted": false,
+    "active_attempt": null,
+    "source_report": "../audits/2026-10-08_nav2_sim_repair/REPORT.md",
+    "latest_physical_result": "v114:26.551m path; arrived; measured stop; two protected retries",
+    "preparing": null,
+    "review_video": "output/2026-09-27_lite3_versions/v114_original_corner_arrived_review_v115.mp4",
+    "one_run_arrival_and_stop_verified": true,
+    "remaining": [
+      "Repeated-run reliability",
+      "Eliminate measured future-body/map-age stops without relaxing validity",
+      "Jetson receive-only validation when access is supplied"
+    ],
+    "storage_receipt": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-08_nav2_sim_repair/STORAGE.json",
+    "remote_archive_verified": true
+  },
+  "latest_nav2_goal_success_version": "v114",
+  "nav2_curve_timing": {
+    "recording": "v116 attempt02",
+    "native_source": "v114",
+    "video_version": "v120",
+    "html_version": "v121",
+    "html": "output/2026-10-09_nav2_local_planning/delivered/local_planning.html",
+    "video": "output/2026-10-09_nav2_local_planning/delivered/simulation_local_curve.mp4",
+    "recording_terminal": "FAILED",
+    "delivered": true,
+    "report": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-09_local_curve_timing/REPORT.md",
+    "remote_raw_verified": true
+  },
+  "mppi_incremental": {
+    "plan": "../audits/2026-10-09_mppi_incremental/PLAN.md",
+    "step": 3,
+    "diagnostic_version": "v122",
+    "execution_host": "gpu5070ti",
+    "host_port": "v127",
+    "native_variants": {
+      "baseline": "v122",
+      "candidate": "v127"
+    },
+    "remote_root": "/data/sun/vla_mppi_20261009",
+    "status": "step3_park_v127_fixed_input_equivalent_physical_candidate_failed",
+    "reference_unchanged": "v48",
+    "report": "../audits/2026-10-10_mppi_step3/REPORT.md",
+    "baseline_trial": "v127_baseline_attempt01",
+    "candidate_trial": "v127_candidate_attempt01",
+    "classified_rounds": 918,
+    "failed_rounds": 5,
+    "next_step": "Investigate shared fresh-data curve rejection, replacement search and stop/recovery handoff from retained v122; no candidate adoption or adaptations 4-5 authorized by this diagnosis.",
+    "step1_evidence": {
+      "baseline_trial": "v125_baseline_attempt01",
+      "candidate_trial": "v125_candidate_attempt02",
+      "classified_rounds": 1055,
+      "failed_rounds": 3,
+      "report": "../audits/2026-10-09_mppi_incremental/REPORT.md",
+      "host_port": "v125",
+      "native_variants": {
+        "baseline": "v114",
+        "candidate": "v122"
+      },
+      "status": "keep_diagnostics"
+    },
+    "retained_native_version": "v122",
+    "retained_host_version": "v125",
+    "step2_candidate": "v126",
+    "step2_host_port": "v126",
+    "step2_native_variants": {
+      "baseline": "v122",
+      "candidate": "v126"
+    },
+    "step2_baseline_trial": "v126_baseline_attempt01",
+    "step2_candidate_trial": "v126_candidate_attempt01",
+    "step2_report": "../audits/2026-10-10_mppi_step2/REPORT.md",
+    "step2_evidence": {
+      "step2_candidate": "v126",
+      "step2_host_port": "v126",
+      "step2_native_variants": {
+        "baseline": "v122",
+        "candidate": "v126"
+      },
+      "step2_baseline_trial": "v126_baseline_attempt01",
+      "step2_candidate_trial": "v126_candidate_attempt01",
+      "step2_report": "../audits/2026-10-10_mppi_step2/REPORT.md",
+      "status": "park"
+    },
+    "step3_candidate": "v127",
+    "step3_status": "park",
+    "steps_4_to_5": "pending",
+    "repeat_diagnosis": {
+      "status": "completed_shared_instability_no_recorded_validator_regression",
+      "plan": "../audits/2026-10-10_mppi_step3_repeats/PLAN.md",
+      "host": "gpu5070ti",
+      "frozen_versions": [
+        "v122",
+        "v127"
+      ],
+      "new_trials_per_arm": 6,
+      "order": "BAAB/ABBA/BAAB",
+      "navigation_code_changed": false,
+      "report": "../audits/2026-10-10_mppi_step3_repeats/REPORT.md",
+      "arrivals": {
+        "v122": 0,
+        "v127": 1
+      },
+      "trials_per_arm": 6,
+      "falls": {
+        "v122": 1,
+        "v127": 0
+      },
+      "captured_curves": 28720,
+      "publication_epochs": 11691,
+      "reconstructed_map_queries": 9,
+      "all_replay_verdicts_equal": true,
+      "live_scheduling_equivalence_proved": false,
+      "local_evidence_verified": true
+    }
+  },
+  "latest_nav2_retained_native_version": "v122",
+  "latest_nav2_retained_host_version": "v125",
+  "recovery_repair": {
+    "status": "v139_declared_scenario_validated_broader_acceptance_open",
+    "native_parent": "v114",
+    "host_parent": "v125",
+    "candidate": "v139",
+    "original_v114_trials": {
+      "count": 3,
+      "arrivals": 1,
+      "navigation_failures": 2,
+      "falls": 0
+    },
+    "report": "../audits/2026-10-10_nav2_recovery/REPORT.md",
+    "mppi_adaptations_included": false,
+    "full_repair_validated": false,
+    "component_tests": 38,
+    "source_pairs": 3220,
+    "runtime_inputs": 618,
+    "v128_comparison": {
+      "v114_arrivals": 2,
+      "v128_arrivals": 2,
+      "runs_per_arm": 6,
+      "falls": 0
+    },
+    "last_frozen_candidate": "v139",
+    "pilot": {
+      "version": "v131",
+      "arrived": true,
+      "path_m": 26.31569691309976,
+      "falls": 0,
+      "replacements_with_recorded_proof": 1
+    },
+    "v131_comparison": {
+      "v114_arrivals": 2,
+      "v131_arrivals": 1,
+      "runs_per_arm": 6,
+      "v114_falls": 0,
+      "v131_falls": 1
+    },
+    "adopted": false,
+    "diagnostic_version": "v132",
+    "local_evidence_verified": true,
+    "verified_remote_trials": 35,
+    "v133_pilots": {
+      "runs": 3,
+      "arrivals": 2,
+      "failures": 1,
+      "falls": 0,
+      "recorded_replacement_proofs": 9
+    },
+    "remaining": [
+      "Sustained 30Hz and long solve-time spikes remain unvalidated; fresh candidate maximum 706.406ms.",
+      "General navigation and sensor-only unseen-gap detection are not established by this static-map scenario.",
+      "Jetson and real-robot receive-only/actuation gates remain separate."
+    ],
+    "support_gap_repair": {
+      "original_failure": "v133_candidate_attempt02",
+      "cause": "Left-front foot enters subcell static floor seam hidden by the coarse height map",
+      "v134_pilots": {
+        "runs": 3,
+        "arrivals": 0,
+        "falls": 0,
+        "adopted": false
+      },
+      "v135": "Frozen global support coverage map; fixed pilots 2/3, not accepted",
+      "report": "../audits/2026-10-10_v133_posture/REPORT.md",
+      "v135_pilots": {
+        "runs": 3,
+        "arrivals": 2,
+        "falls": 0,
+        "adopted": false
+      },
+      "v136": "Frozen mission inbox and emergency-exit repair; fixed pilots 2/3, not accepted",
+      "v136_pilots": {
+        "runs": 3,
+        "arrivals": 2,
+        "falls": 0,
+        "adopted": false
+      },
+      "v137": "Frozen transient-input admission wait; fixed pilots 2/3, not accepted",
+      "v137_pilots": {
+        "runs": 3,
+        "arrivals": 2,
+        "falls": 0,
+        "adopted": false
+      },
+      "v138": "All 3 pilots failed at start; conservative local envelope rejected",
+      "v138_pilots": {
+        "runs": 3,
+        "arrivals": 0,
+        "falls": 0,
+        "adopted": false
+      },
+      "v139": "Frozen build02; captured case repaired, 3/3 pilots and 6/6 fresh arrivals, no falls, 11 replacement proofs pass; all local evidence hashes verified",
+      "v139_pilots": {
+        "runs": 3,
+        "arrivals": 3,
+        "falls": 0,
+        "adopted": false,
+        "gate_record": "/data/sun/vla_mppi_20261009/results/recovery_v139_02_pilots/reconciled_gate.json"
+      },
+      "v139_repeats": {
+        "candidate_runs": 6,
+        "candidate_arrivals": 6,
+        "candidate_falls": 0,
+        "baseline_runs": 6,
+        "baseline_arrivals": 5,
+        "baseline_falls": 0,
+        "qualified_candidate_replacements": 11,
+        "local_return_verified": true,
+        "validated_for_declared_scenario": true
+      },
+      "acceptance": "../audits/2026-10-10_v133_posture/SCENARIO_ACCEPTANCE.json",
+      "video": {
+        "display_version": "v140",
+        "physical_source_run": "v139_candidate_attempt08",
+        "path": "v140/delivered/v139_recovery.mp4",
+        "duration_s": 54.86666666666667,
+        "frames": 1646,
+        "bytes": 6555740,
+        "sha256": "bf38c497fc5f0db261762f4c7ca249c611b513b05fb4d0d562be6255b4f87207",
+        "local_return_verified": true,
+        "render_only": true
+      },
+      "video_from_start": {
+        "display_version": "v141",
+        "physical_source_run": "v139_candidate_attempt08",
+        "path": "v141/delivered/v139_from_start.mp4",
+        "duration_s": 65.83333333333333,
+        "frames": 1975,
+        "bytes": 7159239,
+        "sha256": "ffdc76ef4adc6639dc2fb38561a375a464edddcda5055da31f9c32ed47cce42f",
+        "first_physics_s": 0.07999998331069946,
+        "startup_clock": "recorded simulation timestamps",
+        "navigation_clock": "original wall timestamps 1:1",
+        "local_return_verified": true
+      }
+    },
+    "scenario_repair_validated": true,
+    "validated_scope": "Fixed Building scenario on gpu5070ti CPU Newton/Foxy; 3/3 pilots, 6/6 fresh arrivals, no falls, 11 qualified replacement proofs; no general/30Hz/Jetson acceptance",
+    "new_verified_remote_trials": 30,
+    "new_raw_trial_bytes": 5389007279,
+    "posture_report": "../audits/2026-10-10_v133_posture/REPORT.md"
+  },
+  "local_recovery_20261012": {
+    "stage": "experiment_and_analysis",
+    "original_map_and_start_retained": true,
+    "v165_acceptance": {
+      "attempts": 5,
+      "navigation_failures": 4,
+      "startup_abort_after_physics": 1,
+      "arrivals": 0
+    },
+    "v166": "Frozen host port isolation;18tests and actualgraph pass",
+    "v167": "Mac01 interrupted by350ms ACK delay; raw verified, arrival/copyback unqualified",
+    "v168": "Native14packages/47colcon/18host/actualgraph pass; no physical acceptance",
+    "full_repair_validated": false,
+    "v169": "FAIL74.060m after7thstop cumulative retry exhaustion; archive verified",
+    "v170": "Frozen3881pairs/649nativefiles, components+graphpass, physicaltrialpending",
+    "v171": "Linux port preparation, no physical run",
+    "v172": "FAIL atgoalregion from PCT singletonassert; fouractualbudgetrenewals/tenstopproofs pass",
+    "v174": "PASS originalfullroute77.344m/140.288s, fourbudgetrenewals andfourstopproofs, finalXYZ/yaw/hold/copybackpass",
+    "v175": "Frozen4029pairs; fiveLinuxepisodes2PASS/3FAIL,35stopproofs pass,0falls; notadopted",
+    "v176": "PASS one Mac originalfullroute77.659m/142.282s,6qualified stophandoffs; finalXYZ/yaw/PD/copyback and raw/environment archive verified",
+    "v177": "PASS5/5Linux originalroutes,30qualifiedstop handoffs,0falls,55compactfilesSHAverified",
+    "v178": "Verified regular full video162.367s/4871frames/19.987MB; physicalsourcev177attempt01; no physics rerun",
+    "recovery_candidate": "v177",
+    "original_scenario_repetition_validated": true,
+    "general_recovery_and_30hz_validated": false,
+    "request_status": "completed_for_declared_original_map_repetition; residual pauses and post-revocation drift limitations documented"
+  },
+  "stop_cause_audit_20261012": {
+    "stage": "experiment_and_analysis",
+    "examined_version": "v177",
+    "navigation_behavior_changed": false,
+    "new_physical_episodes": 0,
+    "intermediate_retries": 30,
+    "normal_terminal_stops": 5,
+    "physical_low_speed_intervals": 33,
+    "source_age_events": 20,
+    "fresh_geometry_events": 3,
+    "progress_timeouts": 3,
+    "first_curve_timeouts": 4,
+    "effective_zero_drift_m": 0.9566512028383114,
+    "stop_hold_repair_validated": false,
+    "upstream_repositories_surveyed": 13,
+    "report": "audits/2026-10-12_v177_stop_causes/REPORT.zh.md"
+  },
+  "policy_only_stopping_20261012": {
+    "physics_version": "v179",
+    "display_version": "v181",
+    "execution_host": "Mac ARM64",
+    "navigation_connected": false,
+    "model_changed": false,
+    "physical_episodes": 12,
+    "flat_runs": 6,
+    "stair_scene_runs": 6,
+    "complete_stop_windows": 24,
+    "flat_late_5cm_flags": 4,
+    "stair_scene_late_5cm_flags": 7,
+    "max_flat_late_excursion_m": 0.3115277251718801,
+    "max_stair_late_excursion_m": 0.14543615999846685,
+    "all_restart_phases_completed": true,
+    "raw_remote_member_verification": true,
+    "video_delivery_status": "v181 full cohort verified",
+    "stopping_repair_validated": false,
+    "training_only_cause_proved": false,
+    "report": "v179/RESULTS.md",
+    "classification": "below_0.6mps_operating_cruise_controls_not_nominal_qualification",
+    "nominal_speed_followup": "v182 completed; v183 full cohort videos verified"
+  },
+  "policy_only_speed_followup_20261013": {
+    "physics_version": "v182",
+    "display_version": "v183",
+    "execution_host": "Mac ARM64",
+    "commands_mps": [
+      0.6,
+      0.8,
+      1.0
+    ],
+    "physical_episodes": 12,
+    "complete_stop_windows": 24,
+    "flat_late_5cm_flags": 0,
+    "stair_scene_late_5cm_flags": 4,
+    "max_flat_late_excursion_m": 0.03668059309765349,
+    "max_stair_late_excursion_m": 0.10080917354015397,
+    "raw_remote_member_verification": true,
+    "video_delivery_status": "all 12 clips and both 6-run videos verified",
+    "repair_validated": false,
+    "training_only_cause_proved": false,
+    "report": "v182/RESULTS.md",
+    "comparison": "v182/results/speed_comparison.json",
+    "delivery": "v183/DELIVERY.json",
+    "caveat": "0.6 planned cruise differs from dynamic training per-axis gap; stair stop geometry changes with speed"
+  },
+  "rl_input_speed_audit_20261013": {
+    "report": "../audits/2026-10-13_v177_rl_speed/REPORT.zh.md",
+    "html": "../audits/2026-10-13_v177_rl_speed/speeds.html",
+    "actual_model_input_frames": 30741,
+    "stop_events": 35,
+    "endpoint_low_intervals": 5,
+    "late_drift_after_zero_s": 15.87127685546875,
+    "zero_command_max_excursion_m": 0.9582535534383785,
+    "repair_validated": false,
+    "sole_low_speed_cause_proved": false
+  },
+  "terminal_capture_repair_20261013": {
+    "rejected_candidate": "v185",
+    "rejected_result": "3/5 full-route arrivals; 4/5 endpoint criterion passes",
+    "candidate": "v187",
+    "status": "v187_closed_3of5_not_accepted_v188_rebuild_control_3of5",
+    "rl_model_changed": false,
+    "report": "v185/RESULTS.md",
+    "prospective_plan": "v187/PLAN.md",
+    "v187_results": "v187/RESULTS.md",
+    "rejected_candidates": {
+      "v185": "3/5 arrivals; endpoint4/5",
+      "v186": "2/5 arrivals; endpoint4/5",
+      "v187": "3/5 arrivals; endpoint5/5; timeout branch exercised in attempt03"
+    },
+    "fresh_unchanged_v177_control": "5/5 arrivals, attempts06-10; longest declared tail0.7996s",
+    "unchanged_source_rebuild_control": {
+      "version": "v188",
+      "result": "3/5 arrivals; endpoint4/5; max terminal crawl4.997253s",
+      "source_identity": "all649 native source files equal v177",
+      "results": "v188/RESULTS.md",
+      "interpretation": "failures occur without new endpoint logic; cause of variation unidentified; cohorts not pooled"
+    }
   }
 }

@@ -1,0 +1,153 @@
+--- a/src/plan_manage/include/plan_manage/planner_manager.h
++++ b/src/plan_manage/include/plan_manage/planner_manager.h
+@@ -29,7 +29,10 @@
+     /* main planning interface */
+     bool hasLocalTranslation(const Eigen::Vector3d &start, const Eigen::Vector3d &target) const;
+     bool reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel, Eigen::Vector3d start_acc,
+-                       Eigen::Vector3d end_pt, Eigen::Vector3d end_vel, bool flag_polyInit, bool flag_randomPolyTraj);
++                       Eigen::Vector3d end_pt, Eigen::Vector3d end_vel, bool flag_polyInit, bool flag_randomPolyTraj,
++                       const rclcpp::Time *retry_origin = nullptr);
++    bool sampledTrajectoryOrigin(const Eigen::Vector3d &start_pt, const Eigen::Vector3d &start_vel,
++        const Eigen::Vector3d &start_acc, double curve_time, rclcpp::Time &origin) const;
+     bool EmergencyStop(Eigen::Vector3d stop_pos);
+     void setWarmStartContext(const std::string &identity, const Eigen::Vector3d &goal,
+                              double curve_time = -1.0);
+--- a/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ b/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -156,7 +156,7 @@
+     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr self_inflation_pub_;
+ 
+     /* helper functions */
+-    bool callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget = nullptr, double warm_curve_time = -1.0); // front-end and back-end method
++    bool callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget = nullptr, double warm_curve_time = -1.0, const rclcpp::Time *retry_origin = nullptr); // front-end and back-end method
+     int recoveryTargetOccupancy(const Eigen::Vector3d &candidate, double yaw);
+     bool callEmergencyStop(Eigen::Vector3d stop_pos);                          // front-end and back-end method
+     bool planFromCurrentTraj();
+--- a/src/plan_manage/src/planner_manager.cpp
++++ b/src/plan_manage/src/planner_manager.cpp
+@@ -217,35 +217,48 @@
+     return true;
+   }
+ 
++  bool SCANPlannerManager::sampledTrajectoryOrigin(const Eigen::Vector3d &start_pt,
++      const Eigen::Vector3d &start_vel, const Eigen::Vector3d &start_acc,
++      double curve_time, rclcpp::Time &origin) const
++  {
++    const auto now = node_->now();
++    auto previous = local_data_.position_traj_;
++    if (local_data_.traj_id_ <= 0 || now.get_clock_type() != local_data_.start_time_.get_clock_type() ||
++        !std::isfinite(curve_time) || curve_time < 0.0 ||
++        !std::isfinite(local_data_.duration_) || curve_time >= local_data_.duration_ ||
++        !reactive_stair::validSplineLayout(previous.getControlPoint(), previous.getKnot(), 3)) return false;
++    const double age = (now - local_data_.start_time_).seconds();
++    auto velocity = previous.getDerivative();
++    auto acceleration = velocity.getDerivative();
++    if (age < 0.0 || age >= local_data_.duration_ || curve_time > age + 1e-6 ||
++        std::abs(previous.getTimeSum() - local_data_.duration_) > 1e-6 ||
++        !start_pt.allFinite() || !start_vel.allFinite() || !start_acc.allFinite() ||
++        (previous.evaluateDeBoorT(curve_time) - start_pt).norm() > 1e-6 ||
++        (velocity.evaluateDeBoorT(curve_time) - start_vel).norm() > 1e-6 ||
++        (acceleration.evaluateDeBoorT(curve_time) - start_acc).norm() > 1e-6) return false;
++    origin = local_data_.start_time_ + rclcpp::Duration::from_seconds(curve_time);
++    return true;
++  }
++
+   bool SCANPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
+                                         Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
+-                                        Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj)
++                                        Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj,
++                                        const rclcpp::Time *retry_origin)
+   {
+     GridMap::RawContributorCacheScope raw_cache_scope(*grid_map_);
+-    // A spline-derived start PVA belongs to its sampled time, not solve completion.
+-    // This also applies when warm initialization falls back to native graph search.
++    // The FSM owns a checked sample epoch for its entire synchronous retry chain.
++    // A later expiry of the source curve does not resample the retained PVA.
+     auto sampled_origin = node_->now();
+-    bool sampled_boundary = false;
+-    auto previous = local_data_.position_traj_;
+-    if (local_data_.traj_id_ > 0 &&
+-        sampled_origin.get_clock_type() == local_data_.start_time_.get_clock_type() &&
+-        std::isfinite(warm_curve_time_) && warm_curve_time_ >= 0.0 &&
+-        std::isfinite(local_data_.duration_) && warm_curve_time_ < local_data_.duration_ &&
+-        reactive_stair::validSplineLayout(previous.getControlPoint(), previous.getKnot(), 3)) {
+-      const double age = (sampled_origin - local_data_.start_time_).seconds();
+-      auto velocity = previous.getDerivative();
+-      auto acceleration = velocity.getDerivative();
+-      if (age >= 0.0 && age < local_data_.duration_ && warm_curve_time_ <= age + 1e-6 &&
+-          std::abs(previous.getTimeSum() - local_data_.duration_) <= 1e-6 &&
+-          start_pt.allFinite() && start_vel.allFinite() && start_acc.allFinite() &&
+-          (previous.evaluateDeBoorT(warm_curve_time_) - start_pt).norm() <= 1e-6 &&
+-          (velocity.evaluateDeBoorT(warm_curve_time_) - start_vel).norm() <= 1e-6 &&
+-          (acceleration.evaluateDeBoorT(warm_curve_time_) - start_acc).norm() <= 1e-6) {
+-        sampled_origin = local_data_.start_time_ + rclcpp::Duration::from_seconds(warm_curve_time_);
+-        sampled_boundary = true;
+-      }
+-    }
+-    const rclcpp::Time *trajectory_origin = sampled_boundary ? &sampled_origin : nullptr;
++    const rclcpp::Time *trajectory_origin = retry_origin;
++    if (trajectory_origin &&
++        (trajectory_origin->get_clock_type() != sampled_origin.get_clock_type() ||
++         !std::isfinite(trajectory_origin->seconds()) ||
++         (*trajectory_origin - sampled_origin).seconds() > 1e-6)) {
++      RCLCPP_WARN(node_->get_logger(), "V62_RETRY_EPOCH invalid_clock_or_future");
++      return false;
++    }
++    if (!trajectory_origin && sampledTrajectoryOrigin(start_pt, start_vel, start_acc,
++            warm_curve_time_, sampled_origin)) trajectory_origin = &sampled_origin;
+     bool attempted = false;
+     const int failures_before = continuous_failures_count_;
+     bool used_warm = false;
+--- a/src/plan_manage/src/scan_replan_fsm.cpp
++++ b/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1174,15 +1174,20 @@
+       start_vel_ = info->velocity_traj_.evaluateDeBoorT(t_cur);
+       start_acc_ = info->acceleration_traj_.evaluateDeBoorT(t_cur);
+ 
++      // Capture the PVA's epoch once; all prefix and initialization retries share it.
++      auto sampled_origin = time_now;
++      const bool sampled_boundary = planner_manager_->sampledTrajectoryOrigin(
++          start_pt_, start_vel_, start_acc_, t_cur, sampled_origin);
++      const rclcpp::Time *retry_origin = sampled_boundary ? &sampled_origin : nullptr;
+       // One shared prefix budget across all original initialization modes.
+       int reference_prefix_budget = 3;
+-      bool success = callReboundReplan(false, false, &reference_prefix_budget, t_cur);
++      bool success = callReboundReplan(false, false, &reference_prefix_budget, t_cur, retry_origin);
+       if (!success)
+       {
+-        success = callReboundReplan(true, false, &reference_prefix_budget, t_cur);
++        success = callReboundReplan(true, false, &reference_prefix_budget, t_cur, retry_origin);
+         if (!success)
+         {
+-          success = callReboundReplan(true, true, &reference_prefix_budget, t_cur);
++          success = callReboundReplan(true, true, &reference_prefix_budget, t_cur, retry_origin);
+           if (!success)
+             return false;
+         }
+@@ -1314,7 +1319,7 @@
+     return planner_manager_->grid_map_->getInflateOccupancy(candidate, yaw);
+   }
+ 
+-  bool SCANReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget, double warm_curve_time)
++  bool SCANReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget, double warm_curve_time, const rclcpp::Time *retry_origin)
+   {
+ 
+     if (!getLocalTarget()) {
+@@ -1326,7 +1331,7 @@
+     planner_manager_->setWarmStartContext(warmStartIdentity(), warmGoalContext(), warm_curve_time);
+ 
+     bool plan_success =
+-        planner_manager_->reboundReplan(start_pt_, start_vel_, start_acc_, local_target_pt_, local_target_vel_, (have_new_target_ || flag_use_poly_init), flag_randomPolyTraj);
++        planner_manager_->reboundReplan(start_pt_, start_vel_, start_acc_, local_target_pt_, local_target_vel_, (have_new_target_ || flag_use_poly_init), flag_randomPolyTraj, retry_origin);
+     have_new_target_ = false;
+ 
+     const bool reference = navi_mode_ == NAVI_MODE::REFERENCE_PATH;
+@@ -1359,7 +1364,7 @@
+       // Every shorter target goes through the complete native planner, with
+       // the same start PVA and zero terminal velocity. No seed-only fallback.
+       plan_success = planner_manager_->reboundReplan(start_pt_, start_vel_, start_acc_,
+-          local_target_pt_, local_target_vel_, true, flag_randomPolyTraj);
++          local_target_pt_, local_target_vel_, true, flag_randomPolyTraj, retry_origin);
+     }
+     if (plan_success && reference) {
+       rememberFeasibleWindow();

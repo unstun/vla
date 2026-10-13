@@ -1,0 +1,217 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v106/src/scan_nav2_controller/CMakeLists.txt
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v107/src/scan_nav2_controller/CMakeLists.txt
+@@ -26,6 +26,7 @@
+ if(BUILD_TESTING)
+   find_package(ament_cmake_gtest REQUIRED)
+   ament_add_gtest(test_controller test/test_controller.cpp TIMEOUT 60)
++  target_compile_options(test_controller PRIVATE -fno-access-control)
+   target_link_libraries(test_controller scan_nav2_controller)
+   target_compile_definitions(test_controller PRIVATE TEST_NATIVE_CONFIG="${CMAKE_CURRENT_SOURCE_DIR}/../plan_manage/config/planner.yaml")
+   ament_target_dependencies(test_controller ${dependencies})
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v106/src/scan_nav2_controller/test/test_controller.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v107/src/scan_nav2_controller/test/test_controller.cpp
+@@ -144,6 +144,23 @@
+   EXPECT_THROW(plugin->setPlan(changed),nav2_core::PlannerException);
+ }
+ TEST_F(PluginTest, RealPluginTracksNativeSplineAndTagsOutput) { moving(); }
++TEST_F(PluginTest, UnvalidatedReplacementPreservesStillFreshExecutingCurve)
++{
++  moving();
++  auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());ASSERT_NE(actual,nullptr);
++  auto next=std::make_shared<sm::Bspline>(curve());next->traj_id=2;
++  actual->onSpline(next);
++  auto command=plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist());
++  EXPECT_GT(command.twist.linear.x,0.0);output->publishCommand(command);
++  ASSERT_TRUE(wait([&] {return !received.empty();}));EXPECT_EQ(received.back().traj_id,1);
++  auto proof=std::make_shared<sm::P2BExecutionSafety>();identity(proof->binding);
++  proof->binding.traj_id=2;proof->binding.consumer="native_safety";proof->clear=true;
++  proof->stamp=parent->now();proof->observation_stamp_s=parent->now().seconds();proof->local_map_revision=1;
++  actual->onSafety(proof);
++  auto fresh=plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist());
++  EXPECT_GT(fresh.twist.linear.x,0.0);output->publishCommand(fresh);
++  ASSERT_TRUE(wait([&] {return received.back().traj_id==2;}));
++}
+ TEST_F(PluginTest, ReplacementBetweenComputeAndPublishDropsOldCommandWithoutCancelling)
+ {
+   std::vector<sm::P2BAdmission> admissions;
+@@ -153,6 +170,9 @@
+   auto old=plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist());
+   ASSERT_GT(old.twist.linear.x,0.0);
+   auto replacement=curve();replacement.traj_id=2;spline->publish(replacement);
++  sm::P2BExecutionSafety ready;identity(ready.binding);ready.binding.traj_id=2;
++  ready.binding.consumer="native_safety";ready.clear=true;ready.local_map_revision=1;
++  ready.stamp=parent->now();ready.observation_stamp_s=parent->now().seconds();safety->publish(ready);
+   ASSERT_TRUE(wait([&] {return std::any_of(admissions.begin(),admissions.end(),
+     [](const auto &a) {return a.traj_id==2 && a.consumer=="controller" && a.status=="accepted";});}));
+   received.clear();output->publishCommand(old);
+@@ -252,6 +272,40 @@
+   moving(); wait([] { return false; },0.13);
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
+ }
++TEST_F(PluginTest, PendingCurvesCannotRefreshTheExecutingProof)
++{
++  moving();auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
++  for(int id=2;id<5;++id) {
++    auto next=std::make_shared<sm::Bspline>(curve());next->traj_id=id;actual->onSpline(next);
++    wait([] {return false;},0.045);
++  }
++  EXPECT_THROW(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++}
++TEST_F(PluginTest, ProofBeforeCurvePreservesSourceTimesAndExactPair)
++{
++  moving();auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
++  auto proof=std::make_shared<sm::P2BExecutionSafety>();identity(proof->binding);
++  proof->binding.consumer="native_safety";proof->binding.traj_id=2;proof->clear=true;
++  proof->stamp=parent->now();proof->observation_stamp_s=parent->now().seconds();
++  actual->onSafety(proof);
++  EXPECT_EQ(actual->tracker_->traj_id_,1);
++  auto next=std::make_shared<sm::Bspline>(curve());next->traj_id=2;actual->onSpline(next);
++  EXPECT_EQ(actual->tracker_->traj_id_,2);EXPECT_EQ(actual->safety_->stamp,proof->stamp);
++  EXPECT_EQ(actual->safety_->observation_stamp_s,proof->observation_stamp_s);
++  EXPECT_GT(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()).twist.linear.x,0.0);
++}
++TEST_F(PluginTest, StaleOrWrongOwnerReplacementProofCannotActivateCurve)
++{
++  moving();auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
++  auto next=std::make_shared<sm::Bspline>(curve());next->traj_id=2;actual->onSpline(next);
++  auto proof=std::make_shared<sm::P2BExecutionSafety>();identity(proof->binding);
++  proof->binding.consumer="native_safety";proof->binding.traj_id=2;proof->clear=true;
++  proof->stamp=parent->now();proof->observation_stamp_s=parent->now().seconds()-.251;
++  actual->onSafety(proof);EXPECT_EQ(actual->tracker_->traj_id_,1);
++  proof=std::make_shared<sm::P2BExecutionSafety>(*proof);proof->binding.map_revision+=1;
++  proof->stamp=parent->now();proof->observation_stamp_s=parent->now().seconds();actual->onSafety(proof);
++  EXPECT_EQ(actual->tracker_->traj_id_,1);
++}
+ TEST_F(PluginTest, OutputCannotBeSubstitutedOrReplayed)
+ {
+   moving(); sendSafety(); wait([] { return false; },0.01);
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v106/src/scan_nav2_controller/src/controller.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v107/src/scan_nav2_controller/src/controller.cpp
+@@ -280,6 +280,7 @@
+   safety_sub_.reset(); stopped_sub_.reset(); route_pub_.reset(); binding_ready_pub_.reset(); cancel_pub_.reset(); cancel_admission_pub_.reset(); command_pub_.reset();
+   tracker_.reset(); bridge_.reset(); parent_.reset(); state_.reset();
+   pending_.reset(); safety_.reset(); ticket_ready_=false; output_owner_bound_=false;
++  candidate_curves_.clear();candidate_proofs_.clear();first_candidate_received_s_=0.0;
+ }
+ 
+ void Controller::onBinding(scan_planner_msgs::msg::P2BRoute::ConstSharedPtr message)
+@@ -323,6 +324,7 @@
+   generation_high_water_=state_->route->generation;
+   state_->stopping=false; state_->stopped=false; state_->stop_requested_s=0;
+   safety_.reset(); ticket_ready_=false; tracker_->receive_traj_=false;
++  candidate_curves_.clear();candidate_proofs_.clear();first_candidate_received_s_=0.0;
+   tracker_->goalCallback(state_->route);
+   plan_started_s_=parent_->now().seconds();
+   route_pub_->publish(*state_->route);
+@@ -342,22 +344,53 @@
+   if (valid) valid=now-origin<=message->knots[n]-message->knots[3];
+   if (tracker_->receive_traj_ && message->traj_id<=tracker_->traj_id_) return;
+   if (!valid) { stopLocked("invalid_scan_spline"); return; }
+-  tracker_->bsplineCallback(message); spline_received_s_=now;
+-  // Preserve the sampled ticket until publication can identify and discard it
+-  // as superseded. A normal curve replacement is not a forged output ticket.
+-  safety_.reset();
+-  if (message->emergency_stop) stopLocked("scan_emergency_stop");
++  if (message->emergency_stop) {stopLocked("scan_emergency_stop");return;}
++  if (candidate_curves_.empty()) first_candidate_received_s_=now;
++  candidate_curves_[message->traj_id]=message;
++  while(candidate_curves_.size()>4)candidate_curves_.erase(candidate_curves_.begin());
++  activateProvenCandidate(now);
+ }
+ 
+ void Controller::onSafety(scan_planner_msgs::msg::P2BExecutionSafety::ConstSharedPtr message)
+ {
+   std::lock_guard<std::mutex> lock(state_->mutex);
+-  if (!tracker_->receive_traj_ || tracker_->traj_id_<=0 || !state_->route || !matches(*state_->route,message->binding) ||
+-      message->binding.traj_id!=tracker_->traj_id_ || message->binding.consumer!="native_safety") return;
++  if (!state_->active || state_->stopping || !state_->route || !matches(*state_->route,message->binding) ||
++      message->binding.traj_id<=0 || message->binding.consumer!="native_safety") return;
+   if (!std::isfinite(stampSeconds(message->stamp))) { stopLocked("invalid_safety_stamp"); return; }
+-  if (safety_ && stampSeconds(message->stamp)<=stampSeconds(safety_->stamp)) return;
+-  safety_=message;
+-  if (!message->clear) stopLocked("scan_safety_rejected");
++  if (tracker_->receive_traj_ && message->binding.traj_id==tracker_->traj_id_) {
++    if (safety_ && stampSeconds(message->stamp)<=stampSeconds(safety_->stamp)) return;
++    safety_=message;
++    if (!message->clear) stopLocked("scan_safety_rejected");
++    return;
++  }
++  if (tracker_->receive_traj_ && message->binding.traj_id<tracker_->traj_id_) return;
++  const auto prior=candidate_proofs_.find(message->binding.traj_id);
++  if (prior!=candidate_proofs_.end() && stampSeconds(message->stamp)<=stampSeconds(prior->second->stamp)) return;
++  candidate_proofs_[message->binding.traj_id]=message;
++  while(candidate_proofs_.size()>4)candidate_proofs_.erase(candidate_proofs_.begin());
++  activateProvenCandidate(parent_->now().seconds());
++}
++void Controller::activateProvenCandidate(double now)
++{
++  if (state_->stopping) return;
++  for(auto candidate=candidate_curves_.rbegin();candidate!=candidate_curves_.rend();++candidate) {
++    const auto proof=candidate_proofs_.find(candidate->first);
++    if(proof==candidate_proofs_.end())continue;
++    if(!proof->second->clear) {stopLocked("scan_safety_rejected");return;}
++    const auto &curve=*candidate->second;
++    const double origin=stampSeconds(curve.start_time);
++    if(!fresh(now,stampSeconds(proof->second->stamp),safety_timeout_s_) ||
++       !fresh(now,proof->second->observation_stamp_s,observation_timeout_s_) ||
++       now<origin || now-origin>curve.knots[curve.pos_pts.size()]-curve.knots[3])continue;
++    // Both messages bind the same exact owner and trajectory. Preserve their
++    // original times; the old executing proof was never refreshed by receipt.
++    const auto id=candidate->first;
++    tracker_->bsplineCallback(candidate->second);safety_=proof->second;spline_received_s_=now;
++    candidate_curves_.erase(candidate_curves_.begin(),candidate_curves_.upper_bound(id));
++    candidate_proofs_.erase(candidate_proofs_.begin(),candidate_proofs_.upper_bound(id));
++    if(candidate_curves_.empty())first_candidate_received_s_=0.0;
++    return;
++  }
+ }
+ void Controller::onCancel(scan_planner_msgs::msg::P2BCancel::ConstSharedPtr message)
+ {
+@@ -430,7 +463,11 @@
+     fail(now<pose_stamp?"scan_body_pose_future":"scan_body_pose_stale");
+   }
+   if (state_->stopping) return ticket(geometry_msgs::msg::Twist());
++  activateProvenCandidate(now);
++  if (state_->stopping) return ticket(geometry_msgs::msg::Twist());
+   if (!tracker_->receive_traj_) {
++    if (first_candidate_received_s_>0 &&
++        !fresh(now,first_candidate_received_s_,safety_timeout_s_)) fail("scan_safety_evidence_stale");
+     if (now<plan_started_s_ || now-plan_started_s_>startup_timeout_s_) fail("scan_trajectory_missing");
+     return ticket(geometry_msgs::msg::Twist());
+   }
+@@ -490,6 +527,7 @@
+   copyIdentity(*state_->route,zero); zero.traj_id=tracker_->traj_id_; zero.stamp=parent_->now();
+   command_pub_->publish(zero);
+   if (state_->stopping) return;
++  candidate_curves_.clear();candidate_proofs_.clear();first_candidate_received_s_=0.0;
+   RCLCPP_WARN(parent_->get_logger(), "SCAN output revoked reason=%s trajectory=%lld",
+     reason.c_str(), static_cast<long long>(tracker_->traj_id_));
+   state_->stopping=true; state_->stopped=false; state_->stop_requested_s=parent_->now().seconds();
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v106/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v107/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
+@@ -1,6 +1,7 @@
+ #pragma once
+ 
+ #include <mutex>
++#include <map>
+ #include <thread>
+ #include <nav2_core/controller.hpp>
+ #include <nav2_core/goal_checker.hpp>
+@@ -46,6 +47,7 @@
+   void onSpline(scan_planner_msgs::msg::Bspline::ConstSharedPtr message);
+   void onCancel(scan_planner_msgs::msg::P2BCancel::ConstSharedPtr message);
+   void onSafety(scan_planner_msgs::msg::P2BExecutionSafety::ConstSharedPtr message);
++  void activateProvenCandidate(double now); // Caller holds state_->mutex; one decision time.
+   void onStopEvidence(scan_planner_msgs::msg::P2BStopEvidence::ConstSharedPtr message);
+   geometry_msgs::msg::TwistStamped ticket(const geometry_msgs::msg::Twist &command);
+ 
+@@ -64,6 +66,9 @@
+   int64_t generation_high_water_{0};
+   scan_planner_msgs::msg::P2BRoute::ConstSharedPtr pending_;
+   scan_planner_msgs::msg::P2BExecutionSafety::ConstSharedPtr safety_;
++  std::map<int64_t,scan_planner_msgs::msg::Bspline::ConstSharedPtr> candidate_curves_;
++  std::map<int64_t,scan_planner_msgs::msg::P2BExecutionSafety::ConstSharedPtr> candidate_proofs_;
++  double first_candidate_received_s_{0.0};
+   geometry_msgs::msg::TwistStamped ticket_;
+   scan_planner_msgs::msg::P2BStampedTwist ticket_identity_;
+   bool ticket_ready_{false};

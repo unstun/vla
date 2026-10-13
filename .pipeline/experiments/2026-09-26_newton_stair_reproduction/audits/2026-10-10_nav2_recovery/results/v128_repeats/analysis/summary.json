@@ -1,0 +1,4845 @@
+{
+  "protocol": "ABBA / BAAB / ABBA, six fresh trials per arm, no navigation-failure early stopping",
+  "versions": {
+    "baseline": "v114",
+    "candidate": "v128"
+  },
+  "host": "gpu5070ti",
+  "statistics": {
+    "baseline": {
+      "trials": 6,
+      "arrivals": 2,
+      "failures": 4,
+      "arrival_wilson_95": [
+        0.09677141110578041,
+        0.700006684861608
+      ],
+      "stale_label_runs": 1,
+      "progress_failure_runs": 6,
+      "median_p95_ms": 6.427931449999999,
+      "median_p99_ms": 18.66059555999999,
+      "median_maximum_ms": 163.06037300000003,
+      "median_longest_pause_s": 10.444259643554688,
+      "falls": 0,
+      "negative_safety_abort_delays_ms": [
+        9843.579053878784,
+        9967.149019241333,
+        10313.07339668274,
+        10085.474014282227,
+        10027.114152908325,
+        9953.063011169434,
+        10035.996675491333,
+        9558.400869369507,
+        9638.519763946533,
+        9689.371347427368
+      ],
+      "fsm_rejected_routes": 2,
+      "expired_observation_events": 0
+    },
+    "candidate": {
+      "trials": 6,
+      "arrivals": 2,
+      "failures": 4,
+      "arrival_wilson_95": [
+        0.09677141110578041,
+        0.700006684861608
+      ],
+      "stale_label_runs": 4,
+      "progress_failure_runs": 0,
+      "median_p95_ms": 5.212945324999993,
+      "median_p99_ms": 16.15593486000005,
+      "median_maximum_ms": 138.9382755,
+      "median_longest_pause_s": 4.59747314453125,
+      "falls": 0,
+      "negative_safety_abort_delays_ms": [
+        18.557071685791016,
+        8.011579513549805,
+        23.517370223999023
+      ],
+      "fsm_rejected_routes": 4,
+      "expired_observation_events": 1
+    }
+  },
+  "fisher_two_sided_p": 1.0,
+  "rows": [
+    {
+      "run": "v128_baseline_attempt02",
+      "order": 1,
+      "variant": "baseline",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 2,
+      "path_m": 16.77199243651449,
+      "final_xyz": [
+        7.382185935974121,
+        5.701076984405518,
+        4.666447639465332
+      ],
+      "end_sim_s": 47.62545394897461,
+      "navigation_duration_s": 36.60463047027588,
+      "longest_pause_s": 1.39923095703125,
+      "pauses": [
+        {
+          "start_sim_s": 39.010189056396484,
+          "end_sim_s": 40.209529876708984,
+          "duration_sim_s": 1.1993408203125
+        },
+        {
+          "start_sim_s": 41.30892562866211,
+          "end_sim_s": 42.70815658569336,
+          "duration_sim_s": 1.39923095703125
+        },
+        {
+          "start_sim_s": 46.30617904663086,
+          "end_sim_s": 47.605464935302734,
+          "duration_sim_s": 1.299285888671875
+        }
+      ],
+      "solve_ms": {
+        "count": 911,
+        "mean": 11.255451990120747,
+        "median": 1.795839,
+        "p95": 5.4307275,
+        "p99": 446.28889430000004,
+        "maximum": 458.976721
+      },
+      "over_60ms": {
+        "rounds": 23,
+        "successful": 5,
+        "failed": 18
+      },
+      "failed_rounds": 19,
+      "completed_rounds": 911,
+      "emergency_transitions": 0,
+      "actual_rtf": 0.8600046028595261,
+      "mapping": {
+        "snapshots": 431,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 431,
+          "mean": 16.772343387470997,
+          "median": 16.339,
+          "p95": 22.216500000000003,
+          "p99": 24.592499999999994,
+          "maximum": 455.853
+        },
+        "copy_ms": {
+          "count": 431,
+          "mean": 5.634006960556845,
+          "median": 4.73,
+          "p95": 9.442499999999999,
+          "p99": 9.8126,
+          "maximum": 12.459
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_trajectory_missing": 2,
+        "Failed to make progress": 1,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [],
+      "controller_errors": [
+        {
+          "line": 305,
+          "message": "[controller_server-3] [ERROR] [1791628160.450739544] [controller_server]: scan_trajectory_missing"
+        },
+        {
+          "line": 35394,
+          "message": "[controller_server-3] [ERROR] [1791628196.203821587] [controller_server]: Failed to make progress"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 304,
+          "reason": "scan_trajectory_missing"
+        },
+        {
+          "line": 35395,
+          "reason": "nav2_server_stop"
+        }
+      ],
+      "recovery": {
+        "run": "v128_baseline_attempt02",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12346359253,
+            "received_monotonic_ns": 506674502147336,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12346359253,
+            "received_monotonic_ns": 506674503028639,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "rejected",
+            "message": "scan_global_traj_failed"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 14367176056,
+            "received_monotonic_ns": 506676464680830,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 14367176056,
+            "received_monotonic_ns": 506676464740351,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 14367176056,
+            "received_monotonic_ns": 506676464912214,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 14367176056,
+            "received_monotonic_ns": 506676465017832,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 15522643089,
+            "received_monotonic_ns": 506677621817718,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 15522643089,
+            "received_monotonic_ns": 506677622651142,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 15632687569,
+            "received_monotonic_ns": 506677724576842,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45361698151,
+            "received_monotonic_ns": 506712217914698,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "nav2_server_stop"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 45361698151,
+            "received_monotonic_ns": 506712217972867,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": "nav2_server_stop"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45361698151,
+            "received_monotonic_ns": 506712218108451,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          }
+        ],
+        "stops": [
+          {
+            "line": 304,
+            "reason": "scan_trajectory_missing",
+            "log_wall_s": 1791628160.4506533,
+            "follow_path_abort_after_s": 9.965896606445312e-05,
+            "abort_line": 306
+          },
+          {
+            "line": 35395,
+            "reason": "nav2_server_stop",
+            "log_wall_s": 1791628196.2038488,
+            "follow_path_abort_after_s": 2.2411346435546875e-05,
+            "abort_line": 35396
+          }
+        ],
+        "errors": [
+          {
+            "line": 255,
+            "message": "[controller_server-3] [ERROR] [1791628158.484552827] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 305,
+            "message": "[controller_server-3] [ERROR] [1791628160.450739544] [controller_server]: scan_trajectory_missing"
+          },
+          {
+            "line": 35394,
+            "message": "[controller_server-3] [ERROR] [1791628196.203821587] [controller_server]: Failed to make progress"
+          },
+          {
+            "line": 35610,
+            "message": "[bt_navigator-5] [ERROR] [1791628197.983478945] [nav2_internal.bt_navigator]: Navigation failed"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "4a705c1e695d9c183ceb1b6701239a901f6033a87d00a4d616f69c7b58e9411b",
+            "bytes": 9611738
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "de9fd26a3308b5f12010f76417ba7ad0a448b95183b41e8273e09d7cd842ab3f",
+            "bytes": 8975792
+          }
+        }
+      },
+      "sensor_count": 366,
+      "scan_audit_outcomes": {
+        "published_sequentially": 366
+      },
+      "max_sensor_compute_ms": 26.87175100436434,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 1,
+        "tag": "v128_baseline_attempt02",
+        "unix_s": 1791628113.4961092,
+        "load": [
+          0.34521484375,
+          0.6884765625,
+          0.5888671875
+        ],
+        "free_bytes": 199296761856,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v128_candidate_attempt02",
+      "order": 2,
+      "variant": "candidate",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 19.654726495361828,
+      "final_xyz": [
+        4.782741546630859,
+        3.0622074604034424,
+        4.828731060028076
+      ],
+      "end_sim_s": 45.126827239990234,
+      "navigation_duration_s": 34.106003761291504,
+      "longest_pause_s": 2.098846435546875,
+      "pauses": [
+        {
+          "start_sim_s": 35.012386322021484,
+          "end_sim_s": 36.51156234741211,
+          "duration_sim_s": 1.499176025390625
+        },
+        {
+          "start_sim_s": 43.007991790771484,
+          "end_sim_s": 45.10683822631836,
+          "duration_sim_s": 2.098846435546875
+        }
+      ],
+      "solve_ms": {
+        "count": 773,
+        "mean": 2.426646917205692,
+        "median": 1.621132,
+        "p95": 4.7539598,
+        "p99": 13.223673759999915,
+        "maximum": 137.965489
+      },
+      "over_60ms": {
+        "rounds": 3,
+        "successful": 2,
+        "failed": 1
+      },
+      "failed_rounds": 3,
+      "completed_rounds": 773,
+      "emergency_transitions": 6,
+      "actual_rtf": 0.9996016903455072,
+      "mapping": {
+        "snapshots": 416,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 416,
+          "mean": 21.040591346153846,
+          "median": 17.7375,
+          "p95": 37.98975,
+          "p99": 40.2834,
+          "maximum": 442.905
+        },
+        "copy_ms": {
+          "count": 416,
+          "mean": 5.1440624999999995,
+          "median": 4.722,
+          "p95": 8.502,
+          "p99": 8.884950000000002,
+          "maximum": 12.71
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_trajectory_missing": 2,
+        "scan_safety_evidence_stale": 2,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 34.802501678,
+          "active": 574.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 34.612606049,
+          "observation_age": 0.189895629,
+          "line": 23079,
+          "body_xyz": [
+            8.15471363067627,
+            5.767187595367432,
+            4.832563877105713
+          ],
+          "nearest_pose_delta_s": 0.009994507302735656
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 307,
+          "message": "[controller_server-3] [ERROR] [1791628310.013663134] [controller_server]: scan_trajectory_missing"
+        },
+        {
+          "line": 23078,
+          "message": "[controller_server-3] [ERROR] [1791628330.461013661] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.000000 first=2.165686 samples=218"
+        },
+        {
+          "line": 23079,
+          "message": "[controller_server-3] [ERROR] [1791628330.461035653] [controller_server]: SCAN evidence rejected now=34.802501678 active=574 proof=574 clear=0 proof_stamp=34.802501678 proof_age=0.000000000 observation_stamp=34.612606049 observation_age=0.189895629 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 23081,
+          "message": "[controller_server-3] [ERROR] [1791628330.461087019] [controller_server]: scan_safety_evidence_stale"
+        },
+        {
+          "line": 30812,
+          "message": "[controller_server-3] [ERROR] [1791628338.443342701] [controller_server]: scan_safety_rejected"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 306,
+          "reason": "scan_trajectory_missing"
+        },
+        {
+          "line": 23080,
+          "reason": "scan_safety_evidence_stale"
+        },
+        {
+          "line": 30798,
+          "reason": "scan_safety_rejected"
+        }
+      ],
+      "recovery": {
+        "run": "v128_candidate_attempt02",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12351361275,
+            "received_monotonic_ns": 506824098364537,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12351361275,
+            "received_monotonic_ns": 506824099227156,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "rejected",
+            "message": "scan_global_traj_failed"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 14352169991,
+            "received_monotonic_ns": 506826027652650,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 14352169991,
+            "received_monotonic_ns": 506826027710369,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 14352169991,
+            "received_monotonic_ns": 506826027888843,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 14352169991,
+            "received_monotonic_ns": 506826028052591,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 15502635002,
+            "received_monotonic_ns": 506827178186623,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 15502635002,
+            "received_monotonic_ns": 506827179092542,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 15592671394,
+            "received_monotonic_ns": 506827273078251,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 34802501678,
+            "received_monotonic_ns": 506846475076034,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 34802501678,
+            "received_monotonic_ns": 506846475119546,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 34802501678,
+            "received_monotonic_ns": 506846475242136,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 34802501678,
+            "received_monotonic_ns": 506846476152523,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 36141765594,
+            "received_monotonic_ns": 506847825423658,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 36151760101,
+            "received_monotonic_ns": 506847826006671,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 36171749115,
+            "received_monotonic_ns": 506847849465768,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 42763126373,
+            "received_monotonic_ns": 506854438759467,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 42763126373,
+            "received_monotonic_ns": 506854438799172,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 42763126373,
+            "received_monotonic_ns": 506854438925940,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 42763126373,
+            "received_monotonic_ns": 506854441238378,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          }
+        ],
+        "stops": [
+          {
+            "line": 306,
+            "reason": "scan_trajectory_missing",
+            "log_wall_s": 1791628310.0135791,
+            "follow_path_abort_after_s": 0.00010752677917480469,
+            "abort_line": 308
+          },
+          {
+            "line": 23080,
+            "reason": "scan_safety_evidence_stale",
+            "log_wall_s": 1791628330.4610527,
+            "follow_path_abort_after_s": 4.100799560546875e-05,
+            "abort_line": 23082
+          },
+          {
+            "line": 30798,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791628338.4248216,
+            "follow_path_abort_after_s": 0.018557071685791016,
+            "abort_line": 30813
+          }
+        ],
+        "errors": [
+          {
+            "line": 257,
+            "message": "[controller_server-3] [ERROR] [1791628308.080883461] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 307,
+            "message": "[controller_server-3] [ERROR] [1791628310.013663134] [controller_server]: scan_trajectory_missing"
+          },
+          {
+            "line": 23078,
+            "message": "[controller_server-3] [ERROR] [1791628330.461013661] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.000000 first=2.165686 samples=218"
+          },
+          {
+            "line": 23079,
+            "message": "[controller_server-3] [ERROR] [1791628330.461035653] [controller_server]: SCAN evidence rejected now=34.802501678 active=574 proof=574 clear=0 proof_stamp=34.802501678 proof_age=0.000000000 observation_stamp=34.612606049 observation_age=0.189895629 pending_curves=0 pending_proofs=0"
+          },
+          {
+            "line": 23081,
+            "message": "[controller_server-3] [ERROR] [1791628330.461087019] [controller_server]: scan_safety_evidence_stale"
+          },
+          {
+            "line": 30771,
+            "message": "[controller_server-3] [ERROR] [1791628338.422674310] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30775,
+            "message": "[controller_server-3] [ERROR] [1791628338.422760592] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30783,
+            "message": "[controller_server-3] [ERROR] [1791628338.424546352] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30787,
+            "message": "[controller_server-3] [ERROR] [1791628338.424638615] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30791,
+            "message": "[controller_server-3] [ERROR] [1791628338.424718444] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30799,
+            "message": "[controller_server-3] [ERROR] [1791628338.426250328] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30803,
+            "message": "[controller_server-3] [ERROR] [1791628338.426337191] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30807,
+            "message": "[controller_server-3] [ERROR] [1791628338.426418053] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30812,
+            "message": "[controller_server-3] [ERROR] [1791628338.443342701] [controller_server]: scan_safety_rejected"
+          },
+          {
+            "line": 30814,
+            "message": "[bt_navigator-5] [ERROR] [1791628338.469742885] [nav2_internal.bt_navigator]: Navigation failed"
+          },
+          {
+            "line": 30819,
+            "message": "[controller_server-3] [ERROR] [1791628338.476974100] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30823,
+            "message": "[controller_server-3] [ERROR] [1791628338.477098173] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30827,
+            "message": "[controller_server-3] [ERROR] [1791628338.477178564] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "51204f80182ffba356c3920f58b65d6bf0e649299e44b1d692782def4659ee0e",
+            "bytes": 7952371
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "7aa32a7a4b3677c36af4dd41dbdc2851d0a45df4cb3830c750d8db52557baaaa",
+            "bytes": 7392292
+          }
+        }
+      },
+      "sensor_count": 341,
+      "scan_audit_outcomes": {
+        "published_sequentially": 341
+      },
+      "max_sensor_compute_ms": 27.173325011972338,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 2,
+        "tag": "v128_candidate_attempt02",
+        "unix_s": 1791628210.9553518,
+        "load": [
+          2.82421875,
+          1.359375,
+          0.83935546875
+        ],
+        "free_bytes": 199145230336,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v128_candidate_attempt03",
+      "order": 3,
+      "variant": "candidate",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 24.023751219104074,
+      "final_xyz": [
+        3.986823558807373,
+        -1.2502481937408447,
+        4.824112415313721
+      ],
+      "end_sim_s": 50.70376205444336,
+      "navigation_duration_s": 39.68293857574463,
+      "longest_pause_s": 5.097198486328125,
+      "pauses": [
+        {
+          "start_sim_s": 30.71474838256836,
+          "end_sim_s": 31.814144134521484,
+          "duration_sim_s": 1.099395751953125
+        },
+        {
+          "start_sim_s": 45.606563568115234,
+          "end_sim_s": 50.70376205444336,
+          "duration_sim_s": 5.097198486328125
+        }
+      ],
+      "solve_ms": {
+        "count": 930,
+        "mean": 3.0935652720430107,
+        "median": 1.9317484999999999,
+        "p95": 5.236957399999987,
+        "p99": 18.616362300000002,
+        "maximum": 139.91106200000002
+      },
+      "over_60ms": {
+        "rounds": 4,
+        "successful": 3,
+        "failed": 1
+      },
+      "failed_rounds": 2,
+      "completed_rounds": 930,
+      "emergency_transitions": 7,
+      "actual_rtf": 0.9992158704264618,
+      "mapping": {
+        "snapshots": 493,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 493,
+          "mean": 23.97386004056795,
+          "median": 19.04,
+          "p95": 39.434599999999996,
+          "p99": 42.14204,
+          "maximum": 517.604
+        },
+        "copy_ms": {
+          "count": 493,
+          "mean": 5.400762677484787,
+          "median": 4.952,
+          "p95": 9.963999999999999,
+          "p99": 12.987279999999993,
+          "maximum": 15.996
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_safety_evidence_stale": 4,
+        "scan_trajectory_missing": 2,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 29.920185089,
+          "active": 516.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 29.815242767,
+          "observation_age": 0.104942322,
+          "line": 20399,
+          "body_xyz": [
+            8.36623764038086,
+            4.21347713470459,
+            4.621734142303467
+          ],
+          "nearest_pose_delta_s": -0.004997253306640914
+        },
+        {
+          "now": 45.261753082,
+          "active": 931.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 45.006893158,
+          "observation_age": 0.254859924,
+          "line": 36022,
+          "body_xyz": [
+            4.011970520019531,
+            -1.1991742849349976,
+            4.828734874725342
+          ],
+          "nearest_pose_delta_s": 0.044975281037110904
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 20398,
+          "message": "[controller_server-3] [ERROR] [1791628465.287939245] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.000000 first=2.387270 samples=240"
+        },
+        {
+          "line": 20399,
+          "message": "[controller_server-3] [ERROR] [1791628465.287964743] [controller_server]: SCAN evidence rejected now=29.920185089 active=516 proof=516 clear=0 proof_stamp=29.920185089 proof_age=0.000000000 observation_stamp=29.815242767 observation_age=0.104942322 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 20401,
+          "message": "[controller_server-3] [ERROR] [1791628465.288037840] [controller_server]: scan_safety_evidence_stale"
+        },
+        {
+          "line": 36021,
+          "message": "[controller_server-3] [ERROR] [1791628480.630074205] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.139923 first=0.139923 samples=1"
+        },
+        {
+          "line": 36022,
+          "message": "[controller_server-3] [ERROR] [1791628480.630095374] [controller_server]: SCAN evidence rejected now=45.261753082 active=931 proof=931 clear=0 proof_stamp=45.261753082 proof_age=0.000000000 observation_stamp=45.006893158 observation_age=0.254859924 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 36024,
+          "message": "[controller_server-3] [ERROR] [1791628480.630144206] [controller_server]: scan_safety_evidence_stale"
+        },
+        {
+          "line": 36172,
+          "message": "[controller_server-3] [ERROR] [1791628483.930105330] [controller_server]: scan_trajectory_missing"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 20400,
+          "reason": "scan_safety_evidence_stale"
+        },
+        {
+          "line": 36023,
+          "reason": "scan_safety_evidence_stale"
+        },
+        {
+          "line": 36171,
+          "reason": "scan_trajectory_missing"
+        }
+      ],
+      "recovery": {
+        "run": "v128_candidate_attempt03",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12361365318,
+            "received_monotonic_ns": 506963838132068,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12361365318,
+            "received_monotonic_ns": 506963838908494,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12531434059,
+            "received_monotonic_ns": 506963964573464,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 29920185089,
+            "received_monotonic_ns": 506981301986780,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 29920185089,
+            "received_monotonic_ns": 506981302142001,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 29920185089,
+            "received_monotonic_ns": 506981302261505,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 29920185089,
+            "received_monotonic_ns": 506981302330565,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 31364391327,
+            "received_monotonic_ns": 506982746029972,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 31364391327,
+            "received_monotonic_ns": 506982746457995,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 31419361115,
+            "received_monotonic_ns": 506982806656839,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45261753082,
+            "received_monotonic_ns": 506996644096793,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 45261753082,
+            "received_monotonic_ns": 506996644137289,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45261753082,
+            "received_monotonic_ns": 506996644250501,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45261753082,
+            "received_monotonic_ns": 506996647941375,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 46561038971,
+            "received_monotonic_ns": 506997944157099,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 46660984039,
+            "received_monotonic_ns": 506998047945119,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "rejected",
+            "message": "scan_global_traj_failed"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 48564937592,
+            "received_monotonic_ns": 506999944178814,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 48564937592,
+            "received_monotonic_ns": 506999944259856,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 48564937592,
+            "received_monotonic_ns": 506999944532748,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 48564937592,
+            "received_monotonic_ns": 506999944706163,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          }
+        ],
+        "stops": [
+          {
+            "line": 20400,
+            "reason": "scan_safety_evidence_stale",
+            "log_wall_s": 1791628465.2879877,
+            "follow_path_abort_after_s": 6.67572021484375e-05,
+            "abort_line": 20402
+          },
+          {
+            "line": 36023,
+            "reason": "scan_safety_evidence_stale",
+            "log_wall_s": 1791628480.6301105,
+            "follow_path_abort_after_s": 4.1484832763671875e-05,
+            "abort_line": 36025
+          },
+          {
+            "line": 36171,
+            "reason": "scan_trajectory_missing",
+            "log_wall_s": 1791628483.930043,
+            "follow_path_abort_after_s": 8.153915405273438e-05,
+            "abort_line": 36173
+          }
+        ],
+        "errors": [
+          {
+            "line": 20398,
+            "message": "[controller_server-3] [ERROR] [1791628465.287939245] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.000000 first=2.387270 samples=240"
+          },
+          {
+            "line": 20399,
+            "message": "[controller_server-3] [ERROR] [1791628465.287964743] [controller_server]: SCAN evidence rejected now=29.920185089 active=516 proof=516 clear=0 proof_stamp=29.920185089 proof_age=0.000000000 observation_stamp=29.815242767 observation_age=0.104942322 pending_curves=0 pending_proofs=0"
+          },
+          {
+            "line": 20401,
+            "message": "[controller_server-3] [ERROR] [1791628465.288037840] [controller_server]: scan_safety_evidence_stale"
+          },
+          {
+            "line": 36013,
+            "message": "[controller_server-3] [ERROR] [1791628480.628238471] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36015,
+            "message": "[controller_server-3] [ERROR] [1791628480.628417737] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36021,
+            "message": "[controller_server-3] [ERROR] [1791628480.630074205] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.139923 first=0.139923 samples=1"
+          },
+          {
+            "line": 36022,
+            "message": "[controller_server-3] [ERROR] [1791628480.630095374] [controller_server]: SCAN evidence rejected now=45.261753082 active=931 proof=931 clear=0 proof_stamp=45.261753082 proof_age=0.000000000 observation_stamp=45.006893158 observation_age=0.254859924 pending_curves=0 pending_proofs=0"
+          },
+          {
+            "line": 36024,
+            "message": "[controller_server-3] [ERROR] [1791628480.630144206] [controller_server]: scan_safety_evidence_stale"
+          },
+          {
+            "line": 36026,
+            "message": "[controller_server-3] [ERROR] [1791628480.630507648] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36028,
+            "message": "[controller_server-3] [ERROR] [1791628480.630704787] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36030,
+            "message": "[controller_server-3] [ERROR] [1791628480.630892520] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36035,
+            "message": "[controller_server-3] [ERROR] [1791628480.632703838] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36037,
+            "message": "[controller_server-3] [ERROR] [1791628480.632894004] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36039,
+            "message": "[controller_server-3] [ERROR] [1791628480.633078771] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36045,
+            "message": "[controller_server-3] [ERROR] [1791628480.650784203] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36047,
+            "message": "[controller_server-3] [ERROR] [1791628480.651099525] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36049,
+            "message": "[controller_server-3] [ERROR] [1791628480.651354233] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36053,
+            "message": "[controller_server-3] [ERROR] [1791628480.701093256] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36055,
+            "message": "[controller_server-3] [ERROR] [1791628480.701377098] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36057,
+            "message": "[controller_server-3] [ERROR] [1791628480.701624693] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36127,
+            "message": "[controller_server-3] [ERROR] [1791628482.034063295] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36172,
+            "message": "[controller_server-3] [ERROR] [1791628483.930105330] [controller_server]: scan_trajectory_missing"
+          },
+          {
+            "line": 36174,
+            "message": "[bt_navigator-5] [ERROR] [1791628483.959773854] [nav2_internal.bt_navigator]: Navigation failed"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "8e94d57805affd28502f68614421514c16f2cee0c81f2b408a775b6e5619c41e",
+            "bytes": 9823344
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "2015ac717d203cd9bb27fe2c370cd9f66320501bedbea9ade0855e20095a88aa",
+            "bytes": 8873895
+          }
+        }
+      },
+      "sensor_count": 397,
+      "scan_audit_outcomes": {
+        "published_sequentially": 397
+      },
+      "max_sensor_compute_ms": 26.831180963199586,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 3,
+        "tag": "v128_candidate_attempt03",
+        "unix_s": 1791628351.4060094,
+        "load": [
+          2.12890625,
+          1.51416015625,
+          0.96240234375
+        ],
+        "free_bytes": 199005048832,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v128_baseline_attempt03",
+      "order": 4,
+      "variant": "baseline",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 22.990612337432946,
+      "final_xyz": [
+        3.130108594894409,
+        0.33901873230934143,
+        4.825488567352295
+      ],
+      "end_sim_s": 66.21524047851562,
+      "navigation_duration_s": 55.194416999816895,
+      "longest_pause_s": 13.992313385009766,
+      "pauses": [
+        {
+          "start_sim_s": 30.814693450927734,
+          "end_sim_s": 31.91408920288086,
+          "duration_sim_s": 1.099395751953125
+        },
+        {
+          "start_sim_s": 32.71364974975586,
+          "end_sim_s": 42.008541107177734,
+          "duration_sim_s": 9.294891357421875
+        },
+        {
+          "start_sim_s": 52.202938079833984,
+          "end_sim_s": 66.19525146484375,
+          "duration_sim_s": 13.992313385009766
+        }
+      ],
+      "solve_ms": {
+        "count": 853,
+        "mean": 4.01590221101993,
+        "median": 1.7298140000000002,
+        "p95": 5.428628999999998,
+        "p99": 14.597150400000007,
+        "maximum": 548.7007900000001
+      },
+      "over_60ms": {
+        "rounds": 7,
+        "successful": 4,
+        "failed": 3
+      },
+      "failed_rounds": 13,
+      "completed_rounds": 853,
+      "emergency_transitions": 10,
+      "actual_rtf": 0.9997518114287524,
+      "mapping": {
+        "snapshots": 636,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 636,
+          "mean": 25.2348427672956,
+          "median": 20.628999999999998,
+          "p95": 39.319250000000004,
+          "p99": 41.999799999999986,
+          "maximum": 424.886
+        },
+        "copy_ms": {
+          "count": 636,
+          "mean": 6.089407232704402,
+          "median": 5.038,
+          "p95": 11.3485,
+          "p99": 13.2656,
+          "maximum": 16.117
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "Failed to make progress": 2,
+        "scan_trajectory_missing": 2,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [],
+      "controller_errors": [
+        {
+          "line": 21963,
+          "message": "[controller_server-3] [ERROR] [1791628622.461911291] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 35477,
+          "message": "[controller_server-3] [ERROR] [1791628644.004859476] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 35563,
+          "message": "[controller_server-3] [ERROR] [1791628646.104871536] [controller_server]: scan_trajectory_missing"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 21587,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 35229,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 35562,
+          "reason": "scan_trajectory_missing"
+        }
+      ],
+      "recovery": {
+        "run": "v128_baseline_attempt03",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12311345100,
+            "received_monotonic_ns": 507110480098791,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12311345100,
+            "received_monotonic_ns": 507110480964204,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12471409798,
+            "received_monotonic_ns": 507110642455062,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 30539844513,
+            "received_monotonic_ns": 507128632303369,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 30539844513,
+            "received_monotonic_ns": 507128632342763,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 30539844513,
+            "received_monotonic_ns": 507128632466815,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 30569828033,
+            "received_monotonic_ns": 507128668327092,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 40499370575,
+            "received_monotonic_ns": 507138587447599,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 40499370575,
+            "received_monotonic_ns": 507138587895920,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 41578777313,
+            "received_monotonic_ns": 507139671446648,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 51958072662,
+            "received_monotonic_ns": 507150051757226,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 51958072662,
+            "received_monotonic_ns": 507150051799786,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 51958072662,
+            "received_monotonic_ns": 507150051934619,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 51968067169,
+            "received_monotonic_ns": 507150056069445,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 61997554779,
+            "received_monotonic_ns": 507160085903844,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 62162464142,
+            "received_monotonic_ns": 507160246440771,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "rejected",
+            "message": "scan_global_traj_failed"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 64016448975,
+            "received_monotonic_ns": 507162118866903,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 64016448975,
+            "received_monotonic_ns": 507162118922176,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 64016448975,
+            "received_monotonic_ns": 507162119094850,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 64016448975,
+            "received_monotonic_ns": 507162119231176,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          }
+        ],
+        "stops": [
+          {
+            "line": 21587,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791628612.618371,
+            "follow_path_abort_after_s": 9.843579053878784,
+            "abort_line": 21964
+          },
+          {
+            "line": 35229,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791628634.0377436,
+            "follow_path_abort_after_s": 9.967149019241333,
+            "abort_line": 35478
+          },
+          {
+            "line": 35562,
+            "reason": "scan_trajectory_missing",
+            "log_wall_s": 1791628646.1048086,
+            "follow_path_abort_after_s": 7.867813110351562e-05,
+            "abort_line": 35564
+          }
+        ],
+        "errors": [
+          {
+            "line": 21963,
+            "message": "[controller_server-3] [ERROR] [1791628622.461911291] [controller_server]: Failed to make progress"
+          },
+          {
+            "line": 22127,
+            "message": "[controller_server-3] [ERROR] [1791628622.945837887] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 22134,
+            "message": "[controller_server-3] [ERROR] [1791628622.946791446] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 22138,
+            "message": "[controller_server-3] [ERROR] [1791628622.946872268] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 22142,
+            "message": "[controller_server-3] [ERROR] [1791628622.946950144] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 22150,
+            "message": "[controller_server-3] [ERROR] [1791628622.958428655] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 22157,
+            "message": "[controller_server-3] [ERROR] [1791628622.968216696] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 22161,
+            "message": "[controller_server-3] [ERROR] [1791628622.968312325] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 22165,
+            "message": "[controller_server-3] [ERROR] [1791628622.968402364] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 22392,
+            "message": "[controller_server-3] [ERROR] [1791628623.546396533] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 22396,
+            "message": "[controller_server-3] [ERROR] [1791628623.546481873] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 22400,
+            "message": "[controller_server-3] [ERROR] [1791628623.546562334] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 22408,
+            "message": "[controller_server-3] [ERROR] [1791628623.558161081] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35212,
+            "message": "[controller_server-3] [ERROR] [1791628634.033796380] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35214,
+            "message": "[controller_server-3] [ERROR] [1791628634.034195980] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35220,
+            "message": "[controller_server-3] [ERROR] [1791628634.036772052] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35222,
+            "message": "[controller_server-3] [ERROR] [1791628634.037205886] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35224,
+            "message": "[controller_server-3] [ERROR] [1791628634.037629571] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35230,
+            "message": "[controller_server-3] [ERROR] [1791628634.039976724] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35232,
+            "message": "[controller_server-3] [ERROR] [1791628634.040421057] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35234,
+            "message": "[controller_server-3] [ERROR] [1791628634.040870350] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35240,
+            "message": "[controller_server-3] [ERROR] [1791628634.069686874] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35242,
+            "message": "[controller_server-3] [ERROR] [1791628634.070140265] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35244,
+            "message": "[controller_server-3] [ERROR] [1791628634.070559932] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35248,
+            "message": "[controller_server-3] [ERROR] [1791628634.120308380] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35250,
+            "message": "[controller_server-3] [ERROR] [1791628634.120794673] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35252,
+            "message": "[controller_server-3] [ERROR] [1791628634.121214861] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35477,
+            "message": "[controller_server-3] [ERROR] [1791628644.004859476] [controller_server]: Failed to make progress"
+          },
+          {
+            "line": 35563,
+            "message": "[controller_server-3] [ERROR] [1791628646.104871536] [controller_server]: scan_trajectory_missing"
+          },
+          {
+            "line": 35565,
+            "message": "[bt_navigator-5] [ERROR] [1791628646.131167853] [nav2_internal.bt_navigator]: Navigation failed"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "5dc59a227d5722e01c867901e8ebb8124e4bd1260275ee814a39ed12e91e6468",
+            "bytes": 9263743
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "2a8ae347c8e61ac928de639ff323017cae4ba9c4e39fdeeb3d2e65a3541438b0",
+            "bytes": 10824270
+          }
+        }
+      },
+      "sensor_count": 552,
+      "scan_audit_outcomes": {
+        "published_sequentially": 552
+      },
+      "max_sensor_compute_ms": 27.33037603320554,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 4,
+        "tag": "v128_baseline_attempt03",
+        "unix_s": 1791628498.2266061,
+        "load": [
+          1.5087890625,
+          1.36572265625,
+          0.97705078125
+        ],
+        "free_bytes": 198845599744,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v128_candidate_attempt04",
+      "order": 5,
+      "variant": "candidate",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 1,
+      "path_m": 15.513976704280637,
+      "final_xyz": [
+        7.743370056152344,
+        6.007309436798096,
+        4.689373970031738
+      ],
+      "end_sim_s": 38.290584564208984,
+      "navigation_duration_s": 27.269761085510254,
+      "longest_pause_s": 2.098846435546875,
+      "pauses": [
+        {
+          "start_sim_s": 36.11178207397461,
+          "end_sim_s": 38.210628509521484,
+          "duration_sim_s": 2.098846435546875
+        }
+      ],
+      "solve_ms": {
+        "count": 596,
+        "mean": 2.2769531694630873,
+        "median": 1.7286375,
+        "p95": 3.55010375,
+        "p99": 11.916275449999981,
+        "maximum": 117.44998199999999
+      },
+      "over_60ms": {
+        "rounds": 1,
+        "successful": 1,
+        "failed": 0
+      },
+      "failed_rounds": 0,
+      "completed_rounds": 596,
+      "emergency_transitions": 2,
+      "actual_rtf": 0.978487230026024,
+      "mapping": {
+        "snapshots": 332,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 332,
+          "mean": 17.88452108433735,
+          "median": 17.310000000000002,
+          "p95": 21.6147,
+          "p99": 28.66031999999999,
+          "maximum": 354.515
+        },
+        "copy_ms": {
+          "count": 332,
+          "mean": 5.174234939759036,
+          "median": 4.529,
+          "p95": 8.57435,
+          "p99": 9.00367,
+          "maximum": 12.535
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_safety_evidence_stale": 2,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 32.423809052,
+          "active": 596.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 32.313869476,
+          "observation_age": 0.109939576,
+          "line": 23393,
+          "body_xyz": [
+            7.879248142242432,
+            5.956403732299805,
+            4.834107398986816
+          ],
+          "nearest_pose_delta_s": -0.009994507322268475
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 23392,
+          "message": "[controller_server-3] [ERROR] [1791628774.163479763] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.009995 first=1.989358 samples=199"
+        },
+        {
+          "line": 23393,
+          "message": "[controller_server-3] [ERROR] [1791628774.163501123] [controller_server]: SCAN evidence rejected now=32.423809052 active=596 proof=596 clear=0 proof_stamp=32.423809052 proof_age=0.000000000 observation_stamp=32.313869476 observation_age=0.109939576 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 23395,
+          "message": "[controller_server-3] [ERROR] [1791628774.163560434] [controller_server]: scan_safety_evidence_stale"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 23394,
+          "reason": "scan_safety_evidence_stale"
+        }
+      ],
+      "recovery": {
+        "run": "v128_candidate_attempt04",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12421389580,
+            "received_monotonic_ns": 507270247715126,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12426391602,
+            "received_monotonic_ns": 507270248609774,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12566448212,
+            "received_monotonic_ns": 507270382918388,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 32423809052,
+            "received_monotonic_ns": 507290177495328,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 32423809052,
+            "received_monotonic_ns": 507290177674824,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 32423809052,
+            "received_monotonic_ns": 507290177850714,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 32423809052,
+            "received_monotonic_ns": 507290177950542,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          }
+        ],
+        "stops": [
+          {
+            "line": 23394,
+            "reason": "scan_safety_evidence_stale",
+            "log_wall_s": 1791628774.1635177,
+            "follow_path_abort_after_s": 6.079673767089844e-05,
+            "abort_line": 23396
+          }
+        ],
+        "errors": [
+          {
+            "line": 23392,
+            "message": "[controller_server-3] [ERROR] [1791628774.163479763] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.009995 first=1.989358 samples=199"
+          },
+          {
+            "line": 23393,
+            "message": "[controller_server-3] [ERROR] [1791628774.163501123] [controller_server]: SCAN evidence rejected now=32.423809052 active=596 proof=596 clear=0 proof_stamp=32.423809052 proof_age=0.000000000 observation_stamp=32.313869476 observation_age=0.109939576 pending_curves=0 pending_proofs=0"
+          },
+          {
+            "line": 23395,
+            "message": "[controller_server-3] [ERROR] [1791628774.163560434] [controller_server]: scan_safety_evidence_stale"
+          },
+          {
+            "line": 23485,
+            "message": "[bt_navigator-5] [ERROR] [1791628778.198697502] [nav2_internal.bt_navigator]: Navigation failed"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "9b936c83e5bd3bedef6059ac677a277d35f3cd323067d1a8889c836d934481a8",
+            "bytes": 6010093
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "81f6bf658f82e8fbc4029f729c7ac339459472011f1a2f9dc4bd59b9be9ce991",
+            "bytes": 5808705
+          }
+        }
+      },
+      "sensor_count": 272,
+      "scan_audit_outcomes": {
+        "published_sequentially": 272
+      },
+      "max_sensor_compute_ms": 27.433018025476485,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 5,
+        "tag": "v128_candidate_attempt04",
+        "unix_s": 1791628661.9942164,
+        "load": [
+          1.73974609375,
+          1.474609375,
+          1.07666015625
+        ],
+        "free_bytes": 198635892736,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v128_baseline_attempt04",
+      "order": 6,
+      "variant": "baseline",
+      "arrived": true,
+      "terminal": "FINISHED",
+      "fallen": false,
+      "outcome_class": "arrived",
+      "follow_path_aborts": 1,
+      "path_m": 26.4059766599291,
+      "final_xyz": [
+        2.075730800628662,
+        -2.8853540420532227,
+        4.820235252380371
+      ],
+      "end_sim_s": 64.19635009765625,
+      "navigation_duration_s": 53.17552661895752,
+      "longest_pause_s": 10.394287109375,
+      "pauses": [
+        {
+          "start_sim_s": 42.408321380615234,
+          "end_sim_s": 52.802608489990234,
+          "duration_sim_s": 10.394287109375
+        },
+        {
+          "start_sim_s": 57.000301361083984,
+          "end_sim_s": 64.19635009765625,
+          "duration_sim_s": 7.196048736572266
+        }
+      ],
+      "solve_ms": {
+        "count": 1010,
+        "mean": 3.3141803227722773,
+        "median": 1.76199,
+        "p95": 9.1045839,
+        "p99": 21.071911639999986,
+        "maximum": 158.032202
+      },
+      "over_60ms": {
+        "rounds": 4,
+        "successful": 2,
+        "failed": 2
+      },
+      "failed_rounds": 16,
+      "completed_rounds": 1010,
+      "emergency_transitions": 6,
+      "actual_rtf": 0.9994337069225357,
+      "mapping": {
+        "snapshots": 634,
+        "maximum_queued_clouds": 4,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 634,
+          "mean": 27.342750788643535,
+          "median": 23.986,
+          "p95": 40.378099999999996,
+          "p99": 41.82147,
+          "maximum": 288.976
+        },
+        "copy_ms": {
+          "count": 634,
+          "mean": 5.2452949526813875,
+          "median": 4.9905,
+          "p95": 8.299350000000004,
+          "p99": 10.179179999999956,
+          "maximum": 14.141
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "Failed to make progress": 1
+      },
+      "safety_rejections": [],
+      "controller_errors": [
+        {
+          "line": 37980,
+          "message": "[controller_server-3] [ERROR] [1791628929.327790990] [controller_server]: Failed to make progress"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 37724,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 42945,
+          "reason": "requested_goal_reached"
+        }
+      ],
+      "recovery": {
+        "run": "v128_baseline_attempt04",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12321349144,
+            "received_monotonic_ns": 507405245986933,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12321349144,
+            "received_monotonic_ns": 507405246954187,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12466407776,
+            "received_monotonic_ns": 507405383466202,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 42168453217,
+            "received_monotonic_ns": 507435028757077,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 42168453217,
+            "received_monotonic_ns": 507435028810356,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 42178447723,
+            "received_monotonic_ns": 507435029116511,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 42178447723,
+            "received_monotonic_ns": 507435033686533,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 52572734833,
+            "received_monotonic_ns": 507445421932462,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 52607715607,
+            "received_monotonic_ns": 507445459807236,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 52617710114,
+            "received_monotonic_ns": 507445469993353,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 56800411224,
+            "received_monotonic_ns": 507449655232320,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "requested_goal_reached"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 56800411224,
+            "received_monotonic_ns": 507449655456190,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": "requested_goal_reached"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 56800411224,
+            "received_monotonic_ns": 507449655662537,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 56800411224,
+            "received_monotonic_ns": 507449655825363,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "requested_goal_reached"
+          }
+        ],
+        "stops": [
+          {
+            "line": 37724,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791628919.014761,
+            "follow_path_abort_after_s": 10.31307339668274,
+            "abort_line": 37981
+          },
+          {
+            "line": 42945,
+            "reason": "requested_goal_reached",
+            "log_wall_s": 1791628933.6411328,
+            "follow_path_abort_after_s": null
+          }
+        ],
+        "errors": [
+          {
+            "line": 37706,
+            "message": "[controller_server-3] [ERROR] [1791628919.010267609] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 37713,
+            "message": "[controller_server-3] [ERROR] [1791628919.013511855] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 37716,
+            "message": "[controller_server-3] [ERROR] [1791628919.014079620] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 37719,
+            "message": "[controller_server-3] [ERROR] [1791628919.014640161] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 37726,
+            "message": "[controller_server-3] [ERROR] [1791628919.017692767] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 37729,
+            "message": "[controller_server-3] [ERROR] [1791628919.018277374] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 37732,
+            "message": "[controller_server-3] [ERROR] [1791628919.018829109] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 37739,
+            "message": "[controller_server-3] [ERROR] [1791628919.056312810] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 37742,
+            "message": "[controller_server-3] [ERROR] [1791628919.057012001] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 37745,
+            "message": "[controller_server-3] [ERROR] [1791628919.057654286] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 37980,
+            "message": "[controller_server-3] [ERROR] [1791628929.327790990] [controller_server]: Failed to make progress"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "be1439dcdffcd3d95e07887832601d757a3f59eaec92dcd06e9d3a6ff930eb4a",
+            "bytes": 11030446
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "8409f1b9eb46629ef79998281886e09d610c76012a2d37b5c94f96bab7ddc422",
+            "bytes": 10785020
+          }
+        }
+      },
+      "sensor_count": 532,
+      "scan_audit_outcomes": {
+        "published_sequentially": 532
+      },
+      "max_sensor_compute_ms": 28.842851985245943,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 6,
+        "tag": "v128_baseline_attempt04",
+        "unix_s": 1791628790.1287537,
+        "load": [
+          1.44482421875,
+          1.3408203125,
+          1.06787109375
+        ],
+        "free_bytes": 198520823808,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v128_baseline_attempt05",
+      "order": 7,
+      "variant": "baseline",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 21.82250149154113,
+      "final_xyz": [
+        4.06650447845459,
+        1.2418289184570312,
+        4.828069686889648
+      ],
+      "end_sim_s": 72.03204345703125,
+      "navigation_duration_s": 61.01121997833252,
+      "longest_pause_s": 10.794071197509766,
+      "pauses": [
+        {
+          "start_sim_s": 31.614253997802734,
+          "end_sim_s": 36.411617279052734,
+          "duration_sim_s": 4.79736328125
+        },
+        {
+          "start_sim_s": 36.611507415771484,
+          "end_sim_s": 41.70870590209961,
+          "duration_sim_s": 5.097198486328125
+        },
+        {
+          "start_sim_s": 48.405025482177734,
+          "end_sim_s": 58.29958724975586,
+          "duration_sim_s": 9.894561767578125
+        },
+        {
+          "start_sim_s": 61.197994232177734,
+          "end_sim_s": 71.9920654296875,
+          "duration_sim_s": 10.794071197509766
+        }
+      ],
+      "solve_ms": {
+        "count": 835,
+        "mean": 3.0080828922155685,
+        "median": 1.7485,
+        "p95": 4.3402174999999925,
+        "p99": 30.847668019999855,
+        "maximum": 151.162833
+      },
+      "over_60ms": {
+        "rounds": 7,
+        "successful": 5,
+        "failed": 2
+      },
+      "failed_rounds": 5,
+      "completed_rounds": 835,
+      "emergency_transitions": 11,
+      "actual_rtf": 0.9999840263621707,
+      "mapping": {
+        "snapshots": 691,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 691,
+          "mean": 27.27299565846599,
+          "median": 22.362,
+          "p95": 40.571,
+          "p99": 42.3431,
+          "maximum": 431.399
+        },
+        "copy_ms": {
+          "count": 691,
+          "mean": 5.786536903039074,
+          "median": 5.329,
+          "p95": 8.885,
+          "p99": 9.8125,
+          "maximum": 12.92
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "Failed to make progress": 3,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [],
+      "controller_errors": [
+        {
+          "line": 22802,
+          "message": "[controller_server-3] [ERROR] [1791629078.963592472] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 30362,
+          "message": "[controller_server-3] [ERROR] [1791629095.450134001] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 33828,
+          "message": "[controller_server-3] [ERROR] [1791629108.463429371] [controller_server]: Failed to make progress"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 22547,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 30096,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 33580,
+          "reason": "scan_safety_rejected"
+        }
+      ],
+      "recovery": {
+        "run": "v128_baseline_attempt05",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12386375427,
+            "received_monotonic_ns": 507566048125625,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12386375427,
+            "received_monotonic_ns": 507566048918483,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12521430016,
+            "received_monotonic_ns": 507566155615489,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 31319416046,
+            "received_monotonic_ns": 507584892207240,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 31319416046,
+            "received_monotonic_ns": 507584892245512,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 31319416046,
+            "received_monotonic_ns": 507584892318279,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 31329410553,
+            "received_monotonic_ns": 507584902936205,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 41493824005,
+            "received_monotonic_ns": 507595065754147,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 41493824005,
+            "received_monotonic_ns": 507595066152845,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 41518810272,
+            "received_monotonic_ns": 507595095793734,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 47860324860,
+            "received_monotonic_ns": 507601437048369,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 47860324860,
+            "received_monotonic_ns": 507601437093874,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 47860324860,
+            "received_monotonic_ns": 507601437220612,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 47860324860,
+            "received_monotonic_ns": 507601438751574,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 57969768524,
+            "received_monotonic_ns": 507611544820464,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 57969768524,
+            "received_monotonic_ns": 507611545115297,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 58059719086,
+            "received_monotonic_ns": 507611638524910,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 60953128815,
+            "received_monotonic_ns": 507614524343825,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 60953128815,
+            "received_monotonic_ns": 507614524383850,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 60953128815,
+            "received_monotonic_ns": 507614524511229,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 60953128815,
+            "received_monotonic_ns": 507614526782199,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          }
+        ],
+        "stops": [
+          {
+            "line": 22547,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791629068.8781884,
+            "follow_path_abort_after_s": 10.085474014282227,
+            "abort_line": 22803
+          },
+          {
+            "line": 30096,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791629085.4230795,
+            "follow_path_abort_after_s": 10.027114152908325,
+            "abort_line": 30363
+          },
+          {
+            "line": 33580,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791629098.5104,
+            "follow_path_abort_after_s": 9.953063011169434,
+            "abort_line": 33829
+          }
+        ],
+        "errors": [
+          {
+            "line": 22802,
+            "message": "[controller_server-3] [ERROR] [1791629078.963592472] [controller_server]: Failed to make progress"
+          },
+          {
+            "line": 30069,
+            "message": "[controller_server-3] [ERROR] [1791629085.420954766] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30073,
+            "message": "[controller_server-3] [ERROR] [1791629085.421051868] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30081,
+            "message": "[controller_server-3] [ERROR] [1791629085.422824633] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30085,
+            "message": "[controller_server-3] [ERROR] [1791629085.422911266] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30089,
+            "message": "[controller_server-3] [ERROR] [1791629085.422991777] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30097,
+            "message": "[controller_server-3] [ERROR] [1791629085.424572913] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30101,
+            "message": "[controller_server-3] [ERROR] [1791629085.424660577] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30105,
+            "message": "[controller_server-3] [ERROR] [1791629085.424742701] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30113,
+            "message": "[controller_server-3] [ERROR] [1791629085.428737525] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30117,
+            "message": "[controller_server-3] [ERROR] [1791629085.428827113] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30121,
+            "message": "[controller_server-3] [ERROR] [1791629085.428906662] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30127,
+            "message": "[controller_server-3] [ERROR] [1791629085.479582146] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30131,
+            "message": "[controller_server-3] [ERROR] [1791629085.479729342] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30135,
+            "message": "[controller_server-3] [ERROR] [1791629085.479821916] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 30362,
+            "message": "[controller_server-3] [ERROR] [1791629095.450134001] [controller_server]: Failed to make progress"
+          },
+          {
+            "line": 33559,
+            "message": "[controller_server-3] [ERROR] [1791629098.508114057] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33562,
+            "message": "[controller_server-3] [ERROR] [1791629098.508398580] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33569,
+            "message": "[controller_server-3] [ERROR] [1791629098.509690333] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33572,
+            "message": "[controller_server-3] [ERROR] [1791629098.509994724] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33575,
+            "message": "[controller_server-3] [ERROR] [1791629098.510293795] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33582,
+            "message": "[controller_server-3] [ERROR] [1791629098.511355186] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33585,
+            "message": "[controller_server-3] [ERROR] [1791629098.511656061] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33588,
+            "message": "[controller_server-3] [ERROR] [1791629098.511952026] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33595,
+            "message": "[controller_server-3] [ERROR] [1791629098.528546443] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33598,
+            "message": "[controller_server-3] [ERROR] [1791629098.528856444] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33601,
+            "message": "[controller_server-3] [ERROR] [1791629098.529131641] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33828,
+            "message": "[controller_server-3] [ERROR] [1791629108.463429371] [controller_server]: Failed to make progress"
+          },
+          {
+            "line": 33830,
+            "message": "[bt_navigator-5] [ERROR] [1791629108.489804955] [nav2_internal.bt_navigator]: Navigation failed"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "f93f03774d1387e7f382ad258b31ebe92a250c97aeddd9bb047e9d5f3737eb7b",
+            "bytes": 8512875
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "02644dc1f7fa42fe9d2336def535ff10e300a1fb2e432d91d1339216fc186e2b",
+            "bytes": 11584870
+          }
+        }
+      },
+      "sensor_count": 610,
+      "scan_audit_outcomes": {
+        "published_sequentially": 610
+      },
+      "max_sensor_compute_ms": 26.951333042234182,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 7,
+        "tag": "v128_baseline_attempt05",
+        "unix_s": 1791628954.5691895,
+        "load": [
+          1.6015625,
+          1.365234375,
+          1.11328125
+        ],
+        "free_bytes": 198313279488,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v128_candidate_attempt05",
+      "order": 8,
+      "variant": "candidate",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 23.737377676772322,
+      "final_xyz": [
+        3.561100482940674,
+        -0.9078248143196106,
+        4.821497917175293
+      ],
+      "end_sim_s": 50.42391586303711,
+      "navigation_duration_s": 39.40309238433838,
+      "longest_pause_s": 8.3953857421875,
+      "pauses": [
+        {
+          "start_sim_s": 42.008541107177734,
+          "end_sim_s": 50.403926849365234,
+          "duration_sim_s": 8.3953857421875
+        }
+      ],
+      "solve_ms": {
+        "count": 868,
+        "mean": 2.9789687523041475,
+        "median": 1.9305005,
+        "p95": 5.188933249999999,
+        "p99": 13.695507420000094,
+        "maximum": 143.178225
+      },
+      "over_60ms": {
+        "rounds": 5,
+        "successful": 4,
+        "failed": 1
+      },
+      "failed_rounds": 2,
+      "completed_rounds": 868,
+      "emergency_transitions": 4,
+      "actual_rtf": 0.9996531261591398,
+      "mapping": {
+        "snapshots": 486,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 486,
+          "mean": 24.526625514403293,
+          "median": 18.927,
+          "p95": 39.21825,
+          "p99": 41.10745,
+          "maximum": 424.992
+        },
+        "copy_ms": {
+          "count": 486,
+          "mean": 5.857006172839506,
+          "median": 5.1175,
+          "p95": 12.310749999999999,
+          "p99": 13.12875,
+          "maximum": 13.921
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_trajectory_missing": 4,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [],
+      "controller_errors": [
+        {
+          "line": 33358,
+          "message": "[controller_server-3] [ERROR] [1791629246.233011342] [controller_server]: scan_safety_rejected"
+        },
+        {
+          "line": 33485,
+          "message": "[controller_server-3] [ERROR] [1791629249.556254187] [controller_server]: scan_trajectory_missing"
+        },
+        {
+          "line": 33591,
+          "message": "[controller_server-3] [ERROR] [1791629252.716218955] [controller_server]: scan_trajectory_missing"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 33348,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 33484,
+          "reason": "scan_trajectory_missing"
+        },
+        {
+          "line": 33590,
+          "reason": "scan_trajectory_missing"
+        }
+      ],
+      "recovery": {
+        "run": "v128_candidate_attempt05",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12376371384,
+            "received_monotonic_ns": 507732951107329,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12406383514,
+            "received_monotonic_ns": 507732951972862,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12561446190,
+            "received_monotonic_ns": 507733110655149,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 41768672943,
+            "received_monotonic_ns": 507762239024787,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 41768672943,
+            "received_monotonic_ns": 507762239091773,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 41768672943,
+            "received_monotonic_ns": 507762239300805,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 41778667450,
+            "received_monotonic_ns": 507762243677755,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 43067958832,
+            "received_monotonic_ns": 507763537089544,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 43167903900,
+            "received_monotonic_ns": 507763638276443,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "rejected",
+            "message": "scan_global_traj_failed"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45106838226,
+            "received_monotonic_ns": 507765570214598,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 45106838226,
+            "received_monotonic_ns": 507765570277737,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45106838226,
+            "received_monotonic_ns": 507765570429852,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45106838226,
+            "received_monotonic_ns": 507765570568081,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 46226222992,
+            "received_monotonic_ns": 507766697008997,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 46376140594,
+            "received_monotonic_ns": 507766839586324,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "rejected",
+            "message": "scan_global_traj_failed"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 48265102386,
+            "received_monotonic_ns": 507768730141205,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 48265102386,
+            "received_monotonic_ns": 507768730190096,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": "scan_trajectory_missing"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 48265102386,
+            "received_monotonic_ns": 507768730333836,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 48265102386,
+            "received_monotonic_ns": 507768730399960,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_trajectory_missing"
+          }
+        ],
+        "stops": [
+          {
+            "line": 33348,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791629246.2250245,
+            "follow_path_abort_after_s": 0.008011579513549805,
+            "abort_line": 33359
+          },
+          {
+            "line": 33484,
+            "reason": "scan_trajectory_missing",
+            "log_wall_s": 1791629249.5561888,
+            "follow_path_abort_after_s": 8.535385131835938e-05,
+            "abort_line": 33486
+          },
+          {
+            "line": 33590,
+            "reason": "scan_trajectory_missing",
+            "log_wall_s": 1791629252.7161489,
+            "follow_path_abort_after_s": 8.058547973632812e-05,
+            "abort_line": 33592
+          }
+        ],
+        "errors": [
+          {
+            "line": 33331,
+            "message": "[controller_server-3] [ERROR] [1791629246.220243072] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33333,
+            "message": "[controller_server-3] [ERROR] [1791629246.220823591] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33339,
+            "message": "[controller_server-3] [ERROR] [1791629246.223826434] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33341,
+            "message": "[controller_server-3] [ERROR] [1791629246.224359333] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33343,
+            "message": "[controller_server-3] [ERROR] [1791629246.224880160] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33349,
+            "message": "[controller_server-3] [ERROR] [1791629246.227786392] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33351,
+            "message": "[controller_server-3] [ERROR] [1791629246.228322016] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33353,
+            "message": "[controller_server-3] [ERROR] [1791629246.228841491] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33358,
+            "message": "[controller_server-3] [ERROR] [1791629246.233011342] [controller_server]: scan_safety_rejected"
+          },
+          {
+            "line": 33361,
+            "message": "[controller_server-3] [ERROR] [1791629246.256481085] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33363,
+            "message": "[controller_server-3] [ERROR] [1791629246.257067315] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33365,
+            "message": "[controller_server-3] [ERROR] [1791629246.257611706] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33438,
+            "message": "[controller_server-3] [ERROR] [1791629247.624417262] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 33485,
+            "message": "[controller_server-3] [ERROR] [1791629249.556254187] [controller_server]: scan_trajectory_missing"
+          },
+          {
+            "line": 33591,
+            "message": "[controller_server-3] [ERROR] [1791629252.716218955] [controller_server]: scan_trajectory_missing"
+          },
+          {
+            "line": 33593,
+            "message": "[bt_navigator-5] [ERROR] [1791629252.742570593] [nav2_internal.bt_navigator]: Navigation failed"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "799039e9d23fc2c6c937921a47edba4f56293e629d110c92992070c5d1798599",
+            "bytes": 9093037
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "d0db3526ed5ef71d62cfb767f4f6d48bcaeaaa43fc0078c4367d3ddcb0abb6c8",
+            "bytes": 8635594
+          }
+        }
+      },
+      "sensor_count": 394,
+      "scan_audit_outcomes": {
+        "published_sequentially": 394
+      },
+      "max_sensor_compute_ms": 26.17211197502911,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 8,
+        "tag": "v128_candidate_attempt05",
+        "unix_s": 1791629123.7060003,
+        "load": [
+          1.5849609375,
+          1.375,
+          1.14697265625
+        ],
+        "free_bytes": 198083747840,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v128_baseline_attempt06",
+      "order": 9,
+      "variant": "baseline",
+      "arrived": true,
+      "terminal": "FINISHED",
+      "fallen": false,
+      "outcome_class": "arrived",
+      "follow_path_aborts": 2,
+      "path_m": 26.441042762183077,
+      "final_xyz": [
+        2.0511972904205322,
+        -2.89007830619812,
+        4.82215690612793
+      ],
+      "end_sim_s": 64.97592163085938,
+      "navigation_duration_s": 53.955098152160645,
+      "longest_pause_s": 9.79461669921875,
+      "pauses": [
+        {
+          "start_sim_s": 38.810298919677734,
+          "end_sim_s": 40.009639739990234,
+          "duration_sim_s": 1.1993408203125
+        },
+        {
+          "start_sim_s": 45.30672836303711,
+          "end_sim_s": 55.10134506225586,
+          "duration_sim_s": 9.79461669921875
+        },
+        {
+          "start_sim_s": 58.69936752319336,
+          "end_sim_s": 64.89596557617188,
+          "duration_sim_s": 6.196598052978516
+        }
+      ],
+      "solve_ms": {
+        "count": 1025,
+        "mean": 3.1593027326829266,
+        "median": 1.85568,
+        "p95": 7.425135399999999,
+        "p99": 16.24927948,
+        "maximum": 153.428871
+      },
+      "over_60ms": {
+        "rounds": 3,
+        "successful": 1,
+        "failed": 2
+      },
+      "failed_rounds": 20,
+      "completed_rounds": 1025,
+      "emergency_transitions": 8,
+      "actual_rtf": 0.999977269415147,
+      "mapping": {
+        "snapshots": 643,
+        "maximum_queued_clouds": 3,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 643,
+          "mean": 27.77929704510109,
+          "median": 26.006,
+          "p95": 40.928399999999996,
+          "p99": 42.91058000000002,
+          "maximum": 313.418
+        },
+        "copy_ms": {
+          "count": 643,
+          "mean": 5.604606531881804,
+          "median": 5.105,
+          "p95": 12.006199999999971,
+          "p99": 13.987980000000002,
+          "maximum": 14.838
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_safety_evidence_stale": 2,
+        "Failed to make progress": 1
+      },
+      "safety_rejections": [
+        {
+          "now": 38.100688934,
+          "active": 752.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 37.910793304,
+          "observation_age": 0.18989563,
+          "line": 32702,
+          "body_xyz": [
+            5.777707099914551,
+            2.053727149963379,
+            4.813381195068359
+          ],
+          "nearest_pose_delta_s": 0.009994507162112143
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 32701,
+          "message": "[controller_server-3] [ERROR] [1791629386.620628056] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.069962 first=1.961321 samples=191"
+        },
+        {
+          "line": 32702,
+          "message": "[controller_server-3] [ERROR] [1791629386.620672499] [controller_server]: SCAN evidence rejected now=38.100688934 active=752 proof=752 clear=0 proof_stamp=38.100688934 proof_age=0.000000000 observation_stamp=37.910793304 observation_age=0.189895630 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 32704,
+          "message": "[controller_server-3] [ERROR] [1791629386.620767167] [controller_server]: scan_safety_evidence_stale"
+        },
+        {
+          "line": 40206,
+          "message": "[controller_server-3] [ERROR] [1791629403.316111632] [controller_server]: Failed to make progress"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 32703,
+          "reason": "scan_safety_evidence_stale"
+        },
+        {
+          "line": 39962,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 43880,
+          "reason": "requested_goal_reached"
+        }
+      ],
+      "recovery": {
+        "run": "v128_baseline_attempt06",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12366367340,
+            "received_monotonic_ns": 507876971009131,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12366367340,
+            "received_monotonic_ns": 507876971821915,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12526432037,
+            "received_monotonic_ns": 507877111597266,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 38110683441,
+            "received_monotonic_ns": 507902635253104,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 38110683441,
+            "received_monotonic_ns": 507902635337963,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 38110683441,
+            "received_monotonic_ns": 507902635849803,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 38115680695,
+            "received_monotonic_ns": 507902653402688,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 39569881439,
+            "received_monotonic_ns": 507904097326165,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 39569881439,
+            "received_monotonic_ns": 507904097556848,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 39579875946,
+            "received_monotonic_ns": 507904107032231,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 44762027740,
+            "received_monotonic_ns": 507909294246683,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 44762027740,
+            "received_monotonic_ns": 507909294322094,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 44762027740,
+            "received_monotonic_ns": 507909294557225,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 44772022247,
+            "received_monotonic_ns": 507909297168122,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 54871471405,
+            "received_monotonic_ns": 507919396870840,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 54901454926,
+            "received_monotonic_ns": 507919429433349,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 54906452179,
+            "received_monotonic_ns": 507919437295386,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 58369548798,
+            "received_monotonic_ns": 507922896973057,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "requested_goal_reached"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 58369548798,
+            "received_monotonic_ns": 507922897115484,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": "requested_goal_reached"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 58369548798,
+            "received_monotonic_ns": 507922897233665,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 58369548798,
+            "received_monotonic_ns": 507922897298607,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "requested_goal_reached"
+          }
+        ],
+        "stops": [
+          {
+            "line": 32703,
+            "reason": "scan_safety_evidence_stale",
+            "log_wall_s": 1791629386.6207004,
+            "follow_path_abort_after_s": 7.82012939453125e-05,
+            "abort_line": 32705
+          },
+          {
+            "line": 39962,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791629393.2801433,
+            "follow_path_abort_after_s": 10.035996675491333,
+            "abort_line": 40207
+          },
+          {
+            "line": 43880,
+            "reason": "requested_goal_reached",
+            "log_wall_s": 1791629406.882993,
+            "follow_path_abort_after_s": null
+          }
+        ],
+        "errors": [
+          {
+            "line": 32701,
+            "message": "[controller_server-3] [ERROR] [1791629386.620628056] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.069962 first=1.961321 samples=191"
+          },
+          {
+            "line": 32702,
+            "message": "[controller_server-3] [ERROR] [1791629386.620672499] [controller_server]: SCAN evidence rejected now=38.100688934 active=752 proof=752 clear=0 proof_stamp=38.100688934 proof_age=0.000000000 observation_stamp=37.910793304 observation_age=0.189895630 pending_curves=0 pending_proofs=0"
+          },
+          {
+            "line": 32704,
+            "message": "[controller_server-3] [ERROR] [1791629386.620767167] [controller_server]: scan_safety_evidence_stale"
+          },
+          {
+            "line": 39935,
+            "message": "[controller_server-3] [ERROR] [1791629393.275195893] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39937,
+            "message": "[controller_server-3] [ERROR] [1791629393.275516775] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39943,
+            "message": "[controller_server-3] [ERROR] [1791629393.277228415] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39945,
+            "message": "[controller_server-3] [ERROR] [1791629393.277562863] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39947,
+            "message": "[controller_server-3] [ERROR] [1791629393.277882833] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39953,
+            "message": "[controller_server-3] [ERROR] [1791629393.279407252] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39955,
+            "message": "[controller_server-3] [ERROR] [1791629393.279732362] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39957,
+            "message": "[controller_server-3] [ERROR] [1791629393.280052603] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39963,
+            "message": "[controller_server-3] [ERROR] [1791629393.281637004] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39965,
+            "message": "[controller_server-3] [ERROR] [1791629393.281969027] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39967,
+            "message": "[controller_server-3] [ERROR] [1791629393.282290811] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39973,
+            "message": "[controller_server-3] [ERROR] [1791629393.329493571] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39975,
+            "message": "[controller_server-3] [ERROR] [1791629393.329806868] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39977,
+            "message": "[controller_server-3] [ERROR] [1791629393.330106580] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 40206,
+            "message": "[controller_server-3] [ERROR] [1791629403.316111632] [controller_server]: Failed to make progress"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "6115d59b2c154ef95ebde1e48c23c62ba917fe4e7d4540cd218026c6fc6ceb51",
+            "bytes": 11831778
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "80786a4d81e007ce0ff724d483a5fd4c0ba6a0cb9294c6ae3b5622290ef301ef",
+            "bytes": 11147567
+          }
+        }
+      },
+      "sensor_count": 539,
+      "scan_audit_outcomes": {
+        "published_sequentially": 539
+      },
+      "max_sensor_compute_ms": 25.942411040887237,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 9,
+        "tag": "v128_baseline_attempt06",
+        "unix_s": 1791629266.6940491,
+        "load": [
+          1.2734375,
+          1.2197265625,
+          1.11181640625
+        ],
+        "free_bytes": 197925462016,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v128_candidate_attempt06",
+      "order": 10,
+      "variant": "candidate",
+      "arrived": true,
+      "terminal": "FINISHED",
+      "fallen": false,
+      "outcome_class": "arrived",
+      "follow_path_aborts": 0,
+      "path_m": 26.2562060745726,
+      "final_xyz": [
+        2.103537082672119,
+        -2.897658109664917,
+        4.827200889587402
+      ],
+      "end_sim_s": 50.323970794677734,
+      "navigation_duration_s": 39.303147315979004,
+      "longest_pause_s": 4.99725341796875,
+      "pauses": [
+        {
+          "start_sim_s": 45.30672836303711,
+          "end_sim_s": 50.30398178100586,
+          "duration_sim_s": 4.99725341796875
+        }
+      ],
+      "solve_ms": {
+        "count": 971,
+        "mean": 3.0814603089598354,
+        "median": 1.948185,
+        "p95": 6.731304,
+        "p99": 24.990378299999865,
+        "maximum": 118.025163
+      },
+      "over_60ms": {
+        "rounds": 5,
+        "successful": 5,
+        "failed": 0
+      },
+      "failed_rounds": 4,
+      "completed_rounds": 971,
+      "emergency_transitions": 2,
+      "actual_rtf": 0.9996555548261972,
+      "mapping": {
+        "snapshots": 496,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 496,
+          "mean": 24.157933467741934,
+          "median": 19.298000000000002,
+          "p95": 38.719,
+          "p99": 40.259600000000006,
+          "maximum": 379.092
+        },
+        "copy_ms": {
+          "count": 496,
+          "mean": 5.812197580645161,
+          "median": 5.154,
+          "p95": 10.03525,
+          "p99": 11.389500000000002,
+          "maximum": 13.661
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {},
+      "safety_rejections": [],
+      "controller_errors": [],
+      "revocations": [
+        {
+          "line": 38302,
+          "reason": "requested_goal_reached"
+        }
+      ],
+      "recovery": {
+        "run": "v128_candidate_attempt06",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12416387558,
+            "received_monotonic_ns": 508036803864967,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12416387558,
+            "received_monotonic_ns": 508036804709902,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12561446190,
+            "received_monotonic_ns": 508036947258563,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45091846466,
+            "received_monotonic_ns": 508069400297623,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "requested_goal_reached"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 45091846466,
+            "received_monotonic_ns": 508069400360712,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "requested_goal_reached"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45091846466,
+            "received_monotonic_ns": 508069400498851,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45091846466,
+            "received_monotonic_ns": 508069400933157,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "requested_goal_reached"
+          }
+        ],
+        "stops": [
+          {
+            "line": 38302,
+            "reason": "requested_goal_reached",
+            "log_wall_s": 1791629553.386132,
+            "follow_path_abort_after_s": null
+          }
+        ],
+        "errors": [
+          {
+            "line": 23025,
+            "message": "[controller_server-3] [ERROR] [1791629540.487128097] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "fb48913f496eb2a0b1f09a5c3bedf59cedede6ce8eecfb7881d69cdf5c1907db",
+            "bytes": 10253317
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "9e5e5b8e9121d8b86bdd2de1cdd130167f42cf689cf2cd3f649b582bd3cc30a7",
+            "bytes": 8851318
+          }
+        }
+      },
+      "sensor_count": 393,
+      "scan_audit_outcomes": {
+        "published_sequentially": 393
+      },
+      "max_sensor_compute_ms": 27.290359023027122,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 10,
+        "tag": "v128_candidate_attempt06",
+        "unix_s": 1791629427.5582125,
+        "load": [
+          1.74365234375,
+          1.29931640625,
+          1.1435546875
+        ],
+        "free_bytes": 197714501632,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v128_candidate_attempt07",
+      "order": 11,
+      "variant": "candidate",
+      "arrived": true,
+      "terminal": "FINISHED",
+      "fallen": false,
+      "outcome_class": "arrived",
+      "follow_path_aborts": 2,
+      "path_m": 26.570147694258903,
+      "final_xyz": [
+        2.0672242641448975,
+        -2.869870185852051,
+        4.829846382141113
+      ],
+      "end_sim_s": 55.241268157958984,
+      "navigation_duration_s": 44.220444679260254,
+      "longest_pause_s": 4.19769287109375,
+      "pauses": [
+        {
+          "start_sim_s": 46.206233978271484,
+          "end_sim_s": 47.30562973022461,
+          "duration_sim_s": 1.099395751953125
+        },
+        {
+          "start_sim_s": 51.003597259521484,
+          "end_sim_s": 55.201290130615234,
+          "duration_sim_s": 4.19769287109375
+        }
+      ],
+      "solve_ms": {
+        "count": 1035,
+        "mean": 3.455023393236715,
+        "median": 1.835477,
+        "p95": 7.657023499999997,
+        "p99": 22.043765299999947,
+        "maximum": 186.262126
+      },
+      "over_60ms": {
+        "rounds": 7,
+        "successful": 4,
+        "failed": 3
+      },
+      "failed_rounds": 4,
+      "completed_rounds": 1035,
+      "emergency_transitions": 8,
+      "actual_rtf": 0.99997499588569,
+      "mapping": {
+        "snapshots": 540,
+        "maximum_queued_clouds": 3,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 540,
+          "mean": 23.663146296296297,
+          "median": 19.255499999999998,
+          "p95": 37.74145,
+          "p99": 40.016650000000006,
+          "maximum": 216.475
+        },
+        "copy_ms": {
+          "count": 540,
+          "mean": 4.754661111111111,
+          "median": 4.376,
+          "p95": 9.4367,
+          "p99": 10.929540000000003,
+          "maximum": 13.021
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "scan_safety_evidence_stale": 2
+      },
+      "safety_rejections": [
+        {
+          "now": 24.313266754,
+          "active": 351.0,
+          "clear": 0.0,
+          "proof_age": 0.0,
+          "observation_stamp": 24.218318939,
+          "observation_age": 0.094947815,
+          "line": 14380,
+          "body_xyz": [
+            8.275775909423828,
+            -1.0055294036865234,
+            3.8040730953216553
+          ],
+          "nearest_pose_delta_s": 0.004997253568358673
+        }
+      ],
+      "controller_errors": [
+        {
+          "line": 14379,
+          "message": "[controller_server-3] [ERROR] [1791629679.243424864] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.014992 first=0.863513 samples=86"
+        },
+        {
+          "line": 14380,
+          "message": "[controller_server-3] [ERROR] [1791629679.243447326] [controller_server]: SCAN evidence rejected now=24.313266754 active=351 proof=351 clear=0 proof_stamp=24.313266754 proof_age=0.000000000 observation_stamp=24.218318939 observation_age=0.094947815 pending_curves=0 pending_proofs=0"
+        },
+        {
+          "line": 14382,
+          "message": "[controller_server-3] [ERROR] [1791629679.243510174] [controller_server]: scan_safety_evidence_stale"
+        },
+        {
+          "line": 36296,
+          "message": "[controller_server-3] [ERROR] [1791629700.519534728] [controller_server]: scan_safety_rejected"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 14381,
+          "reason": "scan_safety_evidence_stale"
+        },
+        {
+          "line": 36286,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 40414,
+          "reason": "requested_goal_reached"
+        }
+      ],
+      "recovery": {
+        "run": "v128_candidate_attempt07",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12356363297,
+            "received_monotonic_ns": 508183361000760,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12356363297,
+            "received_monotonic_ns": 508183361796635,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12416387558,
+            "received_monotonic_ns": 508183411095655,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 24313266754,
+            "received_monotonic_ns": 508195257450248,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 24313266754,
+            "received_monotonic_ns": 508195257492738,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 24313266754,
+            "received_monotonic_ns": 508195257619767,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 24318264008,
+            "received_monotonic_ns": 508195265876822,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_evidence_stale"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 26222217560,
+            "received_monotonic_ns": 508197169683320,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 26222217560,
+            "received_monotonic_ns": 508197170451403,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 26252201080,
+            "received_monotonic_ns": 508197192894649,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45561588287,
+            "received_monotonic_ns": 508216510140264,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 45561588287,
+            "received_monotonic_ns": 508216510195187,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45561588287,
+            "received_monotonic_ns": 508216510407095,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 45571582794,
+            "received_monotonic_ns": 508216513911816,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 46905849457,
+            "received_monotonic_ns": 508217846967119,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 46955821991,
+            "received_monotonic_ns": 508217897579419,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 46965816498,
+            "received_monotonic_ns": 508217905911466,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 50733745575,
+            "received_monotonic_ns": 508221680450193,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "requested_goal_reached"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 50733745575,
+            "received_monotonic_ns": 508221680691445,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": "requested_goal_reached"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 50733745575,
+            "received_monotonic_ns": 508221680851055,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 50733745575,
+            "received_monotonic_ns": 508221680957355,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "requested_goal_reached"
+          }
+        ],
+        "stops": [
+          {
+            "line": 14381,
+            "reason": "scan_safety_evidence_stale",
+            "log_wall_s": 1791629679.243465,
+            "follow_path_abort_after_s": 5.793571472167969e-05,
+            "abort_line": 14383
+          },
+          {
+            "line": 36286,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791629700.4960628,
+            "follow_path_abort_after_s": 0.023517370223999023,
+            "abort_line": 36297
+          },
+          {
+            "line": 40414,
+            "reason": "requested_goal_reached",
+            "log_wall_s": 1791629705.66638,
+            "follow_path_abort_after_s": null
+          }
+        ],
+        "errors": [
+          {
+            "line": 14379,
+            "message": "[controller_server-3] [ERROR] [1791629679.243424864] [controller_server]: Controller native validation rejected: native_curve status=1 phase=0.014992 first=0.863513 samples=86"
+          },
+          {
+            "line": 14380,
+            "message": "[controller_server-3] [ERROR] [1791629679.243447326] [controller_server]: SCAN evidence rejected now=24.313266754 active=351 proof=351 clear=0 proof_stamp=24.313266754 proof_age=0.000000000 observation_stamp=24.218318939 observation_age=0.094947815 pending_curves=0 pending_proofs=0"
+          },
+          {
+            "line": 14382,
+            "message": "[controller_server-3] [ERROR] [1791629679.243510174] [controller_server]: scan_safety_evidence_stale"
+          },
+          {
+            "line": 36269,
+            "message": "[controller_server-3] [ERROR] [1791629700.492702261] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36271,
+            "message": "[controller_server-3] [ERROR] [1791629700.493076945] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36277,
+            "message": "[controller_server-3] [ERROR] [1791629700.495324265] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36279,
+            "message": "[controller_server-3] [ERROR] [1791629700.495651129] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36281,
+            "message": "[controller_server-3] [ERROR] [1791629700.495970188] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36287,
+            "message": "[controller_server-3] [ERROR] [1791629700.498037450] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36289,
+            "message": "[controller_server-3] [ERROR] [1791629700.498373441] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36291,
+            "message": "[controller_server-3] [ERROR] [1791629700.498728648] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36296,
+            "message": "[controller_server-3] [ERROR] [1791629700.519534728] [controller_server]: scan_safety_rejected"
+          },
+          {
+            "line": 36299,
+            "message": "[controller_server-3] [ERROR] [1791629700.544475161] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36301,
+            "message": "[controller_server-3] [ERROR] [1791629700.544937359] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 36303,
+            "message": "[controller_server-3] [ERROR] [1791629700.545345165] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "6047dbb630759fee533bab78a6eea397757901fefc94cbde7c23a25e426f3734",
+            "bytes": 10620412
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "e66bb3a0e2c0f24b343f40fc88a0bb1a1d53f481d9f18d36717a997889641c28",
+            "bytes": 9718972
+          }
+        }
+      },
+      "sensor_count": 442,
+      "scan_audit_outcomes": {
+        "published_sequentially": 442
+      },
+      "max_sensor_compute_ms": 27.610871009528637,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 11,
+        "tag": "v128_candidate_attempt07",
+        "unix_s": 1791629570.2946918,
+        "load": [
+          1.57763671875,
+          1.25244140625,
+          1.13623046875
+        ],
+        "free_bytes": 197551747072,
+        "containers": ""
+      }
+    },
+    {
+      "run": "v128_baseline_attempt07",
+      "order": 12,
+      "variant": "baseline",
+      "arrived": false,
+      "terminal": "FAILED",
+      "fallen": false,
+      "outcome_class": "action_failed",
+      "follow_path_aborts": 3,
+      "path_m": 25.287221511677878,
+      "final_xyz": [
+        2.7953555583953857,
+        -1.9549365043640137,
+        4.8212785720825195
+      ],
+      "end_sim_s": 75.49014282226562,
+      "navigation_duration_s": 64.4693193435669,
+      "longest_pause_s": 10.494232177734375,
+      "pauses": [
+        {
+          "start_sim_s": 38.610408782958984,
+          "end_sim_s": 47.805355072021484,
+          "duration_sim_s": 9.1949462890625
+        },
+        {
+          "start_sim_s": 53.002498626708984,
+          "end_sim_s": 62.397335052490234,
+          "duration_sim_s": 9.39483642578125
+        },
+        {
+          "start_sim_s": 64.99591064453125,
+          "end_sim_s": 75.49014282226562,
+          "duration_sim_s": 10.494232177734375
+        }
+      ],
+      "solve_ms": {
+        "count": 975,
+        "mean": 3.5297428092307697,
+        "median": 2.0984100000000003,
+        "p95": 8.1557366,
+        "p99": 16.13971887999996,
+        "maximum": 168.088544
+      },
+      "over_60ms": {
+        "rounds": 4,
+        "successful": 1,
+        "failed": 3
+      },
+      "failed_rounds": 8,
+      "completed_rounds": 975,
+      "emergency_transitions": 13,
+      "actual_rtf": 0.9995315807824099,
+      "mapping": {
+        "snapshots": 738,
+        "maximum_queued_clouds": 5,
+        "reduced_clouds": 0,
+        "mapping_ms": {
+          "count": 738,
+          "mean": 30.09430894308943,
+          "median": 36.8895,
+          "p95": 41.3857,
+          "p99": 43.27537,
+          "maximum": 425.256
+        },
+        "copy_ms": {
+          "count": 738,
+          "mean": 6.135288617886179,
+          "median": 5.2135,
+          "p95": 13.09035,
+          "p99": 13.78316,
+          "maximum": 14.293
+        },
+        "claim": "Background map work; these times are not planner-thread blocking or complete round solve latency."
+      },
+      "causes": {
+        "Failed to make progress": 3,
+        "Navigation failed": 1
+      },
+      "safety_rejections": [],
+      "controller_errors": [
+        {
+          "line": 29915,
+          "message": "[controller_server-3] [ERROR] [1791629854.292456092] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 35686,
+          "message": "[controller_server-3] [ERROR] [1791629868.872349436] [controller_server]: Failed to make progress"
+        },
+        {
+          "line": 39165,
+          "message": "[controller_server-3] [ERROR] [1791629881.109018181] [controller_server]: Failed to make progress"
+        }
+      ],
+      "revocations": [
+        {
+          "line": 29685,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 35444,
+          "reason": "scan_safety_rejected"
+        },
+        {
+          "line": 38925,
+          "reason": "scan_safety_rejected"
+        }
+      ],
+      "recovery": {
+        "run": "v128_baseline_attempt07",
+        "handoffs": [
+          {
+            "event": "pct_route",
+            "clock_ns": 12361365318,
+            "received_monotonic_ns": 508335210343494,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12361365318,
+            "received_monotonic_ns": 508335211131112,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 12561446190,
+            "received_monotonic_ns": 508335400452149,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 37965763092,
+            "received_monotonic_ns": 508360748159028,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 37965763092,
+            "received_monotonic_ns": 508360748220643,
+            "generation": 1,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 37965763092,
+            "received_monotonic_ns": 508360748377478,
+            "generation": 1,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 37975757599,
+            "received_monotonic_ns": 508360752456195,
+            "generation": 1,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 47605464935,
+            "received_monotonic_ns": 508370386889780,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 47605464935,
+            "received_monotonic_ns": 508370387119852,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 47625453949,
+            "received_monotonic_ns": 508370403784888,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 52462795258,
+            "received_monotonic_ns": 508375247837033,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 52462795258,
+            "received_monotonic_ns": 508375247888038,
+            "generation": 2,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 52462795258,
+            "received_monotonic_ns": 508375248047698,
+            "generation": 2,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 52462795258,
+            "received_monotonic_ns": 508375251040136,
+            "generation": 2,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "pct_route",
+            "clock_ns": 62172458649,
+            "received_monotonic_ns": 508384956546173,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": null
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 62212436676,
+            "received_monotonic_ns": 508384993236522,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "accepted",
+            "message": "p2b_route_accepted_by_scan_fsm"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 62222431183,
+            "received_monotonic_ns": 508385006510832,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "accepted",
+            "message": "controller_bspline_accepted"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 64656097412,
+            "received_monotonic_ns": 508387433662859,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_cancel",
+            "clock_ns": 64656097412,
+            "received_monotonic_ns": 508387433707973,
+            "generation": 3,
+            "consumer": null,
+            "status": null,
+            "message": "scan_safety_rejected"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 64656097412,
+            "received_monotonic_ns": 508387433841264,
+            "generation": 3,
+            "consumer": "controller",
+            "status": "stopped",
+            "message": "bound_controller_output_remains_revoked"
+          },
+          {
+            "event": "scan_admission",
+            "clock_ns": 64656097412,
+            "received_monotonic_ns": 508387434351431,
+            "generation": 3,
+            "consumer": "fsm",
+            "status": "stopped",
+            "message": "scan_safety_rejected"
+          }
+        ],
+        "stops": [
+          {
+            "line": 29685,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791629844.734091,
+            "follow_path_abort_after_s": 9.558400869369507,
+            "abort_line": 29916
+          },
+          {
+            "line": 35444,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791629859.233862,
+            "follow_path_abort_after_s": 9.638519763946533,
+            "abort_line": 35687
+          },
+          {
+            "line": 38925,
+            "reason": "scan_safety_rejected",
+            "log_wall_s": 1791629871.419682,
+            "follow_path_abort_after_s": 9.689371347427368,
+            "abort_line": 39166
+          }
+        ],
+        "errors": [
+          {
+            "line": 29662,
+            "message": "[controller_server-3] [ERROR] [1791629844.730439168] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 29670,
+            "message": "[controller_server-3] [ERROR] [1791629844.733574013] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 29674,
+            "message": "[controller_server-3] [ERROR] [1791629844.733761565] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 29678,
+            "message": "[controller_server-3] [ERROR] [1791629844.733936373] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 29686,
+            "message": "[controller_server-3] [ERROR] [1791629844.736812212] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 29690,
+            "message": "[controller_server-3] [ERROR] [1791629844.736986049] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 29694,
+            "message": "[controller_server-3] [ERROR] [1791629844.737155366] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 29915,
+            "message": "[controller_server-3] [ERROR] [1791629854.292456092] [controller_server]: Failed to make progress"
+          },
+          {
+            "line": 35427,
+            "message": "[controller_server-3] [ERROR] [1791629859.230703794] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35429,
+            "message": "[controller_server-3] [ERROR] [1791629859.231125546] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35435,
+            "message": "[controller_server-3] [ERROR] [1791629859.232965510] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35437,
+            "message": "[controller_server-3] [ERROR] [1791629859.233359390] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35439,
+            "message": "[controller_server-3] [ERROR] [1791629859.233740074] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35445,
+            "message": "[controller_server-3] [ERROR] [1791629859.235399179] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35447,
+            "message": "[controller_server-3] [ERROR] [1791629859.235786466] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35449,
+            "message": "[controller_server-3] [ERROR] [1791629859.236168814] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35455,
+            "message": "[controller_server-3] [ERROR] [1791629859.264294655] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35457,
+            "message": "[controller_server-3] [ERROR] [1791629859.264710136] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35459,
+            "message": "[controller_server-3] [ERROR] [1791629859.265096822] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35463,
+            "message": "[controller_server-3] [ERROR] [1791629859.314459972] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35465,
+            "message": "[controller_server-3] [ERROR] [1791629859.314892193] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35467,
+            "message": "[controller_server-3] [ERROR] [1791629859.315283738] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 35686,
+            "message": "[controller_server-3] [ERROR] [1791629868.872349436] [controller_server]: Failed to make progress"
+          },
+          {
+            "line": 38903,
+            "message": "[controller_server-3] [ERROR] [1791629871.418391236] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38905,
+            "message": "[controller_server-3] [ERROR] [1791629871.418420400] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38916,
+            "message": "[controller_server-3] [ERROR] [1791629871.419524843] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38918,
+            "message": "[controller_server-3] [ERROR] [1791629871.419562264] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38920,
+            "message": "[controller_server-3] [ERROR] [1791629871.419591168] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38926,
+            "message": "[controller_server-3] [ERROR] [1791629871.420406198] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38928,
+            "message": "[controller_server-3] [ERROR] [1791629871.420441845] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38930,
+            "message": "[controller_server-3] [ERROR] [1791629871.420470509] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38936,
+            "message": "[controller_server-3] [ERROR] [1791629871.463420429] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38938,
+            "message": "[controller_server-3] [ERROR] [1791629871.463465032] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38940,
+            "message": "[controller_server-3] [ERROR] [1791629871.463494327] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38944,
+            "message": "[controller_server-3] [ERROR] [1791629871.513600021] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38946,
+            "message": "[controller_server-3] [ERROR] [1791629871.513663981] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 38948,
+            "message": "[controller_server-3] [ERROR] [1791629871.513692424] [quad_0.scan_planner_node]: Target is occupied and no collision-free point was found on the global trajectory"
+          },
+          {
+            "line": 39165,
+            "message": "[controller_server-3] [ERROR] [1791629881.109018181] [controller_server]: Failed to make progress"
+          },
+          {
+            "line": 39169,
+            "message": "[bt_navigator-5] [ERROR] [1791629881.132006126] [nav2_internal.bt_navigator]: Navigation failed"
+          }
+        ],
+        "raw_capture_sources": {
+          "nav2.log": {
+            "sha256": "09815134644f1af418322e391e55a38386d4f5bf622e3034eb4e93fef2b600ee",
+            "bytes": 10284949
+          },
+          "artifacts/reactive_observations.jsonl": {
+            "sha256": "9cea27ca3688d949851a2f43170042ee75609cf3a07334b3890f9c7c0bc9f847",
+            "bytes": 12604333
+          }
+        }
+      },
+      "sensor_count": 645,
+      "scan_audit_outcomes": {
+        "published_sequentially": 645
+      },
+      "max_sensor_compute_ms": 27.607711032032967,
+      "max_scan_publication_delay_s": 0.04001617431640625,
+      "preflight": {
+        "index": 12,
+        "tag": "v128_baseline_attempt07",
+        "unix_s": 1791629723.0223377,
+        "load": [
+          1.111328125,
+          1.10498046875,
+          1.08984375
+        ],
+        "free_bytes": 197376679936,
+        "containers": ""
+      }
+    }
+  ],
+  "source": {
+    "v128_baseline_attempt02": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "4a705c1e695d9c183ceb1b6701239a901f6033a87d00a4d616f69c7b58e9411b",
+          "bytes": 9611738
+        }
+      },
+      "outcome_sha256": "8474b985180a083506389d419396eff05aee50ae6e1f80cca9a8f60a5c0c1f27",
+      "sensor_manifest_sha256": "f4193f3c687f3c68821bdb0015c6e9df58f0e9cc443e8577e84d5d642885b2d9",
+      "bridge_audit_sha256": "6fd4ebf1128bab5cf97760e3af5e407c72f6e0e38a3c4ce4ecdd1ad79ece77dd"
+    },
+    "v128_candidate_attempt02": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "51204f80182ffba356c3920f58b65d6bf0e649299e44b1d692782def4659ee0e",
+          "bytes": 7952371
+        }
+      },
+      "outcome_sha256": "c904a9512f85da1f6637ba9c2d48e516b46a7045b056728198d661d25205fdd2",
+      "sensor_manifest_sha256": "ca181d566d80ebb9d47ba7c212f633e34c2ca3f952d872d3d84ee23dc806d45d",
+      "bridge_audit_sha256": "1503817843dfb288f68c7e92ce154e5130c0ff142bb9bab9eac675313bec3765"
+    },
+    "v128_candidate_attempt03": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "8e94d57805affd28502f68614421514c16f2cee0c81f2b408a775b6e5619c41e",
+          "bytes": 9823344
+        }
+      },
+      "outcome_sha256": "a711ef1c3aa37450f90e0b98179e4eaf457706466680ae4e723d5091c650f7e9",
+      "sensor_manifest_sha256": "8ba98af6e5051910816fe4f448ffb487dbbfb62c035200aa2d6c27898eecf5d0",
+      "bridge_audit_sha256": "9c88032263760444cf72df438e736e1db21a3accd84059d337db6228c69e23c5"
+    },
+    "v128_baseline_attempt03": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "5dc59a227d5722e01c867901e8ebb8124e4bd1260275ee814a39ed12e91e6468",
+          "bytes": 9263743
+        }
+      },
+      "outcome_sha256": "860a784500736f4cbc51c982863e815a55b71dce6c7ef9cc0ebe54e4c8c59e2d",
+      "sensor_manifest_sha256": "83a7e6441c67fec0cf2c3a3c4fe8b3bb880f67c1772371876da3daecd6b1b804",
+      "bridge_audit_sha256": "5e187fa3b8486acb610c7685b0deed39de75145e556787903917283fe4506214"
+    },
+    "v128_candidate_attempt04": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "9b936c83e5bd3bedef6059ac677a277d35f3cd323067d1a8889c836d934481a8",
+          "bytes": 6010093
+        }
+      },
+      "outcome_sha256": "1018e57f2ee5089cae905d903819496963582d779b005df404b2e74bdef9bc37",
+      "sensor_manifest_sha256": "a3c1d3b1b86c0d4b50a33388c16ad5176d9b71aad5deefadcf220ac664402017",
+      "bridge_audit_sha256": "6bbcf86772600f2091164acb9b41fe12570290c92e913ea9dfd142cda939428a"
+    },
+    "v128_baseline_attempt04": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "be1439dcdffcd3d95e07887832601d757a3f59eaec92dcd06e9d3a6ff930eb4a",
+          "bytes": 11030446
+        }
+      },
+      "outcome_sha256": "1bff6b90e9545bcae4c59bc47fc27959c5e02fcf2ee9a4326944426c63829459",
+      "sensor_manifest_sha256": "7aa5b7a65612c7292659d30a7b135aa67db6c6e5c377290adaaad5e6445c212f",
+      "bridge_audit_sha256": "d56e77bda09de4e89e3d6f0951dcc5709bc18e08906f1c64d394ea90e659d564"
+    },
+    "v128_baseline_attempt05": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "f93f03774d1387e7f382ad258b31ebe92a250c97aeddd9bb047e9d5f3737eb7b",
+          "bytes": 8512875
+        }
+      },
+      "outcome_sha256": "edea4de744357b8ae1b8099233dcc2ce6b86f49bd2e32aa977c5bb86e286b5cd",
+      "sensor_manifest_sha256": "a517b3fd7294fef2ae67408f6108f1d93f7cfa5fe38c135e278255422ab7330b",
+      "bridge_audit_sha256": "a5501bb6f8d705f2c181d7b1c3e00db82e02b362915990787bc6613960a5ea92"
+    },
+    "v128_candidate_attempt05": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "799039e9d23fc2c6c937921a47edba4f56293e629d110c92992070c5d1798599",
+          "bytes": 9093037
+        }
+      },
+      "outcome_sha256": "634258c50af167bc495d33ff257ec71155955701d693f39c9e6444c66e1fde8d",
+      "sensor_manifest_sha256": "63f20c8d8a02f88d5e0fb6b45ba8c7077d04a52cca916b2e58293bcd217525a0",
+      "bridge_audit_sha256": "0a6001c8d3df909887357cc2451f969b13364ba6c36679cbd86c83e9edd9a2b6"
+    },
+    "v128_baseline_attempt06": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "6115d59b2c154ef95ebde1e48c23c62ba917fe4e7d4540cd218026c6fc6ceb51",
+          "bytes": 11831778
+        }
+      },
+      "outcome_sha256": "b078c4c336622e77f2a5cbd934fdf5d2d95ec6f344e42d2654cc09a98bac1cb3",
+      "sensor_manifest_sha256": "42b7416b3e01e24fa092fa5d3bea5fbf22ed4e0ffbeac04916624e64f8b768d0",
+      "bridge_audit_sha256": "9f89d3b130811012e6d9089d8d105be0e9ac1a1f756aa8234919a2a5ce6d6385"
+    },
+    "v128_candidate_attempt06": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "fb48913f496eb2a0b1f09a5c3bedf59cedede6ce8eecfb7881d69cdf5c1907db",
+          "bytes": 10253317
+        }
+      },
+      "outcome_sha256": "8987769a183f712a4fc7e994210c16319a63b8941e929aea7475001b4c915bfa",
+      "sensor_manifest_sha256": "cca18021430b99821fee31ad8ad61efd7715c1551ec091bfe282cc710fd16fa8",
+      "bridge_audit_sha256": "cfed51c943a929c788488ab5c061526fc3d6f0300a42cc36f82c95d17b3fae6d"
+    },
+    "v128_candidate_attempt07": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "6047dbb630759fee533bab78a6eea397757901fefc94cbde7c23a25e426f3734",
+          "bytes": 10620412
+        }
+      },
+      "outcome_sha256": "4be0c1bb9c4ca4c9f4755fb5c52ea4eeb1d2c0778f536c52b2ab5df5eb5e4109",
+      "sensor_manifest_sha256": "b383d86fbf3bdf610a2d9c2adcdb16213830db0217b235fedd7311f2cce533cd",
+      "bridge_audit_sha256": "507354307f6aa40d442f0698ff671113e6d0151bed9ee398938d7c9d7e294501"
+    },
+    "v128_baseline_attempt07": {
+      "capture": {
+        "nav2.log": {
+          "sha256": "09815134644f1af418322e391e55a38386d4f5bf622e3034eb4e93fef2b600ee",
+          "bytes": 10284949
+        }
+      },
+      "outcome_sha256": "9a024492c302f37acecbbe720d86ba9a7d899db4ea4bb0e611ac00d7d8c76b1e",
+      "sensor_manifest_sha256": "a04a6dffe6b2860a7686c2308f09f9105e6c651368a1e9f47d32be288b516db7",
+      "bridge_audit_sha256": "41c9586eb2035dab01d273118947b683b3194f2ee61fdc55f3ffe12eec4b2cf2"
+    }
+  },
+  "script_sha256": "6d7bc917d7d38dc7184f5d2974a7a1a5f1afc7687d87e817825e4365689ee2ed",
+  "recovery_analyzer_sha256": "cf3a22fe44f2833e308cb8d25e4f23aa82ee98b25a531c76795ac260aac9e1d8",
+  "limits": [
+    "Non-significant count difference is not proof of equivalence.",
+    "Six trials per arm give broad success-rate uncertainty.",
+    "Recorded curves can be replayed exactly; reconstructed maps do not restore original DDS batching/live revisions.",
+    "No navigation code or threshold changed; no Jetson/hardware validation."
+  ]
+}

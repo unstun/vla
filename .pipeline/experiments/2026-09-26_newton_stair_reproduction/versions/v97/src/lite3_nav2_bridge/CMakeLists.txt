@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.8)
+project(lite3_nav2_bridge)
+find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+ament_python_install_package(${PROJECT_NAME})
+# Materialized byte-for-byte from the recorded VLA backend source pin.
+ament_python_install_package(backend_adapter PACKAGE_DIR inherited/backend_adapter)
+ament_python_install_package(p2b_backend_ros PACKAGE_DIR inherited/p2b_backend_ros)
+ament_python_install_package(navigation_service PACKAGE_DIR inherited/navigation_service)
+install(PROGRAMS scripts/mission_gateway DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
+ament_package()

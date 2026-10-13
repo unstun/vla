@@ -1,0 +1,377 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan70_feasible_window_v47/src/plan_manage/include/plan_manage/planner_manager.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan71_remaining_curve_v48/src/plan_manage/include/plan_manage/planner_manager.h
+@@ -2,6 +2,7 @@
+ #define _PLANNER_MANAGER_H_
+ 
+ #include <stdlib.h>
++#include <string>
+ 
+ #include <bspline_opt/bspline_optimizer.h>
+ #include <bspline_opt/uniform_bspline.h>
+@@ -30,6 +31,9 @@
+     bool reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel, Eigen::Vector3d start_acc,
+                        Eigen::Vector3d end_pt, Eigen::Vector3d end_vel, bool flag_polyInit, bool flag_randomPolyTraj);
+     bool EmergencyStop(Eigen::Vector3d stop_pos);
++    void setWarmStartContext(const std::string &identity, const Eigen::Vector3d &goal,
++                             double curve_time = -1.0);
++    void invalidateWarmStart();
+     bool planGlobalTraj(const Eigen::Vector3d &start_pos, const Eigen::Vector3d &start_vel, const Eigen::Vector3d &start_acc,
+                         const Eigen::Vector3d &end_pos, const Eigen::Vector3d &end_vel, const Eigen::Vector3d &end_acc);
+     bool planGlobalTrajWaypoints(const Eigen::Vector3d &start_pos, const Eigen::Vector3d &start_vel, const Eigen::Vector3d &start_acc,
+@@ -47,7 +51,16 @@
+     bool reboundReplanAttempt(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
+         Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
+         Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj,
+-        bool &optimization_attempted);
++        bool &optimization_attempted, bool allow_warm_start = false,
++        bool *used_warm_start = nullptr);
++    bool makeWarmStartSeed(const Eigen::Vector3d &start, const Eigen::Vector3d &velocity,
++        const Eigen::Vector3d &acceleration, const Eigen::Vector3d &target,
++        vector<Eigen::Vector3d> &path, double &interval, std::string &reason);
++    std::string warm_context_, accepted_warm_context_;
++    Eigen::Vector3d warm_goal_{Eigen::Vector3d::Zero()}, accepted_warm_goal_{Eigen::Vector3d::Zero()};
++    double warm_curve_time_{-1.0};
++    int accepted_warm_traj_id_{-1};
++    const GridMap *accepted_warm_map_{nullptr};
+     rclcpp::Node *node_{nullptr};
+     bool resolution_aware_progress_{false};
+     double min_cruise_speed_{0.0};
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan70_feasible_window_v47/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan71_remaining_curve_v48/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -145,7 +145,7 @@
+     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr self_inflation_pub_;
+ 
+     /* helper functions */
+-    bool callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget = nullptr); // front-end and back-end method
++    bool callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget = nullptr, double warm_curve_time = -1.0); // front-end and back-end method
+     bool callEmergencyStop(Eigen::Vector3d stop_pos);                          // front-end and back-end method
+     bool planFromCurrentTraj();
+     void setStartStateFromOdomOrCurrentTraj();
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan70_feasible_window_v47/src/plan_manage/src/planner_manager.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan71_remaining_curve_v48/src/plan_manage/src/planner_manager.cpp
+@@ -10,6 +10,7 @@
+ #include <plan_manage/polyline_trajectory_utils.h>
+ #include <chrono>
+ #include <thread>
++#include <limits>
+ 
+ namespace scan_planner
+ {
+@@ -95,6 +96,113 @@
+ 
+   // SECTION rebond replanning
+ 
++  void SCANPlannerManager::invalidateWarmStart()
++  {
++    accepted_warm_traj_id_ = -1;
++    accepted_warm_context_.clear();
++    accepted_warm_map_ = nullptr;
++  }
++
++  void SCANPlannerManager::setWarmStartContext(const std::string &identity,
++      const Eigen::Vector3d &goal, double curve_time)
++  {
++    if (identity.empty() || !goal.allFinite() ||
++        identity != accepted_warm_context_ || !(goal.array() == accepted_warm_goal_.array()).all())
++      invalidateWarmStart();
++    warm_context_ = identity;
++    warm_goal_ = goal;
++    warm_curve_time_ = curve_time;
++  }
++
++  bool SCANPlannerManager::makeWarmStartSeed(const Eigen::Vector3d &start,
++      const Eigen::Vector3d &velocity, const Eigen::Vector3d &acceleration,
++      const Eigen::Vector3d &target, vector<Eigen::Vector3d> &path, double &interval, std::string &reason)
++  {
++    path.clear();
++    interval = 0.0;
++    auto reject = [&](const char *why) { reason = why; invalidateWarmStart(); return false; };
++    if (warm_context_.empty() || accepted_warm_context_ != warm_context_ ||
++        accepted_warm_traj_id_ < 1 || accepted_warm_traj_id_ != local_data_.traj_id_ ||
++        accepted_warm_map_ != grid_map_.get() ||
++        !(accepted_warm_goal_.array() == warm_goal_.array()).all()) return reject("identity_or_owner");
++    auto curve = local_data_.position_traj_;
++    const auto points = curve.getControlPoint();
++    if (points.rows() != 3 || points.cols() < 4 ||
++        !reactive_stair::validSplineLayout(points, curve.getKnot(), 3)) return reject("curve_layout");
++    const double duration = curve.getTimeSum();
++    const double age = (node_->now() - local_data_.start_time_).seconds();
++    if (!std::isfinite(duration) || duration <= 0.0 || !std::isfinite(age) || age < 0.0 || age >= duration ||
++        !std::isfinite(warm_curve_time_) || warm_curve_time_ < 0.0 || warm_curve_time_ >= duration ||
++        warm_curve_time_ > age + 1e-6 || std::abs(local_data_.duration_ - duration) > 1e-6)
++      return reject("curve_time");
++    auto derivative = curve.getDerivative();
++    auto second = derivative.getDerivative();
++    if (!reactive_stair::validSplineLayout(derivative.getControlPoint(), derivative.getKnot(), 2) ||
++        !reactive_stair::validSplineLayout(second.getControlPoint(), second.getKnot(), 1) ||
++        !start.allFinite() || !velocity.allFinite() || !acceleration.allFinite() || !target.allFinite() ||
++        (curve.evaluateDeBoorT(warm_curve_time_) - start).norm() > 1e-6 ||
++        (derivative.evaluateDeBoorT(warm_curve_time_) - velocity).norm() > 1e-6 ||
++        (second.evaluateDeBoorT(warm_curve_time_) - acceleration).norm() > 1e-6)
++      return reject("start_pva");
++
++    grid_map_->refreshSensorInputs("warm_seed_check");
++    const auto check = reactive_stair::checkFullCubicTrajectory(curve, warm_curve_time_,
++        grid_map_->getResolution(), GridMap::collision_heading_lookahead_s,
++        [this](const Eigen::Vector3d &p, const Eigen::Vector3d &ahead, const Eigen::Vector3d &v) {
++          return grid_map_->collisionTrajectoryYaw(p, ahead, v);
++        }, [this](const Eigen::Vector3d &p, double yaw) { return grid_map_->getInflateOccupancy(p, yaw) != 0; });
++    if (!check.clear()) return reject("remaining_curve_not_clear");
++
++    // Upstream 348e8a5 remaining-curve sampling/resampling, without its unchecked
++    // polynomial extension or linear-Z rewrite. The original endpoint/PVA stay exact.
++    const size_t divisions = std::max<size_t>(1, check.samples - 1);
++    vector<Eigen::Vector3d> samples;
++    samples.reserve(divisions + 1);
++    size_t closest = 0;
++    double distance = std::numeric_limits<double>::infinity();
++    for (size_t i = 0; i <= divisions; ++i) {
++      const double t = i == divisions ? duration : warm_curve_time_ +
++          (duration - warm_curve_time_) * static_cast<double>(i) / divisions;
++      const Eigen::Vector3d sample = curve.evaluateDeBoorT(t);
++      const double d = (sample - target).squaredNorm();
++      if (d < distance) { distance = d; closest = i; }
++      samples.push_back(sample);
++    }
++    if (closest == 0) return reject("no_remaining_progress");
++    const Eigen::Vector3d join = samples[closest];
++    const double extension_distance = (target - join).norm();
++    if (extension_distance > 1e-6 && !grid_map_->collisionFreeSegment(join, target))
++      return reject("target_connector");
++    const auto knots = curve.getKnot();
++    const double source_interval = knots[4] - knots[3];
++    const double remaining_duration = (duration - warm_curve_time_) * closest / divisions;
++    const double extension_duration = extension_distance > 1e-6
++        ? std::max(source_interval, 2.0 * extension_distance / pp_.max_vel_) : 0.0;
++    const double total_duration = remaining_duration + extension_duration;
++    const double count = std::max(6.0, std::ceil(total_duration / source_interval - 1e-9));
++    if (!std::isfinite(source_interval) || source_interval <= 0.0 ||
++        !std::isfinite(total_duration) || total_duration <= 0.0 || !std::isfinite(count) ||
++        count + 1 > pp_.planning_horizon_ / pp_.ctrl_pt_dist * 3)
++      return reject("timed_seed_size");
++    const size_t intervals = static_cast<size_t>(count);
++    interval = total_duration / intervals;
++    // Preserve the accepted curve's timing instead of compressing the guess
++    // to the nominal max-speed arc-length interval. This is still a new hard
++    // boundary fit and runs the unchanged optimizer/retiming/final gates.
++    for (size_t i = 0; i <= intervals; ++i) {
++      const double t = i * interval;
++      Eigen::Vector3d sample;
++      if (i == 0) sample = start;
++      else if (i == intervals) sample = target;
++      else if (t <= remaining_duration) sample = curve.evaluateDeBoorT(warm_curve_time_ + t);
++      else sample = join + (t - remaining_duration) / extension_duration * (target - join);
++      path.push_back(sample);
++    }
++    if (!hasLocalTranslation(start, target)) return reject("seed_progress");
++    reason = "accepted";
++    return true;
++  }
++
+   bool SCANPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
+                                         Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
+                                         Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj)
+@@ -102,9 +210,25 @@
+     GridMap::RawContributorCacheScope raw_cache_scope(*grid_map_);
+     bool attempted = false;
+     const int failures_before = continuous_failures_count_;
++    bool used_warm = false;
+     if (reboundReplanAttempt(start_pt, start_vel, start_acc, local_target_pt,
+-                            local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted)) return true;
+-    if (!attempted || !bspline_optimizer_rebound_->optimizesHeight()) return false;
++        local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted, true, &used_warm)) {
++      if (used_warm) RCLCPP_INFO(node_->get_logger(), "V48_WARM_RESULT accepted=1 graph_fallback=0");
++      return true;
++    }
++    if (used_warm) {
++      // A warm optimizer/refit rejection is not a failed original graph solve.
++      // Retry the complete parent search/recovery chain from the same input PVA.
++      invalidateWarmStart();
++      continuous_failures_count_ = failures_before;
++      RCLCPP_INFO(node_->get_logger(), "V48_WARM_RESULT accepted=0 graph_fallback=1");
++      if (reboundReplanAttempt(start_pt, start_vel, start_acc, local_target_pt,
++          local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted)) return true;
++    }
++    if (!attempted || !bspline_optimizer_rebound_->optimizesHeight()) {
++      invalidateWarmStart();
++      return false;
++    }
+     // Keep the configured three-axis behavior first. SCAN's existing fixed-Z
+     // mode can retain a feasible stair seed when smoothing lowers its height.
+     struct RestoreHeightMode {
+@@ -118,15 +242,18 @@
+     const bool accepted = reboundReplanAttempt(start_pt, start_vel, start_acc, local_target_pt,
+         local_target_vel, flag_polyInit, flag_randomPolyTraj, attempted);
+     RCLCPP_INFO(node_->get_logger(), "fixed_height_recovery_result accepted=%d", accepted);
++    if (!accepted) invalidateWarmStart();
+     return accepted;
+   }
+ 
+   bool SCANPlannerManager::reboundReplanAttempt(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
+                                         Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
+                                         Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj,
+-                                        bool &optimization_attempted)
++                                        bool &optimization_attempted, bool allow_warm_start,
++                                        bool *used_warm_start)
+   {
+     optimization_attempted = false;
++    if (used_warm_start) *used_warm_start = false;
+     // v31: each replan attempt starts from the newest received inputs.
+     grid_map_->refreshSensorInputs("replan_start");
+ 
+@@ -153,6 +280,17 @@
+     // Native graph initialization below owns the points, interval and PVA.
+     // Do not evaluate a discarded legacy seed from an expired local curve.
+ 
++    std::vector<Eigen::Vector3d> seed_path;
++    std::string warm_reason;
++    const auto warm_started = std::chrono::steady_clock::now();
++    const bool warm = allow_warm_start && makeWarmStartSeed(start_pt, start_vel, start_acc,
++        local_target_pt, point_set, ts, warm_reason);
++    if (allow_warm_start)
++      RCLCPP_INFO(node_->get_logger(), "V48_WARM_SEED selected=%d reason=%s nodes=%zu wall_ms=%.3f",
++          warm, warm_reason.c_str(), point_set.size(), std::chrono::duration<double, std::milli>(
++          std::chrono::steady_clock::now() - warm_started).count());
++    if (used_warm_start) *used_warm_start = warm;
++    if (!warm) {
+     // A stair seed must come from the same current collision model as its
+     // optimizer and final safety check. A single endpoint-height line is not
+     // a supported stair profile. No fallback bypasses a failed graph search.
+@@ -163,7 +301,7 @@
+       continuous_failures_count_++;
+       return false;
+     }
+-    std::vector<Eigen::Vector3d> seed_path = seed_search->getPath();
++    seed_path = seed_search->getPath();
+     if (seed_path.size() < 2 || (seed_path.front() - start_pt).norm() > 1e-6 ||
+         (seed_path.back() - local_target_pt).norm() > 1e-6) {
+       RCLCPP_WARN(node_->get_logger(), "reactive_stair_seed_endpoint_mismatch");
+@@ -215,6 +353,13 @@
+     ts = cps_dist / pp_.max_vel_ * 1.2;
+     RCLCPP_INFO(node_->get_logger(), "upstream_arclength_seed nodes=%zu samples=%zu spacing=%.12f interval=%.12f",
+                 seed_path.size(), point_set.size(), cps_dist, ts);
++    } else {
++      RCLCPP_INFO(node_->get_logger(), "remaining_timed_seed samples=%zu interval=%.12f", point_set.size(), ts);
++    }
++    if (warm && point_set.size() > pp_.planning_horizon_ / pp_.ctrl_pt_dist * 3) {
++      continuous_failures_count_++;
++      return false;
++    }
+     start_end_derivatives = {start_vel, local_target_vel, start_acc, Eigen::Vector3d::Zero()};
+     RCLCPP_INFO(node_->get_logger(), "reactive_stair_seed_checked nodes=%zu samples=%zu", seed_path.size(), point_set.size());
+ 
+@@ -355,6 +500,12 @@
+ 
+     // save planned results
+     updateTrajInfo(pos, node_->now());
++    if (!warm_context_.empty() && warm_goal_.allFinite()) {
++      accepted_warm_context_ = warm_context_;
++      accepted_warm_goal_ = warm_goal_;
++      accepted_warm_traj_id_ = local_data_.traj_id_;
++      accepted_warm_map_ = grid_map_.get();
++    }
+ 
+     cout << "total time:\033[42m" << (t_init + t_opt + t_refine)
+          << "\033[0m,optimize:" << (t_init + t_opt) << ",refine:" << t_refine << endl;
+@@ -374,6 +525,7 @@
+ 
+   bool SCANPlannerManager::EmergencyStop(Eigen::Vector3d stop_pos)
+   {
++    invalidateWarmStart();
+     Eigen::MatrixXd control_points(3, 6);
+     for (int i = 0; i < 6; i++)
+     {
+@@ -388,6 +540,7 @@
+   bool SCANPlannerManager::planGlobalTrajWaypoints(const Eigen::Vector3d &start_pos, const Eigen::Vector3d &start_vel, const Eigen::Vector3d &start_acc,
+                                                   const std::vector<Eigen::Vector3d> &waypoints, const Eigen::Vector3d &end_vel, const Eigen::Vector3d &end_acc)
+   {
++    invalidateWarmStart();
+     if (waypoints.empty())
+       return false;
+ 
+@@ -416,6 +569,7 @@
+   bool SCANPlannerManager::planGlobalTraj(const Eigen::Vector3d &start_pos, const Eigen::Vector3d &start_vel, const Eigen::Vector3d &start_acc,
+                                          const Eigen::Vector3d &end_pos, const Eigen::Vector3d &end_vel, const Eigen::Vector3d &end_acc)
+   {
++    invalidateWarmStart();
+ 
+     // generate global reference trajectory
+ 
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan70_feasible_window_v47/src/plan_manage/src/scan_replan_fsm.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan71_remaining_curve_v48/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -5,6 +5,8 @@
+ #include <cmath>
+ #include <limits>
+ #include <stdexcept>
++#include <iomanip>
++#include <sstream>
+ 
+ namespace
+ {
+@@ -248,6 +250,7 @@
+ 
+   bool SCANReplanFSM::planGlobalTrajByWaypoints(const std::vector<Eigen::Vector3d> &waypoints)
+   {
++    planner_manager_->invalidateWarmStart();
+     feasible_window_.valid = false; // Regenerated geometry has a new time parameterization.
+     if (waypoints.size() < 2)
+     {
+@@ -1120,13 +1123,13 @@
+ 
+       // One shared prefix budget across all original initialization modes.
+       int reference_prefix_budget = 3;
+-      bool success = callReboundReplan(false, false, &reference_prefix_budget);
++      bool success = callReboundReplan(false, false, &reference_prefix_budget, t_cur);
+       if (!success)
+       {
+-        success = callReboundReplan(true, false, &reference_prefix_budget);
++        success = callReboundReplan(true, false, &reference_prefix_budget, t_cur);
+         if (!success)
+         {
+-          success = callReboundReplan(true, true, &reference_prefix_budget);
++          success = callReboundReplan(true, true, &reference_prefix_budget, t_cur);
+           if (!success)
+             return false;
+         }
+@@ -1224,6 +1227,7 @@
+         },
+         [&map](const Eigen::Vector3d &p, double yaw) { return map->getInflateOccupancy(p, yaw) != 0; });
+     if (collision.clear()) return;
++    planner_manager_->invalidateWarmStart();
+     feasible_window_.valid = false;
+     if (collision.status != reactive_stair::TrajectoryCheckStatus::Collision) {
+       // Never evaluate/replan from an invalid old curve or a regressed clock.
+@@ -1246,13 +1250,24 @@
+     }
+   }
+ 
+-  bool SCANReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget)
++  bool SCANReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj, int *reference_prefix_budget, double warm_curve_time)
+   {
+ 
+     if (!getLocalTarget()) {
++      planner_manager_->invalidateWarmStart();
+       feasible_window_.valid = false;
+       return false;
+     }
++
++    std::ostringstream warm_identity;
++    if (navi_mode_ == NAVI_MODE::REFERENCE_PATH && have_p2b_identity_) {
++      const auto &id = active_p2b_identity_;
++      warm_identity << std::quoted(id.run_id) << ' ' << id.epoch << ' '
++          << std::quoted(id.request_id) << ' ' << std::quoted(id.goal_id) << ' '
++          << std::quoted(id.route_id) << ' ' << std::quoted(id.command_id) << ' '
++          << id.generation << ' ' << std::quoted(id.map_epoch) << ' ' << id.map_revision;
++    }
++    planner_manager_->setWarmStartContext(warm_identity.str(), end_pt_, warm_curve_time);
+ 
+     bool plan_success =
+         planner_manager_->reboundReplan(start_pt_, start_vel_, start_acc_, local_target_pt_, local_target_vel_, (have_new_target_ || flag_use_poly_init), flag_randomPolyTraj);
+@@ -1340,6 +1355,7 @@
+ 
+   bool SCANReplanFSM::callEmergencyStop(Eigen::Vector3d stop_pos)
+   {
++    planner_manager_->invalidateWarmStart();
+     feasible_window_.valid = false;
+ 
+     planner_manager_->EmergencyStop(stop_pos);

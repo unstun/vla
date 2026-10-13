@@ -1,0 +1,43 @@
+"""Line-addressed cold-tail evidence and navigation-only pause accounting."""
+from pathlib import Path
+import hashlib,json,math,sys
+HERE=Path(__file__).resolve().parent;BASE=HERE.parents[2]
+sys.path.insert(0,str(BASE/'versions/v51'))
+import artifacts
+
+def read(run,name):
+    with artifacts.open_text(run,name) as f:return f.read()
+
+def pauses(points,low,high):
+    answer=[];start=end=None
+    for a,b in zip(points,points[1:]):
+        t=b['sim_time_s'];dt=t-a['sim_time_s'];speed=math.hypot(*b['body_sensor']['linear_world'][:2])
+        if low<=t<=high and 0<dt<.5 and speed<.05:
+            start=max(low,a['sim_time_s']) if start is None else start;end=t
+        elif start is not None:
+            if end-start>=1:answer.append(dict(start_s=start,end_s=end,duration_s=end-start))
+            start=end=None
+    if start is not None and end-start>=1:answer.append(dict(start_s=start,end_s=end,duration_s=end-start))
+    return answer
+
+for run_name in ['v58_realtime_trial02','v59_realtime_trial01']:
+    run=BASE/'runs'/run_name;raw=read(run,'scan.log');lines=raw.splitlines();sensors=read(run,'sensor.jsonl');points=[json.loads(s) for s in sensors.splitlines()]
+    metric_path=HERE/(run_name+'_metrics.json');m=json.loads(metric_path.read_text());rows=json.loads((HERE/(run_name+'_rounds.json')).read_text())
+    low=m['realtime_pacing']['native_anchor_s'];high=low+m['realtime_pacing']['native_elapsed_s']
+    nav_pauses=pauses(points,low,high);logged_pauses=pauses(points,min(r['ros_s'] for r in rows),max(r['ros_s'] for r in rows))
+    m['navigation_pauses_over_1s']=nav_pauses;m['navigation_pause_window_sim_s']=[low,high]
+    m['original_pause_metric_scope']='Frozen core analyzer uses first/last planner-log timestamps, including some pre-navigation factory startup; retain that raw field separately.'
+    metric_path.write_text(json.dumps(m,indent=2)+'\n')
+    tails=[]
+    for r in sorted(rows,key=lambda r:r['wall_s'],reverse=True)[:3]:
+        segment=lines[r['start_line']-1:r['end_line']]
+        selected=[]
+        for i,line in enumerate(segment,r['start_line']):
+            if any(tag in line for tag in ['spline_seed_capture','spline_curve_capture','V50_PROFILE']):continue
+            if any(tag in line.lower() for tag in ['v48_warm_seed','fixed_height','minimum_cruise_unreachable','final_spline_rejected','final_spline_boundary','failed','failure','rejected','reference_prefix_proposal','v59_trajectory_epoch','nominal_round_end']):selected.append(dict(line=i,text=line))
+        tails.append(dict(round=r,evidence=selected))
+    out=dict(run=run_name,navigation_window_sim_s=[low,high],navigation_pauses_over_1s=nav_pauses,planner_log_window_pauses_over_1s=logged_pauses,
+        tails=tails,source_sha256={'scan.log':hashlib.sha256(raw.encode()).hexdigest(),'sensor.jsonl':hashlib.sha256(sensors.encode()).hexdigest(),'script':hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
+        scope='Original raw evidence; full planning/recovery scopes overlap. Pause window is the recorded navigation pacing interval, not early factory startup.')
+    (HERE/(run_name+'_tail_evidence.json')).write_text(json.dumps(out,indent=2)+'\n')
+    print(json.dumps({'run':run_name,'navigation_pauses':nav_pauses,'planner_window_pauses':logged_pauses,'tails':[{'sim_s':t['round']['ros_s'],'solve_ms':t['round']['wall_s']*1000,'events':t['evidence']} for t in tails]}))

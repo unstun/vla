@@ -1,0 +1,197 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v167/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp	2026-10-12 13:38:27
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v187/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp	2026-10-13 05:03:44
+@@ -40,6 +40,10 @@
+     max_vy_ = declare_parameter<double>("max_vy", 0.35);
+     max_vyaw_ = std::min(declare_parameter<double>("max_vyaw", 1.0), kMaxVYawLimit);
+     finish_dist_ = declare_parameter<double>("finish_dist", 0.15);
++    terminal_correction_enabled_ = declare_parameter<bool>("terminal_correction_enabled", false);
++    terminal_correction_distance_ = declare_parameter<double>("terminal_correction_distance", 0.05);
++    terminal_correction_timeout_ = declare_parameter<double>("terminal_correction_timeout", 1.5);
++    terminal_correction_speed_ = declare_parameter<double>("terminal_correction_speed", 0.1);
+     goal_xy_tolerance_ = declare_parameter<double>("goal_xy_tolerance", 0.25);
+     goal_yaw_tolerance_ = declare_parameter<double>("goal_yaw_tolerance", 0.25);
+     goal_z_tolerance_ = declare_parameter<double>("goal_z_tolerance", 0.20);
+@@ -52,6 +56,8 @@
+     execution_frozen_pub_ = create_publisher<std_msgs::msg::Bool>("planning/go2_execution_frozen", 10);
+     last_update_time_ = now();
+     RCLCPP_INFO(get_logger(), "SCAN tracking core: Nav2 owns scheduling; no standalone command timer");
++    RCLCPP_INFO(get_logger(), "V187_TERMINAL_POLICY enabled=%d distance=%.3f timeout=%.3f speed=%.3f",
++      terminal_correction_enabled_, terminal_correction_distance_, terminal_correction_timeout_, terminal_correction_speed_);
+   }
+ 
+ public:
+@@ -80,6 +86,8 @@
+     if (goal_route_ && msg->run_id == goal_route_->run_id && msg->epoch == goal_route_->epoch &&
+         msg->command_id == goal_route_->command_id && msg->generation == goal_route_->generation)
+       return;
++    terminal_correction_expired_ = false;
++    terminal_correction_watching_ = false;
+     goal_route_ = msg;
+     goal_pos_ << pose.position.x, pose.position.y, pose.position.z;
+     goal_yaw_ = tf2::getYaw(q);
+@@ -194,6 +202,8 @@
+       return;
+     }
+     cancelled_generation_high_water_ = std::max(cancelled_generation_high_water_, msg->generation);
++    terminal_correction_expired_ = false;
++    terminal_correction_watching_ = false;
+     receive_traj_ = false;
+     goal_xy_reached_ = false;
+     exec_time_ = 0.0;
+@@ -254,6 +264,8 @@
+     for (size_t i = 0; i < msg->knots.size(); ++i) knots(i) = msg->knots[i];
+     UniformBspline position(points, msg->order, 0.1);
+     position.setKnot(knots);
++    terminal_correction_expired_ = false;
++    terminal_correction_watching_ = false;
+     traj_ = {position, position.getDerivative()};
+     traj_.push_back(traj_[1].getDerivative());
+     traj_duration_ = traj_[0].getTimeSum();
+@@ -297,7 +309,7 @@
+ 
+   void cmdCallback()
+   {
+-    if (emergency_stop_)
++    if (emergency_stop_ || terminal_correction_expired_)
+     {
+       publishExecutionFrozen(false);
+       publishStop();
+@@ -324,6 +336,7 @@
+           goal_xy_reached_ = false; // Reacquire strict final XY after yaw drift.
+         else
+         {
++          terminal_correction_watching_ = false;
+           publishExecutionFrozen(true);
+           publishStop(std::abs(error) <= goal_yaw_tolerance_ ? 0.0 : kp_yaw_ * error);
+           last_update_time_ = current_time;
+@@ -339,6 +352,7 @@
+     const double yaw_command = std::clamp(kp_yaw_ * yaw_error, -max_vyaw_, max_vyaw_);
+     if (std::abs(yaw_error) > heading_error_threshold_)
+     {
++      terminal_correction_watching_ = false;
+       publishExecutionFrozen(true);
+       publishStop(yaw_command);
+       last_update_time_ = current_time;
+@@ -362,6 +376,29 @@
+     command.angular.z = yaw_command;
+     if (exec_time_ >= traj_duration_ && pos_error.norm() < finish_dist_)
+       command = geometry_msgs::msg::Twist();
++    const double speed = std::hypot(command.linear.x, command.linear.y);
++    const bool terminal_correction = terminal_correction_enabled_ &&
++        exec_time_ >= traj_duration_ && pos_error.norm() < terminal_correction_distance_ &&
++        speed > 1e-6 && speed < terminal_correction_speed_;
++    if (terminal_correction)
++    {
++      if (!terminal_correction_watching_ || current_time < terminal_correction_since_)
++      {
++        terminal_correction_watching_ = true;
++        terminal_correction_since_ = current_time;
++      }
++      if ((current_time - terminal_correction_since_).seconds() >= terminal_correction_timeout_)
++      {
++        // This is failed tracking, not successful completion. The Controller
++        // revokes the owner and throws; Nav2 retains measured-stop recovery.
++        terminal_correction_expired_ = true;
++        command = geometry_msgs::msg::Twist();
++        RCLCPP_WARN(get_logger(), "V187_TERMINAL_TIMEOUT generation=%ld traj=%ld error_m=%.9f elapsed_s=%.9f",
++          static_cast<long>(generation_), static_cast<long>(traj_id_), pos_error.norm(),
++          (current_time - terminal_correction_since_).seconds());
++      }
++    }
++    else terminal_correction_watching_ = false;
+     publishTaggedCommand(command);
+   }
+ 
+@@ -387,6 +424,11 @@
+   bool goal_xy_reached_{false};
+   double goal_xy_tolerance_, goal_yaw_tolerance_, goal_z_tolerance_;
+   rclcpp::TimerBase::SharedPtr cmd_timer_;
++  bool terminal_correction_enabled_{false};
++  bool terminal_correction_expired_{false};
++  bool terminal_correction_watching_{false};
++  double terminal_correction_distance_, terminal_correction_timeout_, terminal_correction_speed_;
++  rclcpp::Time terminal_correction_since_{0, 0, RCL_ROS_TIME};
+   bool receive_traj_{false};
+   bool reverse_motion_{false};
+   bool emergency_stop_{false};
+
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v168/src/scan_nav2_controller/src/controller.cpp	2026-10-12 13:53:09
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v187/src/scan_nav2_controller/src/controller.cpp	2026-10-13 04:51:30
+@@ -208,13 +208,16 @@
+   const std::vector<std::pair<std::string,double>> defaults={
+     {"time_forward",0.8},{"heading_error_threshold",0.8},{"kp_pos",0.8},{"kp_yaw",1.5},
+     {"max_vx",0.75},{"max_vy",0.35},{"max_vyaw",1.0},{"finish_dist",0.15},
+-    {"goal_xy_tolerance",0.25},{"goal_z_tolerance",0.20},{"goal_yaw_tolerance",0.25}};
++    {"terminal_correction_distance",0.05},{"terminal_correction_timeout",1.5},
++    {"terminal_correction_speed",0.1},{"goal_xy_tolerance",0.25},{"goal_z_tolerance",0.20},{"goal_yaw_tolerance",0.25}};
+   for (const auto &entry:defaults) {
+     const double value=parameter(parent_,name_+"."+entry.first,entry.second);
+     if (!std::isfinite(value) || value<=0) throw nav2_core::PlannerException("Invalid tracking parameter");
+     parameters.emplace_back(entry.first,value);
+   }
+   parameters.emplace_back("use_sim_time",parameter(parent_,"use_sim_time",false));
++  parameters.emplace_back("terminal_correction_enabled",
++    parameter(parent_,name_+".terminal_correction_enabled",false));
+   options.parameter_overrides(parameters);
+   options.arguments({"--ros-args", "-r", "planning/go2_execution_frozen:="+
+     parameter(parent_,name_+".execution_frozen_topic",std::string("/quad_0/planning/go2_execution_frozen"))});
+@@ -556,6 +559,7 @@
+     stopLocked("requested_goal_reached"); return ticket(geometry_msgs::msg::Twist());
+   }
+   const auto command=tracker_->sample(pose);
++  if (tracker_->terminal_correction_expired_) fail("scan_terminal_correction_timeout");
+   if (!finiteTwist(command)) fail("scan_nonfinite_command");
+   const auto output=ticket(command);ticket_body_stamp_s_=pose_stamp;return output;
+ }
+
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v177/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py	2026-10-12 16:16:15
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v187/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py	2026-10-13 04:51:30
+@@ -24,6 +24,10 @@
+     # Local curve capture must be tighter than the 5 cm recovery prefix.
+     # Final mission goal tolerances remain independently configured.
+     controller['SCAN']['finish_dist'] = 0.02
++    controller['SCAN']['terminal_correction_enabled'] = True
++    controller['SCAN']['terminal_correction_distance'] = 0.05
++    controller['SCAN']['terminal_correction_timeout'] = 1.5
++    controller['SCAN']['terminal_correction_speed'] = 0.1
+     controller['odom_topic'] = odom_topic
+     # The unchanged simple progress checker detects a stuck robot independently
+     # of solver activity. No timeout is increased to hide mapper stalls.
+
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v167/src/scan_nav2_controller/test/test_controller.cpp	2026-10-12 13:38:27
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v187/src/scan_nav2_controller/test/test_controller.cpp	2026-10-13 04:53:52
+@@ -563,3 +563,34 @@
+  EXPECT_TRUE(actual->state_->stopping);
+  EXPECT_EQ(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()).twist,geometry_msgs::msg::Twist());
+ }
++
++TEST_F(PluginTest, TerminalTimeoutRevokesOwnerAndFailsFollowPath)
++{
++  auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
++  ASSERT_NE(actual,nullptr);
++  actual->tracker_->terminal_correction_enabled_=true;
++  actual->tracker_->finish_dist_=.02;
++  std::vector<sm::P2BCancel> revoked;
++  auto subscription=io->create_subscription<sm::P2BCancel>("/p2b/scan_cancel",10,
++    [&](sm::P2BCancel::ConstSharedPtr message){revoked.push_back(*message);});
++  plan();auto m=curve();
++  for(size_t i=0;i<m.pos_pts.size();++i)m.pos_pts[i].x=i<3?0.0:.05;
++  spline->publish(m);
++  ASSERT_TRUE(wait([&]{sendSafety();plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist());return actual->tracker_->receive_traj_;}));
++  actual->tracker_->exec_time_=actual->tracker_->traj_duration_;
++  actual->tracker_->last_update_time_=actual->tracker_->now();
++  auto command=plugin->computeVelocityCommands(pose(.025),geometry_msgs::msg::Twist());
++  ASSERT_GT(command.twist.linear.x,0.0);
++  actual->tracker_->terminal_correction_since_=actual->tracker_->now()-rclcpp::Duration::from_seconds(1.6);
++  try {
++    plugin->computeVelocityCommands(pose(.025),geometry_msgs::msg::Twist());
++    FAIL()<<"Terminal correction falsely returned normal success";
++  } catch(const nav2_core::PlannerException &error) {
++    EXPECT_STREQ(error.what(),"scan_terminal_correction_timeout");
++  }
++  ASSERT_TRUE(wait([&]{return !revoked.empty()&&!received.empty()&&received.back().twist==geometry_msgs::msg::Twist();}));
++  EXPECT_EQ(revoked.back().reason,"scan_terminal_correction_timeout");
++  EXPECT_EQ(revoked.back().command_id,route.command_id);
++  EXPECT_FALSE(actual->tracker_->receive_traj_);
++  EXPECT_FALSE(goal->isGoalReached(pose(.025).pose,route.goal_pose,geometry_msgs::msg::Twist()));
++}

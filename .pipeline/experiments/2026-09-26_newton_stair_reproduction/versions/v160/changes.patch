@@ -1,0 +1,66 @@
+--- v159/src/scan_nav2_controller/test/test_controller.cpp
++++ v160/src/scan_nav2_controller/test/test_controller.cpp
+@@ -519,3 +519,25 @@
+   ASSERT_TRUE(actual->state_->stopping);
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
+ }
++
++TEST_F(PluginTest, GoalCaptureKeepsYawMarginForMeasuredStopDwell)
++{
++  moving();
++  auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
++  ASSERT_NE(actual,nullptr);
++  auto p=pose(8);p.pose.orientation.z=std::sin(-0.21/2);p.pose.orientation.w=std::cos(-0.21/2);
++  sendSafety();wait([] {return false;},0.01);
++  auto turn=plugin->computeVelocityCommands(p,geometry_msgs::msg::Twist());
++  EXPECT_GT(turn.twist.angular.z,0.0);EXPECT_DOUBLE_EQ(turn.twist.linear.x,0.0);
++  EXPECT_FALSE(actual->state_->stopping);
++  EXPECT_DOUBLE_EQ(actual->state_->yaw_tolerance,0.25);
++  p=pose(8);p.pose.orientation.z=std::sin(-0.10/2);p.pose.orientation.w=std::cos(-0.10/2);
++  EXPECT_EQ(plugin->computeVelocityCommands(p,geometry_msgs::msg::Twist()).twist,geometry_msgs::msg::Twist());
++  EXPECT_TRUE(actual->state_->stopping);
++  EXPECT_FALSE(goal->isGoalReached(p.pose,route.goal_pose,geometry_msgs::msg::Twist()));
++  proof(true);
++  auto drifted=pose(8);drifted.pose.orientation.z=std::sin(-0.21/2);drifted.pose.orientation.w=std::cos(-0.21/2);
++  EXPECT_TRUE(goal->isGoalReached(drifted.pose,route.goal_pose,geometry_msgs::msg::Twist()));
++  drifted.pose.orientation.z=std::sin(-0.27/2);drifted.pose.orientation.w=std::cos(-0.27/2);
++  EXPECT_FALSE(goal->isGoalReached(drifted.pose,route.goal_pose,geometry_msgs::msg::Twist()));
++}
+--- v159/src/scan_nav2_controller/src/controller.cpp
++++ v160/src/scan_nav2_controller/src/controller.cpp
+@@ -144,13 +144,13 @@
+   return std::isfinite(t.linear.x) && std::isfinite(t.linear.y) && std::isfinite(t.linear.z) &&
+     std::isfinite(t.angular.x) && std::isfinite(t.angular.y) && std::isfinite(t.angular.z);
+ }
+-bool atGoal(const geometry_msgs::msg::Pose &p, const State &s)
++bool atGoal(const geometry_msgs::msg::Pose &p, const State &s, double yaw_scale=1.0)
+ {
+   if (!s.route || !finitePose(p)) return false;
+   const auto &g=s.route->goal_pose;
+   const double yaw=scan_planner::TrackingNode::normalizeAngle(tf2::getYaw(g.orientation)-tf2::getYaw(p.orientation));
+   return std::hypot(p.position.x-g.position.x,p.position.y-g.position.y)<=s.xy_tolerance &&
+-    std::abs(p.position.z-g.position.z)<=s.z_tolerance && std::abs(yaw)<=s.yaw_tolerance;
++    std::abs(p.position.z-g.position.z)<=s.z_tolerance && std::abs(yaw)<=yaw_scale*s.yaw_tolerance;
+ }
+ double stampSeconds(const builtin_interfaces::msg::Time &stamp)
+ {
+@@ -222,6 +222,10 @@
+   state_->xy_tolerance=tracker_->goal_xy_tolerance_;
+   state_->z_tolerance=tracker_->goal_z_tolerance_;
+   state_->yaw_tolerance=tracker_->goal_yaw_tolerance_;
++  // Goal hold revokes this owner permanently. Aim inside the acceptance band
++  // before revocation so measured braking/dwell has room for residual yaw drift.
++  // GoalChecker retains the original configured tolerance and physical proof.
++  tracker_->goal_yaw_tolerance_ *= 0.5;
+   rclcpp::NodeOptions bridge_options;
+   bridge_options.use_global_arguments(false);
+   bridge_options.parameter_overrides({rclcpp::Parameter("use_sim_time",parameter(parent_,"use_sim_time",false))});
+@@ -537,7 +541,7 @@
+       safety_?now-safety_->observation_stamp_s:-1.0,candidate_curves_.size(),candidate_proofs_.size());
+     fail("scan_safety_evidence_stale");
+   }
+-  if (atGoal(pose.pose,*state_)) {
++  if (atGoal(pose.pose,*state_,0.5)) {
+     stopLocked("requested_goal_reached"); return ticket(geometry_msgs::msg::Twist());
+   }
+   const auto command=tracker_->sample(pose);

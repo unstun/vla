@@ -1,0 +1,519 @@
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v179/PLAN.md
+@@ -0,0 +1,50 @@
++# v179: policy-only move / stop / restart diagnosis
++
++Stage: experiment + analysis. Dr Sun authorizes repeated flat and stair tests
++with the current model, navigation disconnected, and review videos.
++
++The single logical change from v177 is the experimental command source and
++controller ownership: deterministic body-velocity scripts replace navigation;
++the existing factory startup and smooth REJOIN finish before automatic standing
++is detached. All measured zero-command windows are policy-only, Kp20/Kd0.5.
++No model, observation, action history, torque limits or original physics code
++changes. A read-only contact observer survives detachment. No state reset occurs
++within a trial. This is a diagnostic protocol, not a navigation repair.
++
++Owned paths: this version's protocol, standalone runner, bounded launcher,
++analysis, tests and immutable source manifest. Inherited physics uses v40 CPU
++solver graph, the same current ONNX and sensor-rig URDF as v177. Flat uses an
++empty triangle floor with friction1; stairs use the original full Building mesh
++and a declared flat approach before the first flight. The start is a diagnostic
++start, not a claim of replaying the full-route failure's exact hidden state.
++
++Six conditions per terrain: speeds0.2/0.35/0.5m/s, two predeclared first-walk
++durations at each speed. Then10s zero,3s walk,10s zero. These are varied scripted
++conditions, not six random-seed replicates. Factory initialization, all failures,
++and both stops remain recorded. Fall/invalid-state/timeout aborts preserve partial
++evidence. A stop that is never reached is not a stop failure or pass.
++
++Report braking displacement in the first2s separately from later drift, maximum
++excursion and actual speed/yaw. Report measured contact forces and world foot
++motion, using finite-difference displacement with persistent contact separately
++from swing. No universal2cm acceptance claim. Late-window XY excursion over5cm
++is a predeclared diagnostic flag, alongside all continuous values; it is not a
++robot safety or industry qualification.
++
++gpu5070ti admission currently held:18.29GiB available and two GPU tasks. Use the
++already authorized Mac CPU exception, one process at a time, >=10GiB free disk,
++>=8GiB available RAM,12GiB child RSS cap,600s wall deadline per trial. Do not
++weaken the remote20GiB/no-other-GPU-task gate or stop unrelated jobs.
++
++Temporary raw root: `/private/tmp/vla_policy_stop_20261012`. Budget2GiB. Durable
++archive target: `/data/sun/vla_mppi_20261009/policy_stop_v179_mac/`. Return source,
++compact JSON/CSV/report, archive identities, and review MP4s (target<150MiB).
++Verify every returned hash and remote raw archive before rendering. Rendering
++uses recorded states without advancing physics and gets a separate version.
++
++Preflight: source/snapshot hashes, pinned golden model inputs, phase tests,
++current environment/version and original startup contracts. Actual physics
++determines the result; tests do not establish stopping. No formal training or
++hardware actuation. Do not infer a learned-policy-only cause from Newton alone:
++deployment/simulator dynamics remain alternative causes without a cross-simulator
++comparison.
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v179/analyze.py
+@@ -0,0 +1,92 @@
++"""Describe measured stop drift; never infer a navigation or training pass."""
++import argparse
++import csv
++import hashlib
++import json
++from pathlib import Path
++
++import numpy as np
++from protocol import LATE_START_SECONDS, DRIFT_FLAG_METERS
++
++
++def analyze(run):
++    request = json.loads((run / "probe_request.json").read_text())
++    result = json.loads((run / "result.json").read_text())
++    rows = [json.loads(x) for x in (run / "telemetry.jsonl").read_text().splitlines()] if (run / "telemetry.jsonl").exists() else []
++    summary = dict(run=run.name, terrain=request["terrain"], attempt=request["attempt"],
++                   execution=result, stops=[], walks=[])
++    for phase in ("walk1", "stop1", "walk2", "stop2"):
++        chosen = [r for r in rows if r["phase"] == phase]
++        if not chosen:
++            continue
++        times = np.array([r["physics_time_s"] for r in chosen])
++        xyz = np.array([r["joint_q"][:3] for r in chosen])
++        start = np.array(chosen[0]["command_start_base_xyz"])
++        elapsed = times - chosen[0]["command_applied_start_s"]
++        speed = np.linalg.norm(np.array([r["joint_qd"][:2] for r in chosen]), axis=1)
++        displacement = np.linalg.norm(xyz[:, :2] - start[:2], axis=1)
++        record = dict(phase=phase, samples=len(chosen), seconds=float(elapsed[-1]),
++                      start_s=chosen[0]["command_applied_start_s"], start_xyz=start.tolist(),
++                      end_xyz=xyz[-1].tolist(), net_xy_m=float(displacement[-1]),
++                      max_xy_excursion_m=float(displacement.max()), max_speed_mps=float(speed.max()),
++                      minimum_up_z=min(r["base_up_z"] for r in chosen))
++        if phase.startswith("walk"):
++            record["command_mps"] = chosen[0]["command"][0]
++            summary["walks"].append(record)
++            continue
++        record["complete_10s_window"] = len(chosen) == 500
++        record["pure_policy_zero_verified"] = all(r["effective_command"] == [0., 0., 0.]
++            and r["stance_mode"] == "POLICY_ONLY" and r["policy_owns_joints"] for r in chosen)
++        if not record["pure_policy_zero_verified"]:
++            raise ValueError("Contaminated stop window: " + str(run))
++        braking = np.flatnonzero(elapsed <= LATE_START_SECONDS)
++        record["first_2s_max_excursion_m"] = float(displacement[braking].max()) if len(braking) else None
++        late = np.flatnonzero(elapsed >= LATE_START_SECONDS)
++        if len(late):
++            points = xyz[late, :2]
++            record.update(late_start_s=float(times[late[0]]),
++                late_net_xy_m=float(np.linalg.norm(points[-1] - points[0])),
++                late_max_excursion_m=float(np.linalg.norm(points - points[0], axis=1).max()),
++                late_xy_path_m=float(np.linalg.norm(np.diff(points, axis=0), axis=1).sum()),
++                late_speed_median_mps=float(np.median(speed[late])),
++                late_speed_p95_mps=float(np.quantile(speed[late], .95)))
++            record["late_drift_over_5cm_flag"] = record["late_max_excursion_m"] > DRIFT_FLAG_METERS
++            feet = np.array([r["foot_positions_world"] for r in chosen])[late]
++            forces = np.array([r["foot_forces_n"] for r in chosen])[late]
++            dt = np.diff(times[late])
++            if len(dt):
++                foot_speed = np.linalg.norm(np.diff(feet[:, :, :2], axis=0), axis=2) / dt[:, None]
++                contact = (forces[:-1] > 5.) & (forces[1:] > 5.)
++                values = foot_speed[contact]
++                record.update(persistent_contact_foot_speed_median_mps=float(np.median(values)) if len(values) else None,
++                    persistent_contact_foot_speed_p95_mps=float(np.quantile(values, .95)) if len(values) else None,
++                    sampled_unloaded_foot_fraction=float(np.mean(forces <= 5.)),
++                    contact_measurement_note="50Hz finite differences, both endpoints >5N; not continuous slip/contact classification")
++        summary["stops"].append(record)
++    summary["source_hashes"] = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
++        for p in (run / "probe_request.json", run / "result.json", run / "telemetry.jsonl", run / "recorded_frames.json") if p.exists()}
++    return summary
++
++
++def main():
++    p = argparse.ArgumentParser()
++    p.add_argument("--runs", type=Path, required=True)
++    p.add_argument("--output", type=Path, required=True)
++    args = p.parse_args()
++    args.output.mkdir(parents=True, exist_ok=True)
++    results = [analyze(run) for run in sorted(args.runs.iterdir()) if (run / "result.json").exists()]
++    payload = dict(claim="Current policy in pinned Newton only; no original-training causal proof", runs=results)
++    (args.output / "summary.json").write_text(json.dumps(payload, indent=2) + "\n")
++    fields = ["run", "terrain", "attempt", "phase", "complete_10s_window", "net_xy_m", "first_2s_max_excursion_m",
++              "late_net_xy_m", "late_max_excursion_m", "late_speed_median_mps", "late_speed_p95_mps", "late_drift_over_5cm_flag"]
++    with (args.output / "stops.csv").open("w") as stream:
++        writer = csv.DictWriter(stream, fields, extrasaction="ignore")
++        writer.writeheader()
++        for run in results:
++            for stop in run["stops"]:
++                writer.writerow(dict(run=run["run"], terrain=run["terrain"], attempt=run["attempt"], **stop))
++    print(json.dumps(dict(runs=len(results), stops=sum(len(r["stops"]) for r in results))))
++
++
++if __name__ == "__main__":
++    main()
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v179/freeze.py
+@@ -0,0 +1,57 @@
++"""Bind standalone probes to inherited source and a new immutable harness."""
++import hashlib
++import json
++from pathlib import Path
++import shutil
++import sys
++
++HERE = Path(__file__).resolve().parent
++BASE = HERE.parents[1]
++ROOT = BASE.parents[2]
++
++
++def sha(path):
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def verify():
++    data = json.loads((HERE / "manifest.json").read_text())
++    for name, record in data["files"].items():
++        if sha(ROOT / name) != record["sha256"] or sha(ROOT / record["snapshot"]) != record["sha256"]:
++            raise ValueError("Frozen input differs: " + name)
++    return data
++
++
++def main():
++    if sys.argv[1:] == ["verify"]:
++        print("SOURCE_IDENTITY_PASS", len(verify()["files"]))
++        return
++    if sys.argv[1:] != ["freeze"] or (HERE / "manifest.json").exists():
++        raise ValueError("Expected freeze once, or verify")
++    parent = json.loads((BASE / "versions/v177/manifest.json").read_text())
++    directories = [BASE / "scripts", BASE / "versions/v40/physics", BASE / "runtime_sources/bridge",
++                   BASE.parent / "2026-09-26_newton_macos_policy/scripts",
++                   BASE.parent / "2026-09-26_newton_macos_policy/references",
++                   BASE.parent / "2026-09-27_lite3_factory_runtime_audit"]
++    paths = set(HERE.glob("*.py")) | {HERE / "PLAN.md"}
++    for directory in directories:
++        paths.update(p for p in directory.rglob("*.py") if "source" not in p.parts and "runtime" not in p.parts)
++    paths.add(BASE.parent / "2026-09-16_pi_cortex_harnessvln/isaac_runner/stance_hold.py")
++    files = {}
++    for path in sorted(paths):
++        name = str(path.relative_to(ROOT)); digest = sha(path)
++        old = parent.get("source_files", {}).get(name)
++        if old is not None and old != digest:
++            raise ValueError("Inherited v177 source differs: " + name)
++        target = HERE / "source" / name
++        target.parent.mkdir(parents=True, exist_ok=True)
++        shutil.copyfile(path, target)
++        files[name] = dict(sha256=digest, snapshot=str(target.relative_to(ROOT)))
++    (HERE / "manifest.json").write_text(json.dumps(dict(version=HERE.name, parent="v177",
++        parent_manifest_sha256=sha(BASE / "versions/v177/manifest.json"), files=files,
++        change="standalone scripted current-policy diagnostic; automatic hold disabled only after original REJOIN"), indent=2) + "\n")
++    print("FROZEN", len(verify()["files"]))
++
++
++if __name__ == "__main__":
++    main()
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v179/protocol.py
+@@ -0,0 +1,29 @@
++"""Predeclared policy-only velocity schedule, independent of robot feedback."""
++CONDITIONS = [(0.2, 3.0), (0.2, 3.3), (0.35, 2.8), (0.35, 3.1), (0.5, 2.4), (0.5, 2.7)]
++STOP_SECONDS = 10.0
++RESTART_SECONDS = 3.0
++LATE_START_SECONDS = 2.0
++DRIFT_FLAG_METERS = 0.05
++STAIR_SCENARIO = {"spawn_ground_xyz_m": [-5.42, 6.413188839, 0.05804443359375],
++                  "spawn_yaw_rad": -1.5707963267948966, "spawn_body_height_m": 0.35}
++
++
++def phases(attempt):
++    if not 1 <= attempt <= len(CONDITIONS):
++        raise ValueError("Attempt must be 1..6")
++    speed, duration = CONDITIONS[attempt - 1]
++    return [("walk1", duration, [speed, 0.0, 0.0]),
++            ("stop1", STOP_SECONDS, [0.0, 0.0, 0.0]),
++            ("walk2", RESTART_SECONDS, [speed, 0.0, 0.0]),
++            ("stop2", STOP_SECONDS, [0.0, 0.0, 0.0])]
++
++
++def schedule(attempt, dt=0.02):
++    index = 0
++    for label, seconds, command in phases(attempt):
++        count = round(seconds / dt)
++        if abs(count * dt - seconds) > 1e-9:
++            raise ValueError("Phase duration must align to policy steps")
++        for step in range(count):
++            yield dict(index=index, phase=label, phase_step=step, command=list(command))
++            index += 1
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v179/run_probe.py
+@@ -0,0 +1,175 @@
++"""Current frozen locomotion on fixed commands; no navigation imports/services."""
++import argparse
++import hashlib
++import json
++import os
++from pathlib import Path
++import sys
++import time
++import shutil
++
++HERE = Path(__file__).resolve().parent
++BASE = HERE.parents[1]
++PROJECT = BASE.parents[2]
++QUALIFIED = BASE.parent / "2026-09-26_newton_macos_policy"
++sys.path[:0] = [str(HERE), str(BASE / "versions/v40/physics"), str(BASE / "scripts"),
++                str(QUALIFIED / "scripts"), str(BASE / "runtime_sources/bridge")]
++
++import numpy as np
++import warp as wp
++wp.config.kernel_cache_dir = os.environ["WARP_CACHE_PATH"]
++wp.init()
++wp.set_device("cpu")
++import newton
++import psutil
++from scipy.spatial.transform import Rotation
++from robot_scene_v40 import StairRobot, Lite3Newton
++from protocol import STAIR_SCENARIO, schedule
++from freeze import verify
++
++
++def build_robot(terrain):
++    if terrain == "stairs":
++        return StairRobot(startup_mode="factory_pd", stance_hold=True,
++                          scenario=STAIR_SCENARIO, automatic_contact_capacity=True,
++                          model_device="cpu", use_solver_graph=True)
++    if terrain != "flat":
++        raise ValueError("Unknown terrain")
++    def floor(builder):
++        vertices = np.array([[-8., -8., 0.], [8., -8., 0.], [8., 8., 0.], [-8., 8., 0.]], np.float32)
++        mesh = newton.Mesh(vertices, np.array([0, 1, 2, 0, 2, 3], np.int32), compute_inertia=False)
++        builder.add_shape_mesh(-1, mesh=mesh, cfg=newton.ModelBuilder.ShapeConfig(mu=1.0),
++                               label="flat_probe_floor", color=(0.58, 0.62, 0.67))
++    return Lite3Newton(robot_source=BASE / "inputs/sensor_rig/lite3_pro_sensor_rig_real_with_interface.urdf",
++                        scene_builder=floor, spawn_xyz=(0., 0., 0.14), newton_contacts=True,
++                        automatic_contact_capacity=True, startup_mode="factory_pd", stance_hold=True,
++                        model_device="cpu", use_solver_graph=True)
++
++
++def foot_shapes(robot):
++    bodies = robot.model.shape_body.numpy()
++    kinds = robot.model.shape_type.numpy()
++    scales = robot.model.shape_scale.numpy()
++    flags = robot.model.shape_flags.numpy()
++    result = []
++    for leg in ("FL", "FR", "HL", "HR"):
++        found = [i for i in range(robot.model.shape_count) if bodies[i] >= 0
++                 and robot.model.body_label[bodies[i]].rsplit("/", 1)[-1] == leg + "_SHANK"
++                 and kinds[i] == int(newton.GeoType.SPHERE) and np.isclose(scales[i, 0], .022)
++                 and flags[i] & int(newton.ShapeFlags.COLLIDE_SHAPES)]
++        if len(found) != 1:
++            raise ValueError(f"Ambiguous foot sphere {leg}: {found}")
++        result.append(found[0])
++    return result
++
++
++def foot_positions(robot, shapes):
++    body = robot.state.body_q.numpy()
++    ids = robot.model.shape_body.numpy()[shapes]
++    local = robot.model.shape_transform.numpy()[shapes, :3]
++    return body[ids, :3] + Rotation.from_quat(body[ids, 3:7]).apply(local)
++
++
++def frame(robot, phase, command):
++    return dict(physics_time_s=robot.physics_time(), physics_steps=robot.steps,
++                body_q=robot.state.body_q.numpy().tolist(), joint_q=robot.state.joint_q.numpy().tolist(),
++                command=command, phase=phase)
++
++
++def resources(out, admission=False):
++    available = psutil.virtual_memory().available
++    free = shutil.disk_usage(out).free
++    rss = psutil.Process().memory_info().rss
++    if free < 10 * 1024**3 or rss > 12 * 1024**3 or (admission and available < 8 * 1024**3):
++        raise RuntimeError(f"Local resource gate held: available={available}, free={free}, rss={rss}")
++    return dict(available_bytes=available, disk_free_bytes=free, rss_bytes=rss)
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--terrain", choices=("flat", "stairs"), required=True)
++    parser.add_argument("--attempt", type=int, required=True)
++    args = parser.parse_args()
++    verify()
++    out = Path(os.environ["NEWTON_RUN_DIR"])
++    if not out.is_dir() or (out / "probe_request.json").exists():
++        raise ValueError("Expected fresh supervised run directory")
++    admission = resources(out, admission=True)
++    steps = list(schedule(args.attempt))
++    request = dict(version=HERE.name, terrain=args.terrain, attempt=args.attempt, host=os.uname().nodename,
++                   navigation=False, automatic_hold_during_stops=False, phases=list(dict.fromkeys(x["phase"] for x in steps)),
++                   source_manifest_sha256=hashlib.sha256((HERE / "manifest.json").read_bytes()).hexdigest(),
++                   conditions="factory startup then original smooth REJOIN; policy-only thereafter",
++                   admission=admission,
++                   physical_backend="Newton1.6 / Warp1.17 CPU graph; original triangle contacts")
++    (out / "probe_request.json").write_text(json.dumps(request, indent=2) + "\n")
++    rows, frames = [], []
++    result = dict(execution_completed=False, outcome="not_started", navigation_connected=False)
++    started = time.monotonic()
++    try:
++        robot = build_robot(args.terrain)
++        resources(out)
++        shapes = foot_shapes(robot)
++        observer = robot.stance
++        frames.append(frame(robot, "startup", [0., 0., 0.]))
++        from factory_navigation_startup import initialize
++        startup = initialize(robot, out)
++        frames.extend(dict(x, phase="startup") for x in startup)
++        release = None
++        with (out / "telemetry.jsonl").open("w") as stream:
++            for item in steps:
++                before = robot.physics_time()
++                anchor = robot.state.joint_q.numpy()[:3].tolist()
++                robot.step(item["command"])
++                if robot.stance is not None and robot.stance.row["stance_mode"] == "RL":
++                    if not np.any(item["command"]):
++                        raise RuntimeError("Release must occur during initial nonzero command")
++                    release = dict(physics_time_s=robot.physics_time(), phase=item["phase"],
++                                   q=robot.state.joint_q.numpy().tolist(), kp=np.asarray(robot.motor_kp).tolist(),
++                                   kd=np.asarray(robot.motor_kd).tolist())
++                    robot.stance = None  # Observer retained; no further hold.update calls.
++                row = robot.telemetry()
++                row.update(item, command_applied_start_s=before, command_start_base_xyz=anchor,
++                           foot_positions_world=foot_positions(robot, shapes).tolist(),
++                           foot_forces_n=observer.measure().tolist(),
++                           stance_mode="POLICY_ONLY" if robot.stance is None else robot.stance.row["stance_mode"],
++                           policy_owns_joints=robot.stance is None)
++                if robot.stance is None:
++                    if not (np.all(np.asarray(robot.motor_kp) == 20.) and np.all(np.asarray(robot.motor_kd) == .5)):
++                        raise RuntimeError("Policy-only gain mismatch")
++                    if not np.allclose(robot.target, robot.policy_target, rtol=0, atol=1e-7):
++                        raise RuntimeError("Nonpolicy action during policy-only phase")
++                if item["phase"].startswith("stop") and robot.stance is not None:
++                    raise RuntimeError("Stop was contaminated by automatic stance control")
++                if not np.array_equal(np.asarray(row["effective_command"], np.float32), np.asarray(item["command"], np.float32)):
++                    raise RuntimeError("Actual command differs from schedule")
++                stream.write(json.dumps(row) + "\n")
++                rows.append(row)
++                frames.append(frame(robot, item["phase"], item["command"]))
++                if item["index"] % 100 == 0:
++                    resources(out)
++                    stream.flush()
++                    print(json.dumps(dict(t=row["physics_time_s"], phase=item["phase"], xy=row["joint_q"][:2])), flush=True)
++                if row["base_up_z"] < .5:
++                    result.update(outcome="fall", fall_at_s=row["physics_time_s"])
++                    break
++            else:
++                result.update(execution_completed=True, outcome="schedule_completed")
++        result.update(policy_release=release, physics_s=robot.physics_time(), physics_steps=robot.steps,
++                      observation_mapping_max_abs=robot.max_observation_mapping_error,
++                      applied_torque_max_abs=robot.max_applied_torque_error, samples=len(rows))
++    except BaseException as error:
++        result.update(outcome="execution_error", error=repr(error))
++        raise
++    finally:
++        if len(frames) == 1 and (out / "factory_video_states.json").exists():
++            frames.extend(dict(x, phase="startup") for x in json.loads((out / "factory_video_states.json").read_text()))
++        if frames:
++            (out / "recorded_frames.json").write_text(json.dumps(frames) + "\n")
++        result["wall_s"] = time.monotonic() - started
++        (out / "result.json").write_text(json.dumps(result, indent=2) + "\n")
++        print(json.dumps(result), flush=True)
++
++
++if __name__ == "__main__":
++    main()
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v179/supervise.py
+@@ -0,0 +1,16 @@
++"""Reuse the bounded supervisor with an explicitly owned temporary root."""
++import importlib.util
++import os
++from pathlib import Path
++
++HERE = Path(__file__).resolve().parent
++BASE = HERE.parents[1]
++source = BASE.parent / "2026-09-26_newton_macos_policy/scripts/run_bounded.py"
++root = Path(os.environ["V179_TEMP_ROOT"]).resolve()
++if root.parent != Path("/private/tmp") or root.name != "vla_policy_stop_20261012":
++    raise ValueError("Undeclared temporary root")
++spec = importlib.util.spec_from_file_location("v179_original_supervisor", source)
++module = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(module)
++module.BASE = root
++module.main()
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v179/test_analysis.py
+@@ -0,0 +1,46 @@
++import json
++from pathlib import Path
++import tempfile
++import unittest
++from analyze import analyze
++
++
++class AnalysisTests(unittest.TestCase):
++    def fixture(self, root, n=500):
++        (root / "probe_request.json").write_text(json.dumps(dict(terrain="flat", attempt=1)))
++        (root / "result.json").write_text(json.dumps(dict(execution_completed=True)))
++        rows = []
++        for i in range(n):
++            t = (i + 1) * .02
++            x = min(t, 2.) * .1
++            rows.append(dict(phase="stop1", physics_time_s=t, command_applied_start_s=0.,
++                command_start_base_xyz=[0., 0., .3], joint_q=[x, 0., .3], joint_qd=[.1 if t < 2 else 0., 0.],
++                base_up_z=1., effective_command=[0., 0., 0.], stance_mode="POLICY_ONLY", policy_owns_joints=True,
++                foot_positions_world=[[x, 0., 0.]] * 4, foot_forces_n=[30.] * 4))
++        (root / "telemetry.jsonl").write_text("\n".join(json.dumps(r) for r in rows))
++        return rows
++
++    def test_braking_not_mislabelled_late_drift(self):
++        with tempfile.TemporaryDirectory() as directory:
++            root = Path(directory); self.fixture(root)
++            stop = analyze(root)["stops"][0]
++            self.assertAlmostEqual(stop["net_xy_m"], .2)
++            self.assertEqual(stop["late_max_excursion_m"], 0.)
++            self.assertTrue(stop["complete_10s_window"])
++
++    def test_partial_stop_is_not_completed(self):
++        with tempfile.TemporaryDirectory() as directory:
++            root = Path(directory); self.fixture(root, 50)
++            self.assertFalse(analyze(root)["stops"][0]["complete_10s_window"])
++
++    def test_hold_contamination_rejected(self):
++        with tempfile.TemporaryDirectory() as directory:
++            root = Path(directory); rows = self.fixture(root)
++            rows[25]["stance_mode"] = "FIXED_STAND"
++            (root / "telemetry.jsonl").write_text("\n".join(json.dumps(r) for r in rows))
++            with self.assertRaises(ValueError):
++                analyze(root)
++
++
++if __name__ == "__main__":
++    unittest.main()
+--- /dev/null
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v179/test_protocol.py
+@@ -0,0 +1,30 @@
++import unittest
++from protocol import CONDITIONS, schedule
++
++
++class ProtocolTests(unittest.TestCase):
++    def test_all_conditions_have_two_ten_second_zero_windows(self):
++        for attempt in range(1, 7):
++            rows = list(schedule(attempt))
++            for phase in ("stop1", "stop2"):
++                chosen = [r for r in rows if r["phase"] == phase]
++                self.assertEqual(len(chosen), 500)
++                self.assertTrue(all(r["command"] == [0., 0., 0.] for r in chosen))
++            self.assertEqual(len([r for r in rows if r["phase"] == "walk2"]), 150)
++
++    def test_continuous_sequence_and_declared_speeds(self):
++        for attempt, (speed, _) in enumerate(CONDITIONS, 1):
++            rows = list(schedule(attempt))
++            self.assertEqual([r["index"] for r in rows], list(range(len(rows))))
++            self.assertTrue(all(r["command"] == [speed, 0., 0.] for r in rows if r["phase"].startswith("walk")))
++
++    def test_invalid_attempt_or_timing_rejected(self):
++        for a in (0, 7):
++            with self.assertRaises(ValueError):
++                list(schedule(a))
++        with self.assertRaises(ValueError):
++            list(schedule(1, .07))
++
++
++if __name__ == "__main__":
++    unittest.main()

@@ -1,0 +1,142 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v103/src/scan_nav2_controller/CMakeLists.txt
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v104/src/scan_nav2_controller/CMakeLists.txt
+@@ -33,5 +33,8 @@
+   target_compile_options(test_tracking_parity PRIVATE -fno-access-control)
+   target_link_libraries(test_tracking_parity scan_nav2_controller)
+   ament_target_dependencies(test_tracking_parity ${dependencies})
++  ament_add_gtest(test_executor_shutdown test/test_executor_shutdown.cpp TIMEOUT 10)
++  target_link_libraries(test_executor_shutdown scan_nav2_controller)
++  ament_target_dependencies(test_executor_shutdown ${dependencies})
+ endif()
+ ament_package()
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v103/src/scan_nav2_controller/test/test_executor_shutdown.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v104/src/scan_nav2_controller/test/test_executor_shutdown.cpp
+@@ -0,0 +1,37 @@
++#include <gtest/gtest.h>
++#include <rclcpp/rclcpp.hpp>
++#include <scan_nav2_controller/executor_shutdown.hpp>
++using namespace std::chrono_literals;
++
++TEST(ExecutorShutdown, CancelsEvenWhenStopPrecedesFoxySpinEntry) {
++  int argc=0;rclcpp::init(argc,nullptr);
++  for (bool multi : {false,true}) {
++    std::shared_ptr<rclcpp::Executor> executor;
++    if(multi)executor=std::make_shared<rclcpp::executors::MultiThreadedExecutor>(rclcpp::ExecutorOptions(),2);
++    else executor=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
++    auto node=std::make_shared<rclcpp::Node>(multi?"multi_shutdown":"single_shutdown");
++    executor->add_node(node);
++    std::atomic<bool> release{false},finished{false};
++    std::thread worker([&] {
++      while(!release.load())std::this_thread::sleep_for(1ms);
++      executor->spin();finished=true;
++    });
++    executor->cancel(); // Deliberately before spin; this cancellation is lost in Foxy.
++    release=true;
++    std::this_thread::sleep_for(30ms);
++    EXPECT_FALSE(finished.load());
++    const auto before=std::chrono::steady_clock::now();
++    scan_nav2_controller::joinStoppedExecutor(executor,worker,finished);
++    EXPECT_TRUE(finished.load());EXPECT_FALSE(worker.joinable());
++    EXPECT_LT(std::chrono::steady_clock::now()-before,500ms);
++    executor->remove_node(node);
++  }
++  // Also stop before the worker has even attempted spin().
++  auto executor=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
++  auto node=std::make_shared<rclcpp::Node>("delayed_shutdown");executor->add_node(node);
++  std::atomic<bool> done{false};
++  std::thread late([&] {std::this_thread::sleep_for(30ms);executor->spin();done=true;});
++  scan_nav2_controller::joinStoppedExecutor(executor,late,done);
++  EXPECT_TRUE(done.load());
++  rclcpp::shutdown();
++}
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v103/src/scan_nav2_controller/src/controller.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v104/src/scan_nav2_controller/src/controller.cpp
+@@ -1,4 +1,6 @@
+ #include <scan_nav2_controller/controller.hpp>
++#include <scan_nav2_controller/executor_shutdown.hpp>
++#include <rclcpp/scope_exit.hpp>
+ 
+ #include <map>
+ #include <filesystem>
+@@ -51,6 +53,7 @@
+     else executor_=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+     executor_->add_node(node_);
+     worker_=std::thread([this,fault] {
++      RCLCPP_SCOPE_EXIT(finished_.store(true););
+       try { executor_->spin(); }
+       catch (const std::exception &error) { healthy_=false; fault(std::string("native_worker_exception:")+error.what()); }
+       catch (...) { healthy_=false; fault("native_worker_unknown_exception"); }
+@@ -58,8 +61,7 @@
+   }
+   bool healthy() const { return healthy_.load(); }
+   ~NativeWorker() {
+-    if (executor_) executor_->cancel();
+-    if (worker_.joinable()) worker_.join();
++    joinStoppedExecutor(executor_,worker_,finished_);
+     planner_.reset();
+   }
+ private:
+@@ -106,6 +108,7 @@
+   std::shared_ptr<rclcpp::Executor> executor_;
+   std::thread worker_;
+   std::atomic<bool> healthy_{true};
++  std::atomic<bool> finished_{false};
+ };
+ namespace
+ {
+@@ -242,7 +245,11 @@
+     std::bind(&Controller::onStopEvidence,this,std::placeholders::_1));
+   executor_=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+   executor_->add_node(bridge_); executor_->add_node(tracker_);
+-  thread_=std::thread([this] { executor_->spin(); });
++  thread_finished_=false;
++  thread_=std::thread([this] {
++    RCLCPP_SCOPE_EXIT(thread_finished_.store(true););
++    executor_->spin();
++  });
+ }
+ 
+ void Controller::activate()
+@@ -268,8 +275,7 @@
+ {
+   if (!parent_) return;
+   deactivate();
+-  if (executor_) executor_->cancel();
+-  if (thread_.joinable()) thread_.join();
++  joinStoppedExecutor(executor_,thread_,thread_finished_);
+   executor_.reset(); binding_sub_.reset(); spline_sub_.reset(); cancel_sub_.reset();
+   safety_sub_.reset(); stopped_sub_.reset(); route_pub_.reset(); binding_ready_pub_.reset(); cancel_pub_.reset(); cancel_admission_pub_.reset(); command_pub_.reset();
+   tracker_.reset(); bridge_.reset(); parent_.reset(); state_.reset();
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v103/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v104/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
+@@ -55,6 +55,7 @@
+   std::shared_ptr<State> state_;
+   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
+   std::thread thread_;
++  std::atomic<bool> thread_finished_{true};
+   std::unique_ptr<NativeWorker> native_worker_;
+   std::string name_, global_frame_, base_frame_;
+   double binding_timeout_s_{2.0}, startup_timeout_s_{2.0};
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v103/src/scan_nav2_controller/include/scan_nav2_controller/executor_shutdown.hpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v104/src/scan_nav2_controller/include/scan_nav2_controller/executor_shutdown.hpp
+@@ -0,0 +1,20 @@
++#pragma once
++#include <rclcpp/executor.hpp>
++#include <atomic>
++#include <chrono>
++#include <thread>
++
++namespace scan_nav2_controller {
++// Foxy spin() sets spinning=true on entry, so a single cancel() issued before
++// that entry is lost. Keep cancelling until the owned thread has left spin.
++// This runs only on lifecycle teardown, never on the command/safety path.
++inline void joinStoppedExecutor(const std::shared_ptr<rclcpp::Executor> &executor,
++                                std::thread &thread,const std::atomic<bool> &finished) {
++  if (!thread.joinable()) return;
++  while (!finished.load()) {
++    executor->cancel();
++    std::this_thread::sleep_for(std::chrono::milliseconds(1));
++  }
++  thread.join();
++}
++}

@@ -1,0 +1,95 @@
+--- a/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ b/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -157,6 +157,31 @@
+       ? reactive_ground_ : reactive_surface_ground_;
+   return reactive_stair::selectedGroundReturn(evidence,
+       point.x(), point.y(), point.z(), reactive_terrain_band_m_);
++}
++
++GridMap::TerrainCellLayers GridMap::terrainCellLayers(const reactive_stair::Cell2 &cell) {
++  // Unsigned packing preserves every signed int32 XY pair, including negatives.
++  const std::uint64_t key = (static_cast<std::uint64_t>(static_cast<std::uint32_t>(cell.x)) << 32) |
++      static_cast<std::uint32_t>(cell.y);
++  const bool cache = raw_contributor_cache_active_ && terrain_cell_cache_enabled_;
++  if (cache) {
++    const auto found = terrain_cell_cache_.find(key);
++    if (found != terrain_cell_cache_.end()) {
++      ++terrain_cell_cache_hits_;
++      return found->second;
++    }
++  }
++  TerrainCellLayers layers;
++  const auto raw = reactive_ground_.cells.find(cell);
++  const auto scored = reactive_terrain_.cells.find(cell);
++  if (raw != reactive_ground_.cells.end()) layers.raw = &raw->second;
++  if (scored != reactive_terrain_.cells.end()) layers.scored = &scored->second;
++  if (cache) {
++    ++terrain_cell_cache_evaluations_;
++    if (terrain_cell_cache_.size() < terrain_cell_cache_capacity_)
++      terrain_cell_cache_.emplace(key, layers);
++  }
++  return layers;
+ }
+ 
+ bool GridMap::reactiveFootprintSupportQuery(const Eigen::Vector3d &body_reference,
+@@ -185,15 +210,14 @@
+         ix < std::numeric_limits<int>::min() || ix > std::numeric_limits<int>::max() ||
+         iy < std::numeric_limits<int>::min() || iy > std::numeric_limits<int>::max()) return false;
+     const reactive_stair::Cell2 cell{static_cast<int>(ix), static_cast<int>(iy)};
+-    const auto original = raw.cells.find(cell), classified = scored.cells.find(cell);
+-    if (original == raw.cells.end() || classified == scored.cells.end() ||
+-        original->second.size() != classified->second.size()) return false;
++    const auto layers = terrainCellLayers(cell);
++    if (!layers.raw || !layers.scored || layers.raw->size() != layers.scored->size()) return false;
+     // Associate before considering scored status. Never skip an unknown or
+     // unsupported nearest layer in favor of a farther supported floor.
+-    const int layer = reactive_stair::nearestSurface(original->second, target, limit);
++    const int layer = reactive_stair::nearestSurface(*layers.raw, target, limit);
+     if (layer < 0) return false;
+-    const auto &surface = classified->second[layer];
+-    if (surface.elevation_m != original->second[layer].elevation_m ||
++    const auto &surface = (*layers.scored)[layer];
++    if (surface.elevation_m != (*layers.raw)[layer].elevation_m ||
+         !reactive_stair::selectedSurface(surface)) return false;
+     height = surface.elevation_m;
+     return true;
+--- a/src/plan_env/include/plan_env/grid_map.h
++++ b/src/plan_env/include/plan_env/grid_map.h
+@@ -174,8 +174,8 @@
+   }
+   enum { INVALID_IDX = -10000 };
+ 
+-  // Only raw occupied-source classification is memoized; query-specific
+-  // freshness, support, physical position and trunk masking remain live.
++  // Only raw classification and terrain-cell lookup data are memoized; query-specific
++  // freshness, support decisions, physical position and trunk masking remain live.
+   class RawContributorCacheScope {
+     GridMap &map_;
+     bool previous_;
+@@ -185,6 +185,7 @@
+         map_.invalidateRawContributorCache();
+         if (map_.raw_contributor_cache_.bucket_count() < 1024) map_.raw_contributor_cache_.reserve(1024);
+         map_.raw_contributor_cache_evaluations_ = map_.raw_contributor_cache_hits_ = 0;
++        map_.terrain_cell_cache_hits_ = map_.terrain_cell_cache_evaluations_ = 0;
+         map_.raw_contributor_cache_active_ = true;
+       }
+     }
+@@ -264,7 +265,18 @@
+   bool raw_contributor_cache_active_ = false;
+   std::unordered_map<int, reactive_stair::Occupancy> raw_contributor_cache_;
+   std::size_t raw_contributor_cache_evaluations_ = 0, raw_contributor_cache_hits_ = 0;
++  struct TerrainCellLayers {
++    const std::vector<reactive_stair::SurfaceCell> *raw = nullptr;
++    const std::vector<reactive_stair::SurfaceCell> *scored = nullptr;
++  };
++  bool terrain_cell_cache_enabled_ = true;  // Internal paired-test switch, not a runtime parameter.
++  std::unordered_map<std::uint64_t, TerrainCellLayers> terrain_cell_cache_;
++  std::size_t terrain_cell_cache_hits_ = 0, terrain_cell_cache_evaluations_ = 0;
++  static constexpr std::size_t terrain_cell_cache_capacity_ = 4096;
++  TerrainCellLayers terrainCellLayers(const reactive_stair::Cell2 &cell);
+   void invalidateRawContributorCache() {
++    // Drop borrowed pointers before either terrain snapshot can be replaced.
++    if (!terrain_cell_cache_.empty()) terrain_cell_cache_.clear();
+     if (!raw_contributor_cache_.empty()) raw_contributor_cache_.clear();
+   }
+   reactive_stair::Occupancy rawContributorOccupancy(const Eigen::Vector3i &id);

@@ -1,0 +1,66 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v110/src/plan_env/src/grid_map.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/plan_env/src/grid_map.cpp
+@@ -260,6 +260,7 @@
+   const int inf_step_z_down = ceil(mutableMapState().mp_.obstacles_inflation_z_down / mutableMapState().mp_.resolution_);
+ 
+   mutableMapState().md_.inflate_offsets_.clear();
++  mutableMapState().md_.inflate_columns_.clear();
+   for (int x = -inf_step_xy; x <= inf_step_xy; ++x)
+     for (int y = -inf_step_xy; y <= inf_step_xy; ++y)
+     {
+@@ -267,6 +268,7 @@
+       if (offset_xy.norm() >= double_radius)
+         continue;
+ 
++      mutableMapState().md_.inflate_columns_.push_back({x,y,-inf_step_z_down,inf_step_z_up});
+       for (int z = -inf_step_z_down; z <= inf_step_z_up; ++z)
+         mutableMapState().md_.inflate_offsets_.push_back(Eigen::Vector3i(x, y, z));
+     }
+@@ -351,8 +353,34 @@
+ 
+ void GridMap::updateInflation(const Eigen::Vector3i& id, int delta, const std::vector<char>* ignore_mask)
+ {
+-  updateInflationLayer(id, delta, mutableMapState().md_.inflate_offsets_, mutableMapState().md_.occupancy_buffer_inflate_cnt_,
+-                       mutableMapState().md_.occupancy_buffer_inflate_, ignore_mask);
++  if (ignore_mask) {
++    // Retain the original masked operation for departing rolling-map cells.
++    updateInflationLayer(id, delta, mutableMapState().md_.inflate_offsets_, mutableMapState().md_.occupancy_buffer_inflate_cnt_,
++                         mutableMapState().md_.occupancy_buffer_inflate_, ignore_mask);
++    return;
++  }
++  invalidateRawContributorCache();
++  auto &state=mutableMapState();auto &counts=state.md_.occupancy_buffer_inflate_cnt_;
++  auto &flags=state.md_.occupancy_buffer_inflate_;
++  const auto &lower=state.mp_.map_bound_min_idx_;const auto &upper=state.mp_.map_bound_max_idx_;
++  const int ny=state.mp_.map_voxel_num_.y(),nz=state.mp_.map_voxel_num_.z();
++  const auto apply_span=[&](int address,int length) {
++    // Same per-cell saturating integer update, now on a contiguous ring span.
++    for(int j=0;j<length;++j) {
++      const int value=std::max(0,counts[address+j]+delta);
++      counts[address+j]=value;flags[address+j]=value>0?1:0;
++    }
++  };
++  for(const auto &column:state.md_.inflate_columns_) {
++    const int x=id.x()+column.x,y=id.y()+column.y;
++    if(x<lower.x() || x>upper.x() || y<lower.y() || y>upper.y())continue;
++    const int first=std::max(lower.z(),id.z()+column.z_min),last=std::min(upper.z(),id.z()+column.z_max);
++    if(first>last)continue;
++    const int base=(getLocalIndex(x,0)*ny+getLocalIndex(y,1))*nz;
++    const int local=getLocalIndex(first,2),length=last-first+1,head=std::min(length,nz-local);
++    apply_span(base+local,head);
++    if(head<length)apply_span(base,length-head);
++  }
+ }
+ 
+ void GridMap::applyOccupancyUpdate(const Eigen::Vector3i& id, double new_log_odds)
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v110/src/plan_env/include/plan_env/grid_map.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v113/src/plan_env/include/plan_env/grid_map.h
+@@ -130,6 +130,8 @@
+   std::vector<char> occupancy_buffer_inflate_;
+   std::vector<int> occupancy_buffer_inflate_cnt_;
+   vector<Eigen::Vector3i> inflate_offsets_;
++  struct InflationColumn { int x, y, z_min, z_max; };
++  std::vector<InflationColumn> inflate_columns_;
+ 
+   // raycast origin and sensor pose data
+ 

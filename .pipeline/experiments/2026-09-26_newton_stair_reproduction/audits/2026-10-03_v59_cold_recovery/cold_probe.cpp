@@ -1,0 +1,140 @@
+// Offline diagnosis: original manager/map/fitter, trace-only optimizer copy.
+#include <plan_manage/planner_manager.h>
+#include <bspline_opt/full_trajectory_collision.h>
+#include <bspline_opt/timed_cubic_initialization.h>
+#include <scan_planner_msgs/msg/bspline.hpp>
+#include <rcl/time.h>
+#include <rclcpp/serialization.hpp>
+#include <chrono>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <stdexcept>
+
+template<class T> T decode(const std::vector<char>& bytes) {
+  rclcpp::SerializedMessage data(bytes.size()); auto &raw=data.get_rcl_serialized_message();
+  std::memcpy(raw.buffer,bytes.data(),bytes.size());raw.buffer_length=bytes.size();
+  T msg;rclcpp::Serialization<T>().deserialize_message(&data,&msg);return msg;
+}
+sensor_msgs::msg::PointCloud2 ground(const char *path) {
+  std::ifstream f(path,std::ios::binary);sensor_msgs::msg::PointCloud2 m;
+  m.data=std::vector<uint8_t>(std::istreambuf_iterator<char>(f),{});
+  if(m.data.empty())throw std::runtime_error("Missing pinned ground");
+  m.header.frame_id="world";m.header.stamp.sec=1;m.point_step=16;m.height=1;
+  m.width=m.data.size()/16;m.row_step=m.data.size();m.is_dense=true;
+  for(int i=0;i<4;++i){sensor_msgs::msg::PointField x;x.name=std::vector<std::string>{"x","y","z","intensity"}[i];x.offset=4*i;x.datatype=x.FLOAT32;x.count=1;m.fields.push_back(x);}return m;
+}
+std::string xyz(const Eigen::Vector3d &p) {
+  std::ostringstream s;s<<std::setprecision(17)<<"["<<p.x()<<","<<p.y()<<","<<p.z()<<"]";return s.str();
+}
+double elapsed(std::chrono::steady_clock::time_point start) {
+  return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
+}
+reactive_stair::TrajectoryCheck check(scan_planner::UniformBspline &curve, double begin, GridMap &map) {
+  return reactive_stair::checkFullCubicTrajectory(curve,begin,map.getResolution(),GridMap::collision_heading_lookahead_s,
+      [&](const Eigen::Vector3d &p,const Eigen::Vector3d &ahead,const Eigen::Vector3d &v){return map.collisionTrajectoryYaw(p,ahead,v);},
+      [&](const Eigen::Vector3d &p,double yaw){return map.getInflateOccupancy(p,yaw)!=0;});
+}
+void supportWitness(GridMap &map,const Eigen::Vector3d &body,double yaw) {
+  const auto &raw=map.reactive_ground_;const Eigen::Vector3d heading(std::cos(yaw),std::sin(yaw),0.);
+  for(int sign:{1,-1}) {
+    const Eigen::Vector3d p=body+sign*map.mp_.double_cylinder_offset_*heading;
+    reactive_stair::Query q;q.frame=map.mp_.frame_id_;q.stamp_s=map.node_->now().seconds();
+    q.x_m=p.x();q.y_m=p.y();q.z_m=p.z();q.in_map=map.isInMap(p);
+    reactive_stair::NonTerrainVoxel voxel;voxel.frame=q.frame;voxel.stamp_s=map.reactive_cloud_stamp_s_;voxel.source_id="scan_lidar_cloud";voxel.occupancy=reactive_stair::Occupancy::Free;
+    bool support=map.reactiveFootprintSupportQuery(body,voxel,q);
+    const reactive_stair::Cell2 cell{int(std::floor((p.x()-raw.origin_x_m)/raw.resolution_m)),int(std::floor((p.y()-raw.origin_y_m)/raw.resolution_m))};
+    const auto layers=map.terrainCellLayers(cell);
+    std::cerr<<std::setprecision(17)<<"V59_DIAG_SUPPORT sign="<<sign<<" support="<<support<<" occupied="<<map.reactiveOccupancy(p,&body)<<" xyz="<<p.transpose()<<" cell="<<cell.x<<","<<cell.y<<" layers=";
+    if(layers.raw&&layers.scored)for(size_t i=0;i<layers.raw->size();++i)std::cerr<<"("<<(*layers.raw)[i].elevation_m<<","<<int((*layers.scored)[i].support)<<")";
+    const auto found=map.reactive_step_result_.scores.find(cell);
+    if(found!=map.reactive_step_result_.scores.end())for(const auto &score:found->second)std::cerr<<" score=("<<score.known<<","<<score.first_pass_height_m<<","<<score.score<<","<<score.critical_cells<<")";
+    std::cerr<<"\n";
+  }
+}
+int main(int argc,char **argv) {
+  rclcpp::init(argc,argv);
+  auto node=std::make_shared<rclcpp::Node>("scan_planner_node");
+  scan_planner::SCANPlannerManager manager;
+  manager.initPlanModules(node.get(),std::make_shared<scan_planner::PlanningVisualization>(node.get()));
+  auto map=manager.grid_map_;map->occ_timer_->cancel();map->vis_timer_->cancel();
+  auto clock=[&](int64_t ns){auto *handle=node->get_clock()->get_clock_handle();
+    if(rcl_enable_ros_time_override(handle)!=RCL_RET_OK||rcl_set_ros_time_override(handle,ns)!=RCL_RET_OK)throw std::runtime_error("Clock override failed");};
+  clock(1000000000);
+  map->reactiveTomogramCallback(std::make_shared<sensor_msgs::msg::PointCloud2>(ground("/archive/versions/v36/tests/attempt09/v33_stand/converted_inputs/ground.f32")));
+  map->reactiveSurfaceGroundCallback(std::make_shared<sensor_msgs::msg::PointCloud2>(ground("/archive/audits/2026-09-27_dense_static_sampling/raw_ground.f32")));
+  map->reactivePhysicalFloorCallback(std::make_shared<sensor_msgs::msg::PointCloud2>(ground("/archive/versions/v57/assets/physical_floor.f32")));
+  std::ifstream stream("/attempt/events.bin",std::ios::binary);
+  std::ofstream out("/attempt/cold_native.jsonl");out<<std::setprecision(17);
+  scan_planner_msgs::msg::Bspline last;
+  int cases=0;
+  while(true) {
+    uint8_t type;int64_t ns;uint32_t size;
+    if(!stream.read(reinterpret_cast<char*>(&type),1))break;
+    stream.read(reinterpret_cast<char*>(&ns),8);stream.read(reinterpret_cast<char*>(&size),4);
+    std::vector<char> bytes(size);stream.read(bytes.data(),size);if(!stream)throw std::runtime_error("Truncated event stream");clock(ns);
+    if(type==0)map->slidingMapFrameCallback(std::make_shared<nav_msgs::msg::Odometry>(decode<nav_msgs::msg::Odometry>(bytes)));
+    else if(type==1)map->sensorPoseCallback(std::make_shared<nav_msgs::msg::Odometry>(decode<nav_msgs::msg::Odometry>(bytes)));
+    else if(type==2)map->cloudCallback(std::make_shared<sensor_msgs::msg::PointCloud2>(decode<sensor_msgs::msg::PointCloud2>(bytes)));
+    else if(type==3){auto message=decode<scan_planner_msgs::msg::Bspline>(bytes);if(!message.emergency_stop)last=message;}
+    else if(type==5) {
+      ++cases;std::istringstream data(std::string(bytes.begin(),bytes.end()));int id,kind,count;double interval;
+      data>>id>>kind>>count>>interval;
+      std::vector<Eigen::Vector3d> points(count),derivatives(4);
+      for(auto &p:points)data>>p.x()>>p.y()>>p.z();for(auto &p:derivatives)data>>p.x()>>p.y()>>p.z();
+      if(!data)throw std::runtime_error("Invalid case");
+      const double cloud_age=ns*1e-9-map->reactive_cloud_stamp_s_,body_age=ns*1e-9-map->reactive_body_stamp_s_;
+      if(cloud_age<0||cloud_age>.25||body_age<0||body_age>.25||!map->physicalFloorReady())throw std::runtime_error("Stale/unqualified probe");
+      std::cerr<<"V59_DIAG_CASE id="<<id<<" kind="<<kind<<" now="<<std::setprecision(17)<<ns*1e-9<<" cloud_age="<<cloud_age<<"\n";
+      GridMap::RawContributorCacheScope cache(*map);
+      if(kind==0) {
+        Eigen::MatrixXd controls(3,last.pos_pts.size());Eigen::VectorXd knots(last.knots.size());
+        for(size_t i=0;i<last.pos_pts.size();++i)controls.col(i)<<last.pos_pts[i].x,last.pos_pts[i].y,last.pos_pts[i].z;
+        for(size_t i=0;i<last.knots.size();++i)knots[i]=last.knots[i];
+        scan_planner::UniformBspline curve(controls,3,1.);curve.setKnot(knots);
+        if(last.traj_id<1 || last.traj_id>std::numeric_limits<int>::max())throw std::runtime_error("Curve id out of range");
+        const double origin=last.start_time.sec+last.start_time.nanosec*1e-9,t=ns*1e-9-origin,duration=curve.getTimeSum();
+        auto remaining=check(curve,t,*map);const auto target=points.back();
+        auto &local=manager.local_data_;local.position_traj_=curve;local.velocity_traj_=curve.getDerivative();
+        local.acceleration_traj_=local.velocity_traj_.getDerivative();local.start_time_=rclcpp::Time(last.start_time,RCL_ROS_TIME);
+        local.duration_=duration;local.traj_id_=last.traj_id;
+        manager.setWarmStartContext("diagnostic",target,t);manager.restoreWarmStartBinding({"diagnostic",target,static_cast<int>(last.traj_id),map.get()});
+        std::vector<Eigen::Vector3d> seed;double ts=0;std::string reason;
+        bool warm=manager.makeWarmStartSeed(points.front(),derivatives[0],derivatives[2],target,seed,ts,reason);
+        const size_t divisions=std::max<size_t>(1,remaining.samples-1);size_t closest=0,valid_joins=0;
+        double best=std::numeric_limits<double>::infinity();Eigen::Vector3d join;
+        for(size_t i=0;i<=divisions;++i){const auto p=curve.evaluateDeBoorT(i==divisions?duration:t+(duration-t)*i/divisions);
+          const double distance=(p-target).squaredNorm();if(distance<best){best=distance;closest=i;join=p;}
+          if(i>0&&map->collisionFreeSegment(p,target))++valid_joins;}
+        Eigen::Vector3d blocked=Eigen::Vector3d::Zero();double blocked_yaw=0.;bool got_block=false;int sample=-1;
+        const bool connector=reactive_stair::collisionFreeSegment(join,target,map->getResolution(),map->collisionSegmentYaw(join,target),
+          [&](const Eigen::Vector3d &p,double yaw){int occupied=map->getInflateOccupancy(p,yaw);if(occupied&&!got_block){got_block=true;blocked=p;blocked_yaw=yaw;}return occupied;},&sample);
+        if(got_block){map->logInitialSplineCollision(blocked,blocked_yaw);supportWitness(*map,blocked,blocked_yaw);}
+        out<<"{\"case\":"<<id<<",\"kind\":\"warm\",\"curve_id\":"<<last.traj_id<<",\"curve_remaining_s\":"<<duration-t
+           <<",\"remaining_status\":"<<int(remaining.status)<<",\"pva_position_error_m\":"<<(curve.evaluateDeBoorT(t)-points.front()).norm()
+           <<",\"warm_accepted\":"<<warm<<",\"warm_reason\":\""<<reason<<"\",\"binding_after_rejection\":"<<manager.accepted_warm_traj_id_
+           <<",\"join\":"<<xyz(join)<<",\"target\":"<<xyz(target)<<",\"closest_sample\":"<<closest<<",\"sample_count\":"<<divisions+1
+           <<",\"valid_alternative_joins\":"<<valid_joins<<",\"connector_clear\":"<<connector<<",\"blocked_sample\":"<<sample
+           <<",\"blocked_xyz\":"<<xyz(blocked)<<",\"blocked_yaw\":"<<blocked_yaw<<",\"cloud_age\":"<<cloud_age<<"}\n";
+      } else {
+        for(int repeat=0;repeat<2;++repeat)for(bool height:{true,false}) {
+          scan_planner::BsplineOptimizer optimizer;optimizer.setParam(node.get());optimizer.setEnvironment(map);
+          optimizer.a_star_=manager.bspline_optimizer_rebound_->a_star_;optimizer.setOptimizeHeight(height);
+          Eigen::MatrixXd controls;if(!reactive_stair::fitCubicBoundaryPva(interval,points,derivatives,controls))throw std::runtime_error("Original seed fit failed");
+          scan_planner::UniformBspline initial(controls,3,interval);auto before=check(initial,0,*map);
+          std::cerr<<"V59_DIAG_OPT_BEGIN case="<<id<<" repeat="<<repeat<<" height="<<height<<"\n";
+          auto begin=std::chrono::steady_clock::now();auto paths=optimizer.initControlPoints(controls,true);double init_ms=elapsed(begin);
+          begin=std::chrono::steady_clock::now();bool success=optimizer.BsplineOptimizeTrajRebound(controls,interval);double optimize_ms=elapsed(begin);
+          scan_planner::UniformBspline final(controls,3,interval);auto after=check(final,0,*map);
+          std::cerr<<"V59_DIAG_OPT_END case="<<id<<" repeat="<<repeat<<" height="<<height<<" success="<<success<<"\n";
+          out<<"{\"case\":"<<id<<",\"kind\":\"optimizer\",\"repeat\":"<<repeat<<",\"optimize_height\":"<<height
+             <<",\"init_paths\":"<<paths.size()<<",\"init_ms\":"<<init_ms<<",\"optimizer_ms\":"<<optimize_ms<<",\"accepted\":"<<success
+             <<",\"initial_curve_status\":"<<int(before.status)<<",\"initial_first_block_s\":"<<before.first_time_s
+             <<",\"final_curve_status\":"<<int(after.status)<<",\"final_first_block_s\":"<<after.first_time_s<<",\"cloud_age\":"<<cloud_age<<"}\n";
+        }
+      }
+      out.flush();
+    }
+  }
+  if(cases!=4)throw std::runtime_error("Missing replay cases");rclcpp::shutdown();
+}

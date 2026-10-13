@@ -1,0 +1,160 @@
+--- a/run_local_episode.py
++++ b/run_local_episode.py
+@@ -128,7 +128,7 @@
+     parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v67 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v68 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -166,8 +166,8 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v67":
+-        raise ValueError("This entry point requires frozen integration version v67")
++    if integration_version != "v68":
++        raise ValueError("This entry point requires frozen integration version v68")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+@@ -190,7 +190,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v67 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v68 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -256,7 +256,7 @@
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
+     for name in ("run_local_episode.py", "native_graph.py", "native_backend_entry.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v67_" + name))
++        shutil.copyfile(VERSION / name, out / ("executed_v68_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -280,8 +280,8 @@
+         "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+     name = "vla-newton-" + out.name.replace("_", "-")
+-    name = os.environ["V67_NATIVE_CONTAINER"]
+-    command = ["docker", "exec", "-e", "V67_PHYSICAL_FLOOR=" + os.environ["V67_PHYSICAL_FLOOR"],
++    name = os.environ["V68_NATIVE_CONTAINER"]
++    command = ["docker", "exec", "-e", "V68_PHYSICAL_FLOOR=" + os.environ["V68_PHYSICAL_FLOOR"],
+         name, "/bin/bash", str(out / "native_inside.sh")]
+     (out / "container_command.json").write_text(json.dumps(command, indent=2) + "\n")
+     with (out / "native_graph.log").open("w") as log:
+@@ -299,6 +299,11 @@
+                 process.wait(timeout=10)
+             except subprocess.TimeoutExpired:
+                 process.terminate(); process.wait(timeout=5)
++            # ros2 run can leave native descendants after its wrapper exits.
++            # Original runtime-container teardown closes all owned writers
++            # before the managed supervisor verifies closed-run retention.
++            subprocess.run(["docker", "stop", "--time", "5", name],capture_output=True,text=True,timeout=15)
++            subprocess.run(["docker", "rm", "-f", name],capture_output=True,text=True,timeout=15)
+             if not copyback_ok:
+                 raise RuntimeError("Linux state copyback failed verification; see state_copyback.json")
+ 
+--- a/mac_trial.py
++++ b/mac_trial.py
+@@ -20,7 +20,7 @@
+ def freeze(receipt_path):
+     """Pin this host integration without claiming physics/full qualification."""
+     assert not (HERE/'manifest.json').exists(),'Frozen source cannot be replaced'
+-    parent=json.loads((BASE/'versions/v66/manifest.json').read_text())
++    parent=json.loads((BASE/'versions/v67/manifest.json').read_text())
+     runtime=json.loads((BASE/'versions/v59/manifest.json').read_text())
+     selected=dict(runtime['source_files']);locations=dict(runtime['snapshot_locations'])
+     selected.update(parent['source_files']);locations.update(parent['snapshot_locations'])
+@@ -35,8 +35,8 @@
+             assert not target.exists();shutil.copyfile(path,target);location=str(target.relative_to(ROOT))
+         selected[name]=h;locations[name]=location
+     receipt=json.loads(receipt_path.read_text())
+-    manifest={'version':'v67','parent':'v66','native_source_parent':'v63','runtime_source_parent':'v59',
+-        'parent_manifest_sha256':sha(BASE/'versions/v66/manifest.json'),
++    manifest={'version':'v68','parent':'v67','native_source_parent':'v63','runtime_source_parent':'v59',
++        'parent_manifest_sha256':sha(BASE/'versions/v67/manifest.json'),
+         'runtime_parent_manifest_sha256':sha(BASE/'versions/v59/manifest.json'),
+         'status':'frozen_user_authorized_mac_physics_validation_pending',
+         'source_files':dict(sorted(selected.items())),'snapshot_locations':dict(sorted(locations.items())),
+@@ -61,22 +61,22 @@
+     assert shutil.disk_usage(HERE).free>12*1024**3
+     for port in (46200,46201,46202,46203):
+         with socket.socket() as s:s.bind(('127.0.0.1',port))
+-    temp=Path(tempfile.mkdtemp(prefix='vla_newton_v67_',dir='/private/tmp'))
++    temp=Path(tempfile.mkdtemp(prefix='vla_newton_v68_',dir='/private/tmp'))
+     workspace=args.reuse_workspace.resolve() if args.reuse_workspace else temp/'native_workspace'
+     if args.reuse_workspace:
+         assert workspace.parent.parent==Path('/private/tmp') and workspace.parent.name.startswith('vla_newton_')
+         assert (workspace/'install').is_dir() and (workspace/'src').is_dir()
+     else:workspace.mkdir()
+     (temp/'scripts').mkdir();(temp/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+-    container=f'vla-v67-mac-physics-{args.attempt:02d}'
++    container=f'vla-v68-mac-physics-{args.attempt:02d}'
+     env=os.environ.copy();env.update(DOCKER_CONTEXT='desktop-linux',
+-        PATH='/Users/sun/.local/bin:'+env['PATH'],V67_TEMP_ROOT=str(temp),
+-        V67_NATIVE_CONTAINER=container,V67_BUILD_EVIDENCE=str(evidence),
+-        V67_PHYSICAL_FLOOR=str(temp/'physical_floor.f32'),
++        PATH='/Users/sun/.local/bin:'+env['PATH'],V68_TEMP_ROOT=str(temp),
++        V68_NATIVE_CONTAINER=container,V68_BUILD_EVIDENCE=str(evidence),
++        V68_PHYSICAL_FLOOR=str(temp/'physical_floor.f32'),
+         PYTHONDONTWRITEBYTECODE='1',PYTHONUNBUFFERED='1',
+         PYTHONPATH=str(BASE/'runtime_sources/bridge')+':'+env.get('PYTHONPATH',''))
+     request={'host':'Mac','gpu5070ti_used':False,'started_utc':datetime.now(timezone.utc).isoformat(),
+-        'authorization':'Dr Sun: u can test on newton on mac','version':'v67','native_parent':'v63',
++        'authorization':'Dr Sun: u can test on newton on mac','version':'v68','native_parent':'v63',
+         'runtime_parent':'v59','trials':args.trials,'simulation_seconds_per_trial':args.seconds,
+         'bulk_root':str(temp),'compact_return_root':str(evidence),'bulk_is_outside_repository':True,
+         'temporary_native_workspace':str(workspace),'reuse_workspace':bool(args.reuse_workspace),
+@@ -97,7 +97,7 @@
+             '-v',str(temp)+':'+str(temp)+':rw','--entrypoint','/bin/bash',IMAGE,
+             '-c','exec sleep infinity']
+         for trial in range(1,args.trials+1):
+-            run=f'v67_mac_trial{trial:02d}_attempt{args.attempt:02d}'
++            run=f'v68_mac_trial{trial:02d}_attempt{args.attempt:02d}'
+             index=cmd.index('--entrypoint')
+             cmd[index:index]=['--tmpfs',str(temp/'runs'/run/'artifacts/external_episode')+':rw,size=8m']
+         index=cmd.index('--entrypoint');cmd[index:index]=['-v',str(workspace)+':/workspace:rw']
+@@ -110,7 +110,7 @@
+             shutil.copyfile(evidence/'build_receipt.json',workspace.parent/'native_build_receipt.json')
+         else:
+             shutil.copyfile(workspace.parent/'native_build_receipt.json',evidence/'build_receipt.json')
+-        subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V67_PHYSICAL_FLOOR']],
++        subprocess.run([str(PYTHON),str(HERE/'derive_mac_floor.py'),'--output',env['V68_PHYSICAL_FLOOR']],
+             env=env,capture_output=True,text=True,timeout=30,check=True)
+         shutil.copyfile(temp/'physical_floor.provenance.json',evidence/'physical_floor_provenance.json')
+         from mac_native_gate import verify
+@@ -119,21 +119,23 @@
+         provisional={'native_source_sha256':receipt['native_source_sha256'],
+             'mac_build_receipt_sha256':sha(receipt_path),
+             'mac_subset_qualification_sha256':sha(BASE/'versions/v63/component_qualification.json')}
+-        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V67_BUILD_EVIDENCE','V67_NATIVE_CONTAINER')})
++        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V68_BUILD_EVIDENCE','V68_NATIVE_CONTAINER')})
+         verify(NATIVE,provisional)
+         manifest=freeze(receipt_path)
+         result['integration_manifest_sha256']=sha(HERE/'manifest.json')
+         from mac_native_gate import verify
+-        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V67_BUILD_EVIDENCE','V67_NATIVE_CONTAINER')})
++        os.environ.update({key:env[key] for key in ('DOCKER_CONTEXT','PATH','V68_BUILD_EVIDENCE','V68_NATIVE_CONTAINER')})
+         (evidence/'entry_gate.json').write_text(json.dumps(verify(NATIVE,manifest),indent=2)+'\n')
+         for trial in range(1,args.trials+1):
+-            run=f'v67_mac_trial{trial:02d}_attempt{args.attempt:02d}'
++            if trial>1:
++                subprocess.run(cmd,env=env,capture_output=True,text=True,timeout=30,check=True)
++            run=f'v68_mac_trial{trial:02d}_attempt{args.attempt:02d}'
+             command=[str(PYTHON),str(HERE/'mac_managed.py'),'--run-id',run,'--deadline','540',
+                 '--retention','archive','--',str(PYTHON),str(HERE/'run_local_episode.py'),
+                 '--backend-executor','single','--applied-transport','zmq','--geometry-obstacles',
+                 '--scene','building_full','--building-route','historical_full',
+                 '--goal-wall-budget','180','--startup-mode','factory_pd','--stance-hold',
+-                '--integration-version','v67','--real-time-factor','1',
++                '--integration-version','v68','--real-time-factor','1',
+                 '--recording-sim-seconds',str(args.seconds)]
+             with (evidence/(run+'.execution.log')).open('w') as log:
+                 process=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=580)

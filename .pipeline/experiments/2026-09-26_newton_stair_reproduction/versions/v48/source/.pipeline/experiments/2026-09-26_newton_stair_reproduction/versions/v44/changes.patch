@@ -1,0 +1,57 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan68_raw_contributor_cache_v39/src/plan_manage/src/scan_replan_fsm.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan69_shared_attempt_cache_v44/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -874,6 +874,8 @@
+       fsm_num = 0;
+     }
+ 
++    GridMap::RawContributorCacheScope callback_cache(*planner_manager_->grid_map_);
++
+     switch (exec_state_)
+     {
+     case INIT:
+@@ -1198,6 +1200,7 @@
+ 
+   void SCANReplanFSM::checkCollisionCallback()
+   {
++    GridMap::RawContributorCacheScope callback_cache(*planner_manager_->grid_map_);
+     // v31: check the executing curve against the newest received inputs, the
+     // FSM's own body_pose included.
+     const int fsm_odometry = takePendingOdometry(
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan68_raw_contributor_cache_v39/src/plan_env/src/grid_map.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan69_shared_attempt_cache_v44/src/plan_env/src/grid_map.cpp
+@@ -928,7 +928,7 @@
+ 
+ void GridMap::refreshSensorInputs(const char *site, int fsm_odometry)
+ {
+-  invalidateRawContributorCache();
++  // Actual occupancy/ground mutations invalidate. An empty input drain does not.
+   // v31: SCAN serves its planning and safety timers and these subscriptions on
+   // one single-threaded executor, timers first, while the simulation clock runs
+   // on its own thread. Pose and scan messages that arrive during a long callback
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan68_raw_contributor_cache_v39/src/plan_env/include/plan_env/grid_map.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan69_shared_attempt_cache_v44/src/plan_env/include/plan_env/grid_map.h
+@@ -167,14 +167,18 @@
+     bool previous_;
+    public:
+     explicit RawContributorCacheScope(GridMap &map) : map_(map), previous_(map.raw_contributor_cache_active_) {
+-      map_.invalidateRawContributorCache();
+-      if (map_.raw_contributor_cache_.bucket_count() < 1024) map_.raw_contributor_cache_.reserve(1024);
+-      map_.raw_contributor_cache_evaluations_ = map_.raw_contributor_cache_hits_ = 0;
+-      map_.raw_contributor_cache_active_ = true;
++      if (!previous_) {
++        map_.invalidateRawContributorCache();
++        if (map_.raw_contributor_cache_.bucket_count() < 1024) map_.raw_contributor_cache_.reserve(1024);
++        map_.raw_contributor_cache_evaluations_ = map_.raw_contributor_cache_hits_ = 0;
++        map_.raw_contributor_cache_active_ = true;
++      }
+     }
+     ~RawContributorCacheScope() {
+-      map_.invalidateRawContributorCache();
+-      map_.raw_contributor_cache_active_ = previous_;
++      if (!previous_) {
++        map_.invalidateRawContributorCache();
++        map_.raw_contributor_cache_active_ = false;
++      }
+     }
+     RawContributorCacheScope(const RawContributorCacheScope &) = delete;
+     RawContributorCacheScope &operator=(const RawContributorCacheScope &) = delete;

@@ -1,0 +1,203 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v100/src/plan_env/include/plan_env/body_time_buffer.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v101/src/plan_env/include/plan_env/body_time_buffer.h
+@@ -0,0 +1,47 @@
++#ifndef VLA_BODY_TIME_BUFFER_H
++#define VLA_BODY_TIME_BUFFER_H
++
++#include <nav_msgs/msg/odometry.hpp>
++#include <cstdint>
++#include <deque>
++#include <string>
++#include <utility>
++
++namespace scan_input_time {
++// Called only by the serialized native-data callback group. This gates delivery,
++// not freshness: consumers still enforce the original 100 ms body age limit.
++class BodyTimeBuffer {
++ public:
++  using Message = nav_msgs::msg::Odometry::ConstSharedPtr;
++  bool push(Message message) {
++    if (!healthy()) return false;
++    if (!message || message->header.stamp.sec < 0 || message->header.stamp.nanosec >= 1000000000u)
++      return fail("invalid_body_source_stamp");
++    const int64_t stamp = int64_t(message->header.stamp.sec)*1000000000LL + message->header.stamp.nanosec;
++    if (stamp <= 0) return fail("invalid_body_source_stamp");
++    if (stamp < high_water_) return fail("regressed_body_source_stamp");
++    if (stamp == high_water_) return true; // A duplicate cannot refresh evidence.
++    if (pending_.size() >= 64) return fail("future_body_buffer_exhausted");
++    high_water_ = stamp;
++    pending_.emplace_back(stamp,std::move(message));
++    return true;
++  }
++  Message takeDue(int64_t clock_ns) {
++    Message latest;
++    if (!healthy()) return latest;
++    while (!pending_.empty() && pending_.front().first <= clock_ns) {
++      latest = pending_.front().second;
++      pending_.pop_front();
++    }
++    return latest;
++  }
++  bool healthy() const { return error_.empty(); }
++  const std::string &error() const { return error_; }
++ private:
++  bool fail(const char *reason) { error_=reason; return false; }
++  int64_t high_water_ = 0;
++  std::deque<std::pair<int64_t,Message>> pending_;
++  std::string error_;
++};
++}
++#endif
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v100/src/plan_env/include/plan_env/grid_map.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v101/src/plan_env/include/plan_env/grid_map.h
+@@ -1,4 +1,5 @@
+ #include <plan_env/observation_window.h>
++#include <plan_env/body_time_buffer.h>
+ #ifndef _GRID_MAP_H
+ #define _GRID_MAP_H
+ 
+@@ -220,7 +221,7 @@
+   };
+   void startAsyncMapping();
+   void stopAsyncMapping();
+-  bool mapperHealthy() const { return !async_mapping_ || !async_mapping_->failed.load(); }
++  bool mapperHealthy() const { return live_body_inputs_.healthy() && (!async_mapping_ || !async_mapping_->failed.load()); }
+   uint64_t mapRevision() const { return map_revision_; }
+   double observationStamp() const { return mapState().reactive_cloud_stamp_s_; }
+   std::unique_ptr<PublicationLease> beginPublication();
+@@ -396,6 +397,8 @@
+   }
+   reactive_stair::Occupancy rawContributorOccupancy(const Eigen::Vector3i &id);
+   double reactive_body_stamp_s_ = 0.0;
++  scan_input_time::BodyTimeBuffer live_body_inputs_;
++  void applyDueLiveBody();
+   Eigen::Quaterniond reactive_body_quaternion_ = Eigen::Quaterniond::Identity();
+ 
+   // get depth image and sensor pose
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v100/src/plan_env/src/grid_map.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v101/src/plan_env/src/grid_map.cpp
+@@ -977,17 +977,15 @@
+ void GridMap::slidingMapFrameCallback(nav_msgs::msg::Odometry::ConstSharedPtr pose)
+ {
+   if (async_mapping_) {
+-    const auto &p = pose->pose.pose.position;
+-    live_body_position_ = Eigen::Vector3d(p.x,p.y,p.z);
+-    const auto &q = pose->pose.pose.orientation;
+-    Eigen::Quaterniond rotation(q.w,q.x,q.y,q.z);
+-    const double stamp = rclcpp::Time(pose->header.stamp).seconds();
+-    reactive_body_stamp_s_ = 0.0;
+-    if (std::isfinite(stamp) && stamp>0.0 && live_body_position_.allFinite() &&
+-        rotation.coeffs().allFinite() && rotation.norm()>1e-6) {
+-      reactive_body_stamp_s_=stamp; reactive_body_quaternion_=rotation.normalized();
+-    }
+-
++    applyDueLiveBody();
++    if (!live_body_inputs_.push(pose)) {
++      reactive_body_stamp_s_=0.0;
++      RCLCPP_ERROR(node_->get_logger(),"Live body admission failed: %s",live_body_inputs_.error().c_str());
++      return;
++    }
++    applyDueLiveBody();
++    // Every original pose still enters the map worker. Only the planner's live
++    // pose waits for its real ROS clock; no map evidence is removed/restamped.
+     enqueueMapping({2, rclcpp::Time(pose->header.stamp).nanoseconds(), pose, nullptr});
+     return;
+   }
+@@ -1002,6 +1000,24 @@
+       rotation.coeffs().allFinite() && std::abs(rotation.norm() - 1.0) < 1e-3 && stamp > 0.0) {
+     reactive_body_quaternion_ = rotation.normalized();
+     reactive_body_stamp_s_ = stamp;
++  }
++}
++
++void GridMap::applyDueLiveBody()
++{
++  if (!async_mapping_) return;
++  const auto pose=live_body_inputs_.takeDue(node_->now().nanoseconds());
++  if (!pose) return;
++  const auto &p=pose->pose.pose.position;
++  live_body_position_=Eigen::Vector3d(p.x,p.y,p.z);
++  const auto &q=pose->pose.pose.orientation;
++  Eigen::Quaterniond rotation(q.w,q.x,q.y,q.z);
++  const double stamp=rclcpp::Time(pose->header.stamp).seconds();
++  reactive_body_stamp_s_=0.0;
++  if (std::isfinite(stamp) && stamp>0.0 && live_body_position_.allFinite() &&
++      rotation.coeffs().allFinite() && rotation.norm()>1e-6) {
++    reactive_body_stamp_s_=stamp;
++    reactive_body_quaternion_=rotation.normalized();
+   }
+ }
+ 
+@@ -1073,6 +1089,7 @@
+     else
+       slidingMapFrameCallback(input.pose);
+   }
++  applyDueLiveBody();
+   adoptMappingSnapshot();
+   const double cloud_age_after = now - mapState().reactive_cloud_stamp_s_;
+   const double body_age_after = now - reactive_body_stamp_s_;
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v100/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v101/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -195,6 +195,9 @@
+     void publishP2BAdmission(const std::string &status, const std::string &message, bool hold_confirmed=false, bool measured_stillness_confirmed=false);
+     void attachP2BIdentity(scan_planner_msgs::msg::Bspline &bspline) const;
+     void odometryCallback(nav_msgs::msg::Odometry::ConstSharedPtr msg);
++    void applyDueOdometry();
++    void applyOdometry(nav_msgs::msg::Odometry::ConstSharedPtr msg);
++    scan_input_time::BodyTimeBuffer body_inputs_;
+     void go2ExecutionFrozenCallback(std_msgs::msg::Bool::ConstSharedPtr msg);
+ 
+     bool checkCollision();
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v100/src/plan_manage/src/scan_replan_fsm.cpp
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v101/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -713,6 +713,26 @@
+ 
+   void SCANReplanFSM::odometryCallback(nav_msgs::msg::Odometry::ConstSharedPtr msg)
+   {
++    applyDueOdometry();
++    if (!body_inputs_.push(msg)) {
++      have_odom_=false;
++      flag_escape_emergency_=true;
++      need_hover_stop_=true;
++      RCLCPP_ERROR(node_->get_logger(),"FSM body admission failed: %s",body_inputs_.error().c_str());
++      changeFSMExecState(EMERGENCY_STOP,"BODY_TIME_INPUT");
++      return;
++    }
++    applyDueOdometry();
++  }
++
++  void SCANReplanFSM::applyDueOdometry()
++  {
++    const auto message=body_inputs_.takeDue(node_->now().nanoseconds());
++    if (message) applyOdometry(message);
++  }
++
++  void SCANReplanFSM::applyOdometry(nav_msgs::msg::Odometry::ConstSharedPtr msg)
++  {
+     odom_pos_(0) = msg->pose.pose.position.x;
+     odom_pos_(1) = msg->pose.pose.position.y;
+     odom_pos_(2) = msg->pose.pose.position.z;
+@@ -912,6 +932,7 @@
+     // the FSM's own body_pose included.
+     const int fsm_odometry = takePendingOdometry(
+         odom_sub_, node_->get_logger(), [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) { odometryCallback(msg); });
++    applyDueOdometry();
+     planner_manager_->grid_map_->refreshSensorInputs("exec", fsm_odometry);
+     updateLocalTrajTimeFreeze();
+ 
+@@ -1270,6 +1291,7 @@
+     // FSM's own body_pose included.
+     const int fsm_odometry = takePendingOdometry(
+         odom_sub_, node_->get_logger(), [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) { odometryCallback(msg); });
++    applyDueOdometry();
+     planner_manager_->grid_map_->refreshSensorInputs("safety", fsm_odometry);
+     updateLocalTrajTimeFreeze();
+ 
+@@ -1339,6 +1361,7 @@
+     // at this decision boundary; the round's spline-derived start PVA is fixed.
+     const int fsm_odometry = takePendingOdometry(
+         odom_sub_, node_->get_logger(), [this](const auto &message) { odometryCallback(message); });
++    applyDueOdometry();
+     planner_manager_->grid_map_->refreshSensorInputs("reference_prefix", fsm_odometry);
+     if (!candidate.allFinite() || !std::isfinite(yaw)) return 1;
+     return planner_manager_->grid_map_->getInflateOccupancy(candidate, yaw);

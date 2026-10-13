@@ -1,0 +1,26 @@
+--- v128/src/lite3_nav2_bridge/lite3_nav2_bridge/gateway.py
++++ v129/src/lite3_nav2_bridge/lite3_nav2_bridge/gateway.py
+@@ -223,7 +223,9 @@
+         self.stopping = False
+ 
+     def wait_stopped(self, _request, response):
+-        deadline = time.monotonic() + 4.0
++        # Give real braking/settling the existing ten-second progress allowance.
++        # This is a waiting budget, not a relaxation of the measured-stop proof.
++        deadline = time.monotonic() + 10.0
+         with self.lock:
+             self.begin_stop('nav2_replan_wait')
+         while time.monotonic() < deadline:
+--- v128/src/lite3_nav2_plugins/src/bind_route.cpp
++++ v129/src/lite3_nav2_plugins/src/bind_route.cpp
+@@ -67,7 +67,9 @@
+   BT::NodeStatus onStart() override {
+     if (!client_->service_is_ready()) return BT::NodeStatus::FAILURE;
+     future_ = client_->async_send_request(std::make_shared<Service::Request>());
+-    deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds(5);
++    // The gateway may wait ten seconds for original measured-stop evidence.
++    // Keep one second for returning its result; this never authorizes motion.
++    deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds(11);
+     return BT::NodeStatus::RUNNING;
+   }
+   BT::NodeStatus onRunning() override {

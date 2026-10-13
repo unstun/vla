@@ -1,0 +1,52 @@
+cmake_minimum_required(VERSION 3.8)
+project(v62_mac_native_contract)
+set(CMAKE_CXX_STANDARD 17)
+find_package(ament_cmake REQUIRED)
+find_package(Eigen3 REQUIRED)
+set(dependencies ament_index_cpp bspline_opt geometry_msgs nav_msgs path_searching
+    plan_env rclcpp rosgraph_msgs scan_planner_msgs sensor_msgs std_msgs tf2
+    tf2_geometry_msgs tf2_ros traj_utils visualization_msgs)
+foreach(dependency ${dependencies})
+  find_package(${dependency} REQUIRED)
+endforeach()
+
+add_library(native_flow OBJECT
+  /workspace/src/plan_manage/src/scan_replan_fsm.cpp
+  /workspace/src/plan_manage/src/planner_manager.cpp)
+target_include_directories(native_flow PRIVATE /workspace/src/plan_manage/include)
+target_compile_options(native_flow PRIVATE -fno-access-control)
+ament_target_dependencies(native_flow ${dependencies})
+target_link_libraries(native_flow Eigen3::Eigen)
+foreach(probe native_probe performance_probe startup_refresh_probe freshness_probe physical_native_probe)
+  add_executable(${probe} ${probe}.cpp $<TARGET_OBJECTS:native_flow>)
+  target_include_directories(${probe} PRIVATE /workspace/src/plan_manage/include)
+  target_compile_options(${probe} PRIVATE -fno-access-control)
+  ament_target_dependencies(${probe} ${dependencies})
+  target_link_libraries(${probe} Eigen3::Eigen)
+endforeach()
+foreach(probe cache_probe endpoint_probe controller_epoch_probe)
+  add_executable(${probe} ${probe}.cpp)
+  target_compile_options(${probe} PRIVATE -fno-access-control)
+  ament_target_dependencies(${probe} ${dependencies})
+  target_link_libraries(${probe} Eigen3::Eigen)
+endforeach()
+foreach(mode parent candidate)
+  add_executable(retry_${mode}_probe retry_epoch_probe.cpp
+    /workspace/retry/${mode}/planner_manager.cpp
+    /workspace/retry/${mode}/scan_replan_fsm.cpp)
+  target_include_directories(retry_${mode}_probe BEFORE PRIVATE
+    /${mode}/src/plan_manage/include)
+  target_compile_options(retry_${mode}_probe PRIVATE -fno-access-control)
+  ament_target_dependencies(retry_${mode}_probe ${dependencies})
+  target_link_libraries(retry_${mode}_probe Eigen3::Eigen)
+endforeach()
+foreach(mode parent candidate)
+  add_executable(optimizer_${mode}_probe optimizer_failure_probe.cpp
+    /${mode}/src/bspline_opt/src/bspline_optimizer.cpp)
+  target_include_directories(optimizer_${mode}_probe BEFORE PRIVATE
+    /workspace/optimizer_fixture /${mode}/src/bspline_opt/include)
+  target_compile_options(optimizer_${mode}_probe PRIVATE -fno-access-control)
+  ament_target_dependencies(optimizer_${mode}_probe ${dependencies})
+  target_link_libraries(optimizer_${mode}_probe Eigen3::Eigen)
+endforeach()
+target_compile_definitions(optimizer_parent_probe PRIVATE OPTIMIZER_PARENT)

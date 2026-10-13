@@ -1,0 +1,57 @@
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v180/PLAN.md
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v181/PLAN.md
+@@ -1,4 +1,4 @@
+-# v180: display-only policy stopping videos
++# v181: display-only policy stopping videos
+ 
+ Parent physics: v179, unchanged current model, policy-only stop windows.
+ Render the complete recorded startup and both walk/stop cycles in every trial.
+@@ -14,3 +14,8 @@
+ gpu5070ti. Temporary render output stays below the authorized private/tmp root;
+ return regular MP4s, compact provenance and selected review stills. Two joined
+ terrain videos retain all six trials; individual clips remain available.
++
++Display parent v180 is retained: its Mac Retina framebuffer was2560x1440,
++while overlays used1280x720 coordinates, causing misplaced captions. v181
++normalizes the render to1280x720 before annotation and moves the review camera
++closer. Physical source v179 and original source times are unchanged.
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v180/freeze_display.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v181/freeze_display.py
+@@ -31,7 +31,7 @@
+             name = str(p.relative_to(ROOT)); target = HERE / "source" / name
+             target.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(p, target)
+             records[name] = dict(sha256=digest(p), snapshot=str(target.relative_to(ROOT)))
+-        (HERE / "manifest.json").write_text(json.dumps(dict(version="v180", physics_parent="v179",
++        (HERE / "manifest.json").write_text(json.dumps(dict(version="v181", physics_parent="v179",
+             physics_manifest_sha256=digest(BASE / "versions/v179/manifest.json"), files=records), indent=2) + "\n")
+         print("DISPLAY_FROZEN", len(verify()["files"]))
+     else:
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v180/render.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v181/render.py
+@@ -55,7 +55,7 @@
+     appearance = prepare_robot_appearance(robot)
+     (args.output / "appearance.json").write_text(json.dumps(appearance, indent=2) + "\n")
+     (args.output / "display_source.json").write_text(json.dumps(dict(run=str(args.run),
+-        physics_version="v179", display_version="v180", archive_receipt_sha256=digest(args.archive_receipt),
++        physics_version="v179", display_version="v181", archive_receipt_sha256=digest(args.archive_receipt),
+         source_frames_sha256=digest(args.run / "recorded_frames.json"), outcome=result["outcome"],
+         physics_advanced=False, nominal_speed_mps=CONDITIONS[request["attempt"] - 1][0]), indent=2) + "\n")
+     fonts = "/System/Library/Fonts/STHeiti Medium.ttc"
+@@ -92,7 +92,7 @@
+                     stop_start = phase_first[phase]["command_applied_start_s"]
+             center = fixed_center if phase.startswith("stop") else q[:3]
+             # Recorded-state only: a stop camera never follows drift.
+-            position = center - 1.6 * forward - 1.6 * right + np.array([0., 0., 1.2])
++            position = center - 1.15 * forward - 1.15 * right + np.array([0., 0., .9])
+             target = center + .2 * forward
+             viewer.set_camera(tuple(position), pitch=-20., yaw=0.)
+             viewer.camera.look_at(tuple(target))
+@@ -107,7 +107,7 @@
+             else:
+                 viewer.log_lines("stop_position", None, None, None)
+             viewer.end_frame()
+-            image = Image.fromarray(viewer.get_frame(render_ui=False).numpy())
++            image = Image.fromarray(viewer.get_frame(render_ui=False).numpy()).resize((1280, 720), Image.Resampling.LANCZOS)
+             draw = ImageDraw.Draw(image)
+             draw.rectangle((0, 0, 1280, 96), fill=(15, 20, 29))
+             draw.rectangle((0, 618, 1280, 720), fill=(15, 20, 29))

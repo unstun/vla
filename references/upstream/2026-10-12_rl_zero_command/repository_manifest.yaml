@@ -1,0 +1,532 @@
+{
+  "topic": "RL zero-command stopping and stair support",
+  "date": "2026-10-12",
+  "stage": "experiment + analysis",
+  "status": "surveyed",
+  "repositories": [
+    {
+      "repository": "Improbable-AI/walk-these-ways",
+      "canonical_url": "https://github.com/Improbable-AI/walk-these-ways",
+      "default_branch": "master",
+      "pinned_commit": "0e7236bdc81ce855cbe3d70345a7899452bdeb1c",
+      "license": {
+        "key": "other",
+        "name": "Other",
+        "spdx_id": "NOASSERTION",
+        "url": null,
+        "node_id": "MDc6TGljZW5zZTA="
+      },
+      "archived": false,
+      "pushed_at": "2024-06-16T22:12:27Z",
+      "inspected_at": "2026-10-13T04:37:09.854650+00:00",
+      "status": "surveyed",
+      "upstream_executed": false,
+      "license_review": "MIT plus dependency/file licenses",
+      "robot_platforms": "Go1 gait-conditioned velocity control",
+      "simulator": "Isaac Gym; real deployment helpers",
+      "locomotion_interface": "velocity commands to joint actions; not a stop accuracy guarantee",
+      "reproduction_status": "not_run",
+      "weights_downloaded": false,
+      "original_readme_entrypoints": [
+        {
+          "line": 8,
+          "text": "1. [Installation](#installation)"
+        },
+        {
+          "line": 75,
+          "text": "### Installation <a name=\"installation\"></a>"
+        },
+        {
+          "line": 93,
+          "text": "cd isaacgym/python && pip install -e ."
+        },
+        {
+          "line": 95,
+          "text": "4. Verify the installation by try running an example"
+        },
+        {
+          "line": 104,
+          "text": "In this repository, run `pip install -e .`"
+        },
+        {
+          "line": 145,
+          "text": "python scripts/train.py"
+        },
+        {
+          "line": 176,
+          "text": "python scripts/play.py"
+        },
+        {
+          "line": 252,
+          "text": "To play the custom model in simulation first, replace the line https://github.com/Improbable-AI/walk-these-ways/blob/master/scripts/play.py#L97 with `label = \"$PDIR\"`."
+        }
+      ],
+      "selection": "inspection only; no baseline or controller selected",
+      "local_source_path": "references/upstream/2026-10-12_rl_zero_command/source/Improbable-AI__walk-these-ways",
+      "files": [
+        {
+          "path": "README.md",
+          "url": "https://raw.githubusercontent.com/Improbable-AI/walk-these-ways/0e7236bdc81ce855cbe3d70345a7899452bdeb1c/README.md",
+          "bytes": 11808,
+          "sha256": "d65c228ec45945721efc1a17b52d7bc1a18f5383078b52544477041659eb75d3"
+        },
+        {
+          "path": "LICENSE",
+          "url": "https://raw.githubusercontent.com/Improbable-AI/walk-these-ways/0e7236bdc81ce855cbe3d70345a7899452bdeb1c/LICENSE",
+          "bytes": 1265,
+          "sha256": "7dc66e1919dbcc2b49af464ceac3518b230e0e253d57988d418e23f01ef675b9"
+        },
+        {
+          "path": "go1_gym/envs/base/legged_robot.py",
+          "url": "https://raw.githubusercontent.com/Improbable-AI/walk-these-ways/0e7236bdc81ce855cbe3d70345a7899452bdeb1c/go1_gym/envs/base/legged_robot.py",
+          "bytes": 107009,
+          "sha256": "76a2a6471b19776f1be9b12ce332653d6e4a2e963aa5f61adb52681d5d12e9d1"
+        },
+        {
+          "path": "go1_gym/envs/base/legged_robot_config.py",
+          "url": "https://raw.githubusercontent.com/Improbable-AI/walk-these-ways/0e7236bdc81ce855cbe3d70345a7899452bdeb1c/go1_gym/envs/base/legged_robot_config.py",
+          "bytes": 15911,
+          "sha256": "2f8106d704c88c6e2e78d7d8f8fca8d772d4c891052e88901eb8e318ebcfe1b2"
+        },
+        {
+          "path": "go1_gym/envs/rewards/corl_rewards.py",
+          "url": "https://raw.githubusercontent.com/Improbable-AI/walk-these-ways/0e7236bdc81ce855cbe3d70345a7899452bdeb1c/go1_gym/envs/rewards/corl_rewards.py",
+          "bytes": 10324,
+          "sha256": "d18dad6903069e942ae127dc48658281c720d37e98813902e42070c92bd3c694"
+        },
+        {
+          "path": "scripts/train.py",
+          "url": "https://raw.githubusercontent.com/Improbable-AI/walk-these-ways/0e7236bdc81ce855cbe3d70345a7899452bdeb1c/scripts/train.py",
+          "bytes": 10489,
+          "sha256": "99c846c689a65e70f59b11ad38cc99b8d78cc1673c90743c9356d3ec8ed42020"
+        },
+        {
+          "path": "go1_gym_deploy/utils/deployment_runner.py",
+          "url": "https://raw.githubusercontent.com/Improbable-AI/walk-these-ways/0e7236bdc81ce855cbe3d70345a7899452bdeb1c/go1_gym_deploy/utils/deployment_runner.py",
+          "bytes": 9837,
+          "sha256": "a19113bf81af28c8d0f1b163f455ca17a5990a8539e09f9579f63efcd1494112"
+        }
+      ]
+    },
+    {
+      "repository": "fan-ziqi/robot_lab",
+      "canonical_url": "https://github.com/fan-ziqi/robot_lab",
+      "default_branch": "main",
+      "pinned_commit": "500399ed75f510aeaff28705a8ce736c514dbec3",
+      "license": {
+        "key": "apache-2.0",
+        "name": "Apache License 2.0",
+        "spdx_id": "Apache-2.0",
+        "url": "https://api.github.com/licenses/apache-2.0",
+        "node_id": "MDc6TGljZW5zZTI="
+      },
+      "archived": false,
+      "pushed_at": "2026-10-10T04:02:19Z",
+      "inspected_at": "2026-10-13T04:37:09.382838+00:00",
+      "status": "surveyed",
+      "upstream_executed": false,
+      "license_review": "Apache-2.0",
+      "robot_platforms": "Go2 rough velocity task",
+      "simulator": "Isaac Lab",
+      "locomotion_interface": "velocity commands to joint actions; not a stop accuracy guarantee",
+      "reproduction_status": "not_run",
+      "weights_downloaded": false,
+      "original_readme_entrypoints": [
+        {
+          "line": 61,
+          "text": "- Install Isaac Lab by following the [installation guide](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html). We recommend using the conda installation as it simplifies calling Python scripts from the terminal."
+        },
+        {
+          "line": 63,
+          "text": "- Clone this repository separately from the Isaac Lab installation (i.e. outside the `IsaacLab` directory):"
+        },
+        {
+          "line": 72,
+          "text": "python -m pip install -e source/robot_lab"
+        },
+        {
+          "line": 87,
+          "text": "- Run VSCode Tasks, by pressing `Ctrl+Shift+P`, selecting `Tasks: Run Task` and running the `setup_python_env` in the drop down menu. When running this task, you will be prompted to add the absolute path to your Isaac Sim installation."
+        },
+        {
+          "line": 413,
+          "text": "pip install pre-commit"
+        }
+      ],
+      "selection": "inspection only; no baseline or controller selected",
+      "local_source_path": "references/upstream/2026-10-12_rl_zero_command/source/fan-ziqi__robot_lab",
+      "files": [
+        {
+          "path": "README.md",
+          "url": "https://raw.githubusercontent.com/fan-ziqi/robot_lab/500399ed75f510aeaff28705a8ce736c514dbec3/README.md",
+          "bytes": 22361,
+          "sha256": "ea7ff49afb18e0f27cc9f0bee8c56f5b62c11a7e5b76b9053ee7b6f7a9f7973c"
+        },
+        {
+          "path": "LICENSE",
+          "url": "https://raw.githubusercontent.com/fan-ziqi/robot_lab/500399ed75f510aeaff28705a8ce736c514dbec3/LICENSE",
+          "bytes": 11343,
+          "sha256": "dab01dca084ffa02bc9bb1bbfdbaf2a826a5da3ae4053d710cb1352b564bd352"
+        },
+        {
+          "path": "source/robot_lab/robot_lab/tasks/manager_based/locomotion/velocity/mdp/rewards.py",
+          "url": "https://raw.githubusercontent.com/fan-ziqi/robot_lab/500399ed75f510aeaff28705a8ce736c514dbec3/source/robot_lab/robot_lab/tasks/manager_based/locomotion/velocity/mdp/rewards.py",
+          "bytes": 32796,
+          "sha256": "d2bfa60c653ddc948f23aa73cf7c75a595d3bac99d75defb61dbafede36eec3d"
+        },
+        {
+          "path": "source/robot_lab/robot_lab/tasks/manager_based/locomotion/velocity/mdp/commands.py",
+          "url": "https://raw.githubusercontent.com/fan-ziqi/robot_lab/500399ed75f510aeaff28705a8ce736c514dbec3/source/robot_lab/robot_lab/tasks/manager_based/locomotion/velocity/mdp/commands.py",
+          "bytes": 6920,
+          "sha256": "1786a42c81911d56b10417a2266f549899219654eabae6855e85c974dc4d6ab1"
+        },
+        {
+          "path": "source/robot_lab/robot_lab/tasks/manager_based/locomotion/velocity/velocity_env_cfg.py",
+          "url": "https://raw.githubusercontent.com/fan-ziqi/robot_lab/500399ed75f510aeaff28705a8ce736c514dbec3/source/robot_lab/robot_lab/tasks/manager_based/locomotion/velocity/velocity_env_cfg.py",
+          "bytes": 23609,
+          "sha256": "776248b8b9d67eb46283ab5782c8723de54f5049c9bb3f0af6aaef63e538603a"
+        },
+        {
+          "path": "source/robot_lab/robot_lab/tasks/manager_based/locomotion/velocity/config/quadruped/unitree_go2/rough_env_cfg.py",
+          "url": "https://raw.githubusercontent.com/fan-ziqi/robot_lab/500399ed75f510aeaff28705a8ce736c514dbec3/source/robot_lab/robot_lab/tasks/manager_based/locomotion/velocity/config/quadruped/unitree_go2/rough_env_cfg.py",
+          "bytes": 8073,
+          "sha256": "285ae33e69d85c5af97e8a325ac63e28cee9a794d470044e48ac1c22ef83c142"
+        }
+      ]
+    },
+    {
+      "repository": "isaac-sim/IsaacLab",
+      "canonical_url": "https://github.com/isaac-sim/IsaacLab",
+      "default_branch": "develop",
+      "pinned_commit": "4f718b8fed4a24ac5fe53dfde35ff70dd70058f7",
+      "license": {
+        "key": "bsd-3-clause",
+        "name": "BSD 3-Clause \"New\" or \"Revised\" License",
+        "spdx_id": "BSD-3-Clause",
+        "url": "https://api.github.com/licenses/bsd-3-clause",
+        "node_id": "MDc6TGljZW5zZTU="
+      },
+      "archived": false,
+      "pushed_at": "2026-10-13T04:30:24Z",
+      "inspected_at": "2026-10-13T04:37:10.824513+00:00",
+      "status": "surveyed",
+      "upstream_executed": false,
+      "license_review": "BSD-3-Clause; mimic components Apache-2.0",
+      "robot_platforms": "generic locomotion velocity commands",
+      "simulator": "develop targets Isaac Sim 6.1",
+      "locomotion_interface": "velocity commands to joint actions; not a stop accuracy guarantee",
+      "reproduction_status": "not_run",
+      "weights_downloaded": false,
+      "original_readme_entrypoints": [
+        {
+          "line": 17,
+          "text": "This branch targets Isaac Sim 6.1. For installation instructions, see the"
+        },
+        {
+          "line": 18,
+          "text": "[Isaac Lab documentation](https://isaac-sim.github.io/IsaacLab/develop/source/setup/installation/index.html)."
+        },
+        {
+          "line": 53,
+          "text": "- [Installation steps](https://isaac-sim.github.io/IsaacLab/develop/source/setup/installation/index.html)"
+        }
+      ],
+      "selection": "inspection only; no baseline or controller selected",
+      "local_source_path": "references/upstream/2026-10-12_rl_zero_command/source/isaac-sim__IsaacLab",
+      "files": [
+        {
+          "path": "README.md",
+          "url": "https://raw.githubusercontent.com/isaac-sim/IsaacLab/4f718b8fed4a24ac5fe53dfde35ff70dd70058f7/README.md",
+          "bytes": 11083,
+          "sha256": "92027cbc1596a6dd893b9722a4e5da83a0d1058b8b46db3647ceaeb42928d6e2"
+        },
+        {
+          "path": "LICENSE",
+          "url": "https://raw.githubusercontent.com/isaac-sim/IsaacLab/4f718b8fed4a24ac5fe53dfde35ff70dd70058f7/LICENSE",
+          "bytes": 1630,
+          "sha256": "6acf26ea8f8c42c454e30e9ad4206bd90d8fce85a54c011568faaf10c7ccab61"
+        },
+        {
+          "path": "source/isaaclab/isaaclab/envs/mdp/commands/velocity_command.py",
+          "url": "https://raw.githubusercontent.com/isaac-sim/IsaacLab/4f718b8fed4a24ac5fe53dfde35ff70dd70058f7/source/isaaclab/isaaclab/envs/mdp/commands/velocity_command.py",
+          "bytes": 16068,
+          "sha256": "6d7ec00d8b35d14c0f056a7ec6a4889b43d9b084fd95ce632440cf5ab5196f3b"
+        },
+        {
+          "path": "source/isaaclab_tasks/isaaclab_tasks/core/velocity/velocity_env_cfg.py",
+          "url": "https://raw.githubusercontent.com/isaac-sim/IsaacLab/4f718b8fed4a24ac5fe53dfde35ff70dd70058f7/source/isaaclab_tasks/isaaclab_tasks/core/velocity/velocity_env_cfg.py",
+          "bytes": 13549,
+          "sha256": "739e8da6cdc9e3d285697edc83b730d36c43f01ec9ae77e2f472aec6224397da"
+        },
+        {
+          "path": "source/isaaclab/isaaclab/envs/mdp/rewards.py",
+          "url": "https://raw.githubusercontent.com/isaac-sim/IsaacLab/4f718b8fed4a24ac5fe53dfde35ff70dd70058f7/source/isaaclab/isaaclab/envs/mdp/rewards.py",
+          "bytes": 17885,
+          "sha256": "0bf0bc779f04a793f773097331631b1b788d1b51bdfe25d6f24fe930acaa157c"
+        },
+        {
+          "path": "LICENSE-mimic",
+          "url": "https://raw.githubusercontent.com/isaac-sim/IsaacLab/4f718b8fed4a24ac5fe53dfde35ff70dd70058f7/LICENSE-mimic",
+          "bytes": 10142,
+          "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+        }
+      ]
+    },
+    {
+      "repository": "unitreerobotics/unitree_rl_lab",
+      "canonical_url": "https://github.com/unitreerobotics/unitree_rl_lab",
+      "default_branch": "main",
+      "pinned_commit": "4960b84732b0c2ec593dccbfe963fda1bcd7b1e3",
+      "license": {
+        "key": "apache-2.0",
+        "name": "Apache License 2.0",
+        "spdx_id": "Apache-2.0",
+        "url": "https://api.github.com/licenses/apache-2.0",
+        "node_id": "MDc6TGljZW5zZTI="
+      },
+      "archived": false,
+      "pushed_at": "2026-05-25T07:08:45Z",
+      "inspected_at": "2026-10-13T04:37:08.127419+00:00",
+      "status": "surveyed",
+      "upstream_executed": false,
+      "license_review": "Apache-2.0 per repository API; retain file notices",
+      "robot_platforms": "Go2 velocity task",
+      "simulator": "Isaac Lab; Unitree deployment",
+      "locomotion_interface": "velocity commands to joint actions; not a stop accuracy guarantee",
+      "reproduction_status": "not_run",
+      "weights_downloaded": false,
+      "original_readme_entrypoints": [
+        {
+          "line": 25,
+          "text": "- Install Isaac Lab by following the [installation guide](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html)."
+        },
+        {
+          "line": 28,
+          "text": "- Clone or copy this repository separately from the Isaac Lab installation (i.e. outside the `IsaacLab` directory):"
+        },
+        {
+          "line": 112,
+          "text": "Installing the [unitree_mujoco](https://github.com/unitreerobotics/unitree_mujoco?tab=readme-ov-file#installation)."
+        }
+      ],
+      "selection": "inspection only; no baseline or controller selected",
+      "local_source_path": "references/upstream/2026-10-12_rl_zero_command/source/unitreerobotics__unitree_rl_lab",
+      "files": [
+        {
+          "path": "README.md",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_lab/4960b84732b0c2ec593dccbfe963fda1bcd7b1e3/README.md",
+          "bytes": 5848,
+          "sha256": "87a0ca55d9896c74b6b6fa690a3795c6ebc1635e57d2d50f36d87fcfe7718a32"
+        },
+        {
+          "path": "source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/mdp/rewards.py",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_lab/4960b84732b0c2ec593dccbfe963fda1bcd7b1e3/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/mdp/rewards.py",
+          "bytes": 9583,
+          "sha256": "8a41249e85997414f759c56b990ebd8a9289f7d98c47e2fc70f54180e86d4ad3"
+        },
+        {
+          "path": "source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/mdp/commands/velocity_command.py",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_lab/4960b84732b0c2ec593dccbfe963fda1bcd7b1e3/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/mdp/commands/velocity_command.py",
+          "bytes": 305,
+          "sha256": "87358cad63a01f6131fa4ba9bbbe0a177cfcb03f142fb3ac74fd356df57cc042"
+        },
+        {
+          "path": "source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/velocity_env_cfg.py",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_lab/4960b84732b0c2ec593dccbfe963fda1bcd7b1e3/source/unitree_rl_lab/unitree_rl_lab/tasks/locomotion/robots/go2/velocity_env_cfg.py",
+          "bytes": 14840,
+          "sha256": "56859832148dacc724ddba3954a7684b99a43560e4fde561f6361b9daa051b56"
+        },
+        {
+          "path": "deploy/robots/go2/config/config.yaml",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_lab/4960b84732b0c2ec593dccbfe963fda1bcd7b1e3/deploy/robots/go2/config/config.yaml",
+          "bytes": 791,
+          "sha256": "03172bf8044cc90d33bc8416f024bf188f694607dc0a98eb054b976c56450e59"
+        },
+        {
+          "path": "deploy/robots/go2/src/State_RLBase.cpp",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_lab/4960b84732b0c2ec593dccbfe963fda1bcd7b1e3/deploy/robots/go2/src/State_RLBase.cpp",
+          "bytes": 1200,
+          "sha256": "f45980cd3da6f0c8be0c02f0206b6a9ee0ff8426e07b902de40f54962536a9ce"
+        }
+      ]
+    },
+    {
+      "repository": "unitreerobotics/unitree_rl_mjlab",
+      "canonical_url": "https://github.com/unitreerobotics/unitree_rl_mjlab",
+      "default_branch": "main",
+      "pinned_commit": "1425b15f73bd4095f0df53709d7c389c3eb9e790",
+      "license": {
+        "key": "apache-2.0",
+        "name": "Apache License 2.0",
+        "spdx_id": "Apache-2.0",
+        "url": "https://api.github.com/licenses/apache-2.0",
+        "node_id": "MDc6TGljZW5zZTI="
+      },
+      "archived": false,
+      "pushed_at": "2026-04-13T13:44:11Z",
+      "inspected_at": "2026-10-13T04:37:08.592882+00:00",
+      "status": "surveyed",
+      "upstream_executed": false,
+      "license_review": "Apache-2.0 per repository API; retain file notices",
+      "robot_platforms": "Go2 rough and flat velocity tasks",
+      "simulator": "mjlab / MuJoCo",
+      "locomotion_interface": "velocity commands to joint actions; not a stop accuracy guarantee",
+      "reproduction_status": "not_run",
+      "weights_downloaded": false,
+      "original_readme_entrypoints": [
+        {
+          "line": 25,
+          "text": "Please refer to [setup.md](doc/setup_en.md) for installation and configuration steps."
+        },
+        {
+          "line": 46,
+          "text": "python scripts/train.py Unitree-G1-Flat --env.scene.num-envs=4096"
+        },
+        {
+          "line": 52,
+          "text": "python scripts/train.py Unitree-G1-Flat \\"
+        },
+        {
+          "line": 96,
+          "text": "python scripts/train.py Unitree-G1-Tracking-No-State-Estimation --motion_file=src/assets/motions/g1/dance1_subject2.npz --env.scene.num-envs=4096"
+        },
+        {
+          "line": 128,
+          "text": "python scripts/play.py Unitree-G1-Flat --checkpoint_file=logs/rsl_rl/g1_velocity/2026-xx-xx_xx-xx-xx/model_xx.pt"
+        },
+        {
+          "line": 133,
+          "text": "python scripts/play.py Unitree-G1-Tracking-No-State-Estimation --motion_file=src/assets/motions/g1/dance1_subject2.npz --checkpoint_file=logs/rsl_rl/g1_tracking/2026-xx-xx_xx-xx-xx/model_xx.pt"
+        }
+      ],
+      "selection": "inspection only; no baseline or controller selected",
+      "local_source_path": "references/upstream/2026-10-12_rl_zero_command/source/unitreerobotics__unitree_rl_mjlab",
+      "files": [
+        {
+          "path": "README.md",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_mjlab/1425b15f73bd4095f0df53709d7c389c3eb9e790/README.md",
+          "bytes": 9192,
+          "sha256": "77cdf64b75446b710f29e360936ad744b1260b7c7d4d9389cdb73d7adc61016b"
+        },
+        {
+          "path": "src/tasks/velocity/velocity_env_cfg.py",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_mjlab/1425b15f73bd4095f0df53709d7c389c3eb9e790/src/tasks/velocity/velocity_env_cfg.py",
+          "bytes": 11789,
+          "sha256": "87a58574713e66c406ee5defd33240c30646092be495480249c84646799e8bc3"
+        },
+        {
+          "path": "src/tasks/velocity/mdp/rewards.py",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_mjlab/1425b15f73bd4095f0df53709d7c389c3eb9e790/src/tasks/velocity/mdp/rewards.py",
+          "bytes": 16105,
+          "sha256": "5deb9a9ef2bffba30a29c757cf7cb833280e6d18d3e69f430dfa519680ff0034"
+        },
+        {
+          "path": "src/tasks/velocity/mdp/velocity_command.py",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_mjlab/1425b15f73bd4095f0df53709d7c389c3eb9e790/src/tasks/velocity/mdp/velocity_command.py",
+          "bytes": 9876,
+          "sha256": "f9f55d5507e318494a690cb7929d4e4ae92419cea76425fbab0873914b279482"
+        },
+        {
+          "path": "src/tasks/velocity/config/go2/env_cfgs.py",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_mjlab/1425b15f73bd4095f0df53709d7c389c3eb9e790/src/tasks/velocity/config/go2/env_cfgs.py",
+          "bytes": 5739,
+          "sha256": "98defb863edccf071070074c31cb77790f83a40276e0589cf2982137c44cd293"
+        },
+        {
+          "path": "deploy/robots/go2/config/config.yaml",
+          "url": "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_mjlab/1425b15f73bd4095f0df53709d7c389c3eb9e790/deploy/robots/go2/config/config.yaml",
+          "bytes": 774,
+          "sha256": "d76afb650a227f6eeb79b9f1497d0d6fbc9d664fcfbb24e4312e0f652b6bc818"
+        }
+      ]
+    },
+    {
+      "repository": "DeepRoboticsLab/sdk_deploy",
+      "url": "https://github.com/DeepRoboticsLab/sdk_deploy",
+      "branch": "main",
+      "commit": "9ea6ee94bfe90c9a36f5799d39f8dc1d821128db",
+      "license": {
+        "key": "bsd-3-clause",
+        "name": "BSD 3-Clause \"New\" or \"Revised\" License",
+        "spdx_id": "BSD-3-Clause",
+        "url": "https://api.github.com/licenses/bsd-3-clause",
+        "node_id": "MDc6TGljZW5zZTU="
+      },
+      "archived": false,
+      "status": "surveyed",
+      "executed": false,
+      "local_source_path": "references/upstream/2026-10-12_stop_hold/source/DeepRoboticsLab__sdk_deploy",
+      "source_reused": true,
+      "files": [
+        {
+          "path": "LICENSE",
+          "url": "https://raw.githubusercontent.com/DeepRoboticsLab/sdk_deploy/9ea6ee94bfe90c9a36f5799d39f8dc1d821128db/LICENSE",
+          "sha256": "a5faaa5866c9b0414a6f5fe02724e2178b4f0b07426c77b7f3beb3e05f112c94",
+          "bytes": 1502
+        },
+        {
+          "path": "src/Lite3_sdk_deploy/state_machine/quadruped/standup_state.hpp",
+          "url": "https://raw.githubusercontent.com/DeepRoboticsLab/sdk_deploy/9ea6ee94bfe90c9a36f5799d39f8dc1d821128db/src/Lite3_sdk_deploy/state_machine/quadruped/standup_state.hpp",
+          "sha256": "a59b1bebe86dfa6a2939bc1d7ae3f1c2d2e467d318ae39410ba10597d4d7f9fd",
+          "bytes": 6490
+        },
+        {
+          "path": "src/Lite3_sdk_deploy/state_machine/quadruped/rl_control_state.hpp",
+          "url": "https://raw.githubusercontent.com/DeepRoboticsLab/sdk_deploy/9ea6ee94bfe90c9a36f5799d39f8dc1d821128db/src/Lite3_sdk_deploy/state_machine/quadruped/rl_control_state.hpp",
+          "sha256": "f84fc9e7de85c5f43f98c8bbbe01f439fb0ddbbc0ab95cb61d507b23e563e5d1",
+          "bytes": 4987
+        }
+      ],
+      "interface": "zero-command policy and posture control reference",
+      "reproduction_status": "not_run"
+    },
+    {
+      "repository": "leggedrobotics/legged_gym",
+      "url": "https://github.com/leggedrobotics/legged_gym",
+      "branch": "master",
+      "commit": "8fa29acc6fd1910c3d9659eef6310bdd301cde0a",
+      "license": {
+        "key": "other",
+        "name": "Other",
+        "spdx_id": "NOASSERTION",
+        "url": null,
+        "node_id": "MDc6TGljZW5zZTA="
+      },
+      "archived": false,
+      "status": "surveyed",
+      "executed": false,
+      "local_source_path": "references/upstream/2026-10-12_stop_hold/source/leggedrobotics__legged_gym",
+      "source_reused": true,
+      "files": [
+        {
+          "path": "legged_gym/envs/base/legged_robot.py",
+          "url": "https://raw.githubusercontent.com/leggedrobotics/legged_gym/8fa29acc6fd1910c3d9659eef6310bdd301cde0a/legged_gym/envs/base/legged_robot.py",
+          "sha256": "bdaf5fa2dc123a539811b536c4a6feb9dadfcaf9df377d25d8ddbf434f531ff9",
+          "bytes": 48391
+        },
+        {
+          "path": "LICENSE",
+          "url": "https://raw.githubusercontent.com/leggedrobotics/legged_gym/8fa29acc6fd1910c3d9659eef6310bdd301cde0a/LICENSE",
+          "sha256": "d5b70bfeae0eb84295cff9dd7daf71e28a809eae4a1953762d491cb256dafeb6",
+          "bytes": 1730
+        }
+      ],
+      "interface": "zero-command policy and posture control reference",
+      "reproduction_status": "not_run",
+      "additional_config_files": [
+        {
+          "path": "legged_gym/envs/base/legged_robot_config.py",
+          "url": "https://raw.githubusercontent.com/leggedrobotics/legged_gym/8fa29acc6fd1910c3d9659eef6310bdd301cde0a/legged_gym/envs/base/legged_robot_config.py",
+          "bytes": 10058,
+          "sha256": "65ce2d1b647a291b4ae2bdaed7af569fcdf7a764da6d6b80d47a9ebd3a8a0f4c"
+        }
+      ],
+      "additional_config_path": "references/upstream/2026-10-12_rl_zero_command/source/leggedrobotics__legged_gym"
+    }
+  ],
+  "implementation_selected": false,
+  "upstream_programs_executed": false,
+  "formal_training_started": false,
+  "local_model_evidence": "local_v12_source_evidence.json",
+  "report": "../../../.pipeline/survey/2026-10-12_rl_zero_command_upstream_survey.md"
+}

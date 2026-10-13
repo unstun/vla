@@ -1,0 +1,11 @@
+# v56 component result
+
+Parent qualified frozen v55. A distinct PhysicalFloorSnapshot retains elevations and raw cost with no Support labels. Only guarded evidence-fill drop checks and ETH neighbor-height association consult the qualified source. Central support candidates and LiDAR classification keep the exact original <=20 payloads and all thresholds. Exact native source IDs/frame/grid and existing static freshness gate the configured input. Absent optional input keeps exact original cold geometry.
+
+Native build02 and full contract03 pass: 23 pure role/drop/ambiguous/cost50/obstacle/stale checks; 30 actual input/callback/cache/history/corner/sequential-manager checks; inherited 35 native/64 cache, clock/owner/goal/callback, 9 actual-DDS freshness, 47 warm PVA/dynamics/final-curve checks per fixture, goal-region and backend gates. Manager/FSM/controller source package is byte-identical to v55. Exact materialization passes all101 native source hashes.
+
+The recorded expired-curve state now passes full double-cylinder support and complete native planning, extending the endpoint from (7.493,-4.250,1.855) to (8.028,-3.920,1.870) and absolute expiry from43.3796 to46.5048 s; the next accepted-source round passes full PVA/dynamics/whole-curve and goal/yaw gates. Isolated diagnostic timings93.37 then1.30 ms. The complete original four-state corner replay succeeds in all measured rounds. These fixed-clock diagnostics are not live30Hz evidence.
+
+Unfrozen build01 source and failed test attempts are preserved remotely. The first physical callback unnecessarily cleared unchanged selected-terrain labels; build02 refines the role separation by retaining labels, sensor stamps/readiness and exact nonterrain history while clearing borrowed caches and rescoring support. Source readiness still rejects missing/malformed/stale/unpaired input.
+
+Bulk binary floor asset2408000 bytes and all captures/builds remain on gpu5070ti; physical_floor_input.json pins SHA, source roles, producer and regeneration. Two approved idle-host90-s original-setting Building recordings and actual frequency/latency/corner/progress/reserve/stop analysis remain integration work. v48 remains the experimental navigation reference, with no general arrival or30Hz promotion.

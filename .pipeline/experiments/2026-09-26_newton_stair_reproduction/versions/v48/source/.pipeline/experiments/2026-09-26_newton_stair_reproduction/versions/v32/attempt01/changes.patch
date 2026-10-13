@@ -1,0 +1,31 @@
+--- v31/scripts/newton_episode.py
++++ v32/scripts/newton_episode.py
+@@ -2,6 +2,7 @@
+ from dataclasses import asdict
+ from collections import deque
+ from concurrent.futures import ThreadPoolExecutor
++import gc
+ import hashlib
+ import json
+ import math
+@@ -145,6 +146,10 @@
+                 record(save_cloud, points, world, item)
+ 
+             steps = round((request["max_physics_s"] - robot.physics_time()) / .02)
++            # v32: move the worker's start-up heap out of the cyclic collector's reach. A full collection
++            # over it held the GIL for 0.15-0.27 s in long runs and stopped physics, clock sync and the
++            # transports together (audits/2026-09-29_wall_clock_chain). No computation changes.
++            gc.freeze()
+             for step in range(steps):
+                 control_loop_started = time.monotonic()
+                 while io_jobs and io_jobs[0].done():
+@@ -247,6 +252,9 @@
+                 record(save_line, log, row)
+                 rows.append(row)
+                 last_snapshot = snapshot
++                # v32: freeze what the last second of simulation retained (rows, video states, clouds).
++                if (step + 1) % 50 == 0:
++                    gc.freeze()
+                 if row["base_up_z"] < .5:
+                     state.latch_case_failure("fallen")
+                     results["fallen"] = True

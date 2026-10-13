@@ -1,0 +1,59 @@
+--- v129/src/plan_manage/src/scan_replan_fsm.cpp
++++ v130/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -301,7 +301,10 @@
+       return false;
+     }
+ 
+-    if (!adjustGlobalTargetIfOccupied())
++    // New-reference admission precedes local PVA initialization. Its search
++    // origin is the due measured body, not a previous/uninitialized local seed.
++    const Eigen::Vector3d query_start = have_odom_ ? odom_pos_ : waypoints.front();
++    if (!adjustGlobalTargetIfOccupied(query_start))
+       return false;
+ 
+     constexpr double step_size_t = 0.1;
+@@ -375,6 +378,11 @@
+   }
+ 
+   bool SCANReplanFSM::adjustGlobalTargetIfOccupied()
++  {
++    return adjustGlobalTargetIfOccupied(start_pt_);
++  }
++
++  bool SCANReplanFSM::adjustGlobalTargetIfOccupied(const Eigen::Vector3d &query_start)
+   {
+     auto map = planner_manager_->grid_map_;
+     // v31: check the target, search its neighbourhood and walk the route with the
+@@ -405,10 +413,10 @@
+     }
+ 
+     if (reference) {
+-      const auto path = planner_manager_->findGoalNeighborhoodPath(start_pt_, final_pt, goal_neighbor_tolerance_);
++      const auto path = planner_manager_->findGoalNeighborhoodPath(query_start, final_pt, goal_neighbor_tolerance_);
+       if (!path.empty()) {
+         if (path.size() > 1 && (path.back() - final_pt).norm() <= goal_neighbor_tolerance_ &&
+-            planner_manager_->hasLocalTranslation(start_pt_, path.back())) {
++            planner_manager_->hasLocalTranslation(query_start, path.back())) {
+           reference_neighbor_point_ = path.back();
+           reference_frontier_time_ = duration;
+           reference_neighbor_target_ = true;
+@@ -503,6 +511,9 @@
+       publish_candidate("rejected", "stale_route_generation");
+       return;
+     }
++    takePendingOdometry(odom_sub_, node_->get_logger(),
++        [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) { odometryCallback(msg); });
++    applyDueOdometry(); // Preserve original source times and future-message queue.
+     if (!have_odom_)
+     {
+       publish_candidate("rejected", "no_odometry_for_p2b_route");
+--- v129/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ v130/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -174,6 +174,7 @@
+     bool planNextWaypoint();
+     bool isWaypointSequenceMode() const;
+     bool adjustGlobalTargetIfOccupied();
++    bool adjustGlobalTargetIfOccupied(const Eigen::Vector3d &query_start);
+     bool getLocalTarget();
+     void finishProcess();
+     void publishSelfInflationMarker();

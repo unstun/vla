@@ -1,0 +1,12 @@
+<root main_tree_to_execute="MainTree">
+ <BehaviorTree ID="MainTree">
+  <RecoveryNode number_of_retries="2" name="NavigateWithMeasuredStop">
+   <Sequence>
+    <ComputePathToPose goal="{goal}" path="{path}" planner_id="PCT" server_name="/compute_path_to_pose"/>
+    <BindScanRoute goal="{goal}" path="{path}" bound_path="{bound_path}"/>
+    <FollowPath path="{bound_path}" controller_id="SCAN" server_name="/follow_path"/>
+   </Sequence>
+   <WaitForScanStop/>
+  </RecoveryNode>
+ </BehaviorTree>
+</root>

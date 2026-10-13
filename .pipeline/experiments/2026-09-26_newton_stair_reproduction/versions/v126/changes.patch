@@ -1,0 +1,29 @@
+--- v122/src/plan_manage/src/scan_replan_fsm.cpp
++++ v126/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1215,21 +1215,12 @@
+       const bool sampled_boundary = planner_manager_->sampledTrajectoryOrigin(
+           start_pt_, start_vel_, start_acc_, t_cur, sampled_origin);
+       const rclcpp::Time *retry_origin = sampled_boundary ? &sampled_origin : nullptr;
+-      // One shared prefix budget across all original initialization modes.
++      // V126: one owner for the complete reference-path recovery chain.
++      // The graph initializer no longer uses the legacy polynomial/random flags.
++      // Warm/cold, fixed-height and shorter-target recovery remain inside this
++      // call; exhausted work returns to the existing next-round/safety policy.
+       int reference_prefix_budget = 3;
+-      bool success = callReboundReplan(false, false, &reference_prefix_budget, t_cur, retry_origin);
+-      if (!success)
+-      {
+-        success = callReboundReplan(true, false, &reference_prefix_budget, t_cur, retry_origin);
+-        if (!success)
+-        {
+-          success = callReboundReplan(true, true, &reference_prefix_budget, t_cur, retry_origin);
+-          if (!success)
+-            return false;
+-        }
+-      }
+-
+-      return true;
++      return callReboundReplan(false, false, &reference_prefix_budget, t_cur, retry_origin);
+     }
+ 
+     start_pt_ = odom_pos_;

@@ -1,0 +1,75 @@
+--- parent/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ v136/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -149,6 +149,7 @@
+     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr path_sub_;
+     rclcpp::Subscription<scan_planner_msgs::msg::P2BRoute>::SharedPtr p2b_route_sub_;
++    scan_planner_msgs::msg::P2BRoute::ConstSharedPtr deferred_p2b_route_;
+     rclcpp::Subscription<scan_planner_msgs::msg::P2BCancel>::SharedPtr p2b_cancel_sub_;
+     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr go2_execution_frozen_sub_;
+     rclcpp::Publisher<scan_planner_msgs::msg::Bspline>::SharedPtr bspline_pub_;
+--- parent/src/plan_manage/src/scan_replan_fsm.cpp
++++ v136/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -59,6 +59,18 @@
+       ++applied;
+     }
+     return applied;
++  }
++
++  template <typename Message, typename Callback>
++  void takePendingMission(const typename rclcpp::Subscription<Message>::SharedPtr &subscription,
++                          int capacity, Callback &&callback)
++  {
++    rclcpp::MessageInfo info;
++    for (int i=0; subscription && i<capacity; ++i) {
++      auto message=std::make_shared<Message>();
++      if (!subscription->take(*message,info)) break;
++      callback(message);
++    }
+   }
+ } // namespace
+ 
+@@ -555,6 +567,11 @@
+       publish_candidate("rejected", path_error);
+       return;
+     }
++    if (exec_state_==EMERGENCY_STOP) {
++      deferred_p2b_route_=msg;
++      publish_candidate("pending","waiting_for_emergency_exit");
++      return;
++    }
+     const bool previous_have_p2b_identity = have_p2b_identity_;
+     const P2BIdentity previous_identity = active_p2b_identity_;
+     const bool previous_goal_valid = have_requested_goal_pose_;
+@@ -969,6 +986,22 @@
+         odom_sub_, node_->get_logger(), [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) { odometryCallback(msg); });
+     applyDueOdometry();
+     planner_manager_->grid_map_->refreshSensorInputs("exec", fsm_odometry);
++    // The native work group serializes expensive timers and mission callbacks.
++    // Service their actual DDS queues at work boundaries, cancel before route.
++    // Keep a replacement queued until the old emergency exit has completed;
++    // otherwise that exit clears the newly accepted target on the same tick.
++    const auto service_mission = [this] {
++      takePendingMission<scan_planner_msgs::msg::P2BCancel>(p2b_cancel_sub_,10,
++          [this](scan_planner_msgs::msg::P2BCancel::ConstSharedPtr msg){p2bCancelCallback(msg);});
++      takePendingMission<scan_planner_msgs::msg::P2BRoute>(p2b_route_sub_,1,
++          [this](scan_planner_msgs::msg::P2BRoute::ConstSharedPtr msg){deferred_p2b_route_=msg;});
++      if (exec_state_!=EMERGENCY_STOP && deferred_p2b_route_) {
++        auto route=deferred_p2b_route_;
++        deferred_p2b_route_.reset();
++        p2bRouteCallback(route);
++      }
++    };
++    service_mission();
+     updateLocalTrajTimeFreeze();
+ 
+     static int fsm_num = 0;
+@@ -1199,6 +1232,8 @@
+     }
+ 
+     finishProcess();
++
++    service_mission();
+ 
+     data_disp_.header.stamp = node_->now();
+     data_disp_pub_->publish(data_disp_);

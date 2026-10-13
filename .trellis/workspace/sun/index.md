@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 16
-- **Last Active**: 2026-09-17
+- **Total Sessions**: 33
+- **Last Active**: 2026-10-09
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~651 | Active |
+| `journal-1.md` | ~1213 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,23 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 33 | 2026-10-09 | Native local curve video and offline computation-time HTML | - | `main` |
+| 32 | 2026-10-08 | Original Newton goal and measured stop once; two protected retries | - | `main` |
+| 31 | 2026-10-08 | Full Nav2 Foxy integration; clean build passed, original physics failed | - | `main` |
+| 30 | 2026-10-08 | Foxy SCAN plugins and Nav2 observation scheduling, component checked | - | `main` |
+| 29 | 2026-10-08 | Mapping admission comparison and separated-lane prototype | - | `main` |
+| 28 | 2026-10-05 | Compact polling and asynchronous mapping repair, failed continuity | - | `main` |
+| 27 | 2026-10-05 | Map-processing spike diagnosis and native replay v78 | - | `main` |
+| 26 | 2026-10-05 | Corner-start current and upstream tests with verified videos | - | `main` |
+| 25 | 2026-10-04 | Upstream SCAN Mac test and actual failure video | - | `main` |
+| 24 | 2026-10-04 | Mac heartbeat and planner bottleneck diagnosis | - | `main` |
+| 23 | 2026-10-04 | Actual Newton Mac validation and heartbeat failures | - | `main` |
+| 22 | 2026-10-04 | Mac planner repair: retry epoch and failed optimizer search | - | `main` |
+| 21 | 2026-09-27 | Compare historical full Building success with Newton v7 | `661b02e0` | `main` |
+| 20 | 2026-09-27 | Recover historical full Building success | `ce7284ed` | `main` |
+| 19 | 2026-09-27 | v7 minimum planned cruise 0.6 m/s | `32c25642` | `main` |
+| 18 | 2026-09-27 | v6 short SCAN reference continuation | `00be31a6` | `main` |
+| 17 | 2026-09-26 | Archive sequential SCAN stair repairs at scan33 build after server shutdown | - | `main` |
 | 16 | 2026-09-17 | Isaac runner stance hold: crossfade entry, two-goal 8/8, post-result AC7, default on | `02e4e55b`, `a826eb75`, `87f3c0d1`, `fe82a471`, `9b4bcc34` | `main` |
 | 15 | 2026-09-17 | SCAN fix Isaac series, report and adoption | `290a0ec5`, `20f24308`, `097304f4`, `486cc80a` | `main` |
 | 14 | 2026-09-16 | Status review, Sep 16 decisions and Sep 15-16 evidence commit | `8df243fc`, `c10f2976`, `e226be6f`, `ad9b157d` | `main` |

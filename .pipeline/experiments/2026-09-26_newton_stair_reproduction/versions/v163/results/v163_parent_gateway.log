@@ -1,0 +1,29 @@
+...FFF...
+======================================================================
+FAIL: test_fresh_native_plan_still_binds (__main__.Tests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v163/test_reference_reuse.py", line 51, in test_fresh_native_plan_still_binds
+    self.g.last_released_route=None;self.g.pct.plan.side_effect=None;self.g.pct.plan.return_value=self.g.planned[1];r=self.replan();self.assertTrue(r.accepted,r.message);self.assertTrue(self.g.plan_bind_ready);self.assertFalse(self.g.plan_bind_reuse);self.assertTrue(self.bind().accepted)
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_never_reuses_without_released_owner (__main__.Tests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v163/test_reference_reuse.py", line 37, in test_never_reuses_without_released_owner
+    self.g.last_released_route=None;self.replan();self.assertFalse(self.g.plan_bind_ready);self.assertFalse(self.bind().accepted)
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_no_route_after_measured_release_reuses_exact_reference_once (__main__.Tests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v163/test_reference_reuse.py", line 34, in test_no_route_after_measured_release_reuses_exact_reference_once
+    before=copy.deepcopy(self.g.planned);r=self.replan();self.assertFalse(r.accepted);self.assertEqual(r.message,'pct_no_route');self.assertTrue(self.g.plan_bind_ready);self.assertTrue(self.g.plan_bind_reuse);self.assertEqual(self.g.planned,before)
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.016s
+
+FAILED (failures=3)
