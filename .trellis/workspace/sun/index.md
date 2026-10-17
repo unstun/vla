@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 34
+- **Total Sessions**: 35
 - **Last Active**: 2026-10-17
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1253 | Active |
+| `journal-1.md` | ~1288 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 35 | 2026-10-17 | gpu40901 v234 offline migration and v235 physical failure evidence | `114ce97f`, `2156007d` | `main` |
 | 34 | 2026-10-17 | Adopt v232/v233 and close PCT SCAN milestone | `c7294f8f`, `ff4cb515`, `e9f8bec0`, `420a0ff9` | `main` |
 | 33 | 2026-10-09 | Native local curve video and offline computation-time HTML | - | `main` |
 | 32 | 2026-10-08 | Original Newton goal and measured stop once; two protected retries | - | `main` |

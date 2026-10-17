@@ -1251,3 +1251,38 @@ Dr Sun adopted the single original-route v232/v233 baseline; archived the traver
 ### Next Steps
 
 - No new experiment started. Select a separate future scope for sustained frequency, repeated control or physical feedback exercise.
+
+
+## Session 35: gpu40901 v234 offline migration and v235 physical failure evidence
+<!-- trellis-session: v=2 fp=ccdfce8eb5a682a2 -->
+
+**Date**: 2026-10-17
+**Task**: gpu40901 v234 offline migration and v235 physical failure evidence
+**Branch**: `main`
+
+### Summary
+
+Offline migration passed. Exactly one v235 physics attempt failed at captured-scanner deadline; final saved state12.802s before goal dispatch. Verified partial and comparison videos returned; no baseline adoption or automatic rerun.
+
+### Main Changes
+
+- Prepared frozen v235 host entry using v234 rebuilt v232 runtime; preserved RL/endpoints/0.35m guards.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `114ce97f` | feat(sim): migrate v232 runtime to gpu40901 with verified offline gates |
+| `2156007d` | test(sim): record gpu40901 v235 scanner-deadline failure and comparison videos |
+
+### Testing
+
+- [OK] Actual12s graph/profile preflight passed; source manifests and54 returned payload hashes exact; causal video/full decode/visual checks passed. Physical route gate failed,45-55s stairs and terminal PD untested.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Keep migration task open; diagnose scanner timing under own2-CPU binding before separately authorizing any new physical trial.
