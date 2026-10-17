@@ -114,3 +114,12 @@ Wrong: monitor only `ros2 launch` Popen, terminate the bridge immediately and
 let the physical recorder spin to its600s cap with no finish request.
 Correct: observe actual child exit, report a run-bound task failure and close
 the existing FAILED finish before normal teardown; preserve failure evidence.
+
+## Subsequent physical evidence (v233 execution of frozen v232)
+
+One separately authorized original-route run passes with FINISHED and measured
+terminal PD, without SIGABRT or a critical-process fault. This runtime evidence
+is separate from the offline real-child SIGABRT injection: the successful route
+did not kill the actual controller or demonstrate physical feedback detouring.
+Dr Sun adoptedv232/v233 as the latest single-route source/display baseline on
+2026-10-17. Preserve the original30Hz/full-qualification failure flags.

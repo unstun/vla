@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 33
-- **Last Active**: 2026-10-09
+- **Total Sessions**: 34
+- **Last Active**: 2026-10-17
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1213 | Active |
+| `journal-1.md` | ~1253 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 34 | 2026-10-17 | Adopt v232/v233 and close PCT SCAN milestone | `c7294f8f`, `ff4cb515`, `e9f8bec0`, `420a0ff9` | `main` |
 | 33 | 2026-10-09 | Native local curve video and offline computation-time HTML | - | `main` |
 | 32 | 2026-10-08 | Original Newton goal and measured stop once; two protected retries | - | `main` |
 | 31 | 2026-10-08 | Full Nav2 Foxy integration; clean build passed, original physics failed | - | `main` |

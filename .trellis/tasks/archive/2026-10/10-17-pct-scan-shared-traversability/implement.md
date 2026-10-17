@@ -131,3 +131,27 @@ installed Building route CSVs equal v230 and first check rejects0/3821. Actual
 composed sources,19 owned sources,607 installs and60 effective header locations.
 See versions/v232/RESULTS.md and retained failed attempts. No new physics or
 Git commit; task stays in progress for separate physical acceptance.
+
+## 2026-10-17 v232 source commit and single physical v233 execution
+
+Approved prior audit committed1ad1862d; v232 repair/offline evidence committed
+ff4cb515. The newly authorized sole physical run, frozen executionv233 with
+frozen v232 install + graph + driver, passes the original v219 full-route
+gate. Same endpoints, RL,0.35m guards: FINISHED121.565s, measured final
+PD4.398s, XY error0.1412m, no controller abort/fall.317 source/607 installed
+files and actual driver match after execution; shared FINISHED agrees.
+Stair45–55s:273/275 completed rounds succeed, no >=1s low-speed pause, all100
+body-edge samples at the additional0.15m cap. No sustained30Hz qualification
+(25.44 successful Hz average), no repeated reliability, no feedback-detour
+claim (one global route delivery). The first port check produced zero physics;
+no physical retry was performed. New result/video evidence is separate from
+frozen v232:versions/v233/RESULTS.md and
+audits/2026-10-17_v232_physical_comparison/RESULTS.md.
+
+## User-approved closeout,2026-10-17
+
+Physical evidence, videos and mutable baseline selection are committedc7294f8f.
+Dr Sun adoptedv232/v233 with the explicit single-route boundary and requested
+archive of this parent/child family. See the archived parent CLOSEOUT.md for
+the acceptance matrix, complete version/commit map and remaining gates.
+No new experiment is part of archival.

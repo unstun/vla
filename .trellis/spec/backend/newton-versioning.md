@@ -125,3 +125,18 @@ Before freezing a launcher, verify all required quality-receipt fields,
 including `native_packages_available == 14`. v184's missing field correctly
 prevented physics despite passing component checks. Preserve that failed
 launch and frozen metadata; use a new execution version for corrections.
+
+## 11. Adopt a source/display pair without rewriting frozen evidence
+
+Keep the selected navigation source distinct from its execution/display wrapper.
+After the user adopts a passing pair, update the mutable README/current.json
+source, display and physical-run pointers together; preserve the old pair as a
+comparison. Check both native installed bytes and the actual launch/graph/driver
+sources, not only a library prefix. Do not update a frozen manifest's pre-run
+status to imply that its later evidence was known before execution.
+
+A single original-route/terminal pass can select a scenario-scoped baseline while
+the original analyzer still reports full_qualification=false and sustained30Hz
+false. Keep those flags, repeated reliability and physical feedback exercise
+separate. Evidence: user-adoptedv232/v233 on2026-10-17, withv219/v220 retained;
+see the linked physical audit and archived task CLOSEOUT.

@@ -1211,3 +1211,43 @@ GPU job, subagent or commit. v48 remains reference and the main task in_progress
 Existing index.lock and unrelated staged/dirty paths preserved. See the local
 curve timing audit REPORT.md and STORAGE.json. Local preview uses loopback8848;
 the delivered HTML is self-contained and does not depend on that server.
+
+
+## Session 34: Adopt v232/v233 and close PCT SCAN milestone
+<!-- trellis-session: v=2 fp=df92bb2deafbf8ae -->
+
+**Date**: 2026-10-17
+**Task**: Adopt v232/v233 and close PCT SCAN milestone
+**Branch**: `main`
+
+### Summary
+
+Dr Sun adopted the single original-route v232/v233 baseline; archived the traversability parent and two children; refreshed hot/cold memory with the full support, scoring, GPMP, feedback and exception-repair chain. v219/v220 retained; sustained30Hz, repeatability and physical feedback benefit remain unvalidated.
+
+### Main Changes
+
+- Commit physical results/videos and coherent README/current.json selection as c7294f8f.
+- Archive three completed scoped tasks with acceptance map, version/commit provenance and remaining gates.
+- Preserve previous hot-zone bytes, add four cold records and four reversible aging summaries; update reusable workflow/spec contracts.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c7294f8f` | docs(nav): adopt v232-v233 single-route physical baseline |
+| `ff4cb515` | fix(nav): contain native exceptions and close failed missions |
+| `e9f8bec0` | feat(nav): retain mission-scoped local blockage feedback |
+| `420a0ff9` | fix(nav): align GPMP height with native support layers |
+
+### Testing
+
+- [OK] 73 delivery file hashes and both frozen source manifests pass; no compiler caches.
+- [OK] All three archived task context validators pass; hot-zone capacity and parent/child/source links checked.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- No new experiment started. Select a separate future scope for sustained frequency, repeated control or physical feedback exercise.
