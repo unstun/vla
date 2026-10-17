@@ -1175,3 +1175,12 @@ PCD solid margin 0.064950 m; full repair/admission takes 1.032 s. Both use the
 existing checked raw-graph fallback; GPMP height smoothing remains an explicit
 limitation. Original v217 126,324+3 query verdicts and occupancy predicates are
 unchanged. [Results](v228/RESULTS.md). No new physics or accepted-source promotion.
+
+### v229 — support-aligned GPMP output height
+
+Shared mode admits the actual installed GPMP reference on its first native
+check (0/3821 rejected, exact XYZ goal). Full call is 0.727 s versus v228
+1.032 s; the requested ~0.35 s remains unmet. Raw PCD solid margin is +0.056539 m.
+Nine packages and 148 distinct cases pass. Original 126324+3 replay verdicts
+and occupancy predicates are unchanged. [Results](v229/RESULTS.md).
+No new physics or accepted-source promotion.

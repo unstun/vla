@@ -62,3 +62,36 @@ Before editing, resolve all inherited file hashes and relevant backend specs. Ad
   RL, full-route physics, real motion, v222 feedback and recovery connectors
   are untouched. The recorded-input implementation gate passes; human diff
   review/commit remains pending. Do not imply a live-navigation result.
+
+## Approved commit batch and next patch, 2026-10-17
+
+Dr Sun approved the three batches and compiler-metadata cleanup. Commits:
+`dbe3ed92` floor diagnostics; `9cf6ac66` shared scoring; `7e33d5c0` performance,
+interpolation and admitted-reference fixes. 83 redundant configuration/rosidl
+metadata files are remote-retained by exact SHA without changing frozen
+manifests; artifact_retention/2026-10-17_precommit/ verifies/restores them.
+No push or unrelated harness staging occurred.
+
+Dr Sun authorized v229 support-aligned GPMP Z repair before blocked feedback.
+The 26 height rejects split 13 actual terrain-height deviations and 13 depressed
+navigation proxies. Reuse canonical PCT cells, matched GPMP layers and source
+surface heights; intersect true-body and unchanged native proxy height bands,
+keeping XY, endpoint and full final checking. Intersect both original native
+height-tolerance bands; nominal clearance is not a new hard minimum. One-round
+admission and raw geometry are the gate;
+~0.35s remains an empirical performance target, not an assumed result.
+
+## v229 height patch receipt
+
+Frozen v229 admits the shared GPMP reference in one native request: 0/3821
+rejected, exact original goal, raw PCD solid margin +0.056539 m. Full actual
+plugin call is 0.727385 s (v228 1.032185 s); ~0.35 s is not achieved. Nine
+packages/148 distinct cases and original 126324+3 unchanged-query gate pass.
+Two failed nominal-clearance hard-minimum attempts remain preserved. See
+versions/v229/RESULTS.md. Next authorized task: blocked-feedback, based on
+v229, new logical version v230; no new physics or source promotion.
+
+## Commit authorization, 2026-10-17
+
+Dr Sun approved the frozen v229 source/results and corresponding task/index
+updates as a separate commit, followed by the v230 feedback commit.

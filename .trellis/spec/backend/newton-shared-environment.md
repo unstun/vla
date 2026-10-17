@@ -144,3 +144,15 @@ Sources: version-owned `v223/RESULTS.md`, `v224/PLAN.md`, `v224/RESULTS.md`,
 `v225/RESULTS.md`, `v226/RESULTS.md`, `v227/RESULTS.md`, `v228/RESULTS.md` and
 the corresponding frozen source/inventory receipts under
 `.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/`.
+
+## 8. Support-aligned GPMP Z (v229)
+
+GPMP's legacy height smoother and truncated XY lookup can disagree with native
+canonical support cells. In configured shared mode, use matched optimizer
+layers, canonical PCT cell, original ENV225 surface height, valid proxy/ceiling
+and both original native height-tolerance bands. Prefer surface+reference height
+inside their intersection, with a quantization inset. Nominal body clearance is
+not an invented hard minimum: that disconnects native-feasible steps. Preserve
+XY polyline and original endpoint Z; densify collinearly and bound neighboring
+height transitions. Missing/ambiguous/empty association rejects, and the final
+native reference checker remains mandatory. This does not prove Z dynamics.
