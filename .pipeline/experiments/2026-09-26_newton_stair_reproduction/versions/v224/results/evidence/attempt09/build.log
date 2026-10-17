@@ -1,0 +1,141 @@
+Starting >>> lite3_nav2_interfaces
+Finished <<< lite3_nav2_interfaces [0.28s]
+Starting >>> pct_planner
+Finished <<< pct_planner [0.18s]
+Starting >>> plan_env
+[0.600s] WARNING:colcon.colcon_core.shell:The following packages are in the workspace but haven't been built:
+- scan_planner_msgs
+They are being used from the following locations instead:
+- /task/command_continuity_v206_20261015/install/scan_planner_msgs
+To suppress this warning ignore these packages in the workspace:
+--packages-ignore scan_planner_msgs
+--- stderr: plan_env
+/work/src/plan_env/src/environmental_field.cpp: In constructor ‘reactive_stair::EnvironmentalField::EnvironmentalField(const string&, const string&)’:
+/work/src/plan_env/src/environmental_field.cpp:70:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   70 |     if(!input||!std::isfinite(p.x)||!std::isfinite(p.y)||!std::isfinite(p.z)||!std::isfinite(ground)||!std::isfinite(upper)||upper<ground)throw std::runtime_error("Invalid solid point");d.points->push_back(p);d.supporting_floor.emplace_back(ground,upper);}
+      |     ^~
+/work/src/plan_env/src/environmental_field.cpp:70:187: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   70 |     if(!input||!std::isfinite(p.x)||!std::isfinite(p.y)||!std::isfinite(p.z)||!std::isfinite(ground)||!std::isfinite(upper)||upper<ground)throw std::runtime_error("Invalid solid point");d.points->push_back(p);d.supporting_floor.emplace_back(ground,upper);}
+      |                                                                                                                                                                                           ^
+---
+Finished <<< plan_env [1.69s]
+Starting >>> path_searching
+[2.295s] WARNING:colcon.colcon_core.shell:The following packages are in the workspace but haven't been built:
+- scan_planner_msgs
+They are being used from the following locations instead:
+- /task/command_continuity_v206_20261015/install/scan_planner_msgs
+To suppress this warning ignore these packages in the workspace:
+--packages-ignore scan_planner_msgs
+Finished <<< path_searching [0.11s]
+Starting >>> bspline_opt
+[2.403s] WARNING:colcon.colcon_core.shell:The following packages are in the workspace but haven't been built:
+- scan_planner_msgs
+They are being used from the following locations instead:
+- /task/command_continuity_v206_20261015/install/scan_planner_msgs
+To suppress this warning ignore these packages in the workspace:
+--packages-ignore scan_planner_msgs
+Finished <<< bspline_opt [0.43s]
+Starting >>> lite3_nav2_plugins
+[2.838s] WARNING:colcon.colcon_core.shell:The following packages are in the workspace but haven't been built:
+- scan_planner_msgs
+They are being used from the following locations instead:
+- /task/command_continuity_v206_20261015/install/scan_planner_msgs
+To suppress this warning ignore these packages in the workspace:
+--packages-ignore scan_planner_msgs
+--- stderr: lite3_nav2_plugins
+In file included from /work/src/lite3_nav2_plugins/include/lite3_nav2_plugins/pct_route_planner.hpp:5,
+                 from /work/src/lite3_nav2_plugins/test/test_environmental_cost.cpp:2:
+/work/install/pct_planner/include/pct_planner/ele_planner/offline_ele_planner.h: In constructor ‘OfflineElePlanner::OfflineElePlanner(double, bool)’:
+/work/install/pct_planner/include/pct_planner/ele_planner/offline_ele_planner.h:80:8: warning: ‘OfflineElePlanner::use_quintic_’ will be initialized after [-Wreorder]
+   80 |   bool use_quintic_ = false;
+      |        ^~~~~~~~~~~~
+/work/install/pct_planner/include/pct_planner/ele_planner/offline_ele_planner.h:79:10: warning:   ‘double OfflineElePlanner::max_heading_rate_’ [-Wreorder]
+   79 |   double max_heading_rate_ = 0.5;
+      |          ^~~~~~~~~~~~~~~~~
+In file included from /work/src/lite3_nav2_plugins/include/lite3_nav2_plugins/pct_route_planner.hpp:5,
+                 from /work/src/lite3_nav2_plugins/test/test_environmental_cost.cpp:2:
+/work/install/pct_planner/include/pct_planner/ele_planner/offline_ele_planner.h:13:3: warning:   when initialized here [-Wreorder]
+   13 |   OfflineElePlanner(const double max_heading_rate, bool use_quintic)
+      |   ^~~~~~~~~~~~~~~~~
+In file included from /work/src/lite3_nav2_plugins/test/test_environmental_cost.cpp:6:
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors/gp_interpolate_obstacle_factor.h: In constructor ‘GPInterpolateObstacleFactor::GPInterpolateObstacleFactor(gtsam::Key, gtsam::Key, std::shared_ptr<DenseElevationMap>, int, double, double, double, double, double, double, double)’:
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors/gp_interpolate_obstacle_factor.h:46:38: warning: ‘GPInterpolateObstacleFactor::map_’ will be initialized after [-Wreorder]
+   46 |   std::shared_ptr<DenseElevationMap> map_;
+      |                                      ^~~~
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors/gp_interpolate_obstacle_factor.h:41:10: warning:   ‘double GPInterpolateObstacleFactor::cost_threshold_’ [-Wreorder]
+   41 |   double cost_threshold_ = 0.0;
+      |          ^~~~~~~~~~~~~~~
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors/gp_interpolate_obstacle_factor.h:12:3: warning:   when initialized here [-Wreorder]
+   12 |   GPInterpolateObstacleFactor(gtsam::Key key1, gtsam::Key key2,
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors/gp_interpolate_obstacle_factor.h:43:10: warning: ‘GPInterpolateObstacleFactor::param_’ will be initialized after [-Wreorder]
+   43 |   double param_ = 0.0;
+      |          ^~~~~~
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors/gp_interpolate_obstacle_factor.h:42:10: warning:   ‘double GPInterpolateObstacleFactor::tau_’ [-Wreorder]
+   42 |   double tau_ = 0.0;
+      |          ^~~~
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors/gp_interpolate_obstacle_factor.h:12:3: warning:   when initialized here [-Wreorder]
+   12 |   GPInterpolateObstacleFactor(gtsam::Key key1, gtsam::Key key2,
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /work/src/lite3_nav2_plugins/test/test_environmental_cost.cpp:8:
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors_wnoa/gp_interpolate_obstacle_factor.h: In constructor ‘GPInterpolateObstacleFactorWnoa::GPInterpolateObstacleFactorWnoa(gtsam::Key, gtsam::Key, std::shared_ptr<DenseElevationMap>, int, double, double, double, double, double, double, double)’:
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors_wnoa/gp_interpolate_obstacle_factor.h:45:38: warning: ‘GPInterpolateObstacleFactorWnoa::map_’ will be initialized after [-Wreorder]
+   45 |   std::shared_ptr<DenseElevationMap> map_;
+      |                                      ^~~~
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors_wnoa/gp_interpolate_obstacle_factor.h:40:10: warning:   ‘double GPInterpolateObstacleFactorWnoa::cost_threshold_’ [-Wreorder]
+   40 |   double cost_threshold_ = 0.0;
+      |          ^~~~~~~~~~~~~~~
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors_wnoa/gp_interpolate_obstacle_factor.h:12:3: warning:   when initialized here [-Wreorder]
+   12 |   GPInterpolateObstacleFactorWnoa(
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors_wnoa/gp_interpolate_obstacle_factor.h:42:10: warning: ‘GPInterpolateObstacleFactorWnoa::param_’ will be initialized after [-Wreorder]
+   42 |   double param_ = 0.0;
+      |          ^~~~~~
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors_wnoa/gp_interpolate_obstacle_factor.h:41:10: warning:   ‘double GPInterpolateObstacleFactorWnoa::tau_’ [-Wreorder]
+   41 |   double tau_ = 0.0;
+      |          ^~~~
+/work/install/pct_planner/include/pct_planner/trajectory_optimization/gpmp_optimizer/factors_wnoa/gp_interpolate_obstacle_factor.h:12:3: warning:   when initialized here [-Wreorder]
+   12 |   GPInterpolateObstacleFactorWnoa(
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/work/src/lite3_nav2_plugins/test/test_environmental_cost.cpp: In function ‘std::string {anonymous}::corridorMap()’:
+/work/src/lite3_nav2_plugins/test/test_environmental_cost.cpp:38:3: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   38 |   for(int i=0;i<81*81;++i)out.put(1);return path.string();
+      |   ^~~
+/work/src/lite3_nav2_plugins/test/test_environmental_cost.cpp:38:38: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   38 |   for(int i=0;i<81*81;++i)out.put(1);return path.string();
+      |                                      ^~~~~~
+---
+Finished <<< lite3_nav2_plugins [7.76s]
+Starting >>> scan_planner
+[10.598s] WARNING:colcon.colcon_core.shell:The following packages are in the workspace but haven't been built:
+- scan_planner_msgs
+- traj_utils
+They are being used from the following locations instead:
+- /task/command_continuity_v206_20261015/install/scan_planner_msgs
+- /task/command_continuity_v206_20261015/install/traj_utils
+To suppress this warning ignore these packages in the workspace:
+--packages-ignore scan_planner_msgs traj_utils
+Finished <<< scan_planner [0.61s]
+Starting >>> scan_nav2_controller
+[11.213s] WARNING:colcon.colcon_core.shell:The following packages are in the workspace but haven't been built:
+- scan_planner_msgs
+- traj_utils
+They are being used from the following locations instead:
+- /task/command_continuity_v206_20261015/install/scan_planner_msgs
+- /task/command_continuity_v206_20261015/install/traj_utils
+To suppress this warning ignore these packages in the workspace:
+--packages-ignore scan_planner_msgs traj_utils
+Finished <<< scan_nav2_controller [1.08s]
+Starting >>> lite3_nav2_bridge
+[12.291s] WARNING:colcon.colcon_core.shell:The following packages are in the workspace but haven't been built:
+- scan_planner_msgs
+- traj_utils
+They are being used from the following locations instead:
+- /task/command_continuity_v206_20261015/install/scan_planner_msgs
+- /task/command_continuity_v206_20261015/install/traj_utils
+To suppress this warning ignore these packages in the workspace:
+--packages-ignore scan_planner_msgs traj_utils
+Finished <<< lite3_nav2_bridge [0.14s]
+
+Summary: 9 packages finished [12.3s]
+  2 packages had stderr output: lite3_nav2_plugins plan_env

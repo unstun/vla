@@ -1,0 +1,148 @@
+build/lite3_nav2_bridge/Testing/20261017-1155/Test.xml: 6 tests, 0 errors, 2 failures, 0 skipped
+- test_mission_bridge
+  <<< failure message
+    -- run_test.py: invoking following command in '/work/build/lite3_nav2_bridge':
+     - /usr/bin/python3 -u -m pytest /work/src/lite3_nav2_bridge/test/test_mission_bridge.py -o cache_dir=/work/build/lite3_nav2_bridge/ament_cmake_pytest/test_mission_bridge/.cache --junit-xml=/work/build/lite3_nav2_bridge/test_results/lite3_nav2_bridge/test_mission_bridge.xunit.xml --junit-prefix=lite3_nav2_bridge
+    ============================= test session starts ==============================
+    platform linux -- Python 3.8.10, pytest-4.6.9, py-1.8.1, pluggy-0.13.0
+    cachedir: build/lite3_nav2_bridge/ament_cmake_pytest/test_mission_bridge/.cache
+    rootdir: /work
+    plugins: ament-xmllint-0.9.8, launch-testing-ros-0.11.7, ament-lint-0.9.8, ament-pep257-0.9.8, launch-testing-0.10.10, ament-copyright-0.9.8, ament-flake8-0.9.8, colcon-core-0.12.1
+    collected 17 items
+    
+    ../../src/lite3_nav2_bridge/test/test_mission_bridge.py .............F.. [ 94%]
+    .                                                                        [100%]
+    
+    =================================== FAILURES ===================================
+    ____________ test_navigation_launch_assigns_command_topic_to_server ____________
+    
+    tmp_path = PosixPath('/tmp/pytest-of-unknown/pytest-1/test_navigation_launch_assigns0')
+    
+        def test_navigation_launch_assigns_command_topic_to_server(tmp_path):
+            import importlib.util
+            from pathlib import Path as FilePath
+            from launch import LaunchContext
+            from ament_index_python.packages import get_package_share_directory
+            launch_file = FilePath(get_package_share_directory('lite3_nav2_bridge')) / 'launch/navigation.launch.py'
+            spec = importlib.util.spec_from_file_location('navigation_launch', launch_file)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            import os
+            terrain_manifest = os.environ['TERRAIN_TEST_MANIFEST']
+            (tmp_path / 'backend.json').write_text(json.dumps({'map': {'nominal_body_height_m': .3}}))
+            context = LaunchContext()
+            context.launch_configurations.update({
+                'use_sim_time': 'false', 'base_frame': 'base', 'odom_topic': '/quad_0/body_pose',
+                'generated_params': str(tmp_path / 'params.yaml'), 'terrain_manifest': terrain_manifest,
+                'backend_config': str(tmp_path / 'backend.json'),
+                'native_planner_config': str(FilePath(get_package_share_directory('scan_planner')) / 'config/planner.yaml')})
+            with patch.object(module, 'Node', side_effect=lambda **kwargs: kwargs):
+    >           launched = module.nodes(context)
+    
+    /work/src/lite3_nav2_bridge/test/test_mission_bridge.py:247: 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    /work/install/lite3_nav2_bridge/share/lite3_nav2_bridge/launch/navigation.launch.py:16: in nodes
+        environmental_manifest=get('environmental_manifest') or None,
+    /work/install/lite3_nav2_bridge/share/lite3_nav2_bridge/launch/navigation.launch.py:11: in <lambda>
+        get = lambda name: LaunchConfiguration(name).perform(context)
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    
+    self = <launch.substitutions.launch_configuration.LaunchConfiguration object at 0x7b69950dbc10>
+    context = <launch.launch_context.LaunchContext object at 0x7b6996d365b0>
+    
+        def perform(self, context: LaunchContext) -> Text:
+            """
+            Perform the substitution by retrieving the launch configuration, as a string.
+        
+            If the launch configuration is not found and a default has been set,
+            the default will be returned, as a string.
+            """
+            from ..utilities import perform_substitutions
+            expanded_variable_name = perform_substitutions(context, self.__variable_name)
+            if expanded_variable_name not in context.launch_configurations:
+                if self.__default is None:
+    >               raise SubstitutionFailure(
+                        "launch configuration '{}' does not exist".format(expanded_variable_name))
+    E               launch.substitutions.substitution_failure.SubstitutionFailure: launch configuration 'environmental_manifest' does not exist
+    
+    /opt/ros/foxy/lib/python3.8/site-packages/launch/substitutions/launch_configuration.py:98: SubstitutionFailure
+    - generated xml file: /work/build/lite3_nav2_bridge/test_results/lite3_nav2_bridge/test_mission_bridge.xunit.xml -
+    ===================== 1 failed, 16 passed in 7.69 seconds ======================
+    The following exception was never retrieved: Tried to use a handle that has been destroyed.
+    -- run_test.py: return code 1
+    -- run_test.py: verify result file '/work/build/lite3_nav2_bridge/test_results/lite3_nav2_bridge/test_mission_bridge.xunit.xml'
+  >>>
+- test_terrain_profile
+  <<< failure message
+    -- run_test.py: invoking following command in '/work/build/lite3_nav2_bridge':
+     - /usr/bin/python3 -u -m pytest /work/src/lite3_nav2_bridge/test/test_terrain_profile.py -o cache_dir=/work/build/lite3_nav2_bridge/ament_cmake_pytest/test_terrain_profile/.cache --junit-xml=/work/build/lite3_nav2_bridge/test_results/lite3_nav2_bridge/test_terrain_profile.xunit.xml --junit-prefix=lite3_nav2_bridge
+    ============================= test session starts ==============================
+    platform linux -- Python 3.8.10, pytest-4.6.9, py-1.8.1, pluggy-0.13.0
+    cachedir: build/lite3_nav2_bridge/ament_cmake_pytest/test_terrain_profile/.cache
+    rootdir: /work
+    plugins: ament-xmllint-0.9.8, launch-testing-ros-0.11.7, ament-lint-0.9.8, ament-pep257-0.9.8, launch-testing-0.10.10, ament-copyright-0.9.8, ament-flake8-0.9.8, colcon-core-0.12.1
+    collected 3 items
+    
+    ../../src/lite3_nav2_bridge/test/test_terrain_profile.py ..F             [100%]
+    
+    =================================== FAILURES ===================================
+    ________ test_launch_owns_one_static_publisher_and_wait_recovery_server ________
+    
+    tmp_path = PosixPath('/tmp/pytest-of-unknown/pytest-3/test_launch_owns_one_static_pu0')
+    
+        def test_launch_owns_one_static_publisher_and_wait_recovery_server(tmp_path):
+            launch_file = Path(get_package_share_directory('lite3_nav2_bridge'))/'launch/navigation.launch.py'
+            spec = importlib.util.spec_from_file_location('terrain_launch',launch_file)
+            module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+            backend = tmp_path/'backend.json'; backend.write_text('{}')
+            context = LaunchContext()
+            context.launch_configurations.update({'terrain_manifest':str(MANIFEST), 'native_planner_config':str(NATIVE),
+                'generated_params':str(tmp_path/'profile.yaml'), 'backend_config':str(backend),
+                'use_sim_time':'false','base_frame':'base','odom_topic':'/quad_0/body_pose'})
+            with patch.object(module, 'Node', side_effect=lambda **kwargs: kwargs):
+    >           actions = module.nodes(context)
+    
+    /work/src/lite3_nav2_bridge/test/test_terrain_profile.py:58: 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    /work/install/lite3_nav2_bridge/share/lite3_nav2_bridge/launch/navigation.launch.py:16: in nodes
+        environmental_manifest=get('environmental_manifest') or None,
+    /work/install/lite3_nav2_bridge/share/lite3_nav2_bridge/launch/navigation.launch.py:11: in <lambda>
+        get = lambda name: LaunchConfiguration(name).perform(context)
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    
+    self = <launch.substitutions.launch_configuration.LaunchConfiguration object at 0x70497b378a60>
+    context = <launch.launch_context.LaunchContext object at 0x70497be1afd0>
+    
+        def perform(self, context: LaunchContext) -> Text:
+            """
+            Perform the substitution by retrieving the launch configuration, as a string.
+        
+            If the launch configuration is not found and a default has been set,
+            the default will be returned, as a string.
+            """
+            from ..utilities import perform_substitutions
+            expanded_variable_name = perform_substitutions(context, self.__variable_name)
+            if expanded_variable_name not in context.launch_configurations:
+                if self.__default is None:
+    >               raise SubstitutionFailure(
+                        "launch configuration '{}' does not exist".format(expanded_variable_name))
+    E               launch.substitutions.substitution_failure.SubstitutionFailure: launch configuration 'environmental_manifest' does not exist
+    
+    /opt/ros/foxy/lib/python3.8/site-packages/launch/substitutions/launch_configuration.py:98: SubstitutionFailure
+    - generated xml file: /work/build/lite3_nav2_bridge/test_results/lite3_nav2_bridge/test_terrain_profile.xunit.xml -
+    ====================== 1 failed, 2 passed in 0.26 seconds ======================
+    -- run_test.py: return code 1
+    -- run_test.py: verify result file '/work/build/lite3_nav2_bridge/test_results/lite3_nav2_bridge/test_terrain_profile.xunit.xml'
+  >>>
+build/lite3_nav2_bridge/test_results/lite3_nav2_bridge/test_mission_bridge.xunit.xml: 17 tests, 0 errors, 1 failure, 0 skipped
+- lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge test_navigation_launch_assigns_command_topic_to_server (src/lite3_nav2_bridge/test/test_mission_bridge.py:227)
+  <<< failure message
+    launch.substitutions.substitution_failure.SubstitutionFailure: launch configuration 'environmental_manifest' does not exist
+  >>>
+build/lite3_nav2_bridge/test_results/lite3_nav2_bridge/test_terrain_profile.xunit.xml: 3 tests, 0 errors, 1 failure, 0 skipped
+- lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile test_launch_owns_one_static_publisher_and_wait_recovery_server (src/lite3_nav2_bridge/test/test_terrain_profile.py:47)
+  <<< failure message
+    launch.substitutions.substitution_failure.SubstitutionFailure: launch configuration 'environmental_manifest' does not exist
+  >>>
+
+Summary: 163 tests, 0 errors, 4 failures, 0 skipped
