@@ -1,0 +1,55 @@
+Warp 1.17.0 initialized:
+   CUDA not enabled in this build
+   Devices:
+     "cpu"      : "arm"
+   Kernel cache:
+     /Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/warp-cache/1.17.0
+Module newton._src.geometry.inertia f6b4bd8 load on device 'cpu' took 6.82 ms  (cached)
+Module validate_and_correct_inertia_kernel_1ff2ac62 6ad45b8 load on device 'cpu' took 0.63 ms  (cached)
+Module newton._src.geometry.bvh 4a1c07f load on device 'cpu' took 0.51 ms  (cached)
+Module newton._src.solvers.mujoco.kernels 90c0c67 load on device 'cpu' took 0.60 ms  (cached)
+Module newton._src.sim.articulation 2e73608 load on device 'cpu' took 0.61 ms  (cached)
+{"time_s": 0.0, "phase": 1, "zero_flag": false}
+{"time_s": 1.0000000000000007, "phase": 17, "zero_flag": false}
+{"time_s": 5.400000000000138, "phase": 17, "zero_flag": true}
+{"time_s": 5.500000000000171, "phase": 17, "zero_flag": false}
+{"time_s": 6.500000000000505, "phase": 1, "zero_flag": false}
+{"time_s": 7.500000000000839, "phase": 4, "zero_flag": false}
+{"time_s": 8.501000000000728, "phase": 5, "zero_flag": false}
+{"time_s": 9.502000000000173, "phase": 6, "zero_flag": false}
+Module intersect_ray__locals___intersect_ray_kernel_962a4840 14d5500 load on device 'cpu' took 0.65 ms  (cached)
+{"sim": 12.039999999998766, "command": [0.0, 0.0, 0.0], "reason": "active", "base": [-0.09643032565839282, 0.00018911956475107895, 0.3405090084359989], "backend_error": null, "goal_sent": false}
+{"sim": 13.039999999998212, "command": [0.0, 0.0, 0.0], "reason": "active", "base": [-0.09670099424344848, 0.0001876072036893244, 0.34068643195277803], "backend_error": null, "goal_sent": true}
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/newton_episode.py", line 341, in <module>
+    main()
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/newton_episode.py", line 204, in main
+    ack = applied_client.publish(applied)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/applied_channel.py", line 32, in publish
+    reply = self.socket.recv_json()
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/zmq_macos/zmq/sugar/socket.py", line 1031, in recv_json
+    msg = self.recv(flags)
+          ^^^^^^^^^^^^^^^^
+  File "_zmq.py", line 1147, in zmq.backend.cython._zmq.Socket.recv
+  File "_zmq.py", line 1182, in zmq.backend.cython._zmq.Socket.recv
+  File "_zmq.py", line 1342, in zmq.backend.cython._zmq._recv_copy
+  File "_zmq.py", line 1337, in zmq.backend.cython._zmq._recv_copy
+  File "_zmq.py", line 176, in zmq.backend.cython._zmq._check_rc
+zmq.error.Again: Resource temporarily unavailable
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/run_local_episode.py", line 217, in main
+    worker.check_returncode()
+  File "/opt/homebrew/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 502, in check_returncode
+    raise CalledProcessError(self.returncode, self.args, self.stdout,
+subprocess.CalledProcessError: Command '['/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv/bin/python', '/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/newton_episode.py']' returned non-zero exit status 1.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/run_local_episode.py", line 232, in <module>
+    main()
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/run_local_episode.py", line 228, in main
+    raise RuntimeError("Linux state copyback failed verification; see state_copyback.json")
+RuntimeError: Linux state copyback failed verification; see state_copyback.json

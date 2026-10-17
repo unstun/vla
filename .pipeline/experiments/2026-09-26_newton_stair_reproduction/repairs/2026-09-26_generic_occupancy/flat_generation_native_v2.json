@@ -1,0 +1,28 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "-i",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--memory=1g",
+    "--cpus=1",
+    "-e",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla:/Users/sun/tongbu/study/phdproject/vla:rw",
+    "--entrypoint",
+    "python3",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "-c",
+    "import sys; from pathlib import Path; __file__=sys.argv[1]; sys.path.insert(0,str(Path(__file__).parent)); exec(compile(sys.stdin.buffer.read(),__file__,\"exec\"))",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/repairs/2026-09-26_generic_occupancy/prepare_flat_scene.py"
+  ],
+  "input_sha256": "cad7412024e89e7079637dcd2c3a2b4093558726d37def0477300a099e001270",
+  "exit_code": 0,
+  "stdout": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/repairs/2026-09-26_generic_occupancy/flat_inputs_v2\n",
+  "stderr": "",
+  "method": "Pass exact host producer bytes over stdin to avoid mutable bind-mount script reads."
+}

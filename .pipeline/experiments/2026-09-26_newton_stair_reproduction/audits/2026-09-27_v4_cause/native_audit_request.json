@@ -1,0 +1,39 @@
+{
+  "image": "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+  "platform": "linux/amd64",
+  "network": "none",
+  "native_build": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan43_prefix_diagnostic_v2",
+  "native_build_mount": "/workspace:ro",
+  "audit_mount": "/audit:rw",
+  "source": "probe_source",
+  "cmake_build_directory": "probe_build",
+  "executable": "probe_build/measured_cloud_probe",
+  "configuration": "replay_inputs/planner.yaml",
+  "cases": [
+    {
+      "input": "frozen_map",
+      "output": "native_map.json",
+      "log": "native_map.log"
+    },
+    {
+      "input": "height_query_control",
+      "output": "height_query_control.json",
+      "log": "height_query_control.log"
+    }
+  ],
+  "environment": [
+    "VLA_GEOMETRY_INPUT=/audit/<input>",
+    "VLA_GEOMETRY_OUTPUT=/audit/<output>",
+    "VLA_QUERY_DIAGNOSTICS=1",
+    "ROS_DOMAIN_ID=217",
+    "ROS_LOCALHOST_ONLY=1"
+  ],
+  "run_arguments": [
+    "--ros-args",
+    "--params-file",
+    "/audit/replay_inputs/planner.yaml"
+  ],
+  "compile": "Source /opt/ros/humble/setup.bash and /workspace/install/setup.bash; cmake -S /audit/probe_source -B /audit/probe_build -DCMAKE_BUILD_TYPE=Release; cmake --build /audit/probe_build -j2",
+  "native_libraries_unmodified": true,
+  "production_code_changed": false
+}

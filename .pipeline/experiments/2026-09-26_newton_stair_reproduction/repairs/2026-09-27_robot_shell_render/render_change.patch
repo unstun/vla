@@ -1,0 +1,70 @@
+--- before/render_episode.py
++++ after/render_episode.py
+@@ -41,8 +41,9 @@
+ 
+ 
+ def prepare_robot_appearance(robot):
+-    """Resolve base-link materials from the pinned manufacturer's USD."""
++    """Resolve original materials and display orientation of mirrored visuals."""
+     from newton._src.utils.mesh import load_meshes_from_file
++    import trimesh
+     reference = BASE / "references/2026-09-26_lite3_visual_materials"
+     provenance = json.loads((reference / "source.json").read_text())
+     for record in provenance["files"]:
+@@ -91,11 +92,46 @@
+         selected = source_color if authored is None else [float(x) for x in authored.get("rgba").split()[:3]]
+         index = matches[0]
+         colors[index] = viewer_color(selected)
++        orientation = None
++        if not np.array_equal(np.asarray(scale), np.ones(3)):
++            # The pinned URDF loader baked scale into vertices only. Use the
++            # upstream mesh transform to keep winding and normals consistent.
++            # This copy belongs to recorded-state rendering, never collision I/O.
++            if flags[index] & int(newton.ShapeFlags.COLLIDE_SHAPES | newton.ShapeFlags.COLLIDE_PARTICLES):
++                raise ValueError("Refusing to adapt collision geometry for display: " + name)
++            if not np.array_equal(np.abs(scale), np.ones(3)):
++                raise ValueError("Unqualified non-unit robot visual scale: " + name)
++            original = robot.model.shape_source[index]
++            transformed = trimesh.load(rig / mesh.get("filename"), force="mesh")
++            # Materialize source normals before Trimesh updates its cache.
++            transformed.vertex_normals
++            transformed.apply_transform(np.diag([*scale, 1.]))
++            points = np.asarray(transformed.vertices, dtype=np.float32)
++            triangles = np.asarray(transformed.faces, dtype=np.int32)
++            if not np.array_equal(points, original.vertices):
++                raise ValueError("Display transform would change robot vertices: " + name)
++            if not np.array_equal(np.sort(triangles, axis=1),
++                                  np.sort(original.indices.reshape(-1, 3), axis=1)):
++                raise ValueError("Display transform would change geometric triangles: " + name)
++            normals = np.asarray(transformed.vertex_normals, dtype=np.float32)
++            robot.model.shape_source[index] = newton.Mesh(
++                points, triangles.reshape(-1), normals=normals, uvs=original.uvs,
++                compute_inertia=False, is_solid=original.is_solid, maxhullvert=original.maxhullvert,
++                color=original.color, opacity=original.opacity, texture=original.texture,
++                roughness=original.roughness, metallic=original.metallic,
++                texture_transform=original.texture_transform)
++            orientation = {"upstream": "trimesh.Trimesh.apply_transform",
++                "trimesh_version": trimesh.__version__, "source_scale": scale,
++                "winding_reversed": bool(np.prod(scale) < 0),
++                "vertices_unchanged": True, "geometric_triangles_unchanged": True,
++                "display_indices_sha256": hashlib.sha256(triangles.tobytes()).hexdigest(),
++                "display_normals_sha256": hashlib.sha256(normals.tobytes()).hexdigest()}
+         records.append({"link": name, "shape": index, "original_color": before[index].tolist(),
+             "selected_linear_color": selected, "viewer_color": colors[index].tolist(),
+             "material_source": "manufacturer USD" if authored is None else "original URDF",
+             "manufacturer_material": str(material.GetPath()),
+-            "original_mesh_sha256": digest(rig / mesh.get("filename"))})
++            "original_mesh_sha256": digest(rig / mesh.get("filename")),
++            "display_orientation": orientation})
+     if len(records) != 13:
+         raise ValueError("Expected torso plus twelve original leg visuals")
+     selected_shapes = {r["shape"] for r in records}
+@@ -106,7 +142,7 @@
+     return {"repository": provenance["repository"], "commit": provenance["commit"],
+         "license": "BSD-3-Clause", "source_usd_sha256": digest(source), "base_visuals": records,
+         "sensor_colors_unchanged": True,
+-        "scope": "Material-only transfer by original link and exact original mesh; no imported geometry or physics"}
++        "scope": "Original-link materials and mirrored visual orientation; positions and geometric triangles unchanged; no physics edits"}
+ 
+ 
+ def prepare_appearance(robot, human, out, *, visible_sensor_meshes=False):

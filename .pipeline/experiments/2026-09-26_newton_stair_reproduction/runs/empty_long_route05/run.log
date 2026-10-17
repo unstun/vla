@@ -1,0 +1,91 @@
+Warp 1.17.0 initialized:
+   CUDA not enabled in this build
+   Devices:
+     "cpu"      : "arm"
+   Kernel cache:
+     /Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/warp-cache/1.17.0
+Module newton._src.geometry.inertia f6b4bd8 load on device 'cpu' took 14.80 ms  (cached)
+Module validate_and_correct_inertia_kernel_1ff2ac62 6ad45b8 load on device 'cpu' took 0.79 ms  (cached)
+Module newton._src.geometry.bvh 4a1c07f load on device 'cpu' took 3.25 ms  (cached)
+Module newton._src.solvers.mujoco.kernels 90c0c67 load on device 'cpu' took 0.91 ms  (cached)
+Module newton._src.sim.articulation 2e73608 load on device 'cpu' took 1.64 ms  (cached)
+{"time_s": 0.0, "phase": 1, "zero_flag": false}
+{"time_s": 1.0000000000000007, "phase": 17, "zero_flag": false}
+{"time_s": 5.400000000000138, "phase": 17, "zero_flag": true}
+{"time_s": 5.500000000000171, "phase": 17, "zero_flag": false}
+{"time_s": 6.500000000000505, "phase": 1, "zero_flag": false}
+{"time_s": 7.500000000000839, "phase": 4, "zero_flag": false}
+{"time_s": 8.501000000000728, "phase": 5, "zero_flag": false}
+{"time_s": 9.502000000000173, "phase": 6, "zero_flag": false}
+Module intersect_ray__locals___intersect_ray_kernel_962a4840 14d5500 load on device 'cpu' took 5.43 ms  (cached)
+{"sim": 12.039999999998766, "command": [0.0, 0.0, 0.0], "reason": "disconnected", "base": [-0.09643032565839282, 0.00018911956475107895, 0.3405090084359989], "backend_error": null, "goal_sent": false}
+{"sim": 13.039999999998212, "command": [0.0, 0.0, 0.0], "reason": "active", "base": [-0.09670099424344848, 0.0001876072036893244, 0.34068643195277803], "backend_error": null, "goal_sent": true}
+{"sim": 14.039999999997658, "command": [0.0, 0.0, 0.0], "reason": "active", "base": [-0.0967357725120241, 0.00018719450525574518, 0.3407508764981627], "backend_error": null, "goal_sent": true}
+{"sim": 15.039999999997104, "command": [0.0, 0.0, 0.0], "reason": "disconnected", "base": [-0.09673156954919229, 0.00018708140972343448, 0.34077356572644063], "backend_error": null, "goal_sent": true}
+{"sim": 16.03999999999662, "command": [0.0, 0.0, 0.0], "reason": "active", "base": [-0.09673182100959846, 0.000187043459336981, 0.3407806339023252], "backend_error": null, "goal_sent": true}
+{"sim": 17.039999999997843, "command": [0.0, 0.0, 0.0], "reason": "active", "base": [-0.09673405796870393, 0.00018702582656635148, 0.3407826562813814], "backend_error": null, "goal_sent": true}
+{"sim": 18.039999999999065, "command": [0.0, 0.0, 0.0], "reason": "case_failed", "base": [-0.09673543037041524, 0.00018702139077560797, 0.3407832464186999], "backend_error": null, "goal_sent": true}
+{
+  "finish_request": {
+    "backend_terminal_status": "FAILED",
+    "note": "Native navigation failed: {'cause': 'initial_heartbeat_missing', 'data': {'data': {'terminal_cause': 'stopped'}, 'ok': True, 'state': {'active_owner': None, 'epoch': 1, 'event_seq': 3, 'map_epoch': 'stair_reactive', 'map_revision': 1, 'run_id': 'empty_long_route05'}, 'status': 'ok'}, 'goal_id': 'long-goal', 'monotonic_s': 31.07191343, 'request_id': 'empty_long_route05-long-goal', 'route_id': 'pct:long-goal:1ef752136f54318b7b50', 'seq': 1, 'status': 'failed'}",
+    "observed_run_epoch_ns": 1790510656258109000,
+    "request_id": "empty_long_route05-long-goal",
+    "requested_at_monotonic_ns": 31163588430,
+    "run_id": "empty_long_route05",
+    "schema_version": 1
+  },
+  "physics_duration_s": 18.59999999999975,
+  "policy_steps": 378,
+  "control_steps": 378,
+  "physics_steps": 18600,
+  "startup_mode": "factory_pd",
+  "goal_sent": true,
+  "sensor_frames": 75,
+  "wall_s": 26.16519445800077,
+  "displacement_xyz_m": [
+    -0.0009839485665848885,
+    -6.33635867410031e-06,
+    0.0008384209620850291
+  ],
+  "max_command_norm": 0.0,
+  "nonzero_command_steps": 0,
+  "last_http_error": null,
+  "command_transport": {
+    "accepted_connections": 11,
+    "reconnects": 10,
+    "frames_received": 342,
+    "frames_sent": 0,
+    "protocol_errors": 10,
+    "io_errors": 0,
+    "last_protocol_error": "rejected_clock_observation",
+    "coalesced_frames": 6
+  },
+  "telemetry_transport": {
+    "accepted_connections": 1,
+    "reconnects": 0,
+    "frames_received": 0,
+    "frames_sent": 1575,
+    "protocol_errors": 0,
+    "io_errors": 0,
+    "last_protocol_error": null,
+    "coalesced_frames": 0
+  },
+  "final_command_reason": "case_failed",
+  "final_command_stale": true,
+  "claim": "Actual Newton physics and geometric sensing with the selected native build/configuration; outcome requires artifact review"
+}
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/newton_episode.py", line 341, in <module>
+    main()
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/newton_episode.py", line 324, in main
+    raise RuntimeError("Long route did not finish; original outcome is retained in result.json")
+RuntimeError: Long route did not finish; original outcome is retained in result.json
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/run_local_episode.py", line 226, in <module>
+    main()
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/run_local_episode.py", line 211, in main
+    worker.check_returncode()
+  File "/opt/homebrew/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 502, in check_returncode
+    raise CalledProcessError(self.returncode, self.args, self.stdout,
+subprocess.CalledProcessError: Command '['/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv/bin/python', '/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/newton_episode.py']' returned non-zero exit status 1.

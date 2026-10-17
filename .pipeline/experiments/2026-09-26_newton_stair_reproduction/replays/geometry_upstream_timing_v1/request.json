@@ -1,0 +1,33 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--memory=3g",
+    "--cpus=2",
+    "--name",
+    "vla-newton-replay-geometry-upstream-timing-v1",
+    "-e",
+    "ROS_DOMAIN_ID=213",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-e",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan36_geometry_v1:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/replays/geometry_upstream_timing_v1:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside.sh"
+  ],
+  "deadline_s": 120,
+  "condition": "old_positive",
+  "input_manifest_sha256": "1a5e87dc39c8d0a2558590eb637b1ba2ef86467dda2641f6ffc084aeadce4652",
+  "build_result_sha256": "05a2f2e827f514c01c25c262968033dee51ad92864bece627fccd7ae49d94876",
+  "native_build": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan36_geometry_v1"
+}

@@ -1,0 +1,730 @@
+--- before/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/flat_scene.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/flat_scene.py
+@@ -34,23 +34,30 @@
+ 
+ 
+ class FlatSceneRobot(StairRobot):
+-    def __init__(self, human, *, automatic_contact_capacity=True, obstacle_kind="human", startup_mode="policy"):
+-        if obstacle_kind not in ("human", "box") or (obstacle_kind == "human" and human is None):
++    def __init__(self, human, *, automatic_contact_capacity=True, obstacle_kind="human", startup_mode="policy",
++                 stance_hold=False, scenario=None, native_cpu=False):
++        if obstacle_kind not in ("human", "box", "none") or (obstacle_kind == "human" and human is None):
+             raise ValueError("Expected an explicit human or box control scene")
+         self.obstacle_kind = obstacle_kind
++        if native_cpu and obstacle_kind != "none":
++            raise ValueError("Native flat profile is restricted to the empty scene")
+         self.contact_scoring = {"physics_substeps_checked": 0, "maximum_candidate_count": 0,
+                                 "touching_substeps": 0, "minimum_surface_separation_m": None}
+-        self.scenario = json.loads((BASE / "repairs/2026-09-26_generic_occupancy/flat_inputs_v2/scene.json").read_text())
++        self.scenario = scenario or json.loads((BASE / "repairs/2026-09-26_generic_occupancy/flat_inputs_v2/scene.json").read_text())
+         source = BASE / "inputs/sensor_rig/lite3_pro_sensor_rig_real_with_interface.urdf"
+         self.sensor_mount = fixed_frame_transform(source, "mid360_scan_frame")
+         vertices = human.vertices(0.)[0] if human is not None else None
+ 
+         def add_scene(builder):
+-            floor = newton.Mesh(np.array([[-5.5,-5.5,0.],[5.5,-5.5,0.],[5.5,5.5,0.],[-5.5,5.5,0.]], dtype=np.float32),
++            xmin, xmax, ymin, ymax = self.scenario.get("floor_bounds_m", [-5.5, 5.5, -5.5, 5.5])
++            floor = newton.Mesh(np.array([[xmin,ymin,0.],[xmax,ymin,0.],[xmax,ymax,0.],[xmin,ymax,0.]], dtype=np.float32),
+                                 np.array([0,1,2,0,2,3], dtype=np.int32), compute_inertia=False)
+             self.building_shape = builder.add_shape_mesh(-1, mesh=floor,
+-                cfg=newton.ModelBuilder.ShapeConfig(mu=1.), label="flat_floor", color=(.58,.62,.67))
+-            for x,y,hx,hy in ((4.5,0.,.1,5.),(-4.5,0.,.1,5.),(0.,4.5,4.5,.1),(0.,-4.5,4.5,.1)):
++                cfg=newton.ModelBuilder.ShapeConfig(mu=1., has_shape_collision=not native_cpu), label="flat_floor", color=(.58,.62,.67))
++            if native_cpu:
++                builder.add_ground_plane(cfg=newton.ModelBuilder.ShapeConfig(mu=1., is_visible=False))
++            walls = () if obstacle_kind == "none" else ((4.5,0.,.1,5.),(-4.5,0.,.1,5.),(0.,4.5,4.5,.1),(0.,-4.5,4.5,.1))
++            for x,y,hx,hy in walls:
+                 builder.add_shape_box(-1, xform=wp.transform(wp.vec3(x,y,1.5)), hx=hx,hy=hy,hz=1.5,
+                                       cfg=newton.ModelBuilder.ShapeConfig(mu=1.), color=(.65,.67,.7))
+             # Exactly the visible USD triangles are used for physical contact.
+@@ -60,21 +67,27 @@
+                 mesh = newton.Mesh(vertices, human.visible_faces.reshape(-1), compute_inertia=False)
+                 self.human_contact_shape = builder.add_shape_mesh(-1, mesh=mesh,
+                     cfg=newton.ModelBuilder.ShapeConfig(mu=1., is_visible=False), label="official_human_exact_contact")
+-            else:
++            elif obstacle_kind == "box":
+                 self.human_contact_shape = builder.add_shape_box(-1,
+                     xform=wp.transform(wp.vec3(1.6, 0., .35)), hx=.275, hy=.275, hz=.35,
+                     cfg=newton.ModelBuilder.ShapeConfig(mu=1.), label="unclassified_box",
+                     color=(.55,.32,.12))
++            else:
++                self.human_contact_shape = -2  # No matching physical shape.
+ 
+         Lite3Newton.__init__(self, robot_source=source, scene_builder=add_scene,
+-                            spawn_xyz=(0.,0.,.14 if startup_mode == "pd_stand" else .35), spawn_yaw=0., newton_contacts=True,
++                            spawn_xyz=(0.,0.,.14 if startup_mode in ("pd_stand", "factory_pd") else .35), spawn_yaw=0., newton_contacts=not native_cpu,
+                             automatic_contact_capacity=automatic_contact_capacity,
+-                            contact_observer=self._score_contacts, startup_mode=startup_mode)
++                            contact_observer=self._score_contacts, startup_mode=startup_mode, stance_hold=stance_hold)
+ 
+     def _score_contacts(self, state, contacts):
+         """Read-only scoring before every 1 ms solver step; never a control input."""
+         metrics = self.contact_scoring
+         metrics["physics_substeps_checked"] += 1
++        if contacts is None:
++            if self.obstacle_kind != "none":
++                raise ValueError("Native contact scoring is restricted to the obstacle-free profile")
++            return
+         count = int(contacts.rigid_contact_count.numpy()[0])
+         first = contacts.rigid_contact_shape0.numpy()[:count]
+         second = contacts.rigid_contact_shape1.numpy()[:count]
+@@ -102,6 +115,8 @@
+         metrics["touching_substeps"] += int(nearest <= 0.)
+ 
+     def actor_contact_count(self):
++        if self.obstacle_kind == "none":
++            return 0
+         count = int(self.contacts.rigid_contact_count.numpy()[0])
+         first = self.contacts.rigid_contact_shape0.numpy()[:count]
+         second = self.contacts.rigid_contact_shape1.numpy()[:count]
+--- before/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/newton_episode.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/newton_episode.py
+@@ -1,5 +1,7 @@
+ """Actual Newton physics/sensing with commands from the archived native graph."""
+ from dataclasses import asdict
++from collections import deque
++from concurrent.futures import ThreadPoolExecutor
+ import hashlib
+ import json
+ import math
+@@ -36,11 +38,13 @@
+     request = json.loads((out / "episode_request.json").read_text())
+     identity = verify_inputs()
+     (out / "input_identity.json").write_text(json.dumps(identity, indent=2) + "\n")
+-    if request.get("scene") in ("flat_static", "flat_box"):
++    if request.get("scene") in ("flat_static", "flat_box", "flat_empty_long"):
+         from flat_scene import FlatSceneRobot, FlatStaticHuman
+-        human = None if request["scene"] == "flat_box" else FlatStaticHuman(out)
+-        robot = FlatSceneRobot(human, obstacle_kind="box" if human is None else "human",
+-                               startup_mode=request.get("startup_mode", "policy"))
++        human = FlatStaticHuman(out) if request["scene"] == "flat_static" else None
++        robot = FlatSceneRobot(human, obstacle_kind={"flat_box": "box", "flat_static": "human", "flat_empty_long": "none"}[request["scene"]],
++                               startup_mode=request.get("startup_mode", "policy"), stance_hold=request.get("stance_hold", False),
++                               native_cpu=request.get("physics_backend") == "native",
++                               scenario=json.loads((out / "inputs/stair_scenario.json").read_text()))
+     else:
+         robot = StairRobot()
+         human = OfficialHuman(out)
+@@ -64,32 +68,94 @@
+     failed_driver_at = None
+     applied_client = None
+     applied_log = (out / "applied_sent.jsonl").open("w")
++    asynchronous = request.get("async_sensor_evidence", False)
++    if asynchronous and (human is not None or request.get("scene") != "flat_empty_long"):
++        raise ValueError("Captured-state sensing is qualified only for the static empty scene")
+ 
+     def publish(kind, stamp, payload):
+         nonlocal wire_sequence
+         wire_sequence += 1
+         return telemetry.publish(encode_frame(kind, wire_sequence, stamp, payload))
+ 
++    def publish_body(pose, stamp, sequence):
++        body = BodyStateV2(tuple(pose["position"]), tuple(pose["quaternion"][1:] + pose["quaternion"][:1]),
++            tuple(pose["linear_world"]), tuple(pose["angular_world"]),
++            tuple(pose["linear_body"]), tuple(pose["angular_body"]), stamp, sequence, epoch)
++        publish(MessageType.BODY_STATE_V2, stamp, encode_body_state_v2_payload(body))
++
++    def physical_body_observer(current_robot):
++        # Publish freshly integrated poses within each 20 ms control interval.
++        # A slower-than-real-time CPU step must not withhold all localization
++        # until the complete policy interval. Never repeat/restamp an old pose.
++        if current_robot.steps % request.get("body_publish_substeps", 20) == 0:
++            publish_body(current_robot.body_and_sensor(), round(current_robot.physics_time()*1e9), current_robot.steps)
++
+     try:
++        if robot.startup_mode == "factory_pd":
++            from factory_navigation_startup import initialize
++            video_states.extend(initialize(robot, out))
+         estimate = clock.wait_ready(30)
+         commands.start()
+         telemetry.start()
++        if request.get("body_publish_substeps", 20) < 20:
++            robot.physics_observer = physical_body_observer
+         if request["applied_transport"] == "zmq":
+             from applied_channel import AppliedClient
+             applied_client = AppliedClient()
+         (out / "initial_clock.json").write_text(json.dumps(asdict(estimate), indent=2) + "\n")
+-        with (out / "telemetry.jsonl").open("w") as log, (out / "sensor.jsonl").open("w") as sensor_log, (out / "backend_states.jsonl").open("w") as backend_log:
+-            steps = round(request["max_physics_s"] / .02)
++        with (out / "telemetry.jsonl").open("w") as log, (out / "sensor.jsonl").open("w") as sensor_log, (out / "backend_states.jsonl").open("w") as backend_log, ThreadPoolExecutor(max_workers=1) as writer, ThreadPoolExecutor(max_workers=1) as scanner:
++            io_jobs, pending_scan = deque(), None
++            scan_index = 0
++
++            def save_line(stream, value):
++                stream.write(json.dumps(value)+"\n")
++                stream.flush()
++
++            def record(function, *arguments):
++                if asynchronous:
++                    io_jobs.append(writer.submit(function, *arguments))
++                else:
++                    function(*arguments)
++
++            def save_cloud(points, world, item):
++                path = out / item["file"]
++                np.savez_compressed(path, sensor_points=points, world_points=world)
++                item["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
++                save_line(sensor_log, item)
++
++            def publish_scan(data, index, captured_pose, captured_time):
++                points, world, info, actor, _ = data
++                capture_stamp = round(captured_time*1e9)
++                raw = points.astype(">f4").tobytes()
++                sensor = DualCloudSensorFrameV1(tuple(captured_pose["position"]),
++                    tuple(captured_pose["quaternion"][1:]+captured_pose["quaternion"][:1]),
++                    tuple(captured_pose["sensor_position"]),
++                    tuple(captured_pose["sensor_quaternion"][1:]+captured_pose["sensor_quaternion"][:1]),
++                    config_hash, index+1, len(points), raw, len(points), raw, 0, 0)
++                publish(MessageType.SENSOR_FRAME_DUAL_CLOUD_V1, capture_stamp, encode_dual_cloud_sensor_payload(sensor))
++                item = {"sim_time_s": captured_time, "stamp_ns": capture_stamp, "body_sensor": captured_pose,
++                        "sensor": info, "actor_scoring_only": actor, "file": f"clouds/{index:05d}.npz",
++                        "published_at_physics_s": robot.physics_time()}
++                clouds.append(item)
++                record(save_cloud, points, world, item)
++
++            steps = round((request["max_physics_s"] - robot.physics_time()) / .02)
+             for step in range(steps):
++                control_loop_started = time.monotonic()
++                while io_jobs and io_jobs[0].done():
++                    io_jobs.popleft().result()
++                if len(io_jobs) > 256:
++                    raise RuntimeError("Evidence writer backlog exceeds its declared bound")
+                 finish = None
+                 if (out / "native_failure.json").exists():
+                     raise RuntimeError((out / "native_failure.json").read_text())
+-                if time.monotonic() - started > 430:
++                if time.monotonic() - started > request["max_worker_wall_s"] - 30:
+                     raise TimeoutError("Local episode wall deadline")
+                 snapshot, remote_source, wire_command = state.current(time.monotonic_ns())
+                 command = (snapshot.command.vx, snapshot.command.vy, snapshot.command.wz)
+                 step_started = time.monotonic_ns()
+                 robot.step(command)
++                physics_finished = time.monotonic_ns()
+                 row = robot.telemetry()
+                 requested_command = command
+                 command = tuple(row["effective_command"])
+@@ -99,14 +165,13 @@
+                 pose = robot.body_and_sensor()
+                 sim_time = row["physics_time_s"]
+                 stamp = round(sim_time * 1e9)
+-                body = BodyStateV2(tuple(pose["position"]), tuple(pose["quaternion"][1:] + pose["quaternion"][:1]),
+-                     tuple(pose["linear_world"]), tuple(pose["angular_world"]),
+-                     tuple(pose["linear_body"]), tuple(pose["angular_body"]), stamp, step + 1, epoch)
+-                publish(MessageType.BODY_STATE_V2, stamp, encode_body_state_v2_payload(body))
++                if robot.physics_observer is None:
++                    publish_body(pose, stamp, step+1)
+                 row.update(command=list(command), requested_command=list(requested_command),
+                            command_sequence=snapshot.sequence, command_stale=snapshot.stale,
+                            command_reason=snapshot.reason, command_source_timestamp_linux_ns=remote_source,
+                            wall_s=time.monotonic() - started, body_sensor=pose, state_sequence=step + 1)
++                row["control_wall_s"] = (physics_finished-step_started)/1e9
+                 # Timestamp the evidence no later than the beginning of this
+                 # actual policy/physics update. Never stamp old state as new.
+                 try:
+@@ -120,6 +185,8 @@
+                         "raw_command": asdict(wire_command),
+                         "admitted_command": dict(zip(("vx", "vy", "wz"), requested_command)), "applied_command": cmd_dict,
+                         "control": {"startup_mode": robot.startup_mode, "phase": row["controller_phase"],
++                            "stance_mode": row.get("stance_mode", "OFF"),
++                            "policy_owns_joints": row.get("policy_owns_joints", True),
+                             "navigation_ready": robot.navigation_ready, "policy_observation_valid": robot.policy_calls > 0},
+                         "freshness": {"max_reader_age_s": 2., "atomic_replace": True},
+                         "state_epoch": {"state_sequence": step + 1, "telemetry_sequence": wire_sequence},
+@@ -131,49 +198,48 @@
+                     # The v1 applied-state schema requires a real policy-observation
+                     # error. During PD-only startup no such observation exists;
+                     # keep readiness missing rather than publish a fabricated zero.
+-                    if robot.policy_calls > 0:
++                    if robot.policy_calls > 0 and (applied_client is None or not asynchronous):
+                         atomic_json(external / "current_command.json", applied)
+                     if applied_client is not None and robot.policy_calls > 0:
+                         ack = applied_client.publish(applied)
+-                        applied_log.write(json.dumps({"sha256": ack["sha256"], "snapshot": applied, "ack": ack}) + "\n")
+-                        applied_log.flush()
++                        record(save_line, applied_log, {"sha256": ack["sha256"], "snapshot": applied, "ack": ack})
+                         finish = ack.get("finish_request")
+                         if finish is not None:
+                             atomic_json(external / "finish_request.json", finish)
+                 except ClockUnavailable:
+                     row["applied_snapshot_not_refreshed"] = "clock_unsynchronized"
++                if pending_scan is not None and pending_scan[0].done():
++                    future, index, captured_pose, captured_time = pending_scan
++                    publish_scan(future.result(), index, captured_pose, captured_time)
++                    pending_scan = None
+                 if (step + 1) % 5 == 0:
+                     actor_time = 0.0 if request.get("static_human", False) else sim_time
+-                    points, world, info, actor, audit = lidar.scan(len(clouds), actor_time)
+-                    raw = points.astype(">f4").tobytes()
+-                    sensor = DualCloudSensorFrameV1(tuple(pose["position"]), tuple(pose["quaternion"][1:] + pose["quaternion"][:1]),
+-                        tuple(pose["sensor_position"]), tuple(pose["sensor_quaternion"][1:] + pose["sensor_quaternion"][:1]),
+-                        config_hash, len(clouds) + 1, len(points), raw, len(points), raw, 0, 0)
+-                    publish(MessageType.SENSOR_FRAME_DUAL_CLOUD_V1, stamp, encode_dual_cloud_sensor_payload(sensor))
+-                    cloud_path = out / "clouds" / f"{len(clouds):05d}.npz"
+-                    np.savez_compressed(cloud_path, sensor_points=points, world_points=world)
+-                    item = {"sim_time_s": sim_time, "stamp_ns": stamp, "body_sensor": pose, "sensor": info,
+-                            "actor_scoring_only": actor, "file": str(cloud_path.relative_to(out)),
+-                            "sha256": hashlib.sha256(cloud_path.read_bytes()).hexdigest()}
+-                    clouds.append(item)
+-                    sensor_log.write(json.dumps(item) + "\n")
+-                    sensor_log.flush()
++                    if asynchronous:
++                        if pending_scan is not None:
++                            raise RuntimeError("Captured scan did not finish before the next sensor period")
++                        captured_state = robot.model.state()
++                        captured_state.body_q.assign(robot.state.body_q)
++                        future = scanner.submit(lidar.scan, scan_index, actor_time, override_pose=pose, captured_state=captured_state)
++                        pending_scan = (future, scan_index, pose, sim_time)
++                    else:
++                        publish_scan(lidar.scan(scan_index, actor_time), scan_index, pose, sim_time)
++                    scan_index += 1
+                     try:
+                         last_backend = json.loads((out / "backend_latest.json").read_text())
+                         goal_sent = bool(last_backend.get("jobs"))
+                         last_http_error = None
+-                        backend_log.write(json.dumps({"sim_time_s": sim_time, "data": last_backend}) + "\n")
+-                        backend_log.flush()
++                        record(save_line, backend_log, {"sim_time_s": sim_time, "data": last_backend})
+                     except Exception as error:
+                         last_http_error = str(error)
+                 if (step + 1) % 4 == 0:
+                     video_states.append({"physics_time_s": sim_time, "body_q": robot.state.body_q.numpy().tolist(),
+                         "joint_q": row["joint_q"], "command": list(command), "command_reason": snapshot.reason,
+                         "controller_phase": row["controller_phase"], "policy_calls": robot.policy_calls,
++                        "stance_mode": row.get("stance_mode", "OFF"),
++                        "policy_owns_joints": row.get("policy_owns_joints", True),
+                         "navigation_ready": robot.navigation_ready,
+                         "goal_sent": goal_sent, "last_backend_error": None if last_backend is None else last_backend["readiness"]["last_error"]})
+-                log.write(json.dumps(row) + "\n")
+-                log.flush()
++                record(save_line, log, row)
+                 rows.append(row)
+                 last_snapshot = snapshot
+                 if row["base_up_z"] < .5:
+@@ -198,6 +264,13 @@
+                         if sim_time - failed_driver_at < 1.:
+                             continue
+                     break
++                if request.get("pace_physics_wall", False):
++                    time.sleep(max(0., .02/request.get("real_time_factor", 1.)-(time.monotonic()-control_loop_started)))
++            if pending_scan is not None:
++                future, index, captured_pose, captured_time = pending_scan
++                publish_scan(future.result(timeout=2.), index, captured_pose, captured_time)
++            for future in io_jobs:
++                future.result(timeout=10.)
+         results.update(physics_duration_s=rows[-1]["physics_time_s"], policy_steps=robot.policy_calls,
+             control_steps=len(rows), physics_steps=robot.steps, startup_mode=robot.startup_mode,
+             goal_sent=goal_sent, sensor_frames=len(clouds), wall_s=time.monotonic() - started,
+@@ -247,9 +320,13 @@
+         print(json.dumps({k: v for k, v in results.items() if k != "last_backend"}, indent=2), flush=True)
+         if request["probe"] and not results["probe_passed"]:
+             raise RuntimeError("Native bridge probe did not meet its data/freshness gate")
++        if request.get("scene") == "flat_empty_long" and results.get("finish_request", {}).get("backend_terminal_status") != "FINISHED":
++            raise RuntimeError("Long route did not finish; original outcome is retained in result.json")
+     finally:
+         if robot.startup is not None:
+             (out / "startup_events.json").write_text(json.dumps(robot.startup.events, indent=2) + "\n")
++        if robot.stance is not None:
++            (out / "stance_status.json").write_text(json.dumps(robot.stance.status(), indent=2) + "\n")
+         (out / "video_states.json").write_text(json.dumps(video_states) + "\n")
+         (out / "sensor_manifest.json").write_text(json.dumps(clouds, indent=2) + "\n")
+         commands.stop()
+--- before/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/run_local_episode.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/run_local_episode.py
+@@ -68,18 +68,36 @@
+     parser.add_argument("--geometry-obstacles", action="store_true")
+     parser.add_argument("--static-human", action="store_true")
+     parser.add_argument("--planner-config", type=Path)
+-    parser.add_argument("--scene", choices=("building", "flat_static", "flat_box"), default="building")
++    parser.add_argument("--scene", choices=("building", "flat_static", "flat_box", "flat_empty_long"), default="building")
+     parser.add_argument("--goal-wall-budget", type=float, default=35.0)
+-    parser.add_argument("--startup-mode", choices=("policy", "pd_stand"), default="policy")
++    parser.add_argument("--startup-mode", choices=("policy", "pd_stand", "factory_pd"), default="policy")
++    parser.add_argument("--stance-hold", action="store_true")
++    parser.add_argument("--physics-backend", choices=("warp", "native"), default="warp")
++    parser.add_argument("--real-time-factor", type=float, default=1.)
+     args = parser.parse_args()
++    long_route = args.scene == "flat_empty_long"
++    if not .1 <= args.real_time_factor <= 1.:
++        parser.error("real-time-factor must be in [.1,1]")
++    if args.real_time_factor != 1. and args.physics_backend != "native":
++        parser.error("Explicit wall pacing requires the native CPU profile")
++    if args.physics_backend == "native" and not long_route:
++        parser.error("Native empty-floor backend is restricted to the explicit long route")
++    if long_route and not (args.geometry_obstacles and args.stance_hold):
++        parser.error("long empty route requires geometry-only planning and PD stance hold")
++    if args.probe and long_route:
++        parser.error("Use the separate control qualification before the full long-route trial")
++    if args.stance_hold and args.scene == "building":
++        parser.error("PD stance adapter is qualified for explicit flat scenes only")
++    if args.startup_mode == "factory_pd" and not (long_route and args.stance_hold):
++        parser.error("factory_pd requires the explicit empty long route and stance hold")
+     if args.startup_mode == "pd_stand" and (args.scene == "building" or not args.geometry_obstacles):
+         parser.error("pd_stand is qualified only for geometry-only flat scenes")
+     if args.scene == "flat_static" and not (args.geometry_obstacles and args.static_human):
+         parser.error("flat_static requires geometry obstacles and a static human")
+     if args.scene == "flat_box" and not args.geometry_obstacles:
+         parser.error("flat_box requires geometry obstacles")
+-    if not 1.0 <= args.goal_wall_budget <= 400.0:
+-        parser.error("goal-wall-budget must be in [1,400] seconds")
++    if not 1.0 <= args.goal_wall_budget <= (1500.0 if long_route else 400.0):
++        parser.error("goal-wall-budget exceeds the declared scene limit")
+     build = args.native_build.resolve()
+     out = Path(os.environ["NEWTON_RUN_DIR"])
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+@@ -112,8 +130,9 @@
+         shutil.copyfile(driver, out / "executed_geometry_driver.py")
+     for name in ("pilot.json", "stair_scenario.json"):
+         shutil.copyfile(BASE / "inputs" / name, out / "inputs" / name)
+-    if args.scene in ("flat_static", "flat_box"):
+-        scene_root = BASE / "repairs/2026-09-26_generic_occupancy/flat_inputs_v2"
++    if args.scene in ("flat_static", "flat_box", "flat_empty_long"):
++        scene_root = BASE / ("repairs/2026-09-27_pd_long_route/inputs" if long_route
++                             else "repairs/2026-09-26_generic_occupancy/flat_inputs_v2")
+         scene_identity = json.loads((scene_root / "manifest.json").read_text())
+         for name, expected in scene_identity["files"].items():
+             if hashlib.sha256((scene_root / name).read_bytes()).hexdigest() != expected:
+@@ -121,8 +140,8 @@
+         shutil.copyfile(scene_root / "scene.json", out / "inputs/stair_scenario.json")
+         shutil.copyfile(scene_root / "manifest.json", out / "flat_scene_identity.json")
+         shutil.copyfile(scene_root / "flat_floor.pickle", out / "inputs/flat_floor.pickle")
+-        publisher = scene_root.parent / "flat_support_publisher.py"
+-        publisher_identity = json.loads((scene_root.parent / "flat_publisher_identity.json").read_text())
++        publisher = BASE / "repairs/2026-09-26_generic_occupancy/flat_support_publisher.py"
++        publisher_identity = json.loads(publisher.with_name("flat_publisher_identity.json").read_text())
+         if hashlib.sha256(publisher.read_bytes()).hexdigest() != publisher_identity["output_sha256"]:
+             raise ValueError("Flat support publisher identity changed")
+         shutil.copyfile(publisher, out / "executed_flat_support_publisher.py")
+@@ -132,16 +151,25 @@
+         "native_build": str(build), "geometry_obstacles": args.geometry_obstacles,
+         "scene": args.scene,
+         "startup_mode": args.startup_mode,
++        "stance_hold": args.stance_hold,
++        "body_publish_substeps": 5 if long_route else 20,
++        "async_sensor_evidence": long_route,
++        "physics_backend": args.physics_backend,
++        "pace_physics_wall": args.physics_backend == "native",
++        "real_time_factor": args.real_time_factor,
+         "static_human": args.static_human,
+         "goal_wall_budget_s": args.goal_wall_budget,
+         "planner_config_source": str(planner_config),
+         "planner_config_sha256": hashlib.sha256((out / "planner.yaml").read_bytes()).hexdigest(),
+-        "max_physics_s": (8 if args.startup_mode == "pd_stand" else 3) if args.probe else 35, "max_worker_wall_s": 500,
+-        "source_condition": ("flat scene / unclassified box / original sensor rig; native PCT/SCAN/controller; no obstacle metadata"
++        "max_physics_s": (8 if args.startup_mode == "pd_stand" else 3) if args.probe else (150 if long_route else 35),
++        "max_worker_wall_s": 1700 if long_route else 500,
++        "source_condition": ("12 m empty flat scene / original sensor rig / native PCT + SCAN42 + controller / PD-RL switching"
++                             if long_route else "flat scene / unclassified box / original sensor rig; native PCT/SCAN/controller; no obstacle metadata"
+                              if args.scene == "flat_box" else "flat scene / stationary official human / original sensor rig; native PCT/SCAN/controller; no obstacle metadata"
+                              if args.scene == "flat_static" else "original Building/sensor rig; native geometry-only SCAN candidate, unchanged PCT/controller"
+                              if args.geometry_obstacles else "original Building/right official human/sensor rig; unchanged PCT/SCAN/controller/tracker"),
+-        "sensor_condition": ("geometric emitter-owner exclusion and actual static box geometry; no human mesh; not RTX"
++        "sensor_condition": ("geometric emitter-owner exclusion and physical floor; no obstacle or human mesh; not RTX"
++                             if long_route else "geometric emitter-owner exclusion and actual static box geometry; no human mesh; not RTX"
+                              if args.scene == "flat_box" else "geometric emitter-owner exclusion and authored visible human meshes; not RTX"
+                              if args.geometry_obstacles else "qualified geometric emitter-owner exclusion, not RTX"),
+         "control_timing_condition": "original sensor/command freshness watchdogs and MAVROS-derived clock mapping; total goal wall budget recorded separately",
+@@ -149,10 +177,19 @@
+     for path in (BASE / "scripts").glob("*.py"):
+         shutil.copyfile(path, out / ("executed_" + path.name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
++    if args.stance_hold:
++        shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
++        shutil.copyfile(BASE.parent / "2026-09-16_pi_cortex_harnessvln/isaac_runner/stance_hold.py", out / "executed_stance_hold.py")
++    if args.startup_mode == "factory_pd":
++        factory = BASE.parent / "2026-09-27_lite3_factory_runtime_audit"
++        for name in ("factory_process.py", "factory_actor.cpp", "prepare_algorithm_inputs.py", "run_newton_factory.py"):
++            shutil.copyfile(factory / name, out / ("executed_" + name))
+     if args.startup_mode == "pd_stand":
+         qualified = BASE.parent / "2026-09-26_newton_macos_policy"
+         shutil.copyfile(qualified / "scripts/pd_startup.py", out / "executed_pd_startup.py")
+         shutil.copyfile(qualified / "runtime/lite3_sdk_spline/build_identity.json", out / "sdk_build_identity.json")
++    (out / "execution_sources.json").write_text(json.dumps({p.name: hashlib.sha256(p.read_bytes()).hexdigest()
++        for p in out.glob("executed_*")}, indent=2)+"\n")
+     sources = BASE / "runtime_sources"
+     pythonpath = str(BASE / "runtime/foreground_py310") + ":" + ":".join(
+         str(sources / p) for p in ("backend_adapter", "backend_ros", "bridge", "pct_runtime/python"))
+@@ -176,7 +213,7 @@
+     with (out / "native_graph.log").open("w") as log:
+         process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+         try:
+-            worker = subprocess.run([sys.executable, str(BASE / "scripts/newton_episode.py")], timeout=500)
++            worker = subprocess.run([sys.executable, str(BASE / "scripts/newton_episode.py")], timeout=1700 if long_route else 500)
+             worker.check_returncode()
+         finally:
+             copyback_ok = True
+--- before/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/native_graph.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/native_graph.py
+@@ -43,11 +43,15 @@
+         launch("clock_responder", [py, str(BASE / "scripts/clock_sync.py")])
+         if request["applied_transport"] == "zmq":
+             launch("applied_receiver", [py, str(BASE / "scripts/applied_channel.py"), "--output", str(out)])
+-        flat = request.get("scene") in ("flat_static", "flat_box")
++        flat = request.get("scene") in ("flat_static", "flat_box", "flat_empty_long")
++        long_route = request.get("scene") == "flat_empty_long"
+         map_path = (BASE / "repairs/2026-09-26_generic_occupancy/flat_inputs_v2/flat_floor.pickle"
+                     if flat else BASE / "inputs/new_building.pickle")
+         pct_script = str(BASE / "repairs/2026-09-26_generic_occupancy/flat_support_publisher.py"
+                          if flat else sources / "bridge/lite3_sim_bridge/pct_sim_clock_publisher.py")
++        if long_route:
++            map_path = BASE / "repairs/2026-09-27_pd_long_route/inputs/flat_floor.pickle"
++            pct_script = str(BASE / "scripts/long_support_publisher.py")
+         launch("pct_support", [py, pct_script, "--ros-args", "-p", "map_path:=" + str(map_path), "-p", "use_sim_time:=true"])
+         if not request.get("geometry_obstacles", False):
+             launch("tracking_ground", [py, pct_script, "--ros-args", "-r", "__node:=pct_tracking_ground_publisher",
+@@ -80,6 +84,8 @@
+                       if request.get("geometry_obstacles", False) else BASE / "references/archived_pilot_driver.py")
+             if request.get("startup_mode", "policy") == "pd_stand":
+                 driver = out / "executed_pd_geometry_driver.py"
++            if long_route:
++                driver = out / "executed_long_route_driver.py"
+             launch("driver", [py, str(driver),
+                                "--run-root", str(out), "--run-id", out.name, "--http-port", "8785"])
+         (out / "native_commands.json").write_text(json.dumps(commands, indent=2) + "\n")
+--- before/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/render_episode.py
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/render_episode.py
+@@ -233,22 +233,26 @@
+         raise ValueError("No recorded physics frames")
+     for name in ("render_episode.py", "scene_assets.py", "robot_scene.py", "flat_scene.py"):
+         shutil.copyfile(Path(__file__).with_name(name), out / ("executed_" + name))
+-    if episode_request.get("scene") in ("flat_static", "flat_box"):
++    long_route = episode_request.get("scene") == "flat_empty_long"
++    if episode_request.get("scene") in ("flat_static", "flat_box", "flat_empty_long"):
+         from flat_scene import FlatSceneRobot, FlatStaticHuman
+-        human = None if episode_request["scene"] == "flat_box" else FlatStaticHuman(out)
+-        robot = FlatSceneRobot(human, obstacle_kind="box" if human is None else "human",
+-                               startup_mode=episode_request.get("startup_mode", "policy"))
++        human = FlatStaticHuman(out) if episode_request["scene"] == "flat_static" else None
++        robot = FlatSceneRobot(human, obstacle_kind={"flat_box":"box", "flat_static":"human", "flat_empty_long":"none"}[episode_request["scene"]],
++                               startup_mode=episode_request.get("startup_mode", "policy"), stance_hold=episode_request.get("stance_hold", False),
++                               native_cpu=episode_request.get("physics_backend") == "native",
++                               scenario=json.loads((source / "inputs/stair_scenario.json").read_text()) if long_route else None)
+     else:
+         robot = StairRobot()
+         human = OfficialHuman(out)
+     parts = prepare_appearance(robot, human, out, visible_sensor_meshes=episode_request.get("geometry_obstacles", False))
+-    scene_caption = ("Flat floor + unclassified box" if episode_request.get("scene") == "flat_box"
++    scene_caption = ("Empty flat floor | PCT global route + SCAN local curves" if long_route
++                     else "Flat floor + unclassified box" if episode_request.get("scene") == "flat_box"
+                      else "Flat floor + stationary human" if episode_request.get("scene") == "flat_static"
+                      else "Original Building + stationary human" if episode_request.get("static_human", False)
+                      else "Original Building + animated human")
+     xforms = wp.array([wp.transform_identity()], dtype=wp.transform, device="cpu")
+     scales = wp.array([[1., 1., 1.]], dtype=wp.vec3, device="cpu")
+-    curves = []
++    curves, routes = [], []
+     backend_states = [json.loads(line) for line in (source / "backend_states.jsonl").read_text().splitlines()]
+     observations = source / "artifacts/reactive_observations.jsonl"
+     if observations.exists():
+@@ -256,6 +260,8 @@
+             row = json.loads(line)
+             if row["event"] == "bspline" and row["clock_ns"] is not None:
+                 curves.append(row)
++            elif row["event"] == "pct_route" and row["clock_ns"] is not None:
++                routes.append(row)
+     frames = out / "frames"
+     frames.mkdir()
+     manifest = []
+@@ -264,8 +270,8 @@
+     viewer = newton.viewer.ViewerGL(width=1280, height=720, vsync=False, headless=True)
+     try:
+         viewer.set_model(robot.model)
+-        flat_view = episode_request.get("scene") in ("flat_static", "flat_box")
+-        viewer.camera.fov = 45.0 if startup_view or args.view == "rear-right" else 60.0 if flat_view else 80.0
++        flat_view = episode_request.get("scene") in ("flat_static", "flat_box", "flat_empty_long")
++        viewer.camera.fov = 50.0 if long_route else 45.0 if startup_view or args.view == "rear-right" else 60.0 if flat_view else 80.0
+         # Pinned RendererGL controls. Remove the default saturated sky cast;
+         # the archived scene used neutral dome lighting, not a camera spotlight.
+         viewer.renderer.sky_upper = viewer.renderer.sky_lower = (.9, .9, .9)
+@@ -289,6 +295,9 @@
+                 # or planner input uses this camera.
+                 position = np.array([1.5, 3.6, 2.7])
+                 target = np.array([1.5, 0., .6])
++            if long_route:
++                position = base_position + np.array([-1.2, -1.5, .9])
++                target = base_position + np.array([.3, 0., -.05])
+             if startup_view:
+                 position = np.array([.7, 1.1, .7])
+                 target = np.array([0., 0., .19])
+@@ -302,6 +311,19 @@
+                                if human is not None else (None, {"clip": "none", "frame": 0}))
+             viewer.begin_frame(t)
+             viewer.log_state(robot.state)
++            current_routes = [r for r in routes if r["clock_ns"] <= round(t * 1e9)]
++            if long_route:
++                # Display-only metre grid; never included in the ray scene.
++                starts, ends = [], []
++                for x in range(-2, 16):
++                    starts.append([x,-3.,.005]); ends.append([x,3.,.005])
++                for y in range(-3, 4):
++                    starts.append([-2.,y,.005]); ends.append([15.,y,.005])
++                viewer.log_lines("metre_grid", wp.array(starts, dtype=wp.vec3), wp.array(ends, dtype=wp.vec3), colors=(.35,.37,.39))
++            if current_routes:
++                points = np.array([[p["pose"]["position"][k] for k in ("x","y","z")]
++                                   for p in current_routes[-1]["data"]["path"]["poses"]], dtype=np.float32)
++                viewer.log_lines("pct_route", wp.array(points[:-1], dtype=wp.vec3), wp.array(points[1:], dtype=wp.vec3), colors=(1.,.55,.05))
+             for part in parts:
+                 part["points"].assign(vertices[part["corners"]])
+                 name = "official_human/" + part["name"]
+@@ -330,7 +352,26 @@
+             command = row["command"]
+             detail = (f"Phase: {row['controller_phase']} | body height: {row['joint_q'][2]:.3f} m | policy calls: {row['policy_calls']}"
+                       if startup_view else f"Applied vx/vy/wz: {command[0]:+.3f} / {command[1]:+.3f} / {command[2]:+.3f}   |   native curve messages: {len(available)}")
++            if long_route:
++                mode = row.get("stance_mode", row["controller_phase"])
++                if mode == "FACTORY":
++                    mode = row["controller_phase"]
++                distance = float(np.linalg.norm(base_position[:2] - np.array(robot.scenario["goal_ground_xyz_m"][:2])))
++                detail = f"Control: {mode} | goal distance: {distance:.2f} m | command vx: {command[0]:+.2f} m/s | curve messages: {len(available)}"
+             draw.text((22, 53), detail, font=small, fill=(153, 216, 239))
++            if long_route:
++                left, right, top, bottom = frame.width-360, frame.width-20, 115, 245
++                draw.rectangle((left,top,right,bottom), fill=(20,27,37), outline=(120,130,140), width=2)
++                def point(p):
++                    return (left+20+(float(p[0])+1.)/14.*300., top+65-float(p[1])*35.)
++                draw.text((left+10,top+5), "12 m route | orange: PCT", font=small, fill=(255,207,128))
++                if current_routes:
++                    draw.line([point(p) for p in points], fill=(255,165,45), width=3)
++                track = [point(r["joint_q"]) for r in rows[:i+1]]
++                if len(track)>1:
++                    draw.line(track, fill=(80,205,255), width=3)
++                bx,by=point(base_position)
++                draw.ellipse((bx-5,by-5,bx+5,by+5), fill=(245,245,245))
+             draw.rectangle((0, frame.height-43, frame.width, frame.height), fill=(15, 20, 29))
+             observed_states = [s for s in backend_states if s["sim_time_s"] <= t]
+             status = "waiting for original driver"
+@@ -373,8 +414,8 @@
+         "source_states_sha256": digest(source / "video_states.json"), "video": str(video),
+         "video_sha256": digest(video), "frames": len(rows), "fps": 12.5,
+         "first_physics_s": rows[0]["physics_time_s"], "last_physics_s": rows[-1]["physics_time_s"],
+-        "display_camera_fov_degrees": 45.0 if startup_view or args.view == "rear-right" else 60.0 if flat_view else 80.0,
+-        "display_camera_mode": "rear_right" if args.view == "rear-right" else "startup_close_side" if startup_view else "fixed_flat_side" if flat_view else "original_follow",
++        "display_camera_fov_degrees": 50.0 if long_route else 45.0 if startup_view or args.view == "rear-right" else 60.0 if flat_view else 80.0,
++        "display_camera_mode": "long_route_follow" if long_route else "rear_right" if args.view == "rear-right" else "startup_close_side" if startup_view else "fixed_flat_side" if flat_view else "original_follow",
+         "appearance_sha256": digest(out / "appearance.json"),
+         "render_only_no_physics_steps": robot.steps == 0,
+         "claim": "Replay visualization of actual logged physics; no synthesized robot trajectory or live-render timing claim"}, indent=2) + "\n")
+--- before/.pipeline/experiments/2026-09-26_newton_macos_policy/scripts/lite3_newton.py
++++ .pipeline/experiments/2026-09-26_newton_macos_policy/scripts/lite3_newton.py
+@@ -41,15 +41,20 @@
+ class Lite3Newton:
+     def __init__(self, *, robot_source=None, scene_builder=None, spawn_xyz=(0., 0., .35),
+                  spawn_yaw=0.0, newton_contacts=False, automatic_contact_capacity=False,
+-                 contact_observer=None, startup_mode="policy"):
+-        if startup_mode not in ("policy", "pd_stand"):
++                 contact_observer=None, startup_mode="policy", stance_hold=False):
++        if startup_mode not in ("policy", "pd_stand", "factory_pd"):
+             raise ValueError("Unknown startup mode: " + str(startup_mode))
+         self.startup_mode = startup_mode
+         self.startup = None
+         if startup_mode == "pd_stand":
+             from pd_startup import PDStartup, SDK_PREPARE
+             self.startup = PDStartup(Q0)
+-        initial_q = Q0 if self.startup is None else SDK_PREPARE
++        if startup_mode == "factory_pd":
++            from pd_startup import SDK_PREPARE
++            if not stance_hold:
++                raise ValueError("Factory startup requires PD stance hold")
++        self.factory_startup_complete = startup_mode != "factory_pd"
++        initial_q = SDK_PREPARE if startup_mode in ("pd_stand", "factory_pd") else Q0
+         self.input_identity = verify_inputs()
+         self.session, self.input_name, self.output_name = make_session()
+         builder = newton.ModelBuilder(up_axis=newton.Axis.Z)
+@@ -100,6 +105,7 @@
+         self.contacts = self.collision_pipeline.contacts() if newton_contacts else None
+         self.contact_capacity = self.solver.get_max_contact_count() if newton_contacts else None
+         self.contact_observer = contact_observer
++        self.physics_observer = None
+         self.state = self.model.state()
+         self.next_state = self.model.state()
+         self.control = self.model.control()
+@@ -141,6 +147,10 @@
+             raise ValueError("Direct-control import changed the declared MJCF actuator order")
+         self.max_observation_mapping_error = 0.0
+         self.max_applied_torque_error = 0.0
++        self.stance = None
++        if stance_hold:
++            from newton_stance import NewtonStance
++            self.stance = NewtonStance(self)
+ 
+     def native_array(self, name):
+         if self.solver.use_mujoco_cpu:
+@@ -198,23 +208,30 @@
+         command = np.asarray(command, dtype=np.float32)
+         if command.shape != (3,) or not np.isfinite(command).all():
+             raise ValueError("Finite vx, vy, yaw-rate required")
++        if not self.factory_startup_complete:
++            raise RuntimeError("Factory initialization must finish before navigation updates")
+         if self.startup is not None:
+             q, qd = self.state.joint_q.numpy(), self.state.joint_qd.numpy()
+             self.startup.advance(self.steps * SIM_DT, q[self.q_indices], qd[self.qd_indices],
+                                  float(q[2]), float(rotation_matrix(q[[6, 3, 4, 5]])[2, 2]),
+                                  float(np.linalg.norm(qd[:3])), float(np.linalg.norm(qd[3:6])))
+         self.effective_command = command.copy() if self.navigation_ready else np.zeros(3, np.float32)
++        previous_target = self.target.copy()
++        previous_kp, previous_kd = np.copy(self.motor_kp), np.copy(self.motor_kd)
+         if self.startup is None or self.startup.phase in ("handoff", "policy"):
+             self.infer(self.effective_command)
++        hold_active = self.stance is not None and self.navigation_ready
++        if hold_active:
++            self.stance.update(self.effective_command, previous_target, previous_kp, previous_kd)
+         for _ in range(round(POLICY_DT / SIM_DT)):
+-            if self.startup is not None:
++            if self.startup is not None and not hold_active:
+                 self.target, self.target_velocity, self.motor_kp, self.motor_kd = self.startup.motor_command(
+                     self.steps * SIM_DT, self.policy_target)
+             self._motor_substep()
+ 
+     @property
+     def navigation_ready(self):
+-        return self.startup is None or self.startup.ready
++        return self.factory_startup_complete and (self.startup is None or self.startup.ready)
+ 
+     def _motor_substep(self, *, feedforward_torque=None):
+         q = self.state.joint_q.numpy()[self.q_indices]
+@@ -242,6 +259,8 @@
+                 raise RuntimeError(f"Contact capacity exceeded before solver step: {contact_count} > {self.contact_capacity}")
+             if self.contact_observer is not None:
+                 self.contact_observer(self.state, self.contacts)
++        elif self.contact_observer is not None:
++            self.contact_observer(self.state, None)
+         self.solver.step(self.state, self.next_state, self.control, self.contacts, SIM_DT)
+         self.state, self.next_state = self.next_state, self.state
+         self.steps += 1
+@@ -250,6 +269,8 @@
+         self.max_applied_torque_error = max(error, self.max_applied_torque_error)
+         if error > 1e-4 or not np.isfinite(self.native_array("qpos")).all():
+             raise ValueError(f"Invalid applied force/state at physics step {self.steps}")
++        if self.physics_observer is not None:
++            self.physics_observer(self)
+ 
+     def telemetry(self):
+         q = self.state.joint_q.numpy()
+@@ -264,7 +285,8 @@
+                 "controller_phase": "policy" if self.startup is None else self.startup.phase,
+                 "navigation_ready": self.navigation_ready, "policy_calls": self.policy_calls,
+                 "effective_command": self.effective_command.tolist(),
+-                "motor_kp": self.motor_kp, "motor_kd": self.motor_kd,
++                "motor_kp": np.asarray(self.motor_kp).tolist(), "motor_kd": np.asarray(self.motor_kd).tolist(),
++                **({} if self.stance is None else self.stance.row),
+                 "target_velocity": self.target_velocity.tolist(),
+                 "joint_q": q.tolist(), "joint_qd": qd.tolist(),
+                 "base_up_z": float(rotation[2, 2]), "contacts": contacts,
+--- before/.pipeline/experiments/2026-09-26_newton_macos_policy/scripts/run_bounded.py
++++ .pipeline/experiments/2026-09-26_newton_macos_policy/scripts/run_bounded.py
+@@ -11,6 +11,7 @@
+ import time
+ 
+ BASE = Path(__file__).resolve().parents[1]
++MAX_DEADLINE_S = 600
+ 
+ 
+ def main():
+@@ -19,7 +20,7 @@
+     parser.add_argument("--deadline", type=float, default=600)
+     parser.add_argument("command", nargs=argparse.REMAINDER)
+     args = parser.parse_args()
+-    if not re.fullmatch(r"[A-Za-z0-9_]+", args.run_id) or not 0 < args.deadline <= 600:
++    if not re.fullmatch(r"[A-Za-z0-9_]+", args.run_id) or not 0 < args.deadline <= MAX_DEADLINE_S:
+         parser.error("invalid run identity or deadline")
+     command = args.command[1:] if args.command[:1] == ["--"] else args.command
+     if not command:

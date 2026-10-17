@@ -1,0 +1,44 @@
+{
+  "stage": "experiment + analysis",
+  "mode": "cause audit only; original implementation/configuration unchanged",
+  "version": "v4",
+  "v4_source_mismatches": [],
+  "native_source_or_install_mismatches": [],
+  "replay": {
+    "moving_curves": 0,
+    "checked_seeds": 886,
+    "wall_s": 17.49173625000185,
+    "file": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/replays/v4_cause_replay01/review.json"
+  },
+  "frozen_seed": {
+    "search_status": 0,
+    "path_nodes": 15,
+    "optimizer_success": false,
+    "repeat_output_exact": true,
+    "same_position_height_controls": {
+      "initial_curve_4_recorded": 1,
+      "initial_curve_4_seed_plateau": 0,
+      "initial_curve_4_below_voxel_boundary": 0,
+      "initial_curve_4_above_voxel_boundary": 1,
+      "initial_curve_5_recorded": 1,
+      "initial_curve_5_seed_plateau": 0,
+      "initial_curve_5_below_voxel_boundary": 0,
+      "initial_curve_5_above_voxel_boundary": 1,
+      "returned_curve_4_recorded": 1,
+      "returned_curve_4_seed_plateau": 0,
+      "returned_curve_4_below_voxel_boundary": 0,
+      "returned_curve_4_above_voxel_boundary": 1,
+      "returned_curve_5_recorded": 1,
+      "returned_curve_5_seed_plateau": 0,
+      "returned_curve_5_below_voxel_boundary": 0,
+      "returned_curve_5_above_voxel_boundary": 1
+    },
+    "initial_plateau_z_m": 0.44864730834960936,
+    "first_blocked_z_m": 0.4598216964694577,
+    "height_deviation_m": 0.011174388119848333,
+    "initial_returned_z_max_difference": 0.0,
+    "body_yaw_query_does_not_clear_blocked_samples": true
+  },
+  "root_cause": "Captured short seed is feasible, but local hard-PVA cubic fit leaves its known-free height layer. Native original SCAN zeroes the Z gradient, so optimizer retries cannot repair this vertical mismatch in the captured case. The rejected rear-circle queries are UnknownObstacle, not a measured solid obstacle.",
+  "boundary": "Exact first captured seed reproduced against frozen original measured inputs; does not prove every later failure has the same cause or that a future fix completes the whole Building route. No v5 change or new physics episode."
+}

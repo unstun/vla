@@ -1,0 +1,33 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--memory=3g",
+    "--cpus=2",
+    "--name",
+    "vla-newton-replay-v5-building-measured-baseline01",
+    "-e",
+    "ROS_DOMAIN_ID=213",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-e",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan43_prefix_diagnostic_v2:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/replays/v5_building_measured_baseline01:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside.sh"
+  ],
+  "deadline_s": 120,
+  "condition": "fresh_live",
+  "input_manifest_sha256": "54713b51b5a367f65dfc79442860990079d4ed9b68a348a3c76d64b5eabface5",
+  "build_result_sha256": "6d71a30c4699b5e1f4c48c10436aaaaea8cf23b858535ec2f7a2f408519dbff3",
+  "native_build": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan43_prefix_diagnostic_v2"
+}

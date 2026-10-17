@@ -1,0 +1,33 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--memory=3g",
+    "--cpus=2",
+    "--name",
+    "vla-newton-replay-flat-human-behind-native40-v1",
+    "-e",
+    "ROS_DOMAIN_ID=213",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-e",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan40_geometry_v1:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/replays/flat_human_behind_native40_v1:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside.sh"
+  ],
+  "deadline_s": 120,
+  "condition": "old_positive",
+  "input_manifest_sha256": "a23c253b18162b069b8b29baac92fe7e61ea82fa74218be22d873bb05eb75695",
+  "build_result_sha256": "df3418e2abb19b64e5b27d76551a82a35dbaa2f28aaa604b440eca181386ad8d",
+  "native_build": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan40_geometry_v1"
+}

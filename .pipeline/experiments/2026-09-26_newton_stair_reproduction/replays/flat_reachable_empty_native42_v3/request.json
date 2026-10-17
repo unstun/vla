@@ -1,0 +1,33 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--memory=3g",
+    "--cpus=2",
+    "--name",
+    "vla-newton-replay-flat-reachable-empty-native42-v3",
+    "-e",
+    "ROS_DOMAIN_ID=213",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-e",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan42_geometry_v3:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/replays/flat_reachable_empty_native42_v3:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside.sh"
+  ],
+  "deadline_s": 120,
+  "condition": "old_positive",
+  "input_manifest_sha256": "d73fc2eb92c78b0e16c99f54f239397f3aaf272748c8975579f56ca184101bff",
+  "build_result_sha256": "4a5302e297482c5093e475f6fea553ac4e2d4d7e0347a823e324ab9f6ddf22a4",
+  "native_build": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan42_geometry_v3"
+}

@@ -1,0 +1,41 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--cpus=2",
+    "--memory=4g",
+    "--name",
+    "vla-v5-frontier-audit",
+    "-e",
+    "ROS_DOMAIN_ID=218",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction:/base:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_v5_frontier:/audit:rw",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan44_height_v5:/workspace:ro",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/audit/inside.sh"
+  ],
+  "deadline_s": 240,
+  "source_files": {
+    "prepare_inputs.py": "b2dd2a149406f0f54e21a607afeb30929811994559c7827563bc5833a943fddf",
+    "inside.sh": "4c31238f49f037cc6e39f89f73d060c1681c89f2b30fa7c05f1ddac995965f0b",
+    "probe_source/CMakeLists.txt": "f875467910dbdb2086deeaffaccbe3541c8c33d2123b1f2325141377c9f3138c",
+    "probe_source/package.xml": "4ebc137341c572ee1e0731e8436d4a032c0a4219ae7fa9b114e67a2fc8947575",
+    "probe_source/src/frontier_probe.cpp": "f22736c93f49f58f131b827a0020ec8ca56c869e9cad0cb46bc854be09e4d372"
+  },
+  "native_sources_changed": false,
+  "attempt": 3,
+  "reason": "ROS set_message_fields mutates nested dictionaries; deep-copy only the input formatter argument before retaining JSON evidence. Native source unchanged.",
+  "exit_code": 1,
+  "wall_s": 1.2183565420000377
+}

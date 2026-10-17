@@ -1,0 +1,29 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "-i",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--memory=2g",
+    "--cpus=1",
+    "-e",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "-e",
+    "PYTHONPATH=/repro/runtime_sources/backend_adapter:/repro/runtime_sources/pct_runtime/python",
+    "-e",
+    "LD_LIBRARY_PATH=/repro/runtime_sources/pct_runtime/lib",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction:/repro:ro",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "-c",
+    "source /opt/ros/humble/setup.bash; exec python3 -"
+  ],
+  "exit_code": 0,
+  "stdout": "Diagonal heuristic is used\nAstar initialized, max_x: 101, max_y: 101, max_layers: 2, time elapsed: 0.508000 ms\nmax layers: 2, max_x: 101, max_y: 101\nstart searching\npath found, time elapsed: 0.202000 ms\nnum segs: 2, new interval: 14.500000\ntau: 0.537037\nx0:          50 6.12323e-17           0          51           1           0\nxN:          50 6.12323e-17           0          80           1           0\nCreating graph...\nGraph created.\nInit values created.\nMatrices resized. N=3\nProcessing node 0/3\nInserted value 0\nProcessing node 1/3\nInserted value 1\nProcessing node 2/3\nInserted value 2\nLoop finished.\nAdding PriorFactor6...\nAdded PriorFactor6.\nProcessing factor loop 1\nAdded GPPriorFactor 1\nFactor loop finished.\nAdding goal prior...\nAdded goal prior.\nCreating optimizer...\nOptimizer created.\nOptimizing...\nOptimization finished.\nFLAT_PCT_RESULT {\"passed\": true, \"route\": {\"route_id\": \"pct:goal:74f4bf217028d05072b7\", \"goal_id\": \"goal\", \"frame_id\": \"world\", \"map_epoch\": \"flat\", \"map_revision\": 1, \"waypoints_m\": [[0.1000000646902599, 0.0, 0.3], [0.1632192447702103, 0.0, 0.29999996160289655], [0.24197240363338396, 0.0, 0.2999999169253265], [0.33598134819839487, -7.105427357601002e-16, 0.29999986682908997], [0.4447602931816846, 0.0, 0.2999998137374308], [0.5676447585852146, 0.0, 0.2999997611539862], [0.7038204671841499, 0.0, 0.29999971318173685], [0.8523522420145426, 0.0, 0.2999996740419567], [1.0122129038610268, 0.0, 0.2999996475931629], [1.182312168744494, 0.0, 0.2999996368500655], [1.3615255454295743, 0.0, 0.29999964350795855], [1.5487232329447693, 0.0, 0.29999966764468516], [1.7427990178302424, -7.105427357601002e-16, 0.2999997079306535], [1.9426991713171888, 0.0, 0.2999997620615622], [2.1474513465188836, 0.0, 0.29999982720107987], [2.35619347562174, 0.0, 0.2999999004235246], [2.568202667076348, 0.0, 0.2999999791565434], [2.782924102788532, 0.0, 0.3000000616237923], [2.9999999353104045, 0.0, 0.30000014728761515]], \"planner\": \"native_pct\", \"z_semantics\": \"lite3_body_reference_no_display_offset\"}}\nshape: 19, 6\nsmooth height\nOptimization finished for N = 3 at iteration 6, time elapsed: 36.207000 ms, cost: 6.253342\n",
+  "stderr": ""
+}

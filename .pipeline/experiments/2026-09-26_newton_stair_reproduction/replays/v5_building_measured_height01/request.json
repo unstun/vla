@@ -1,0 +1,33 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--memory=3g",
+    "--cpus=2",
+    "--name",
+    "vla-newton-replay-v5-building-measured-height01",
+    "-e",
+    "ROS_DOMAIN_ID=213",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-e",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan44_height_v5:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/replays/v5_building_measured_height01:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside.sh"
+  ],
+  "deadline_s": 120,
+  "condition": "fresh_live",
+  "input_manifest_sha256": "b7a54804e7397afbead02356509dfa24ed77062836aa2008e0885f02fa73749f",
+  "build_result_sha256": "30ca08dbacaf72e759dda918450e8a1f4b3d723ae444528cd5c2e3eea380f359",
+  "native_build": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan44_height_v5"
+}

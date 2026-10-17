@@ -1,0 +1,53 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--cpus=2",
+    "--memory=4g",
+    "--name",
+    "vla-v8-geometry-ablation",
+    "-e",
+    "ROS_DOMAIN_ID=232",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan47_sparse_terrain_v8:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_full_building_comparison/inputs:/inputs:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/v8_native_continuation01:/attempt:rw",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_v8_geometry_ablation:/ablation:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/ablation/inside.sh"
+  ],
+  "cases": {
+    "radius_only": [
+      "-p",
+      "grid_map.double_cylinder_radius:=0.25"
+    ],
+    "z_only": [
+      "-p",
+      "grid_map.obstacles_inflation_z_up:=0.1",
+      "-p",
+      "grid_map.obstacles_inflation_z_down:=0.1"
+    ],
+    "old_envelope": [
+      "-p",
+      "grid_map.double_cylinder_radius:=0.25",
+      "-p",
+      "grid_map.obstacles_inflation_z_up:=0.1",
+      "-p",
+      "grid_map.obstacles_inflation_z_down:=0.1"
+    ]
+  },
+  "diagnostic_only": true,
+  "production_source_changed": false,
+  "deadline_s": 180
+}

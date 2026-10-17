@@ -1,0 +1,22 @@
+--- scan42_geometry_v9/src/plan_manage/src/scan_replan_fsm.cpp
++++ scan43_prefix_diagnostic_v2/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1135,6 +1135,7 @@
+     int per_round_budget = 3;
+     int &remaining = reference_prefix_budget ? *reference_prefix_budget : per_round_budget;
+     double candidate_t = local_target_time_;
++    RCLCPP_WARN(node_->get_logger(), "[DEBUG-prefix-01] reference=%d remaining=%d local=%.12f projection=%.12f frontier=%.12f", reference, remaining, local_target_time_, local_projection_time_, reference_frontier_time_);
+     while (!plan_success && reference && remaining > 0) {
+       --remaining;  // Count considered proposals, including rejected endpoints.
+       candidate_t = local_projection_time_ + 0.5 * (candidate_t - local_projection_time_);
+@@ -1143,6 +1144,11 @@
+       const Eigen::Vector3d candidate = planner_manager_->global_data_.getPosition(candidate_t);
+       if (!candidate.allFinite() || (candidate - start_pt_).norm() < 0.2) continue;
+       const double yaw = estimateYawFromSegment(odom_pos_, candidate);
++      RCLCPP_WARN(node_->get_logger(), "[DEBUG-prefix-01] candidate t=%.12f xyz=[%.12f,%.12f,%.12f] yaw=%.12f occ=%d", candidate_t,candidate.x(),candidate.y(),candidate.z(),yaw,planner_manager_->grid_map_->getInflateOccupancy(candidate,yaw));
++      if (candidate_t > 0.9 && candidate_t < 1.2) {
++        planner_manager_->grid_map_->logInitialSplineCollision(start_pt_, yaw);
++        planner_manager_->grid_map_->logInitialSplineCollision(start_pt_ + Eigen::Vector3d(0.05,0,0), yaw);
++      }
+       if (!std::isfinite(yaw) || planner_manager_->grid_map_->getInflateOccupancy(candidate, yaw) != 0) continue;
+ 
+       local_target_pt_ = candidate;

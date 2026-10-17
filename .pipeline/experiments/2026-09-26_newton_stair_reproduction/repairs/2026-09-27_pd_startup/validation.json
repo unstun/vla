@@ -1,0 +1,138 @@
+{
+  "checks": {
+    "probe_passed": true,
+    "bridge_exit_zero": true,
+    "copyback_verified": true,
+    "no_goal_sent": true,
+    "no_early_applied_snapshot": true,
+    "handoff_not_navigation_ready": true,
+    "actual_trace_bitwise_matches_startup_only": true,
+    "contact_scored_every_substep": true,
+    "early_command_zero": true,
+    "four_negative_controls": true
+  },
+  "passed": true,
+  "first_policy_snapshot_s": 4.219876766204834,
+  "first_snapshot_eligible_for_original_gate_s": 6.839686870574951,
+  "applied_snapshots": 190,
+  "physics_steps": 8000,
+  "max_applied_torque_error": 0.0,
+  "max_observation_mapping_error": 1.1175870895385742e-08,
+  "joint_soft_limit_excursion": {
+    "rad": 0.010822351455688661,
+    "degrees": 0.620075062818223,
+    "at_physics_s": 0.113,
+    "joint_index": 11,
+    "phase": "passive crouch",
+    "disposition": "reported; not a hardware limit qualification"
+  },
+  "video": {
+    "path": "/Users/sun/tongbu/study/phdproject/vla/output/2026-09-27_newton_pd_startup/lite3_crouch_pd_stand.mp4",
+    "sha256": "1d4b7c92e308c53019d1d115bfe52bcd5372b0916c4f534587302c2dfb21ef4e",
+    "ffprobe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1280,
+          "height": 720,
+          "r_frame_rate": "25/2",
+          "nb_frames": "101"
+        }
+      ],
+      "format": {
+        "duration": "8.080000"
+      }
+    },
+    "decode_passed": true,
+    "source_run": "pd_startup_flat_v1",
+    "render_run": "pd_startup_video_v2",
+    "visual_review_frames": [
+      12,
+      56
+    ]
+  },
+  "navigation_validated": false,
+  "live_goal_driver_exercised": true,
+  "live_navigation_attempt": {
+    "run_id": "pd_startup_human_live_v1",
+    "process_exit_code": 1,
+    "driver_completed": false,
+    "startup_goal_events": [
+      {
+        "claim": "actual stable state; no velocity zeroing or pose injection",
+        "event": "measured_ready_to_walk",
+        "measured": {
+          "base_quat_wxyz": [
+            0.9989625811576843,
+            0.029702110216021538,
+            0.013998953625559807,
+            0.031554508954286575
+          ],
+          "base_xyz": [
+            0.0562126524746418,
+            -0.010658154264092445,
+            0.29497018456459045
+          ],
+          "command_obs_error": 0.0,
+          "horizontal_speed_mps": 0.0012753216850920324,
+          "yaw_rate_radps": 0.00819565262645483
+        },
+        "sim_time_s": 7.359649181365967,
+        "stable_since_s": 6.839686870574951
+      },
+      {
+        "event": "goal_request",
+        "payload": {
+          "frame": "world",
+          "goal_id": "stair-goal",
+          "map_epoch": "stair_reactive",
+          "map_revision": 1,
+          "request_id": "pd_startup_human_live_v1-stair-goal",
+          "target_ground_xyz": [
+            3.0,
+            0.0,
+            0.0
+          ]
+        },
+        "response": {
+          "goal_id": "stair-goal",
+          "job_id": "a551cdac-59f5-4627-b5e6-557321e57b0a",
+          "ok": true,
+          "request_id": "pd_startup_human_live_v1-stair-goal",
+          "status": "planning"
+        },
+        "sim_time_s": 7.359649181365967
+      }
+    ],
+    "curve_count": 1,
+    "first_curve_s": 7.459641933,
+    "last_curve_endpoint": {
+      "x": 0.47500001225225863,
+      "y": -4.134725060370905e-49,
+      "z": 0.2999998632512132
+    },
+    "last_complete_telemetry_s": 10.12045955657959,
+    "nonzero_command_updates": 93,
+    "last_logged_body_xyz": [
+      0.49472376704216003,
+      0.03626882657408714,
+      0.28622275590896606
+    ],
+    "native_failure": {
+      "component": "backend",
+      "exit_code": -9
+    },
+    "docker_oom_events": 1,
+    "copyback_verified": false,
+    "actual_arrival_verified": false,
+    "terminal_stop_verified": false,
+    "root_allocation_cause": "not diagnosed",
+    "checks_of_startup_only": {
+      "all_phases_observed": true,
+      "zero_commands_before_ready": true,
+      "goal_after_handoff": true
+    }
+  }
+}
