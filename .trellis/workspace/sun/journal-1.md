@@ -1286,3 +1286,40 @@ Offline migration passed. Exactly one v235 physics attempt failed at captured-sc
 ### Next Steps
 
 - Keep migration task open; diagnose scanner timing under own2-CPU binding before separately authorizing any new physical trial.
+
+
+## Session 36: v236 LiDAR deadline repair and failed single-route writer-backlog trial
+<!-- trellis-session: v=2 fp=aa28be1bd1a5d712 -->
+
+**Date**: 2026-10-17
+**Task**: v236 LiDAR deadline repair and failed single-route writer-backlog trial
+**Branch**: `main`
+
+### Summary
+
+Reproduced native-clock early rejection and hot two-core contention; repaired absolute100ms LiDAR scheduling and verified own4-CPU wrapper. One physical attempt completes245 scans with no deadline failure, then fails at35.592s on the original evidence-writer queue bound. Four-way comparison returned and verified; v232/v233 baseline retained.
+
+### Main Changes
+
+- Preserve original RL/endpoints/.35m guards/.1s capture; change only own scheduling and recorder deadline boundary.
+- Correct partial audit reporting to read the original FAILED finish_request; retain first-pass reports and all raw capture files.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bcc43b6a` | fix(sim): preserve absolute LiDAR deadline and isolate gpu40901 CPU scheduling |
+| `40e1cecd` | test(sim): record v236 writer-backlog failure and four-way physical comparison |
+
+### Testing
+
+- [OK] Seven regressions;550 zero-physics original-ray/catch-up cases; ray bytes and1000-frame policy golden; actual source/install/profile/12s graph preflight pass.
+- [OK] 245 actual scans, max46.719ms; physical route fails35.592s, stairs/arrival/PD untested.61 returned payload hashes/sizes, MP4 full decode and visual samples pass.
+
+### Status
+
+Scanner repair and evidence delivery completed. **Physical route failed; migration task remains in_progress.**
+
+### Next Steps
+
+- Diagnose shared critical-state/bulk-evidence writer queue without relaxing256 bound; offline verification before another separately authorized physical trial. Task stays in_progress.
