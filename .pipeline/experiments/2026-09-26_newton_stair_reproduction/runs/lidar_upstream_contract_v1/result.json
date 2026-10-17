@@ -1,0 +1,404 @@
+{
+  "accepted": true,
+  "analytic_box_distance_m": 2.0,
+  "exclusion_source": {
+    "repository": "https://github.com/RobotecAI/RGLGazeboPlugin",
+    "commit": "d4bf3cf36fe4a363a56df1bec2ce3809720db563",
+    "file": "RGLServerPlugin/src/Scene.cc",
+    "symbol": "RegisterNewLidarCb / LoadEntityToRGLCb",
+    "adaptation": "original URDF sensor-link visuals only; no merged-body exclusion"
+  },
+  "exclusion_controls": [
+    {
+      "case": "background",
+      "newton_range_m": 1.899999976158142,
+      "native_mujoco_range_m": 1.9,
+      "valid_return": true
+    },
+    {
+      "case": "other_robot_part",
+      "newton_range_m": 0.3499999940395355,
+      "native_mujoco_range_m": 0.35000000000000003,
+      "valid_return": true
+    },
+    {
+      "case": "external_inside_minimum_range",
+      "newton_range_m": 0.06000000238418579,
+      "native_mujoco_range_m": 0.060000000000000005,
+      "valid_return": false
+    }
+  ],
+  "physical_render_flags_unchanged": true,
+  "excluded_original_sensor_shapes": [
+    40,
+    41
+  ],
+  "other_robot_near_occlusion_retained": true,
+  "fixed_root_skin_changed_ranges": 180,
+  "identical_frame_repeat": true,
+  "pattern": {
+    "model": "Livox MID-360 source-backed geometric snapshot",
+    "upstream_repository": "https://github.com/Livox-SDK/livox_laser_simulation",
+    "upstream_commit": "1cce1073633a062b92e30243a4c2920e45551bb5",
+    "pattern_path": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/livox_mid360/mid360.csv",
+    "pattern_sha256": "aa1fc08b6a4400608dbd6ee832b7ea3a9c3c37197e734f60f58fe5abf762269a",
+    "pattern_sample_count": 800000,
+    "pattern_cycle_seconds": 4.0,
+    "scans_per_pattern_cycle": 40,
+    "points_per_second": 200000,
+    "scan_hz": 10,
+    "rays_per_scan": 20000,
+    "azimuth_range_degrees": [
+      0.00037577,
+      360.0
+    ],
+    "elevation_range_degrees": [
+      -7.212299999999999,
+      52.164
+    ],
+    "coordinate_frame": "sensor x-forward y-left z-up",
+    "minimum_range_m": 0.1,
+    "maximum_range_m": 40.0,
+    "scan_reference_stamp": "same-step Isaac simulator time",
+    "per_point_timing": "ordered nominal offsets retained in sensor metrics",
+    "intra_scan_motion_distortion": "not modeled; all rays use one same-step pose",
+    "unsupported_physics": [
+      "material reflectivity and intensity",
+      "multiple returns",
+      "rain fog and dust",
+      "electronic range noise"
+    ]
+  },
+  "controls": [
+    {
+      "label": "skin_a",
+      "backend": "Newton CPU BVH + refitted official-skinned-mesh geometric rays",
+      "scan_window": {
+        "scan_index": 0,
+        "cycle_scan_index": 0,
+        "first_pattern_row": 2,
+        "last_pattern_row": 20001,
+        "first_sample_ordinal": 1,
+        "last_sample_ordinal": 20000,
+        "nominal_first_point_offset_ns": 0,
+        "nominal_last_point_offset_ns": 99995000,
+        "point_count": 20000
+      },
+      "point_count": 9704,
+      "human_hit_count_scoring_only": 177,
+      "building_hit_count_scoring_only": 9527,
+      "robot_hit_count_scoring_only": 0,
+      "self_return_filter": "sensor-owner exclusion: original MID360 link visuals only; other robot geometry retained",
+      "self_return_filter_source": {
+        "repository": "https://github.com/RobotecAI/RGLGazeboPlugin",
+        "commit": "d4bf3cf36fe4a363a56df1bec2ce3809720db563",
+        "file": "RGLServerPlugin/src/Scene.cc",
+        "symbol": "RegisterNewLidarCb / LoadEntityToRGLCb",
+        "adaptation": "original URDF sensor-link visuals only; no merged-body exclusion"
+      },
+      "emitter_self_exclusion_shapes": [
+        40,
+        41
+      ],
+      "emitter_self_exclusion_is_newton_approximation": true,
+      "wall_s": 0.02440704200125765,
+      "near_hit_shapes": [
+        {
+          "id": 37,
+          "label": "shape_37",
+          "count": 2738
+        },
+        {
+          "id": 43,
+          "label": "shape_43",
+          "count": 429
+        }
+      ],
+      "near_hit_count": 3167,
+      "near_hit_backfaces": 1
+    },
+    {
+      "label": "skin_b",
+      "backend": "Newton CPU BVH + refitted official-skinned-mesh geometric rays",
+      "scan_window": {
+        "scan_index": 0,
+        "cycle_scan_index": 0,
+        "first_pattern_row": 2,
+        "last_pattern_row": 20001,
+        "first_sample_ordinal": 1,
+        "last_sample_ordinal": 20000,
+        "nominal_first_point_offset_ns": 0,
+        "nominal_last_point_offset_ns": 99995000,
+        "point_count": 20000
+      },
+      "point_count": 9704,
+      "human_hit_count_scoring_only": 179,
+      "building_hit_count_scoring_only": 9525,
+      "robot_hit_count_scoring_only": 0,
+      "self_return_filter": "sensor-owner exclusion: original MID360 link visuals only; other robot geometry retained",
+      "self_return_filter_source": {
+        "repository": "https://github.com/RobotecAI/RGLGazeboPlugin",
+        "commit": "d4bf3cf36fe4a363a56df1bec2ce3809720db563",
+        "file": "RGLServerPlugin/src/Scene.cc",
+        "symbol": "RegisterNewLidarCb / LoadEntityToRGLCb",
+        "adaptation": "original URDF sensor-link visuals only; no merged-body exclusion"
+      },
+      "emitter_self_exclusion_shapes": [
+        40,
+        41
+      ],
+      "emitter_self_exclusion_is_newton_approximation": true,
+      "wall_s": 0.021888917006435804,
+      "near_hit_shapes": [
+        {
+          "id": 37,
+          "label": "shape_37",
+          "count": 2738
+        },
+        {
+          "id": 43,
+          "label": "shape_43",
+          "count": 429
+        }
+      ],
+      "near_hit_count": 3167,
+      "near_hit_backfaces": 1
+    },
+    {
+      "label": "skin_repeat",
+      "backend": "Newton CPU BVH + refitted official-skinned-mesh geometric rays",
+      "scan_window": {
+        "scan_index": 0,
+        "cycle_scan_index": 0,
+        "first_pattern_row": 2,
+        "last_pattern_row": 20001,
+        "first_sample_ordinal": 1,
+        "last_sample_ordinal": 20000,
+        "nominal_first_point_offset_ns": 0,
+        "nominal_last_point_offset_ns": 99995000,
+        "point_count": 20000
+      },
+      "point_count": 9704,
+      "human_hit_count_scoring_only": 177,
+      "building_hit_count_scoring_only": 9527,
+      "robot_hit_count_scoring_only": 0,
+      "self_return_filter": "sensor-owner exclusion: original MID360 link visuals only; other robot geometry retained",
+      "self_return_filter_source": {
+        "repository": "https://github.com/RobotecAI/RGLGazeboPlugin",
+        "commit": "d4bf3cf36fe4a363a56df1bec2ce3809720db563",
+        "file": "RGLServerPlugin/src/Scene.cc",
+        "symbol": "RegisterNewLidarCb / LoadEntityToRGLCb",
+        "adaptation": "original URDF sensor-link visuals only; no merged-body exclusion"
+      },
+      "emitter_self_exclusion_shapes": [
+        40,
+        41
+      ],
+      "emitter_self_exclusion_is_newton_approximation": true,
+      "wall_s": 0.02229612499650102,
+      "near_hit_shapes": [
+        {
+          "id": 37,
+          "label": "shape_37",
+          "count": 2738
+        },
+        {
+          "id": 43,
+          "label": "shape_43",
+          "count": 429
+        }
+      ],
+      "near_hit_count": 3167,
+      "near_hit_backfaces": 1
+    },
+    {
+      "label": "translation",
+      "backend": "Newton CPU BVH + refitted official-skinned-mesh geometric rays",
+      "scan_window": {
+        "scan_index": 0,
+        "cycle_scan_index": 0,
+        "first_pattern_row": 2,
+        "last_pattern_row": 20001,
+        "first_sample_ordinal": 1,
+        "last_sample_ordinal": 20000,
+        "nominal_first_point_offset_ns": 0,
+        "nominal_last_point_offset_ns": 99995000,
+        "point_count": 20000
+      },
+      "point_count": 9674,
+      "human_hit_count_scoring_only": 166,
+      "building_hit_count_scoring_only": 9508,
+      "robot_hit_count_scoring_only": 0,
+      "self_return_filter": "sensor-owner exclusion: original MID360 link visuals only; other robot geometry retained",
+      "self_return_filter_source": {
+        "repository": "https://github.com/RobotecAI/RGLGazeboPlugin",
+        "commit": "d4bf3cf36fe4a363a56df1bec2ce3809720db563",
+        "file": "RGLServerPlugin/src/Scene.cc",
+        "symbol": "RegisterNewLidarCb / LoadEntityToRGLCb",
+        "adaptation": "original URDF sensor-link visuals only; no merged-body exclusion"
+      },
+      "emitter_self_exclusion_shapes": [
+        40,
+        41
+      ],
+      "emitter_self_exclusion_is_newton_approximation": true,
+      "wall_s": 0.0219884580001235,
+      "near_hit_shapes": [
+        {
+          "id": 37,
+          "label": "shape_37",
+          "count": 2738
+        },
+        {
+          "id": 43,
+          "label": "shape_43",
+          "count": 429
+        }
+      ],
+      "near_hit_count": 3167,
+      "near_hit_backfaces": 1
+    },
+    {
+      "label": "scene_0",
+      "backend": "Newton CPU BVH + refitted official-skinned-mesh geometric rays",
+      "scan_window": {
+        "scan_index": 0,
+        "cycle_scan_index": 0,
+        "first_pattern_row": 2,
+        "last_pattern_row": 20001,
+        "first_sample_ordinal": 1,
+        "last_sample_ordinal": 20000,
+        "nominal_first_point_offset_ns": 0,
+        "nominal_last_point_offset_ns": 99995000,
+        "point_count": 20000
+      },
+      "point_count": 9707,
+      "human_hit_count_scoring_only": 89,
+      "building_hit_count_scoring_only": 9618,
+      "robot_hit_count_scoring_only": 0,
+      "self_return_filter": "sensor-owner exclusion: original MID360 link visuals only; other robot geometry retained",
+      "self_return_filter_source": {
+        "repository": "https://github.com/RobotecAI/RGLGazeboPlugin",
+        "commit": "d4bf3cf36fe4a363a56df1bec2ce3809720db563",
+        "file": "RGLServerPlugin/src/Scene.cc",
+        "symbol": "RegisterNewLidarCb / LoadEntityToRGLCb",
+        "adaptation": "original URDF sensor-link visuals only; no merged-body exclusion"
+      },
+      "emitter_self_exclusion_shapes": [
+        40,
+        41
+      ],
+      "emitter_self_exclusion_is_newton_approximation": true,
+      "wall_s": 0.021976625008392148,
+      "near_hit_shapes": [
+        {
+          "id": 37,
+          "label": "shape_37",
+          "count": 2738
+        },
+        {
+          "id": 43,
+          "label": "shape_43",
+          "count": 429
+        }
+      ],
+      "near_hit_count": 3167,
+      "near_hit_backfaces": 1
+    },
+    {
+      "label": "scene_1",
+      "backend": "Newton CPU BVH + refitted official-skinned-mesh geometric rays",
+      "scan_window": {
+        "scan_index": 1,
+        "cycle_scan_index": 1,
+        "first_pattern_row": 20002,
+        "last_pattern_row": 40001,
+        "first_sample_ordinal": 20001,
+        "last_sample_ordinal": 40000,
+        "nominal_first_point_offset_ns": 0,
+        "nominal_last_point_offset_ns": 99995000,
+        "point_count": 20000
+      },
+      "point_count": 9833,
+      "human_hit_count_scoring_only": 95,
+      "building_hit_count_scoring_only": 9738,
+      "robot_hit_count_scoring_only": 0,
+      "self_return_filter": "sensor-owner exclusion: original MID360 link visuals only; other robot geometry retained",
+      "self_return_filter_source": {
+        "repository": "https://github.com/RobotecAI/RGLGazeboPlugin",
+        "commit": "d4bf3cf36fe4a363a56df1bec2ce3809720db563",
+        "file": "RGLServerPlugin/src/Scene.cc",
+        "symbol": "RegisterNewLidarCb / LoadEntityToRGLCb",
+        "adaptation": "original URDF sensor-link visuals only; no merged-body exclusion"
+      },
+      "emitter_self_exclusion_shapes": [
+        40,
+        41
+      ],
+      "emitter_self_exclusion_is_newton_approximation": true,
+      "wall_s": 0.02195741700415965,
+      "near_hit_shapes": [
+        {
+          "id": 37,
+          "label": "shape_37",
+          "count": 2690
+        },
+        {
+          "id": 43,
+          "label": "shape_43",
+          "count": 434
+        }
+      ],
+      "near_hit_count": 3124,
+      "near_hit_backfaces": 1
+    },
+    {
+      "label": "scene_2",
+      "backend": "Newton CPU BVH + refitted official-skinned-mesh geometric rays",
+      "scan_window": {
+        "scan_index": 2,
+        "cycle_scan_index": 2,
+        "first_pattern_row": 40002,
+        "last_pattern_row": 60001,
+        "first_sample_ordinal": 40001,
+        "last_sample_ordinal": 60000,
+        "nominal_first_point_offset_ns": 0,
+        "nominal_last_point_offset_ns": 99995000,
+        "point_count": 20000
+      },
+      "point_count": 9851,
+      "human_hit_count_scoring_only": 94,
+      "building_hit_count_scoring_only": 9757,
+      "robot_hit_count_scoring_only": 0,
+      "self_return_filter": "sensor-owner exclusion: original MID360 link visuals only; other robot geometry retained",
+      "self_return_filter_source": {
+        "repository": "https://github.com/RobotecAI/RGLGazeboPlugin",
+        "commit": "d4bf3cf36fe4a363a56df1bec2ce3809720db563",
+        "file": "RGLServerPlugin/src/Scene.cc",
+        "symbol": "RegisterNewLidarCb / LoadEntityToRGLCb",
+        "adaptation": "original URDF sensor-link visuals only; no merged-body exclusion"
+      },
+      "emitter_self_exclusion_shapes": [
+        40,
+        41
+      ],
+      "emitter_self_exclusion_is_newton_approximation": true,
+      "wall_s": 0.021947749992250465,
+      "near_hit_shapes": [
+        {
+          "id": 37,
+          "label": "shape_37",
+          "count": 2727
+        },
+        {
+          "id": 43,
+          "label": "shape_43",
+          "count": 478
+        }
+      ],
+      "near_hit_count": 3205,
+      "near_hit_backfaces": 0
+    }
+  ],
+  "claim": "Geometric ray/skin sensor evidence; no RTX or intensity equivalence claim."
+}

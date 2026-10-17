@@ -1,0 +1,22 @@
+[INFO] [1790469024.198518793] [lite3_sim_bridge]: Lite3 bridge ready: telemetry host.docker.internal:46200, command host.docker.internal:46201
+[INFO] [1790469037.683727966] [lite3_sim_bridge]: Telemetry stream connected
+[INFO] [1790469037.683968091] [lite3_sim_bridge]: Command stream connected
+[WARN] [1790469044.081660719] [lite3_sim_bridge]: Command stream reset: [Errno 32] Broken pipe
+[WARN] [1790469044.199887552] [lite3_sim_bridge]: Telemetry stream reset: socket closed with 40 bytes remaining
+[INFO] [1790469045.252075178] [lite3_sim_bridge]: BRIDGE_DIAGNOSTICS {"backward_simulation_time_events": 0, "collision_is_fatal": false, "complete_state_accepted": 150, "complete_state_delivered": 150, "complete_state_last_sequence": 150, "complete_state_rejected_backward_time": 0, "complete_state_rejected_by_monitor": 0, "complete_state_rejected_duplicate_sequence": 0, "complete_state_rejected_foreign_run": 0, "complete_state_run_epoch_ns": 1790469020603999000, "complete_state_superseded_before_delivery": 0, "foreign_run_identity_events": 0, "legacy_body_state_frames_ignored": 0, "max_stall_ns": 250000000, "missing_body_state_events": 0, "rejected_feedback_samples": 0, "repeated_simulation_time_events": 0, "require_complete_body_state": true, "run_epoch_ns": 1790469020603999000, "simulation_clock_stall_events": 0, "stale_body_state_events": 0, "state_sequence_regression_events": 0, "telemetry_overwrites": 0, "trial_fault_latched": false}
+Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime_sources/bridge/lite3_sim_bridge/foxy_bridge_node.py", line 776, in main
+    rclpy.spin(node)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 226, in spin
+    executor.spin_once()
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 751, in spin_once
+    self._spin_once_impl(timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 740, in _spin_once_impl
+    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 723, in wait_for_ready_callbacks
+    return next(self._cb_iter)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 596, in _wait_for_ready_callbacks
+    wait_set = _rclpy.WaitSet(
+rclpy._rclpy_pybind11.RCLError: failed to initialize wait set: the given context is not valid, either rcl_init() was not called or rcl_shutdown() was called., at ./src/rcl/wait.c:130

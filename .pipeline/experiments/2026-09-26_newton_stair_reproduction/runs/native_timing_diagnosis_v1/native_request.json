@@ -1,0 +1,67 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--name",
+    "vla-native-spline-diagnosis",
+    "--cpus=2",
+    "--memory=3g",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla:/Users/sun/tongbu/study/phdproject/vla:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/native_timing_diagnosis_v1:/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/native_timing_diagnosis_v1:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/native_timing_diagnosis_v1/inside.sh"
+  ],
+  "cases": [
+    {
+      "curve": 0,
+      "condition": "recorded",
+      "time_scale": 1.0,
+      "output": "curve_0_recorded.json",
+      "seed_duration_from_log": 0.853333333333,
+      "recorded_duration": 8.11636815193852
+    },
+    {
+      "curve": 0,
+      "condition": "same_geometry_seed_duration",
+      "time_scale": 0.10513733696631161,
+      "output": "curve_0_same_geometry_seed_duration.json",
+      "seed_duration_from_log": 0.853333333333,
+      "recorded_duration": 8.11636815193852
+    },
+    {
+      "curve": 1,
+      "condition": "recorded",
+      "time_scale": 1.0,
+      "output": "curve_1_recorded.json",
+      "seed_duration_from_log": 1.6,
+      "recorded_duration": 34.250241927774034
+    },
+    {
+      "curve": 1,
+      "condition": "same_geometry_seed_duration",
+      "time_scale": 0.046714998491807325,
+      "output": "curve_1_same_geometry_seed_duration.json",
+      "seed_duration_from_log": 1.6,
+      "recorded_duration": 34.250241927774034
+    }
+  ],
+  "source_sha256": {
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/builds/scan33_humble_amd64_v1/src/bspline_opt/src/uniform_bspline.cpp": "e91c5a429155738389602dc4c50301ea65f8f134809406545779c1bf0c1d7a8b",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/builds/scan33_humble_amd64_v1/src/bspline_opt/include/bspline_opt/uniform_bspline.h": "3746719f8d1377191be673b704fcd6b8967c67c7e3e866de75d585e52cf71a75",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/builds/scan33_humble_amd64_v1/src/plan_manage/config/planner.yaml": "adc4c52259c2745b99d61f65c06550f05dbd7f64a7737ba22ff112d56744b6e4"
+  },
+  "limits": {
+    "velocity": 0.75,
+    "acceleration": 0.5,
+    "feasibility_tolerance": 0.5
+  },
+  "claim": "Actual native feasibility check on published curves. Rescaled cases retain the final optimized geometry; they are not exact initializer-seed replays."
+}
