@@ -1,0 +1,1023 @@
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/CMakeLists.txt b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/CMakeLists.txt
+index ef6c809f..39c24585 100644
+--- a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/CMakeLists.txt
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/CMakeLists.txt
+@@ -47,6 +47,9 @@ if(BUILD_TESTING)
+   target_compile_options(test_tracking_parity PRIVATE -fno-access-control)
+   target_link_libraries(test_tracking_parity scan_nav2_controller)
+   ament_target_dependencies(test_tracking_parity ${dependencies})
++  ament_add_gtest(test_tracking_behavior test/test_tracking_behavior.cpp TIMEOUT 30)
++  target_link_libraries(test_tracking_behavior scan_nav2_controller)
++  ament_target_dependencies(test_tracking_behavior ${dependencies})
+   ament_add_gtest(test_executor_shutdown test/test_executor_shutdown.cpp TIMEOUT 10)
+   target_link_libraries(test_executor_shutdown scan_nav2_controller)
+   ament_target_dependencies(test_executor_shutdown ${dependencies})
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/README.md b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/README.md
+index 4183cd66..0cc81aca 100644
+--- a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/README.md
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/README.md
+@@ -1,3 +1,27 @@
++# v206 command continuity
++
++This package inherits v204's LocalMotion/Tracker ownership. Only normal command
++execution and route revision semantics change. PCT/SCAN geometry is unchanged.
++
++- Same-goal route refresh replaces the bounded input snapshot without invalidating
++  an in-flight solve, pending output, or trajectory-bound freeze feedback.
++- Heading attenuation and 1.0/0.6 rad turn hysteresis survive spline replacement.
++- TrackingNode owns one three-axis slew history; normal Controller goal braking
++  calls LocalMotion::brakeCommand and uses that same history. Emergency/cancel
++  immediately clear it. New curves do not reset the command timestamp.
++- An expired low-speed curve brakes to exact zero and remains stopped until a
++  replacement. This is a local execution state, not successful goal completion.
++  Active short/reverse corrections remain possible; final pose/PD gates and
++  ordinary retries are unchanged.
++
++The new component tests exercise individual command ticks. Existing lifecycle,
++heading and goal-contract tests now wait for the production limiter to settle;
++no production feature is disabled in tests. The old 300-sample full-command
++parity claim belongs to v204; v206 retains only straight-path phase/geometry and
++settled-command parity, since heading and ramp behavior intentionally changed.
++
++## Inherited package description
++
+ # SCAN controller plugins for ROS 2 Foxy
+ 
+ `LocalMotion` owns the SCAN worker, Tracker and their bounded snapshot exchange.
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/config/controller.yaml b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/config/controller.yaml
+index 67218aea..19e148ec 100644
+--- a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/config/controller.yaml
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/config/controller.yaml
+@@ -30,6 +30,13 @@ controller_server:
+       max_vx: 1.0
+       max_vy: 0.35
+       max_vyaw: 1.0
++      heading_error_threshold: 1.0
++      heading_resume_threshold: 0.6
++      linear_acceleration: 1.0
++      linear_deceleration: 2.0
++      angular_acceleration: 2.0
++      angular_deceleration: 3.0
++      expired_min_walk_speed: 0.20
+ local_costmap:
+   local_costmap:
+     ros__parameters:
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/include/scan_nav2_controller/command_slew.hpp b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/include/scan_nav2_controller/command_slew.hpp
+new file mode 100644
+index 00000000..13ad2dc6
+--- /dev/null
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/include/scan_nav2_controller/command_slew.hpp
+@@ -0,0 +1,49 @@
++#pragma once
++
++#include <algorithm>
++#include <cmath>
++#include <cstdint>
++#include <geometry_msgs/msg/twist.hpp>
++
++namespace scan_nav2_controller
++{
++// One output history, independent of spline timestamps. Exact target capture
++// avoids an exponential tail that would prevent the locomotion stand latch.
++class CommandSlew
++{
++public:
++  double linear_acceleration{1.0}, linear_deceleration{2.0};
++  double angular_acceleration{2.0}, angular_deceleration{3.0};
++
++  void reset() { command_={}; initialized_=false; }
++  geometry_msgs::msg::Twist update(const geometry_msgs::msg::Twist &target, int64_t now)
++  {
++    if (!initialized_) { stamp_=now; initialized_=true; return command_; }
++    const double dt=(now-stamp_)*1e-9;
++    stamp_=now;
++    if (dt<0.0 || dt>0.2) { command_={}; return command_; }
++    command_.linear.x=axis(command_.linear.x,target.linear.x,dt,linear_acceleration,linear_deceleration);
++    command_.linear.y=axis(command_.linear.y,target.linear.y,dt,linear_acceleration,linear_deceleration);
++    command_.angular.z=axis(command_.angular.z,target.angular.z,dt,angular_acceleration,angular_deceleration);
++    return command_;
++  }
++  static double axis(double current,double target,double dt,double acceleration,double deceleration)
++  {
++    if (current*target<0.0) {
++      const double braking=std::abs(current)/deceleration;
++      if (dt<=braking) return approach(current,0.0,deceleration*dt);
++      return approach(0.0,target,acceleration*(dt-braking));
++    }
++    const double rate=std::abs(target)>std::abs(current) ? acceleration : deceleration;
++    return approach(current,target,rate*dt);
++  }
++private:
++  static double approach(double current,double target,double step)
++  {
++    return current+std::clamp(target-current,-step,step);
++  }
++  geometry_msgs::msg::Twist command_;
++  int64_t stamp_{0};
++  bool initialized_{false};
++};
++}  // namespace scan_nav2_controller
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp
+index 01dea301..d5ea412f 100644
+--- a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp
+@@ -26,6 +26,7 @@ public:
+   void update();
+   geometry_msgs::msg::Twist command(const geometry_msgs::msg::Pose &pose,
+                                   const geometry_msgs::msg::Twist &velocity);
++  geometry_msgs::msg::Twist brakeCommand();
+   void cancel();
+   bool hasRoute() const {return has_active_plan_;}
+   Tolerances tolerances() const {return tolerances_;}
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/include/scan_nav2_controller/motion_exchange.hpp b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/include/scan_nav2_controller/motion_exchange.hpp
+index 0c32d661..8b5cc58f 100644
+--- a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/include/scan_nav2_controller/motion_exchange.hpp
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/include/scan_nav2_controller/motion_exchange.hpp
+@@ -23,11 +23,13 @@ public:
+     uint64_t generation;
+     scan_planner_msgs::msg::Bspline::ConstSharedPtr spline;
+   };
+-  uint64_t setRoute(const nav_msgs::msg::Path &route,bool new_goal,bool changed) {
++  uint64_t setRoute(const nav_msgs::msg::Path &route,bool new_goal) {
+     auto copy=std::make_shared<const nav_msgs::msg::Path>(route);
+     std::lock_guard<std::mutex> lock(mutex_);
+-    if (changed) {++input_.generation;output_.reset();input_.feedback={};}
+-    if (new_goal) ++input_.reset;
++    // Geometry refresh is not a new task. A solve spanning it remains usable.
++    if (new_goal) {
++      ++input_.generation; ++input_.reset; output_.reset(); input_.feedback={};
++    }
+     ++input_.revision;input_.route=std::move(copy);
+     return input_.generation;
+   }
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
+index eb06bc21..39bda354 100644
+--- a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
+@@ -1,5 +1,5 @@
+ #pragma once
+-// Mechanically extracted from the pinned local v82 controller. See tracking_provenance.json.
++// v82 tracking geometry with v206 command continuity. See tracking_provenance.json.
+ #include <algorithm>
+ #include <cmath>
+ #include <cstdint>
+@@ -19,6 +19,7 @@
+ #include <std_msgs/msg/bool.hpp>
+ #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+ #include <tf2/utils.h>
++#include <scan_nav2_controller/command_slew.hpp>
+ 
+ #include "bspline_opt/uniform_bspline.h"
+ 
+@@ -31,7 +32,20 @@ public:
+       : Node("scan_nav2_tracking", options)
+   {
+     time_forward_ = declare_parameter<double>("time_forward", 0.8);
+-    heading_error_threshold_ = declare_parameter<double>("heading_error_threshold", 0.8);
++    heading_error_threshold_ = declare_parameter<double>("heading_error_threshold", 1.0);
++    heading_resume_threshold_ = declare_parameter<double>("heading_resume_threshold", 0.6);
++    expired_min_walk_speed_ = declare_parameter<double>("expired_min_walk_speed", 0.20);
++    slew_.linear_acceleration = declare_parameter<double>("linear_acceleration", 1.0);
++    slew_.linear_deceleration = declare_parameter<double>("linear_deceleration", 2.0);
++    slew_.angular_acceleration = declare_parameter<double>("angular_acceleration", 2.0);
++    slew_.angular_deceleration = declare_parameter<double>("angular_deceleration", 3.0);
++    for (double value : {heading_error_threshold_, heading_resume_threshold_, expired_min_walk_speed_,
++        slew_.linear_acceleration, slew_.linear_deceleration,
++        slew_.angular_acceleration, slew_.angular_deceleration})
++      if (!std::isfinite(value) || value<=0.0)
++        throw std::runtime_error("Command limits must be finite and positive");
++    if (heading_resume_threshold_>=heading_error_threshold_ || heading_error_threshold_>M_PI)
++      throw std::runtime_error("Heading resume threshold must be below the turn threshold");
+     kp_pos_ = declare_parameter<double>("kp_pos", 0.8);
+     kp_yaw_ = declare_parameter<double>("kp_yaw", 1.5);
+     max_vx_ = declare_parameter<double>("max_vx", 0.75);
+@@ -73,7 +87,11 @@ public:
+         path.poses.back().pose == goal_pose_;
+     reference_path_ = path;
+     goal_pose_valid_ = !path.poses.empty() && validGoalPose(path.poses.back().pose);
+-    if (!same_goal) goal_position_latched_ = false;
++    if (!same_goal) {
++      goal_position_latched_ = false;
++      turning_in_place_ = false;
++      expired_braking_ = false;
++    }
+     if (!path.poses.empty()) {
+       goal_pose_ = path.poses.back().pose;
+       goal_pos_ << goal_pose_.position.x, goal_pose_.position.y, goal_pose_.position.z;
+@@ -180,7 +198,18 @@ public:
+ 
+   void publishVelocity(const geometry_msgs::msg::Twist &cmd)
+   {
+-    sampled_command_ = cmd;
++    // Do not let a limiter conceal invalid tracking output from LocalMotion.
++    if (!std::isfinite(cmd.linear.x) || !std::isfinite(cmd.linear.y) || !std::isfinite(cmd.angular.z)) {
++      sampled_command_=cmd;
++      return;
++    }
++    sampled_command_ = slew_.update(cmd, now().nanoseconds());
++  }
++
++  void hardStop()
++  {
++    slew_.reset();
++    sampled_command_ = geometry_msgs::msg::Twist();
+   }
+ 
+   void publishStop(double yaw_rate = 0.0)
+@@ -239,12 +268,14 @@ public:
+         std::clamp((receipt_time - trajectory_origin).seconds(), 0.0, traj_duration_);
+     last_update_time_ = receipt_time;
+     receive_traj_ = true;
++    expired_braking_ = false; // A new native curve can resume the same route.
+     emergency_stop_ = msg->emergency_stop;
+     if (emergency_stop_)
+     {
+       goal_position_latched_ = false;
+       publishExecutionFrozen(false);
+-      publishStop();
++      turning_in_place_ = false;
++      hardStop();
+     }
+     RCLCPP_INFO(get_logger(), "Received trajectory %lld, duration %.3fs",
+                 static_cast<long long>(traj_id_), traj_duration_);
+@@ -262,13 +293,13 @@ public:
+     if (emergency_stop_)
+     {
+       publishExecutionFrozen(false);
+-      publishStop();
++      hardStop();
+       return;
+     }
+     if (!receive_traj_ || !have_odom_)
+     {
+       publishExecutionFrozen(false);
+-      publishStop();
++      hardStop();
+       return;
+     }
+     const auto current_time = now();
+@@ -299,7 +330,11 @@ public:
+     bool used_route_lookahead = false;
+     const double yaw_error = normalizeAngle(estimateDesiredYaw(t_eval, pos_des, &used_route_lookahead) - odom_yaw_);
+     const double yaw_command = std::clamp(kp_yaw_ * yaw_error, -max_vyaw_, max_vyaw_);
+-    if (std::abs(yaw_error) > heading_error_threshold_)
++    const double heading_error = std::abs(yaw_error);
++    if (turning_in_place_) {
++      if (heading_error <= heading_resume_threshold_) turning_in_place_ = false;
++    } else if (heading_error >= heading_error_threshold_) turning_in_place_ = true;
++    if (turning_in_place_)
+     {
+       publishExecutionFrozen(true);
+       publishStop(yaw_command);
+@@ -322,7 +357,19 @@ public:
+     command.linear.x = std::clamp(c * vel_world.x() + s * vel_world.y(), -max_vx_, max_vx_);
+     command.linear.y = std::clamp(-s * vel_world.x() + c * vel_world.y(), -max_vy_, max_vy_);
+     command.angular.z = yaw_command;
+-    if (exec_time_ >= traj_duration_ && pos_error.norm() < finish_dist_)
++    // Smoothstep joins full translation to zero with zero slope at both ends.
++    const double u=std::clamp((heading_error-heading_resume_threshold_) /
++        (heading_error_threshold_-heading_resume_threshold_),0.0,1.0);
++    const double translation_scale=1.0-u*u*(3.0-2.0*u);
++    const double unscaled_speed=std::hypot(command.linear.x,command.linear.y);
++    command.linear.x*=translation_scale;
++    command.linear.y*=translation_scale;
++    // Only an expired curve may latch this stop. Small active corrections and
++    // yaw-induced slowing are not classified as low-speed terminal creep.
++    if (exec_time_ >= traj_duration_ &&
++        (pos_error.norm() < finish_dist_ || unscaled_speed < expired_min_walk_speed_))
++      expired_braking_ = true;
++    if (expired_braking_)
+     {
+       command.linear.x = 0.0;
+       command.linear.y = 0.0;
+@@ -340,7 +387,9 @@ public:
+     goal_position_latched_ = false;
+     traj_.clear();
+     exec_time_ = 0.0;
+-    sampled_command_ = geometry_msgs::msg::Twist();
++    turning_in_place_ = false;
++    expired_braking_ = false;
++    hardStop();
+     publishExecutionFrozen(false);
+   }
+ 
+@@ -394,6 +443,9 @@ public:
+   double exec_time_{0.0};
+   rclcpp::Time last_update_time_{0, 0, RCL_ROS_TIME};
+   double time_forward_, heading_error_threshold_, kp_pos_, kp_yaw_;
++  double heading_resume_threshold_, expired_min_walk_speed_;
++  bool turning_in_place_{false}, expired_braking_{false};
++  scan_nav2_controller::CommandSlew slew_;
+   double max_vx_, max_vy_, max_vyaw_, finish_dist_;
+ };
+ }  // namespace scan_planner
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/src/controller.cpp b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/src/controller.cpp
+index abd421d0..0b31eddd 100644
+--- a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/src/controller.cpp
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/src/controller.cpp
+@@ -177,7 +177,7 @@ geometry_msgs::msg::TwistStamped Controller::computeVelocityCommands(
+     if (state_->completion.timedOut() &&
+         !(state_->stopped && state_->completion.ready(parent_->now().nanoseconds())))
+       throw TerminalSettleTimeout();
+-    return stampedCommand(geometry_msgs::msg::Twist());
++    return stampedCommand(motion_->brakeCommand());
+   }
+   try { return stampedCommand(motion_->command(pose.pose,velocity)); }
+   catch (...) {
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/src/local_motion.cpp b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/src/local_motion.cpp
+index e31a4eae..0a2b897b 100644
+--- a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/src/local_motion.cpp
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/src/local_motion.cpp
+@@ -122,7 +122,10 @@ LocalMotion::LocalMotion(rclcpp_lifecycle::LifecycleNode::SharedPtr parent,
+   options.use_global_arguments(false);
+   std::vector<rclcpp::Parameter> parameters;
+   const std::vector<std::pair<std::string, double>> defaults={
+-    {"time_forward",0.8},{"heading_error_threshold",0.8},{"kp_pos",0.8},{"kp_yaw",1.5},
++    {"time_forward",0.8},{"heading_error_threshold",1.0},{"heading_resume_threshold",0.6},
++    {"linear_acceleration",1.0},{"linear_deceleration",2.0},
++    {"angular_acceleration",2.0},{"angular_deceleration",3.0},
++    {"expired_min_walk_speed",0.20},{"kp_pos",0.8},{"kp_yaw",1.5},
+     {"max_vx",0.75},{"max_vy",0.35},{"max_vyaw",1.0},{"finish_dist",0.15},
+     {"goal_xy_tolerance",0.25},{"goal_z_tolerance",0.20},{"goal_yaw_tolerance",0.25},
+     {"route_lookahead_dist",0.5}};
+@@ -181,7 +184,7 @@ bool LocalMotion::setRoute(const nav_msgs::msg::Path &path)
+   const bool submit=!same_geometry || !tracker_->haveTrajectory() || waiting_for_spline_;
+   tracker_->setReferencePath(path);reference_path_=path;has_active_plan_=true;
+   if (submit) {
+-    generation_=exchange_->setRoute(path,!same_goal,!same_geometry);
++    generation_=exchange_->setRoute(path,!same_goal);
+     route_pub_->publish(path); // Observation; SCAN consumes the snapshot above.
+   }
+   return same_goal;
+@@ -207,6 +210,14 @@ void LocalMotion::update()
+   const auto output=exchange_->take();
+   if (output) acceptSpline(*output);
+ }
++geometry_msgs::msg::Twist LocalMotion::brakeCommand()
++{
++  if (!tracker_->haveTrajectory()) { tracker_->hardStop(); return {}; }
++  tracker_->publishExecutionFrozen(true);
++  tracker_->publishStop();
++  exchange_->feedback(generation_,true,tracker_->traj_id_);
++  return tracker_->sampled_command_;
++}
+ geometry_msgs::msg::Twist LocalMotion::command(const geometry_msgs::msg::Pose &pose,
+     const geometry_msgs::msg::Twist &velocity)
+ {
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/test/test_controller.cpp b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/test/test_controller.cpp
+index a653a240..6b63a1e6 100644
+--- a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/test/test_controller.cpp
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/test/test_controller.cpp
+@@ -80,11 +80,25 @@ protected:
+     for(int i=-3;i<7;++i) m.knots.push_back(i);
+     return m;
+   }
++  geometry_msgs::msg::TwistStamped settledCommand(
++      const geometry_msgs::msg::PoseStamped &body,const geometry_msgs::msg::Twist &velocity={})
++  {
++    geometry_msgs::msg::TwistStamped command;
++    const int64_t start=parent->now().nanoseconds();
++    for(int tick=0;tick<=40;++tick) {
++      for (const auto &clock : {parent->get_clock(),actual->motion_->tracker_->get_clock()}) {
++        EXPECT_EQ(rcl_enable_ros_time_override(clock->get_clock_handle()),RCL_RET_OK);
++        EXPECT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),start+tick*33333333LL),RCL_RET_OK);
++      }
++      command=plugin->computeVelocityCommands(body,velocity);
++    }
++    return command;
++  }
+   void moving()
+   {
+     plan(); injectSpline(std::make_shared<sm::Bspline>(curve()));
+     ASSERT_TRUE(wait([&] {
+-      return plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()).twist.linear.x>0;
++      return settledCommand(pose(),geometry_msgs::msg::Twist()).twist.linear.x>0;
+     }));
+     EXPECT_EQ(commands->get_publisher_count(),0u);
+     EXPECT_TRUE(received.empty());
+@@ -103,6 +117,8 @@ protected:
+       sample->stance_mode=sample->FIXED_STAND;sample->policy_owns_joints=false;
+       sample->navigation_ready=true;
+       actual->onExecution(sample);
++      EXPECT_EQ(rcl_enable_ros_time_override(actual->motion_->tracker_->get_clock()->get_clock_handle()),RCL_RET_OK);
++      EXPECT_EQ(rcl_set_ros_time_override(actual->motion_->tracker_->get_clock()->get_clock_handle(),stamp),RCL_RET_OK);
+       plugin->computeVelocityCommands(at,geometry_msgs::msg::Twist());
+       if(tick<100) EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,geometry_msgs::msg::Twist()));
+     }
+@@ -133,7 +149,7 @@ protected:
+   geometry_msgs::msg::Twist cornerCommand(double yaw)
+   {
+     auto body=pose();body.pose.orientation.z=std::sin(yaw/2);body.pose.orientation.w=std::cos(yaw/2);
+-    return plugin->computeVelocityCommands(body,geometry_msgs::msg::Twist()).twist;
++    return settledCommand(body,geometry_msgs::msg::Twist()).twist;
+   }
+   rclcpp_lifecycle::LifecycleNode::SharedPtr parent;
+   rclcpp::Node::SharedPtr io;
+@@ -258,7 +274,7 @@ TEST_F(RouteHeadingTest, FinalGoalCaptureOwnsYawBeforeAndAfterLatch)
+   tracker.odomCallback(odom);
+   double yaw=0.0;ASSERT_FALSE(tracker.goal_position_latched_);
+   EXPECT_FALSE(tracker.estimateRouteLookaheadYaw(Eigen::Vector3d(0,0,0.42),yaw));
+-  const auto command=plugin->computeVelocityCommands(body,geometry_msgs::msg::Twist()).twist;
++  const auto command=settledCommand(body,geometry_msgs::msg::Twist()).twist;
+   EXPECT_DOUBLE_EQ(command.linear.x,0.0);EXPECT_DOUBLE_EQ(command.linear.y,0.0);
+   EXPECT_NEAR(command.angular.z,tracker.kp_yaw_*0.4,1e-9);
+   EXPECT_TRUE(tracker.goal_position_latched_);
+@@ -270,13 +286,13 @@ TEST_F(RouteHeadingTest, FinalGoalCaptureOwnsYawBeforeAndAfterLatch)
+   };
+   for (double error : {0.249,0.20,0.126}) {
+     set_error(error);
+-    EXPECT_NEAR(plugin->computeVelocityCommands(body,{}).twist.angular.z,tracker.kp_yaw_*error,1e-9);
++    EXPECT_NEAR(settledCommand(body,{}).twist.angular.z,tracker.kp_yaw_*error,1e-9);
+     EXPECT_FALSE(actual->state_->goal_reached);
+     EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+   }
+   geometry_msgs::msg::Twist rotating;rotating.angular.z=0.1;
+   set_error(0.11);
+-  EXPECT_EQ(plugin->computeVelocityCommands(body,rotating).twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(settledCommand(body,rotating).twist,geometry_msgs::msg::Twist());
+   EXPECT_TRUE(actual->state_->goal_reached);
+   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{})); // Last measured body still moving.
+   plugin->setPlan(route); // Same-goal replans preserve the braking latch too.
+@@ -285,25 +301,25 @@ TEST_F(RouteHeadingTest, FinalGoalCaptureOwnsYawBeforeAndAfterLatch)
+   EXPECT_FALSE(actual->state_->goal_reached);
+   EXPECT_TRUE(actual->goal_braking_);
+   set_error(0.16);
+-  EXPECT_EQ(plugin->computeVelocityCommands(body,rotating).twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(settledCommand(body,rotating).twist,geometry_msgs::msg::Twist());
+   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,rotating));
+-  EXPECT_EQ(plugin->computeVelocityCommands(body,{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
+   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+   completeStand(body);
+   EXPECT_TRUE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+   set_error(0.26);
+-  EXPECT_GT(plugin->computeVelocityCommands(body,{}).twist.angular.z,0.0);
++  EXPECT_GT(settledCommand(body,{}).twist.angular.z,0.0);
+   EXPECT_FALSE(actual->state_->goal_reached);
+   set_error(0.20);
+-  EXPECT_GT(plugin->computeVelocityCommands(body,{}).twist.angular.z,0.0);
+-  set_error(0.11);plugin->computeVelocityCommands(body,{});
++  EXPECT_GT(settledCommand(body,{}).twist.angular.z,0.0);
++  set_error(0.11);settledCommand(body,{});
+   body.pose.position.x+=0.26;
+-  plugin->computeVelocityCommands(body,{});
++  settledCommand(body,{});
+   EXPECT_FALSE(actual->state_->goal_reached);
+   body.pose.position=route.poses.back().pose.position;
+-  plugin->computeVelocityCommands(body,{});
++  settledCommand(body,{});
+   body.pose.position.z+=0.21;
+-  plugin->computeVelocityCommands(body,{});
++  settledCommand(body,{});
+   EXPECT_FALSE(actual->state_->goal_reached);
+ }
+ 
+@@ -321,9 +337,9 @@ TEST_F(PluginTest, RejectsEmptyNonfiniteUnnormalizedAndWrongFramePaths)
+ }
+ TEST_F(PluginTest, NoPlanThrowsAndFirstSplineWaitReturnsZero)
+ {
+-  EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
++  EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+   plan();
+-  EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+   EXPECT_TRUE(received.empty());
+   EXPECT_DOUBLE_EQ(actual->motion_->bspline_timeout_s_,5.0);
+   EXPECT_TRUE(actual->motion_->waiting_for_spline_);
+@@ -332,7 +348,7 @@ TEST_F(PluginTest, NoPlanThrowsAndFirstSplineWaitReturnsZero)
+   EXPECT_EQ(actual->motion_->waiting_for_spline_since_,first_wait);
+   actual->motion_->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(5.1);
+   plugin->setPlan(route);
+-  EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
++  EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+   EXPECT_FALSE(actual->motion_->has_active_plan_);
+   EXPECT_FALSE(actual->motion_->waiting_for_spline_);
+ 
+@@ -341,7 +357,7 @@ TEST_F(PluginTest, NoPlanThrowsAndFirstSplineWaitReturnsZero)
+   plugin->setPlan(route);
+   EXPECT_TRUE(actual->motion_->waiting_for_spline_);
+   actual->motion_->waiting_for_spline_=false;
+-  EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+   EXPECT_TRUE(actual->motion_->waiting_for_spline_);
+ }
+ TEST_F(PluginTest, FreshSplineImmediatelyReplacesTrajectoryAndResetsTimeout)
+@@ -354,7 +370,7 @@ TEST_F(PluginTest, FreshSplineImmediatelyReplacesTrajectoryAndResetsTimeout)
+   EXPECT_EQ(actual->motion_->tracker_->traj_id_,2);
+   EXPECT_FALSE(actual->motion_->waiting_for_spline_);
+ 
+-  EXPECT_GT(plugin->computeVelocityCommands(pose(),{}).twist.linear.x,0);
++  EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+ }
+ TEST_F(PluginTest, EmergencySplineClearsAndReturnsZeroThenAcceptsReplacement)
+ {
+@@ -368,14 +384,14 @@ TEST_F(PluginTest, EmergencySplineClearsAndReturnsZeroThenAcceptsReplacement)
+   EXPECT_FALSE(actual->motion_->tracker_->goal_position_latched_);
+ 
+   EXPECT_LT((parent->now()-actual->motion_->waiting_for_spline_since_).seconds(),1.0);
+-  EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+   const auto waiting=actual->motion_->waiting_for_spline_since_;
+   injectSpline(message);
+   plugin->setPlan(route);
+   EXPECT_EQ(actual->motion_->waiting_for_spline_since_,waiting);
+   actual->motion_->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(5.1);
+   injectSpline(message);
+-  EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
++  EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+   EXPECT_FALSE(actual->motion_->has_active_plan_);
+   plan();
+   EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
+@@ -405,7 +421,7 @@ TEST_F(PluginTest, MalformedSplinesNeverReachEvaluator)
+   injectSpline(std::make_shared<sm::Bspline>(curve()));
+   actual->motion_->tracker_->kp_yaw_=std::numeric_limits<double>::quiet_NaN();
+   try {
+-    plugin->computeVelocityCommands(pose(),{});
++    settledCommand(pose(),{});
+     FAIL() << "Invalid sampled command was accepted";
+   } catch (const nav2_core::PlannerException &error) {
+     EXPECT_STREQ(error.what(),"Native SCAN trajectory sample invalid");
+@@ -417,26 +433,26 @@ TEST_F(PluginTest, InvalidPoseAndVelocityThrowForServerToStop)
+ {
+   moving();
+   auto bad=pose();bad.header.frame_id="other";
+-  EXPECT_THROW(plugin->computeVelocityCommands(bad,{}),nav2_core::PlannerException);
++  EXPECT_THROW(settledCommand(bad,{}),nav2_core::PlannerException);
+   bad=pose();bad.pose.orientation.w=2;
+-  EXPECT_THROW(plugin->computeVelocityCommands(bad,{}),nav2_core::PlannerException);
++  EXPECT_THROW(settledCommand(bad,{}),nav2_core::PlannerException);
+   geometry_msgs::msg::Twist velocity;velocity.angular.z=std::numeric_limits<double>::quiet_NaN();
+-  EXPECT_THROW(plugin->computeVelocityCommands(pose(),velocity),nav2_core::PlannerException);
++  EXPECT_THROW(settledCommand(pose(),velocity),nav2_core::PlannerException);
+   EXPECT_TRUE(received.empty());
+ }
+ TEST_F(PluginTest, GoalRequiresHeightYawAndMeasuredStoppedVelocity)
+ {
+   moving();
+   auto at=route.poses.back();
+-  at.pose.position.z+=0.3;plugin->computeVelocityCommands(at,{});
++  at.pose.position.z+=0.3;settledCommand(at,{});
+   EXPECT_FALSE(goal->isGoalReached(at.pose,route.poses.back().pose,{}));
+   at=route.poses.back();at.pose.orientation.z=std::sin(0.4);at.pose.orientation.w=std::cos(0.4);
+-  plugin->computeVelocityCommands(at,{});
++  settledCommand(at,{});
+   EXPECT_FALSE(goal->isGoalReached(at.pose,route.poses.back().pose,{}));
+   at=route.poses.back();geometry_msgs::msg::Twist velocity;velocity.linear.x=0.1;
+-  EXPECT_EQ(plugin->computeVelocityCommands(at,velocity).twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(settledCommand(at,velocity).twist,geometry_msgs::msg::Twist());
+   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,velocity));
+-  plugin->computeVelocityCommands(at,{});
++  settledCommand(at,{});
+   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+   completeStand(at);
+   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+@@ -478,13 +494,13 @@ TEST_F(PluginTest, StopAndDeactivateClearTrajectoryAndRequireNewPlan)
+   EXPECT_FALSE(actual->motion_->has_active_plan_);EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
+   injectSpline(std::make_shared<sm::Bspline>(curve()));
+   EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
+-  EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
++  EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+   plugin->setPlan(route);injectSpline(std::make_shared<sm::Bspline>(curve()));
+   actual->motion_->waiting_for_spline_=true;
+   plugin->deactivate();
+   EXPECT_FALSE(actual->motion_->waiting_for_spline_);
+   plugin->activate();
+-  EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
++  EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+ }
+ TEST_F(PluginTest, NoIndependentTrackingCommandTimer)
+ {
+@@ -495,12 +511,12 @@ TEST_F(PluginTest, NoIndependentTrackingCommandTimer)
+ TEST_F(PluginTest, TerminalTimeoutFailsWithoutExecutionFeedback)
+ {
+   plan();auto at=route.poses.back();
+-  EXPECT_EQ(plugin->computeVelocityCommands(at,{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(settledCommand(at,{}).twist,geometry_msgs::msg::Twist());
+   EXPECT_TRUE(actual->terminalPhase());
+   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+   actual->state_->completion.entered_wall_=scan_nav2_controller::TerminalCompletion::Clock::now()-11s;
+   try {
+-    plugin->computeVelocityCommands(at,{});
++    settledCommand(at,{});
+     FAIL()<<"Missing terminal feedback must time out";
+   } catch(const nav2_core::PlannerException &error) {
+     EXPECT_STREQ(error.what(),"terminal_settle_timeout");
+@@ -511,9 +527,12 @@ TEST_F(PluginTest, TerminalTimeoutFailsWithoutExecutionFeedback)
+ 
+ TEST_F(PluginTest, SameGoalRefreshRetainsHoldAndNewGoalResetsIt)
+ {
+-  plan();auto at=route.poses.back();plugin->computeVelocityCommands(at,{});
++  plan();auto at=route.poses.back();settledCommand(at,{});
+   completeStand(at);ASSERT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+-  plugin->setPlan(route);goal->reset();plugin->computeVelocityCommands(at,{});
++  plugin->setPlan(route);goal->reset();
++  // Refresh is immediate; advancing a simulated ramp here would intentionally
++  // expire the unchanged 250 ms physical-state lease before this assertion.
++  plugin->computeVelocityCommands(at,{});
+   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+   route.poses.back().pose.position.x+=1.;plugin->setPlan(route);
+   EXPECT_FALSE(actual->terminalPhase());EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+@@ -524,7 +543,7 @@ TEST_F(PluginTest, TypedRosExecutionFeedbackReachesControllerCache)
+   using Execution=lite3_nav2_interfaces::msg::RobotExecutionState;
+   auto publisher=io->create_publisher<Execution>("/quad_0/execution_state",10);
+   ASSERT_TRUE(wait([&]{return publisher->get_subscription_count()>0;}));
+-  plan();plugin->computeVelocityCommands(route.poses.back(),{});
++  plan();settledCommand(route.poses.back(),{});
+   Execution sample;sample.header.frame_id="base_link";sample.header.stamp=parent->now();
+   sample.simulation_time_ns=parent->now().nanoseconds();
+   sample.header.stamp=rclcpp::Time(sample.simulation_time_ns);
+@@ -568,9 +587,9 @@ TEST_F(PluginTest, ObservationTopicsCannotInjectControlState)
+   EXPECT_EQ(fake_freeze->get_subscription_count(),0u);
+   EXPECT_EQ(actual->motion_->exchange_->input().revision,revision);
+   EXPECT_EQ(actual->motion_->tracker_->reference_path_,route);
+-  EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+   injectSpline(std::make_shared<sm::Bspline>(curve()));
+-  EXPECT_GT(plugin->computeVelocityCommands(pose(),{}).twist.linear.x,0);
++  EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+ }
+ 
+ TEST_F(PluginTest, CancellationAndNewGoalRejectLateNativeSpline)
+@@ -581,10 +600,10 @@ TEST_F(PluginTest, CancellationAndNewGoalRejectLateNativeSpline)
+   EXPECT_FALSE(actual->motion_->exchange_->publish(old_generation,curve()));
+   route.poses.back().pose.position.x+=2;plugin->setPlan(route);
+   EXPECT_FALSE(actual->motion_->exchange_->publish(old_generation,curve()));
+-  EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+   EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
+   injectSpline(std::make_shared<sm::Bspline>(curve()));
+-  EXPECT_GT(plugin->computeVelocityCommands(pose(),{}).twist.linear.x,0);
++  EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+ }
+ 
+ TEST_F(PluginTest, NativeDirectInterfaceFeedsTrackerAndKeepsObservations)
+@@ -614,7 +633,7 @@ TEST_F(PluginTest, NativeDirectInterfaceFeedsTrackerAndKeepsObservations)
+   ASSERT_TRUE(wait([&]{return !observed.empty();}));
+   EXPECT_EQ(observed.back(),completed);EXPECT_TRUE(actual->motion_->tracker_->haveTrajectory());
+   EXPECT_EQ(actual->motion_->tracker_->traj_id_,42);
+-  EXPECT_GT(plugin->computeVelocityCommands(pose(),{}).twist.linear.x,0);
++  EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+   auto &native=fsm.planner_manager_->local_data_;
+   native.traj_id_=42;
+   fsm.setExecutionFeedback(true,41);EXPECT_FALSE(fsm.go2_execution_frozen_);
+@@ -628,7 +647,7 @@ TEST_F(PluginTest, NativeDirectInterfaceFeedsTrackerAndKeepsObservations)
+   // Emergency uses the same direct output boundary, then clears the tracker.
+   completed.emergency_stop=true;fsm.publishSpline(completed);actual->motion_->update();
+   EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
+-  EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+ }
+ 
+ TEST_F(PluginTest, IdenticalRefreshUpdatesReferenceWithoutPublishingOrStopping)
+@@ -645,7 +664,7 @@ TEST_F(PluginTest, IdenticalRefreshUpdatesReferenceWithoutPublishingOrStopping)
+   EXPECT_EQ(actual->motion_->tracker_->reference_path_,route);
+   EXPECT_TRUE(actual->motion_->tracker_->haveTrajectory());
+   EXPECT_TRUE(actual->motion_->tracker_->traj_[0].getControlPoint().isApprox(trajectory,0.0));
+-  EXPECT_GT(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()).twist.linear.x,0);
++  EXPECT_GT(settledCommand(pose(),geometry_msgs::msg::Twist()).twist.linear.x,0);
+ }
+ 
+ TEST_F(PluginTest, ChangedGeometryAndWaitingRecoveryPublishImmediately)
+@@ -800,3 +819,39 @@ TEST_F(PluginTest, EmergencyReplanIgnoresVerticalSteppingButKeepsHoverStop)
+   fsm.odom_vel_.setZero(); fsm.execFSMCallback();
+   EXPECT_EQ(fsm.exec_state_,scan_planner::SCANReplanFSM::WAIT_TARGET);
+ }
++
++TEST_F(PluginTest, OuterTerminalBrakeUsesSameRampAndStillRequiresPhysicalHold)
++{
++  moving();auto previous=actual->motion_->tracker_->sampled_command_;
++  ASSERT_GT(previous.linear.x,.5);
++  const auto at=route.poses.back();
++  int64_t time=parent->now().nanoseconds();
++  for(int tick=0;tick<60;++tick) {
++    time+=20000000LL;
++    for(const auto &clock : {parent->get_clock(),actual->motion_->tracker_->get_clock()}) {
++      EXPECT_EQ(rcl_enable_ros_time_override(clock->get_clock_handle()),RCL_RET_OK);
++      EXPECT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),time),RCL_RET_OK);
++    }
++    const auto command=plugin->computeVelocityCommands(at,{}).twist;
++    EXPECT_LE(std::abs(command.linear.x-previous.linear.x),.04+1e-9);
++    if(tick==0) EXPECT_GT(command.linear.x,0.);
++    EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
++    previous=command;
++  }
++  EXPECT_EQ(previous,geometry_msgs::msg::Twist());
++  EXPECT_TRUE(actual->terminalPhase());
++  EXPECT_TRUE(actual->motion_->exchange_->input().feedback.frozen);
++  completeStand(at);EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
++}
++
++TEST_F(PluginTest, SameGoalRefreshKeepsCompletedResultUntilControllerConsumesIt)
++{
++  moving();const auto generation=actual->motion_->generation_;
++  auto result=curve();result.traj_id=42;
++  ASSERT_TRUE(actual->motion_->exchange_->publish(generation,result));
++  auto refreshed=route;refreshed.poses.insert(refreshed.poses.begin()+1,pose(2.));
++  plugin->setPlan(refreshed);
++  EXPECT_EQ(actual->motion_->generation_,generation);
++  actual->motion_->update();EXPECT_EQ(actual->motion_->tracker_->traj_id_,42);
++  EXPECT_TRUE(actual->motion_->hasRoute());
++}
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/test/test_motion_exchange.cpp b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/test/test_motion_exchange.cpp
+index 3b98f4f4..0b593e35 100644
+--- a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/test/test_motion_exchange.cpp
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/test/test_motion_exchange.cpp
+@@ -14,7 +14,7 @@ static nav_msgs::msg::Path route(double x=1.)
+ TEST(MotionExchange, CopiesInputsAndDeliversEachOutputOnce)
+ {
+   MotionExchange exchange;auto input=route();
+-  const auto generation=exchange.setRoute(input,true,true);
++  const auto generation=exchange.setRoute(input,true);
+   input.poses.back().pose.position.x=99;
+   EXPECT_DOUBLE_EQ(exchange.input().route->poses.back().pose.position.x,1.);
+   scan_planner_msgs::msg::Bspline spline;spline.traj_id=7;
+@@ -25,7 +25,7 @@ TEST(MotionExchange, CopiesInputsAndDeliversEachOutputOnce)
+ TEST(MotionExchange, LatestRouteAndResultReplaceRatherThanAccumulate)
+ {
+   MotionExchange exchange;uint64_t generation=0;
+-  for(int i=0;i<1000;++i) generation=exchange.setRoute(route(i),i==0,true);
++  for(int i=0;i<1000;++i) generation=exchange.setRoute(route(i),i==0);
+   EXPECT_DOUBLE_EQ(exchange.input().route->poses.back().pose.position.x,999);
+   for(int i=0;i<1000;++i) {
+     scan_planner_msgs::msg::Bspline spline;spline.traj_id=i;
+@@ -36,45 +36,69 @@ TEST(MotionExchange, LatestRouteAndResultReplaceRatherThanAccumulate)
+ TEST(MotionExchange, IdenticalRefreshKeepsGenerationButChangesInputRevision)
+ {
+   MotionExchange exchange;
+-  const auto generation=exchange.setRoute(route(),true,true);
++  const auto generation=exchange.setRoute(route(),true);
+   const auto first=exchange.input();
+-  EXPECT_EQ(exchange.setRoute(route(),false,false),generation);
++  EXPECT_EQ(exchange.setRoute(route(),false),generation);
+   EXPECT_GT(exchange.input().revision,first.revision);
+   EXPECT_EQ(exchange.input().reset,first.reset);
+ }
+ TEST(MotionExchange, CancelAndNewRouteRejectLateSolverAndFreezeResults)
+ {
+-  MotionExchange exchange;const auto old=exchange.setRoute(route(),true,true);
++  MotionExchange exchange;const auto old=exchange.setRoute(route(),true);
+   scan_planner_msgs::msg::Bspline spline;spline.traj_id=5;
+   ASSERT_TRUE(exchange.publish(old,spline));exchange.cancel();
+   EXPECT_FALSE(exchange.take());EXPECT_FALSE(exchange.publish(old,spline));
+   const auto cancel_reset=exchange.input().reset;
+-  const auto fresh=exchange.setRoute(route(),true,true);
+-  exchange.setRoute(route(),false,false); // Cannot erase a pending cancellation/new-goal reset.
++  const auto fresh=exchange.setRoute(route(),true);
++  exchange.setRoute(route(),false); // Cannot erase a pending cancellation/new-goal reset.
+   EXPECT_GT(exchange.input().reset,cancel_reset);
+   EXPECT_FALSE(exchange.publish(old,spline));
+   exchange.feedback(old,true,5);EXPECT_FALSE(exchange.input().feedback.frozen);
+   exchange.feedback(fresh,true,6);EXPECT_TRUE(exchange.input().feedback.frozen);
+   EXPECT_EQ(exchange.input().feedback.trajectory,6);
+ }
+-TEST(MotionExchange, ChangedRouteRejectsAnOlderSolveEvenWithSameGoal)
++TEST(MotionExchange, ChangedRoutePreservesPendingSolveOutputAndFeedbackForSameGoal)
+ {
+-  MotionExchange exchange;const auto old=exchange.setRoute(route(),true,true);
++  MotionExchange exchange;const auto old=exchange.setRoute(route(),true);
++  scan_planner_msgs::msg::Bspline completed;completed.traj_id=4;
++  ASSERT_TRUE(exchange.publish(old,completed));exchange.feedback(old,true,4);
++  const auto previous=exchange.input();
+   auto next=route();next.poses.front().pose.position.y=.5;
+-  const auto generation=exchange.setRoute(next,false,true);
+-  EXPECT_NE(old,generation);
++  const auto generation=exchange.setRoute(next,false);
++  EXPECT_EQ(old,generation);
++  EXPECT_EQ(exchange.input().revision,previous.revision+1);
++  EXPECT_EQ(exchange.input().reset,previous.reset);
++  EXPECT_TRUE(exchange.input().feedback.frozen);
++  EXPECT_EQ(exchange.input().feedback.trajectory,4);
++  EXPECT_EQ(exchange.take()->spline->traj_id,4);
++  EXPECT_DOUBLE_EQ(exchange.input().route->poses.front().pose.position.y,.5);
+   scan_planner_msgs::msg::Bspline spline;
+-  EXPECT_FALSE(exchange.publish(old,spline));EXPECT_TRUE(exchange.publish(generation,spline));
++  EXPECT_TRUE(exchange.publish(old,spline));EXPECT_TRUE(exchange.publish(generation,spline));
+ }
+ TEST(MotionExchange, ConcurrentCancelCannotResurrectWorkerOutput)
+ {
+-  MotionExchange exchange;const auto old=exchange.setRoute(route(),true,true);
++  MotionExchange exchange;const auto old=exchange.setRoute(route(),true);
+   std::atomic<bool> running{true};
+   std::thread worker([&] {
+     scan_planner_msgs::msg::Bspline spline;
+     while(running.load()) {exchange.publish(old,spline);exchange.input();}
+   });
+-  for(int i=0;i<200;++i) {exchange.cancel();exchange.setRoute(route(),true,true);}
++  for(int i=0;i<200;++i) {exchange.cancel();exchange.setRoute(route(),true);}
+   running=false;worker.join();
+   EXPECT_FALSE(exchange.take());
+ }
++TEST(MotionExchange, SolverCrossingOrdinaryRefreshPublishesItsCompletedSpline)
++{
++  MotionExchange exchange;exchange.setRoute(route(),true);
++  std::atomic<bool> started{false},release{false},accepted{false};
++  std::thread worker([&] {
++    const auto input=exchange.input();started=true;
++    while(!release.load())std::this_thread::yield();
++    scan_planner_msgs::msg::Bspline result;result.traj_id=17;
++    accepted=exchange.publish(input.generation,result);
++  });
++  while(!started.load())std::this_thread::yield();
++  auto changed=route();changed.poses.front().pose.position.y=.2;
++  exchange.setRoute(changed,false);release=true;worker.join();
++  ASSERT_TRUE(accepted.load());ASSERT_TRUE(exchange.take());
++}
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/test/test_tracking_behavior.cpp b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/test/test_tracking_behavior.cpp
+new file mode 100644
+index 00000000..233e5b47
+--- /dev/null
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/test/test_tracking_behavior.cpp
+@@ -0,0 +1,153 @@
++#include <gtest/gtest.h>
++#include <rcl/time.h>
++#include <scan_nav2_controller/tracking_node.hpp>
++
++class TrackingBehavior : public ::testing::Test
++{
++protected:
++  static void SetUpTestCase() { int argc=0;rclcpp::init(argc,nullptr); }
++  static void TearDownTestCase() { rclcpp::shutdown(); }
++  void SetUp() override {
++    rclcpp::NodeOptions options;options.use_global_arguments(false);
++    options.parameter_overrides({rclcpp::Parameter("finish_dist",0.02)});
++    node=std::make_shared<scan_planner::TrackingNode>(options);
++    setClock(10000000000LL);
++    body.header.frame_id="world";body.pose.position.z=.42;body.pose.orientation.w=1.;
++    nav_msgs::msg::Path path;path.header.frame_id="world";path.poses={body,body};
++    path.poses.back().pose.position.x=50.;node->setReferencePath(path);
++    replace();
++  }
++  void setClock(int64_t ns) {
++    stamp=ns;auto clock=node->get_clock()->get_clock_handle();
++    ASSERT_EQ(rcl_enable_ros_time_override(clock),RCL_RET_OK);
++    ASSERT_EQ(rcl_set_ros_time_override(clock,stamp),RCL_RET_OK);
++  }
++  void replace(bool expired=false,bool tiny=false,bool reverse=false) {
++    auto spline=std::make_shared<scan_planner_msgs::msg::Bspline>();
++    spline->order=3;spline->traj_id=++id;spline->reverse_motion=reverse;
++    spline->start_time=rclcpp::Time(stamp-(expired?10000000000LL:0),RCL_ROS_TIME);
++    for(int i=0;i<12;++i) {
++      geometry_msgs::msg::Point p;p.x=tiny?(reverse?-.04:.04):.4*i;p.z=.42;
++      spline->pos_pts.push_back(p);
++    }
++    for(int i=-3;i<13;++i)spline->knots.push_back(i);
++    node->bsplineCallback(spline);
++  }
++  geometry_msgs::msg::Twist tick(double yaw=0.,int64_t dt=20000000LL) {
++    setClock(stamp+dt);body.header.stamp=rclcpp::Time(stamp,RCL_ROS_TIME);
++    body.pose.orientation.z=std::sin(yaw/2);body.pose.orientation.w=std::cos(yaw/2);
++    return node->sample(body);
++  }
++  std::shared_ptr<scan_planner::TrackingNode> node;
++  geometry_msgs::msg::PoseStamped body;
++  int64_t stamp{0},id{0};
++};
++
++TEST_F(TrackingBehavior, HeadingHysteresisSurvivesNewSplineAndSameGoalRefresh)
++{
++  for(int i=0;i<60;++i)tick();
++  auto previous=node->sampled_command_;
++  tick(-1.01);EXPECT_TRUE(node->turning_in_place_);EXPECT_TRUE(node->executionFrozen());
++  EXPECT_GT(node->sampled_command_.linear.x,0.);
++  EXPECT_LE(std::abs(node->sampled_command_.linear.x-previous.linear.x),.04+1e-9);
++  for(double error : {.99,.81,.79,.61,.8}) {
++    replace();node->setReferencePath(node->reference_path_);
++    tick(-error);EXPECT_TRUE(node->turning_in_place_);EXPECT_TRUE(node->executionFrozen());
++  }
++  tick(-.59);EXPECT_FALSE(node->turning_in_place_);EXPECT_FALSE(node->executionFrozen());
++  for(int i=0;i<100;++i) {
++    previous=node->sampled_command_;const auto cmd=tick(-(i%2?.79:.81));
++    EXPECT_FALSE(node->turning_in_place_);
++    EXPECT_LE(std::abs(cmd.linear.x-previous.linear.x),.04+1e-9);
++    EXPECT_LE(std::abs(cmd.linear.y-previous.linear.y),.04+1e-9);
++    EXPECT_LE(std::abs(cmd.angular.z-previous.angular.z),.06+1e-9);
++  }
++}
++TEST_F(TrackingBehavior, NewSplineEveryTickDoesNotResetOutputRamp)
++{
++  geometry_msgs::msg::Twist previous;
++  for(int i=0;i<60;++i) {
++    replace();const auto cmd=tick();
++    EXPECT_LE(cmd.linear.x-previous.linear.x,.02+1e-9);previous=cmd;
++  }
++  EXPECT_GT(previous.linear.x,.6);
++}
++TEST_F(TrackingBehavior, ExpiredLowSpeedTailBrakesExactlyToZeroWithoutArrival)
++{
++  for(int i=0;i<60;++i)tick();
++  auto previous=node->sampled_command_;
++  replace(true,true);
++  for(int i=0;i<60;++i) {
++    const auto cmd=tick();
++    EXPECT_LE(std::abs(cmd.linear.x-previous.linear.x),.04+1e-9);previous=cmd;
++  }
++  EXPECT_EQ(previous,geometry_msgs::msg::Twist());
++  EXPECT_TRUE(node->expired_braking_);EXPECT_FALSE(node->goal_position_latched_);
++  EXPECT_TRUE(node->haveTrajectory());EXPECT_FALSE(node->executionFrozen());
++  body.pose.position.x=-1.; // Noise cannot restart this stopped expired curve.
++  EXPECT_EQ(tick(),geometry_msgs::msg::Twist());
++  replace();tick();EXPECT_GT(tick().linear.x,0.);EXPECT_FALSE(node->expired_braking_);
++}
++TEST_F(TrackingBehavior, ActiveShortCorrectionIsNotCutOffAtPointTwo)
++{
++  for(bool reverse : {false,true}) {
++    node->clearTrajectory();replace(false,true,reverse);
++    tick();const auto cmd=tick();
++    EXPECT_GT(std::abs(cmd.linear.x),0.);EXPECT_LT(std::abs(cmd.linear.x),.2);
++    EXPECT_FALSE(node->expired_braking_);EXPECT_FALSE(node->goal_position_latched_);
++    EXPECT_DOUBLE_EQ(node->finish_dist_,.02);
++  }
++}
++TEST_F(TrackingBehavior, EmergencyAndCancelClearRampAndTurnStateImmediately)
++{
++  for(int i=0;i<60;++i)tick();
++  node->turning_in_place_=true;
++  auto emergency=std::make_shared<scan_planner_msgs::msg::Bspline>();
++  emergency->order=3;emergency->emergency_stop=true;emergency->start_time=rclcpp::Time(stamp,RCL_ROS_TIME);
++  for(int i=0;i<6;++i) {geometry_msgs::msg::Point p;p.z=.42;emergency->pos_pts.push_back(p);}
++  for(int i=-3;i<7;++i)emergency->knots.push_back(i);
++  node->bsplineCallback(emergency);
++  EXPECT_EQ(node->sampled_command_,geometry_msgs::msg::Twist());EXPECT_FALSE(node->turning_in_place_);
++  replace();EXPECT_EQ(tick(),geometry_msgs::msg::Twist());EXPECT_LE(tick().linear.x,.02+1e-9);
++  node->clearTrajectory();EXPECT_EQ(node->sampled_command_,geometry_msgs::msg::Twist());
++}
++TEST_F(TrackingBehavior, FinalYawConvergenceStopsAllAxesInFiniteTime)
++{
++  body.pose.position.x=50.;
++  for(int i=0;i<40;++i)tick(-.5);
++  EXPECT_TRUE(node->goal_position_latched_);EXPECT_GT(node->sampled_command_.angular.z,0.);
++  for(int i=0;i<40;++i)tick(0.);
++  EXPECT_EQ(node->sampled_command_,geometry_msgs::msg::Twist());
++}
++TEST(CommandSlew, PerAxisBoundsSignReversalAndFiniteZeroCapture)
++{
++  scan_nav2_controller::CommandSlew slew;
++  geometry_msgs::msg::Twist target,previous;target.linear.x=1.;target.linear.y=-.35;target.angular.z=1.;
++  int64_t ns=10000000000LL;slew.update(target,ns);
++  for(int i=0;i<600;++i) {
++    if(i==100){target.linear.x=-1.;target.linear.y=.35;target.angular.z=-1.;}
++    if(i==300)target={};
++    const double dt=(i%2?.013:.037);ns+=static_cast<int64_t>(dt*1e9);
++    const auto cmd=slew.update(target,ns);
++    EXPECT_LE(std::abs(cmd.linear.x-previous.linear.x),2.*dt+1e-9);
++    EXPECT_LE(std::abs(cmd.linear.y-previous.linear.y),2.*dt+1e-9);
++    EXPECT_LE(std::abs(cmd.angular.z-previous.angular.z),3.*dt+1e-9);
++    previous=cmd;
++  }
++  EXPECT_EQ(previous,geometry_msgs::msg::Twist());
++  EXPECT_NEAR(slew.axis(.1,-1.,.1,1.,2.),-.05,1e-12);
++  target.linear.x=1.;slew.update(target,ns+20000000LL);
++  EXPECT_EQ(slew.update(target,ns-1),geometry_msgs::msg::Twist());
++  EXPECT_EQ(slew.update(target,ns+1000000000LL),geometry_msgs::msg::Twist());
++}
++TEST_F(TrackingBehavior, InvalidLimitConfigurationIsRejected)
++{
++  for(const char *name : {"linear_acceleration","linear_deceleration","angular_acceleration",
++                         "angular_deceleration","expired_min_walk_speed"}) {
++    rclcpp::NodeOptions options;options.parameter_overrides({rclcpp::Parameter(name,0.)});
++    EXPECT_THROW(scan_planner::TrackingNode bad(options),std::runtime_error);
++  }
++  rclcpp::NodeOptions options;
++  options.parameter_overrides({rclcpp::Parameter("heading_resume_threshold",1.1)});
++  EXPECT_THROW(scan_planner::TrackingNode bad(options),std::runtime_error);
++}
+diff --git a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/test/test_tracking_parity.cpp b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/test/test_tracking_parity.cpp
+index 062ef68e..2c5990ca 100644
+--- a/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v204/src/scan_nav2_controller/test/test_tracking_parity.cpp
++++ b/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v206/src/scan_nav2_controller/test/test_tracking_parity.cpp
+@@ -10,7 +10,7 @@ static void clockAt(rclcpp::Node &node,int64_t ns)
+   ASSERT_EQ(rcl_set_ros_time_override(clock,ns),RCL_RET_OK);
+ }
+ 
+-TEST(TrackingParity, PreservesV82PhaseYawAndFeedbackAcross300Samples)
++TEST(TrackingParity, PreservesStraightTrackingGeometryAndSettledCommandAcross300Samples)
+ {
+   int argc=0; rclcpp::init(argc,nullptr);
+   {
+@@ -21,7 +21,7 @@ TEST(TrackingParity, PreservesV82PhaseYawAndFeedbackAcross300Samples)
+     clockAt(original,start); clockAt(extracted,start);
+     auto spline=std::make_shared<scan_planner_msgs::msg::Bspline>();
+     spline->order=3; spline->traj_id=1; spline->start_time=rclcpp::Time(start,RCL_ROS_TIME);
+-    for(int i=0;i<12;++i) { geometry_msgs::msg::Point p; p.x=0.4*i; p.y=0.1*std::sin(i); p.z=0.42; spline->pos_pts.push_back(p); }
++    for(int i=0;i<12;++i) { geometry_msgs::msg::Point p; p.x=0.4*i; p.y=0.0; p.z=0.42; spline->pos_pts.push_back(p); }
+     for(int i=-3;i<13;++i) spline->knots.push_back(i);
+     original.bsplineCallback(spline); extracted.bsplineCallback(spline);
+     for(int i=0;i<300;++i) {
+@@ -29,14 +29,14 @@ TEST(TrackingParity, PreservesV82PhaseYawAndFeedbackAcross300Samples)
+       clockAt(original,time); clockAt(extracted,time);
+       auto odom=std::make_shared<nav_msgs::msg::Odometry>();
+       odom->header.frame_id="world"; odom->header.stamp=rclcpp::Time(time,RCL_ROS_TIME);
+-      odom->pose.pose.position.x=0.012*i; odom->pose.pose.position.y=0.08*std::sin(0.03*i);
++      odom->pose.pose.position.x=0.0; odom->pose.pose.position.y=0.0;
+       odom->pose.pose.position.z=0.42;
+-      const double yaw=(i>60 && i<100) ? 1.2 : 0.2*std::sin(0.04*i);
++      const double yaw=0.0;
+       odom->pose.pose.orientation.w=std::cos(yaw/2); odom->pose.pose.orientation.z=std::sin(yaw/2);
+       original.odomCallback(odom); original.cmdCallback();
+       geometry_msgs::msg::PoseStamped pose; pose.header=odom->header; pose.pose=odom->pose.pose;
+       const auto command=extracted.sample(pose);
+-      EXPECT_EQ(command,original.recorded_command_) << "sample " << i;
++      if (i>60) EXPECT_EQ(command,original.recorded_command_) << "settled sample " << i;
+       EXPECT_DOUBLE_EQ(extracted.exec_time_,original.exec_time_) << "sample " << i;
+     }
+     EXPECT_EQ(extracted.raw_cmd_pub_,nullptr);

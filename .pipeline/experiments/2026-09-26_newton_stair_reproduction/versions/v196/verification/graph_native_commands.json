@@ -1,0 +1,100 @@
+{
+  "frequency_observer": [
+    "/usr/bin/python3",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/frequency_observer.py",
+    "--output",
+    "/private/tmp/vla_stop_audit_20261012/v196_overlay_preflight/runs/v196_overlay_graph_probe"
+  ],
+  "clock_responder": [
+    "/usr/bin/python3",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/clock_sync.py",
+    "--port",
+    "24602"
+  ],
+  "pct_support": [
+    "/usr/bin/python3",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py",
+    "--ros-args",
+    "-p",
+    "map_path:=/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/new_building.pickle",
+    "-p",
+    "use_sim_time:=true",
+    "-p",
+    "elevation_path:=/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/new_building_original_precision.npz"
+  ],
+  "pct_physical_floor": [
+    "/usr/bin/python3",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/physical_floor_publisher.py",
+    "--ros-args",
+    "-p",
+    "use_sim_time:=true"
+  ],
+  "pct_surface_ground": [
+    "/usr/bin/python3",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime_sources/bridge/lite3_sim_bridge/pct_sim_clock_publisher.py",
+    "--ros-args",
+    "-p",
+    "map_path:=/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/new_building.pickle",
+    "-p",
+    "use_sim_time:=true",
+    "-p",
+    "elevation_path:=/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/new_building_original_precision.npz",
+    "-r",
+    "__node:=pct_surface_ground_publisher",
+    "-p",
+    "ground_mode:=surface_evidence",
+    "-p",
+    "dense_surface_path:=/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/new_building_dense_surface.npy"
+  ],
+  "health": [
+    "/usr/bin/python3",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/native_observer.py",
+    "--output",
+    "/private/tmp/vla_stop_audit_20261012/v196_overlay_preflight/runs/v196_overlay_graph_probe/artifacts/runtime_health.json",
+    "--run-id",
+    "v196_overlay_graph_probe",
+    "--epoch",
+    "1791982273097769000",
+    "--ros-args",
+    "-p",
+    "use_sim_time:=true"
+  ],
+  "body_tf": [
+    "/usr/bin/python3",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/body_tf_bridge.py",
+    "--ros-args",
+    "-p",
+    "use_sim_time:=true"
+  ],
+  "bridge": [
+    "/usr/bin/python3",
+    "-c",
+    "from lite3_sim_bridge.foxy_bridge_node import main; main()",
+    "--ros-args",
+    "--params-file",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/config_archived/bridge.yaml",
+    "-p",
+    "telemetry_host:=host.docker.internal",
+    "-p",
+    "telemetry_port:=24600",
+    "-p",
+    "command_host:=host.docker.internal",
+    "-p",
+    "command_port:=24601",
+    "-p",
+    "scan_audit_path:=/private/tmp/vla_stop_audit_20261012/v196_overlay_preflight/runs/v196_overlay_graph_probe/bridge_scan_audit.jsonl"
+  ],
+  "nav2": [
+    "ros2",
+    "launch",
+    "lite3_nav2_bridge",
+    "navigation.launch.py",
+    "native_planner_config:=/private/tmp/vla_stop_audit_20261012/v196_overlay_preflight/runs/v196_overlay_graph_probe/planner.yaml",
+    "backend_config:=/private/tmp/vla_stop_audit_20261012/v196_overlay_preflight/runs/v196_overlay_graph_probe/backend_config.json",
+    "generated_params:=/private/tmp/vla_stop_audit_20261012/v196_overlay_preflight/runs/v196_overlay_graph_probe/nav2_params.yaml",
+    "pct_map:=/task/global_coverage_v135_foxy/map.pickle",
+    "use_sim_time:=true",
+    "base_frame:=base",
+    "odom_topic:=/quad_0/body_pose"
+  ]
+}

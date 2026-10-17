@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="1" hostname="a563cd3dcedf" name="pytest" skipped="0" tests="1" time="0.105" timestamp="2026-10-15T16:57:19.232547"><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_wait_recovery" file="src/lite3_nav2_bridge/test/test_wait_recovery.py" line="12" name="test_stock_wait_activates_and_keeps_robot_command_topic_unowned" time="0.003"><failure message="_rclpy.RCLError: Failed to initialize logging: Failed to create log directory: //.ros/log, at /tmp/binarydeb/ros-foxy-rcl-logging-spdlog-1.1.0/src/rcl_logging_spdlog.cpp:100">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-0/test_stock_wait_activates_and_0&apos;)
+
+    def test_stock_wait_activates_and_keeps_robot_command_topic_unowned(tmp_path):
+&gt;       rclpy.init()
+
+/work/src/lite3_nav2_bridge/test/test_wait_recovery.py:14: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7517c9b90ac0&gt;, args = None
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+            rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+            if initialize_logging and not self._logging_initialized:
+                with g_logging_configure_lock:
+                    g_logging_ref_count += 1
+                    if g_logging_ref_count == 1:
+&gt;                       rclpy_implementation.rclpy_logging_configure(capsule)
+E                       _rclpy.RCLError: Failed to initialize logging: Failed to create log directory: //.ros/log, at /tmp/binarydeb/ros-foxy-rcl-logging-spdlog-1.1.0/src/rcl_logging_spdlog.cpp:100
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:64: RCLError</failure></testcase></testsuite></testsuites>

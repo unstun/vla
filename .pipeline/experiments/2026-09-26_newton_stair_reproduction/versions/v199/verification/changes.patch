@@ -1,0 +1,516 @@
+--- parent/src/lite3_nav2_bridge/launch/navigation.launch.py
++++ v199/src/lite3_nav2_bridge/launch/navigation.launch.py
+@@ -17,7 +17,7 @@
+              parameters=[{'config_path': get('backend_config'), 'pct_map': str(pct_map),
+                           'odom_topic': get('odom_topic'), 'use_sim_time': use_sim}], output='screen'),
+         Node(package='nav2_controller', executable='controller_server', name='controller_server',
+-             parameters=[profile], output='screen'),
++             parameters=[profile], remappings=[('cmd_vel', '/quad_0/cmd_vel')], output='screen'),
+         Node(package='nav2_planner', executable='planner_server', name='planner_server',
+              parameters=[profile], output='screen'),
+         Node(package='nav2_recoveries', executable='recoveries_server', name='recoveries_server',
+--- parent/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py
++++ v199/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py
+@@ -20,7 +20,6 @@
+     controller = data['controller_server']['ros__parameters']
+     controller['SCAN'].update(native_planner_config=str(native_config), native_worker_enabled=not external_planner)
+     controller['SCAN']['base_frame'] = base_frame
+-    controller['SCAN']['command_topic'] = '/quad_0/cmd_vel'
+     controller['SCAN']['route_topic'] = '/pct_path'
+     # Local curve capture must be tighter than the 5 cm recovery prefix.
+     # Final mission goal tolerances remain independently configured.
+--- parent/src/lite3_nav2_bridge/test/test_mission_bridge.py
++++ v199/src/lite3_nav2_bridge/test/test_mission_bridge.py
+@@ -325,7 +325,7 @@
+     write_profile(output, native, False)
+     config = yaml.safe_load(output.read_text())
+     controller = config['controller_server']['ros__parameters']['SCAN']
+-    assert controller['command_topic'] == '/quad_0/cmd_vel'
++    assert 'command_topic' not in controller
+     assert controller['route_topic'] == '/pct_path'
+     bt = config['/nav2_internal/bt_navigator']['ros__parameters']
+     tree = ET.parse(bt['default_bt_xml_filename'])
+@@ -336,6 +336,29 @@
+     assert tree.getroot().find('.//RecoveryNode').attrib == dict(number_of_retries='6', name='NavigateRecovery')
+     assert tree.getroot().find('.//MeasuredProgressRecovery') is None
+     assert tree.getroot().find('.//Wait').attrib['server_name'] == '/wait'
++
++
++def test_navigation_launch_assigns_command_topic_to_server(tmp_path):
++    import importlib.util
++    from pathlib import Path as FilePath
++    from launch import LaunchContext
++    from ament_index_python.packages import get_package_share_directory
++    launch_file = FilePath(get_package_share_directory('lite3_nav2_bridge')) / 'launch/navigation.launch.py'
++    spec = importlib.util.spec_from_file_location('navigation_launch', launch_file)
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    pct_map = tmp_path / 'map.pickle'
++    pct_map.write_bytes(b'launch resolves this path but does not load PCT')
++    context = LaunchContext()
++    context.launch_configurations.update({
++        'use_sim_time': 'false', 'base_frame': 'base', 'odom_topic': '/quad_0/body_pose',
++        'generated_params': str(tmp_path / 'params.yaml'), 'pct_map': str(pct_map),
++        'backend_config': str(tmp_path / 'backend.json'),
++        'native_planner_config': str(FilePath(get_package_share_directory('scan_planner')) / 'config/planner.yaml')})
++    with patch.object(module, 'Node', side_effect=lambda **kwargs: kwargs):
++        launched = module.nodes(context)
++    server = next(node for node in launched if node['package'] == 'nav2_controller')
++    assert server['remappings'] == [('cmd_vel', '/quad_0/cmd_vel')]
+ 
+ 
+ def test_replanning_tree_contract():
+--- parent/src/nav2_controller/CMakeLists.txt
++++ v199/src/nav2_controller/CMakeLists.txt
+@@ -80,6 +80,10 @@
+ 
+   find_package(ament_cmake_gtest REQUIRED)
+   add_subdirectory(plugins/test)
++  ament_add_gtest(test_command_owner test/test_command_owner.cpp TIMEOUT 30)
++  target_compile_features(test_command_owner PRIVATE cxx_std_17)
++  target_link_libraries(test_command_owner ${library_name})
++  ament_target_dependencies(test_command_owner ${dependencies})
+ endif()
+ 
+ ament_target_dependencies(${executable_name}
+--- parent/src/nav2_controller/src/nav2_controller.cpp
++++ v199/src/nav2_controller/src/nav2_controller.cpp
+@@ -1,4 +1,4 @@
+-#include <scan_nav2_controller/command_output.hpp>
++#include <scan_nav2_controller/execution_control.hpp>
+ // Copyright (c) 2019 Intel Corporation
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+@@ -143,8 +143,6 @@
+       controller->configure(
+         node, controller_ids_[i],
+         costmap_ros_->getTfBuffer(), costmap_ros_);
+-      if (auto *output = dynamic_cast<scan_nav2_controller::CommandOutput *>(controller.get()))
+-        output->bindOutputOwner();
+       controllers_.insert({controller_ids_[i], controller});
+     } catch (const pluginlib::PluginlibException & ex) {
+       RCLCPP_FATAL(
+@@ -401,15 +399,6 @@
+ 
+ void ControllerServer::publishVelocity(const geometry_msgs::msg::TwistStamped & velocity)
+ {
+-  auto controller = controllers_.find(current_controller_);
+-  if (controller != controllers_.end()) {
+-    auto *output = dynamic_cast<scan_nav2_controller::CommandOutput *>(controller->second.get());
+-    if (output) {
+-      if (vel_publisher_->is_activated()) output->publishCommand(velocity);
+-      else output->stop("nav2_output_inactive");
+-      return;
+-    }
+-  }
+   auto cmd_vel = std::make_unique<geometry_msgs::msg::Twist>(velocity.twist);
+   if (
+     vel_publisher_->is_activated() &&
+@@ -423,16 +412,13 @@
+ {
+   auto controller = controllers_.find(current_controller_);
+   if (controller != controllers_.end()) {
+-    auto *output = dynamic_cast<scan_nav2_controller::CommandOutput *>(controller->second.get());
+-    if (output) { output->stop("nav2_server_stop"); return; }
++    auto *output = dynamic_cast<scan_nav2_controller::ExecutionControl *>(controller->second.get());
++    if (output) output->stop("nav2_server_stop");
+   } else {
+-    bool all_tagged = !controllers_.empty();
+     for (auto &entry : controllers_) {
+-      auto *output = dynamic_cast<scan_nav2_controller::CommandOutput *>(entry.second.get());
++      auto *output = dynamic_cast<scan_nav2_controller::ExecutionControl *>(entry.second.get());
+       if (output) output->stop("nav2_no_selected_controller");
+-      else all_tagged = false;
+-    }
+-    if (all_tagged) return;
++    }
+   }
+   geometry_msgs::msg::TwistStamped velocity;
+   velocity.twist.angular.x = 0;
+--- parent/src/nav2_controller/test/test_command_owner.cpp
++++ v199/src/nav2_controller/test/test_command_owner.cpp
+@@ -0,0 +1,107 @@
++#include <gtest/gtest.h>
++#include <nav2_controller/nav2_controller.hpp>
++#include <scan_nav2_controller/controller.hpp>
++#include <nav2_core/exceptions.hpp>
++#include <thread>
++
++using namespace std::chrono_literals;
++
++class OutputServer : public nav2_controller::ControllerServer
++{
++public:
++  using ControllerServer::publishVelocity;
++  using ControllerServer::publishZeroVelocity;
++  void attach(const nav2_core::Controller::Ptr &plugin) {
++    controllers_["SCAN"]=plugin;
++    current_controller_="SCAN";
++    vel_publisher_=create_publisher<geometry_msgs::msg::Twist>("cmd_vel",10);
++    vel_publisher_->on_activate();
++  }
++  void deselect() { current_controller_.clear(); }
++  void disablePublisher() { vel_publisher_->on_deactivate(); }
++};
++
++class OutputTest : public ::testing::Test
++{
++protected:
++  static void SetUpTestCase() {
++    const char *args[]={"command_owner_test","--ros-args","-r","cmd_vel:=/quad_0/cmd_vel"};
++    rclcpp::init(4,args);
++  }
++  static void TearDownTestCase() { rclcpp::shutdown(); }
++  void SetUp() override {
++    server=std::make_shared<OutputServer>();
++    server->declare_parameter("SCAN.native_worker_enabled",false);
++    plugin=std::make_shared<scan_nav2_controller::Controller>();
++    plugin->configure(server,"SCAN",nullptr,nullptr);
++    plugin->activate();
++    server->attach(plugin);
++    observer=std::make_shared<rclcpp::Node>("command_owner_observer");
++    subscription=observer->create_subscription<geometry_msgs::msg::Twist>("/quad_0/cmd_vel",10,
++      [this](geometry_msgs::msg::Twist::ConstSharedPtr msg) { received.push_back(*msg); });
++    const auto until=std::chrono::steady_clock::now()+2s;
++    while(subscription->get_publisher_count()!=1 && std::chrono::steady_clock::now()<until)
++      spin();
++    ASSERT_EQ(subscription->get_publisher_count(),1u);
++    path.header.frame_id="world";
++    geometry_msgs::msg::PoseStamped start;start.header.frame_id="world";start.pose.orientation.w=1;
++    path.poses={start,start};path.poses.back().pose.position.x=8;
++    plugin->setPlan(path);
++  }
++  void TearDown() override {
++    plugin->deactivate();plugin->cleanup();plugin.reset();server.reset();observer.reset();
++  }
++  void spin() { rclcpp::spin_some(observer);std::this_thread::sleep_for(5ms); }
++  void expectCount(size_t count) {
++    const auto until=std::chrono::steady_clock::now()+1s;
++    while(received.size()<count && std::chrono::steady_clock::now()<until) spin();
++    EXPECT_EQ(received.size(),count);
++  }
++  std::shared_ptr<OutputServer> server;
++  std::shared_ptr<scan_nav2_controller::Controller> plugin;
++  rclcpp::Node::SharedPtr observer;
++  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr subscription;
++  nav_msgs::msg::Path path;
++  std::vector<geometry_msgs::msg::Twist> received;
++};
++
++TEST_F(OutputTest, PluginReturnsWaitCommandAndServerPublishesExactlyOnce)
++{
++  auto command=plugin->computeVelocityCommands(path.poses.front(),geometry_msgs::msg::Twist());
++  for(int i=0;i<10;++i) spin();
++  EXPECT_TRUE(received.empty());
++  EXPECT_EQ(command.twist,geometry_msgs::msg::Twist());
++  server->publishVelocity(command);expectCount(1);
++  command.twist.linear.x=.4;
++  server->publishVelocity(command);expectCount(2);
++  EXPECT_DOUBLE_EQ(received.back().linear.x,.4);
++  for(int i=0;i<10;++i) spin();
++  EXPECT_EQ(received.size(),2u);
++}
++
++TEST_F(OutputTest, ServerStopClearsSelectedPlanAndPublishesZero)
++{
++  geometry_msgs::msg::TwistStamped moving;moving.twist.linear.x=.4;
++  server->publishVelocity(moving);expectCount(1);
++  server->publishZeroVelocity();expectCount(2);
++  EXPECT_EQ(received.back(),geometry_msgs::msg::Twist());
++  EXPECT_THROW(plugin->computeVelocityCommands(path.poses.front(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++}
++
++TEST_F(OutputTest, ServerStopWithoutSelectedControllerStillPublishesZero)
++{
++  server->deselect();server->publishZeroVelocity();expectCount(1);
++  EXPECT_EQ(received.back(),geometry_msgs::msg::Twist());
++  EXPECT_THROW(plugin->computeVelocityCommands(path.poses.front(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++}
++
++TEST_F(OutputTest, InactiveServerDoesNotPublish)
++{
++  server->disablePublisher();
++  geometry_msgs::msg::TwistStamped moving;moving.twist.linear.x=.4;
++  server->publishVelocity(moving);
++  server->publishZeroVelocity();
++  for(int i=0;i<10;++i) spin();
++  EXPECT_TRUE(received.empty());
++  EXPECT_THROW(plugin->computeVelocityCommands(path.poses.front(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++}
+--- parent/src/scan_nav2_controller/README.md
++++ v199/src/scan_nav2_controller/README.md
+@@ -1,21 +1,22 @@
+ # SCAN controller plugins for ROS 2 Foxy
+ 
+ The Nav2 controller publishes standard `nav_msgs/msg/Path` routes on `/pct_path`,
+-receives `scan_planner_msgs/msg/Bspline` on `/quad_0/planning/bspline`, and publishes
+-`geometry_msgs/msg/Twist` directly on `/quad_0/cmd_vel`. The native SCAN worker
++receives `scan_planner_msgs/msg/Bspline` on `/quad_0/planning/bspline`, and returns
++`geometry_msgs/msg/TwistStamped` to ControllerServer. Only that server publishes
++`geometry_msgs/msg/Twist` on `/quad_0/cmd_vel`. The native SCAN worker
+ runs in-process on its own executor; `initial_path` is remapped to the configured
+ route topic. Its route input uses reliable, transient-local QoS.
+ 
+ `setPlan` validates path coordinates, orientations and frames. A valid cubic
+ B-spline becomes available to the tracker immediately. While waiting for the
+-first curve, the controller publishes zero velocity and fails after the default
++first curve, the controller returns zero velocity and fails after the default
+ 5-second timeout. The goal checker requires goal position and yaw acceptance
+ plus measured stopped velocity. The tracker retains the original cubic spline
+ phase/feedback calculation and the v189 corner route-lookahead heading behavior.
+ Native mapping, optimization and collision checks remain in SCAN.
+ 
+-The `CommandOutput` interface is retained for the pinned Foxy ControllerServer's
+-output and cancellation callbacks. It uses ordinary Twist messages. The standard
++The `ExecutionControl` hook only clears execution on cancellation or failure.
++It does not publish. The server sends the stop command through its own publisher. The standard
+ Foxy two-argument controller API and an explicit GoalChecker overload are both
+ available. `native_worker_enabled=false` allows an external spline producer.
+ 
+--- parent/src/scan_nav2_controller/config/controller.yaml
++++ v199/src/scan_nav2_controller/config/controller.yaml
+@@ -20,7 +20,6 @@
+       base_frame: base_link
+       route_topic: /pct_path
+       spline_topic: /quad_0/planning/bspline
+-      command_topic: /quad_0/cmd_vel
+       bspline_timeout: 5.0
+       goal_xy_tolerance: 0.25
+       goal_z_tolerance: 0.20
+--- parent/src/scan_nav2_controller/include/scan_nav2_controller/command_output.hpp
++++ v199/src/scan_nav2_controller/include/scan_nav2_controller/command_output.hpp
+@@ -1,17 +0,0 @@
+-#pragma once
+-
+-#include <geometry_msgs/msg/twist_stamped.hpp>
+-#include <string>
+-
+-namespace scan_nav2_controller
+-{
+-// Optional pinned Foxy ControllerServer output and stop callbacks.
+-class CommandOutput
+-{
+-public:
+-  virtual ~CommandOutput() = default;
+-  virtual void bindOutputOwner() = 0;
+-  virtual void publishCommand(const geometry_msgs::msg::TwistStamped &command) = 0;
+-  virtual void stop(const std::string &reason) = 0;
+-};
+-}  // namespace scan_nav2_controller
+--- parent/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
++++ v199/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
+@@ -4,7 +4,7 @@
+ #include <mutex>
+ #include <nav2_core/controller.hpp>
+ #include <nav2_core/goal_checker.hpp>
+-#include <scan_nav2_controller/command_output.hpp>
++#include <scan_nav2_controller/execution_control.hpp>
+ #include <scan_nav2_controller/tracking_node.hpp>
+ 
+ namespace scan_nav2_controller
+@@ -21,7 +21,7 @@
+   double xy_tolerance{0.25}, z_tolerance{0.20}, yaw_tolerance{0.25};
+ };
+ 
+-class Controller : public nav2_core::Controller, public CommandOutput
++class Controller : public nav2_core::Controller, public ExecutionControl
+ {
+ public:
+   Controller();
+@@ -41,9 +41,6 @@
+   geometry_msgs::msg::TwistStamped computeVelocityCommands(
+     const geometry_msgs::msg::PoseStamped &pose,
+     const geometry_msgs::msg::Twist &velocity, nav2_core::GoalChecker *);
+-  void bindOutputOwner() override;
+-  void publishCommand(const geometry_msgs::msg::TwistStamped &command) override;
+-  void publishCommand(const geometry_msgs::msg::Twist &command);
+   void stop(const std::string &reason) override;
+ 
+ private:
+@@ -70,7 +67,6 @@
+   rclcpp::Time waiting_for_spline_since_{0, 0, RCL_ROS_TIME};
+   rclcpp::Time route_sent_at_{0, 0, RCL_ROS_TIME};
+   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr route_pub_;
+-  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr command_pub_;
+   rclcpp::Subscription<scan_planner_msgs::msg::Bspline>::SharedPtr spline_sub_;
+ };
+ 
+--- parent/src/scan_nav2_controller/include/scan_nav2_controller/execution_control.hpp
++++ v199/src/scan_nav2_controller/include/scan_nav2_controller/execution_control.hpp
+@@ -0,0 +1,14 @@
++#pragma once
++
++#include <string>
++
++namespace scan_nav2_controller
++{
++// The server owns velocity publication; this hook only clears plugin execution.
++class ExecutionControl
++{
++public:
++  virtual ~ExecutionControl() = default;
++  virtual void stop(const std::string &reason) = 0;
++};
++}  // namespace scan_nav2_controller
+--- parent/src/scan_nav2_controller/launch/scan_nav2.launch.py
++++ v199/src/scan_nav2_controller/launch/scan_nav2.launch.py
+@@ -20,7 +20,7 @@
+         DeclareLaunchArgument("native_planner_config"),
+         DeclareLaunchArgument("use_sim_time", default_value="false"),
+         Node(package="nav2_controller", executable="controller_server", output="screen",
+-             parameters=[configured_parameters]),
++             parameters=[configured_parameters], remappings=[("cmd_vel", "/quad_0/cmd_vel")]),
+         Node(package="nav2_lifecycle_manager", executable="lifecycle_manager",
+              name="lifecycle_manager_scan", output="screen",
+              parameters=[{"autostart": True, "node_names": ["controller_server"],
+--- parent/src/scan_nav2_controller/src/controller.cpp
++++ v199/src/scan_nav2_controller/src/controller.cpp
+@@ -209,8 +209,6 @@
+   route_topic_=parameter(parent_, name_+".route_topic", std::string("/pct_path"));
+   route_pub_=bridge_->create_publisher<nav_msgs::msg::Path>(
+     route_topic_, rclcpp::QoS(1).reliable().transient_local());
+-  command_pub_=bridge_->create_publisher<geometry_msgs::msg::Twist>(
+-    parameter(parent_, name_+".command_topic", std::string("/quad_0/cmd_vel")), 20);
+   spline_sub_=bridge_->create_subscription<scan_planner_msgs::msg::Bspline>(
+     parameter(parent_, name_+".spline_topic", std::string("/quad_0/planning/bspline")), 10,
+     std::bind(&Controller::onSpline, this, std::placeholders::_1));
+@@ -243,7 +241,7 @@
+ {
+   if (!parent_) return;
+   deactivate();
+-  executor_.reset(); spline_sub_.reset(); route_pub_.reset(); command_pub_.reset();
++  executor_.reset(); spline_sub_.reset(); route_pub_.reset();
+   tracker_.reset(); bridge_.reset(); parent_.reset(); state_.reset();
+ }
+ 
+@@ -298,7 +296,6 @@
+     }
+     tracker_->clearTrajectory();
+     terminal_timeout_started_=false;
+-    publishCommand(geometry_msgs::msg::Twist());
+     return;
+   }
+   tracker_->bsplineCallback(message);
+@@ -334,7 +331,6 @@
+ {
+   geometry_msgs::msg::TwistStamped result;
+   result.header.frame_id=base_frame_; result.header.stamp=parent_->now(); result.twist=command;
+-  publishCommand(command);
+   return result;
+ }
+ 
+@@ -352,7 +348,6 @@
+   std::unique_lock<std::mutex> lock(state_->mutex);
+   if (!has_active_plan_) throw nav2_core::PlannerException("No active plan");
+   if (pose.header.frame_id != global_frame_ || !finitePose(pose.pose) || !finiteTwist(velocity)) {
+-    publishCommand(geometry_msgs::msg::Twist());
+     throw nav2_core::PlannerException("Invalid controller pose, velocity or frame");
+   }
+   state_->pose=pose.pose; state_->velocity=velocity; state_->pose_valid=true;
+@@ -382,16 +377,6 @@
+   return stampedCommand(sample.twist);
+ }
+ 
+-void Controller::bindOutputOwner() {}  // Compatibility with the pinned Foxy stop callback interface.
+-void Controller::publishCommand(const geometry_msgs::msg::TwistStamped &)
+-{
+-  // computeVelocityCommands already publishes the Twist. The pinned server's
+-  // optional output callback must not duplicate or replay that command.
+-}
+-void Controller::publishCommand(const geometry_msgs::msg::Twist &command)
+-{
+-  if (command_pub_) command_pub_->publish(command);
+-}
+ void Controller::stop(const std::string &reason)
+ {
+   if (!state_) return;
+@@ -404,7 +389,6 @@
+   state_->has_goal_pose=false;
+   state_->stopped=false;
+   if (tracker_) tracker_->clearTrajectory();
+-  publishCommand(geometry_msgs::msg::Twist());
+   RCLCPP_DEBUG(parent_->get_logger(), "SCAN stopped: %s", reason.c_str());
+ }
+ 
+--- parent/src/scan_nav2_controller/test/test_controller.cpp
++++ v199/src/scan_nav2_controller/test/test_controller.cpp
+@@ -40,7 +40,7 @@
+       [this](geometry_msgs::msg::Twist::ConstSharedPtr msg) { received.push_back(*msg); });
+     routes=io->create_subscription<nav_msgs::msg::Path>("/pct_path",rclcpp::QoS(1).reliable().transient_local(),
+       [this](nav_msgs::msg::Path::ConstSharedPtr msg) { dispatched.push_back(*msg); });
+-    ASSERT_TRUE(wait([&] { return spline->get_subscription_count()>0 && commands->get_publisher_count()>0; }));
++    ASSERT_TRUE(wait([&] { return spline->get_subscription_count()>0; }));
+     route.header.frame_id="world"; route.header.stamp=parent->now();
+     route.poses={pose(0),pose(8)};
+   }
+@@ -85,7 +85,8 @@
+     ASSERT_TRUE(wait([&] {
+       return plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()).twist.linear.x>0;
+     }));
+-    ASSERT_TRUE(wait([&] { return !received.empty() && received.back().linear.x>0; }));
++    EXPECT_EQ(commands->get_publisher_count(),0u);
++    EXPECT_TRUE(received.empty());
+   }
+   void expiredCornerStub(bool reverse=false)
+   {
+@@ -124,7 +125,7 @@
+   std::vector<nav_msgs::msg::Path> dispatched;
+ };
+ 
+-TEST_F(PluginTest, DirectPathAndNativeSplinePublishStandardTwist) { moving(); }
++TEST_F(PluginTest, DirectPathAndNativeSplineReturnTwistWithoutPublishing) { moving(); }
+ 
+ TEST_F(PluginTest, RouteHeadingDefaultsOffAtExpiredStoppedStub)
+ {
+@@ -291,13 +292,12 @@
+   EXPECT_THROW(plugin->setPlan(bad),nav2_core::PlannerException);
+   EXPECT_FALSE(actual->has_active_plan_);
+ }
+-TEST_F(PluginTest, NoPlanThrowsAndFirstSplineWaitPublishesZero)
++TEST_F(PluginTest, NoPlanThrowsAndFirstSplineWaitReturnsZero)
+ {
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
+   plan();
+   EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
+-  ASSERT_TRUE(wait([&] {return !received.empty();}));
+-  EXPECT_EQ(received.back(),geometry_msgs::msg::Twist());
++  EXPECT_TRUE(received.empty());
+   EXPECT_DOUBLE_EQ(actual->bspline_timeout_s_,5.0);
+   EXPECT_TRUE(actual->waiting_for_spline_);
+   const auto first_wait=actual->waiting_for_spline_since_;
+@@ -331,7 +331,7 @@
+   EXPECT_FALSE(actual->terminal_timeout_started_);
+   EXPECT_GT(plugin->computeVelocityCommands(pose(),{}).twist.linear.x,0);
+ }
+-TEST_F(PluginTest, EmergencySplineClearsAndPublishesZeroThenAcceptsReplacement)
++TEST_F(PluginTest, EmergencySplineClearsAndReturnsZeroThenAcceptsReplacement)
+ {
+   moving();
+   auto message=std::make_shared<sm::Bspline>(curve());message->emergency_stop=true;
+@@ -356,7 +356,7 @@
+   EXPECT_FALSE(actual->has_active_plan_);
+   plan();
+   EXPECT_FALSE(actual->tracker_->haveTrajectory());
+-  ASSERT_TRUE(wait([&]{return !received.empty() && received.back()==geometry_msgs::msg::Twist();}));
++  EXPECT_TRUE(received.empty());
+   message->emergency_stop=false;message->traj_id=2;
+   actual->onSpline(message);
+   EXPECT_TRUE(actual->tracker_->haveTrajectory());
+@@ -390,7 +390,7 @@
+   EXPECT_FALSE(actual->has_active_plan_);
+   EXPECT_FALSE(actual->tracker_->haveTrajectory());
+ }
+-TEST_F(PluginTest, InvalidPoseAndVelocityPublishZero)
++TEST_F(PluginTest, InvalidPoseAndVelocityThrowForServerToStop)
+ {
+   moving();
+   auto bad=pose();bad.header.frame_id="other";
+@@ -399,7 +399,7 @@
+   EXPECT_THROW(plugin->computeVelocityCommands(bad,{}),nav2_core::PlannerException);
+   geometry_msgs::msg::Twist velocity;velocity.angular.z=std::numeric_limits<double>::quiet_NaN();
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),velocity),nav2_core::PlannerException);
+-  ASSERT_TRUE(wait([&]{return !received.empty() && received.back()==geometry_msgs::msg::Twist();}));
++  EXPECT_TRUE(received.empty());
+ }
+ TEST_F(PluginTest, GoalRequiresHeightYawAndMeasuredStoppedVelocity)
+ {

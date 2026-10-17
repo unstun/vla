@@ -1,0 +1,16 @@
+V70_EXACT_PHYSICAL_INPUT_PASS 2408000 20acd5cf1ef156c5bd336b12651efe9a18e9959816905b05178ed44b1a181c96
+Traceback (most recent call last):
+  File "<string>", line 21, in <module>
+AssertionError: []
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v191/test_overlay_runtime.py", line 126, in <module>
+    main()
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v191/test_overlay_runtime.py", line 93, in main
+    loaded = subprocess.check_output(['docker','exec',name,'python3','-c',inspect_code],text=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 466, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['docker', 'exec', 'vla-v191-overlay-preflight', 'python3', '-c', "from pathlib import Path\nimport json\nfound=[]\nfor cmd in Path('/proc').glob('[0-9]*/cmdline'):\n try:\n  args=cmd.read_bytes().split(b'\\0')\n  if not args or not args[0].endswith(b'/controller_server'):continue\n  libraries=sorted(set(line.split()[-1] for line in (cmd.parent/'maps').read_text().splitlines() if '/libscan_nav2_controller.so' in line))\n  found.append({'pid':int(cmd.parent.name),'libraries':libraries})\n except (FileNotFoundError,PermissionError):pass\nassert found, 'No actual ControllerServer process'\nexpected='/task/recovery_v191/install/scan_nav2_controller/lib/libscan_nav2_controller.so'\nassert all(r['libraries']==[expected] for r in found),found\nscan=[]\nfor cmd in Path('/proc').glob('[0-9]*/cmdline'):\n try:\n  args=cmd.read_bytes().split(b'\\0')\n  if not args or not args[0].endswith(b'/scan_planner_node'):continue\n  scan.append({'pid':int(cmd.parent.name),'exe':args[0].decode()})\n except (FileNotFoundError,PermissionError):pass\nassert scan and all(x['exe']=='/task/recovery_v191/install/scan_planner/lib/scan_planner/scan_planner_node' for x in scan),scan\nbridge=[]\nfor cmd in Path('/proc').glob('[0-9]*/cmdline'):\n try:\n  args=cmd.read_bytes().split(b'\\0')\n  if not any(b'mission_bridge' in a for a in args):continue\n  libs=sorted(set(line.split()[-1] for line in (cmd.parent/'maps').read_text().splitlines() if '/pct_planner/lib/ele_planner.' in line))\n  bridge.append({'pid':int(cmd.parent.name),'libraries':libs})\n except (FileNotFoundError,PermissionError):pass\nassert bridge and all(x['libraries'] and all(p.startswith('/task/recovery_v174/install/pct_planner/') for p in x['libraries']) for x in bridge),bridge\nprint(json.dumps({'passed':True,'processes':found,'scan_processes':scan,'bridge_processes':bridge}))\n"]' returned non-zero exit status 1.

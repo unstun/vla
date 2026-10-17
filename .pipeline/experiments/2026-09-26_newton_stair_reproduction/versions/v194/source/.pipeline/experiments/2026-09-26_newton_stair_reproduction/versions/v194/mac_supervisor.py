@@ -1,0 +1,34 @@
+"""Use the original bounded supervisor with an explicit temporary run root."""
+from pathlib import Path
+import importlib.util,os,sys,platform
+HERE=Path(__file__).resolve().parent;BASE=HERE.parents[1]
+
+def verify_prepared_mount(run):
+    if not run.exists():return
+    allowed={'artifacts','artifacts/external_episode'}
+    for path in run.rglob('*'):
+        if path.is_symlink() or not path.is_dir() or str(path.relative_to(run)) not in allowed:
+            raise FileExistsError('Run already contains data: '+str(path))
+
+def main():
+    source=BASE.parent/'2026-09-26_newton_macos_policy/scripts/run_bounded.py'
+    text=source.read_text();old='out.mkdir(parents=True, exist_ok=False)'
+    assert text.count(old)==1
+    index=sys.argv.index('--run-id');run_id=sys.argv[index+1]
+    root=Path(os.environ['V194_TEMP_ROOT'])
+    if platform.system() == 'Darwin':
+        assert root.parent == Path('/private/tmp/vla_stop_audit_20261012') and root.name.startswith('v194_')
+    else:
+        assert root.parent==Path('/data/sun/vla_mppi_20261009/trials') and root.name.startswith('v194_')
+    verify_prepared_mount(root/'runs'/run_id)
+    spec=importlib.util.spec_from_file_location('v194_original_supervisor',source)
+    module=importlib.util.module_from_spec(spec)
+    text=text.replace(old,'out.mkdir(parents=True, exist_ok=True)')
+    rss='resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss'
+    assert text.count(rss)==1
+    if platform.system() == 'Linux':
+        text=text.replace(rss,'('+rss+' * 1024)')
+    exec(compile(text,str(source),'exec'),module.__dict__)
+    module.BASE=root;module.MAX_DEADLINE_S=1800;module.main()
+
+if __name__=='__main__':main()

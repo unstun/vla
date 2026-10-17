@@ -1,0 +1,518 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="14" failures="2" hostname="a563cd3dcedf" name="pytest" skipped="0" tests="17" time="0.291" timestamp="2026-10-15T16:57:19.539904"><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="88" name="test_odometry_state_and_http_validation" time="0.003"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_odometry_state_and_http_v0&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_odometry_state_and_http_v0/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+            rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+            if initialize_logging and not self._logging_initialized:
+                with g_logging_configure_lock:
+                    g_logging_ref_count += 1
+                    if g_logging_ref_count == 1:
+&gt;                       rclpy_implementation.rclpy_logging_configure(capsule)
+E                       _rclpy.RCLError: Failed to initialize logging: Failed to create log directory: //.ros/log, at /tmp/binarydeb/ros-foxy-rcl-logging-spdlog-1.1.0/src/rcl_logging_spdlog.cpp:100
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:64: RCLError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="117" name="test_task_adapter_has_no_planner_service_or_route_cache" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_task_adapter_has_no_plann0&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_task_adapter_has_no_plann0/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="130" name="test_http_nav2_action_lifecycle[None-arrived]" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl0&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl0/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="130" name="test_http_nav2_action_lifecycle[None-cancelled]" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl1&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl1/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="130" name="test_http_nav2_action_lifecycle[None-failed]" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl2&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl2/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="130" name="test_http_nav2_action_lifecycle[0.0-arrived]" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl3&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl3/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="130" name="test_http_nav2_action_lifecycle[0.0-cancelled]" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl4&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl4/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="130" name="test_http_nav2_action_lifecycle[0.0-failed]" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl5&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl5/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="130" name="test_http_nav2_action_lifecycle[0.7-arrived]" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl6&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl6/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="130" name="test_http_nav2_action_lifecycle[0.7-cancelled]" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl7&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl7/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="130" name="test_http_nav2_action_lifecycle[0.7-failed]" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl8&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_http_nav2_action_lifecycl8/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="185" name="test_pending_cancel_and_request_id_idempotence" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_pending_cancel_and_reques0&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_pending_cancel_and_reques0/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="197" name="test_generated_profile_uses_direct_topics_and_builtin_tree" time="0.058"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="227" name="test_navigation_launch_assigns_command_topic_to_server" time="0.011"><failure message="PermissionError: [Errno 13] Permission denied: &apos;/.ros&apos;">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_navigation_launch_assigns0&apos;)
+
+    def test_navigation_launch_assigns_command_topic_to_server(tmp_path):
+        import importlib.util
+        from pathlib import Path as FilePath
+        from launch import LaunchContext
+        from ament_index_python.packages import get_package_share_directory
+        launch_file = FilePath(get_package_share_directory(&apos;lite3_nav2_bridge&apos;)) / &apos;launch/navigation.launch.py&apos;
+        spec = importlib.util.spec_from_file_location(&apos;navigation_launch&apos;, launch_file)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        import os
+        terrain_manifest = os.environ[&apos;TERRAIN_TEST_MANIFEST&apos;]
+        (tmp_path / &apos;backend.json&apos;).write_text(json.dumps({&apos;map&apos;: {&apos;nominal_body_height_m&apos;: .3}}))
+&gt;       context = LaunchContext()
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:240: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/launch/launch_context.py:73: in __init__
+    self.__logger = launch.logging.get_logger(__name__)
+/opt/ros/foxy/lib/python3.8/site-packages/launch/logging/__init__.py:297: in get_logger
+    launch_log_file_handler = launch_config.get_log_file_handler()
+/opt/ros/foxy/lib/python3.8/site-packages/launch/logging/__init__.py:271: in get_log_file_handler
+    file_path = self.get_log_file_path(file_name)
+/opt/ros/foxy/lib/python3.8/site-packages/launch/logging/__init__.py:257: in get_log_file_path
+    return os.path.join(self.log_dir, file_name)
+/opt/ros/foxy/lib/python3.8/site-packages/launch/logging/__init__.py:118: in log_dir
+    self._log_dir = _make_unique_log_dir(
+/opt/ros/foxy/lib/python3.8/site-packages/launch/logging/__init__.py:80: in _make_unique_log_dir
+    os.makedirs(log_dir, exist_ok=True)
+/usr/lib/python3.8/os.py:213: in makedirs
+    makedirs(head, exist_ok=exist_ok)
+/usr/lib/python3.8/os.py:213: in makedirs
+    makedirs(head, exist_ok=exist_ok)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = &apos;/.ros&apos;, mode = 511, exist_ok = True
+
+    def makedirs(name, mode=0o777, exist_ok=False):
+        &quot;&quot;&quot;makedirs(name [, mode=0o777][, exist_ok=False])
+    
+        Super-mkdir; create a leaf directory and all intermediate ones.  Works like
+        mkdir, except that any intermediate path segment (not just the rightmost)
+        will be created if it does not exist. If the target directory already
+        exists, raise an OSError if exist_ok is False. Otherwise no exception is
+        raised.  This is recursive.
+    
+        &quot;&quot;&quot;
+        head, tail = path.split(name)
+        if not tail:
+            head, tail = path.split(head)
+        if head and tail and not path.exists(head):
+            try:
+                makedirs(head, exist_ok=exist_ok)
+            except FileExistsError:
+                # Defeats race condition when another thread created the path
+                pass
+            cdir = curdir
+            if isinstance(tail, bytes):
+                cdir = bytes(curdir, &apos;ASCII&apos;)
+            if tail == cdir:           # xxx/newdir/. exists if xxx/newdir exists
+                return
+        try:
+&gt;           mkdir(name, mode)
+E           PermissionError: [Errno 13] Permission denied: &apos;/.ros&apos;
+
+/usr/lib/python3.8/os.py:223: PermissionError</failure></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="251" name="test_replanning_tree_contract" time="0.000"><failure message="AttributeError: &apos;NoneType&apos; object has no attribute &apos;attrib&apos;">def test_replanning_tree_contract():
+        from pathlib import Path as FilePath
+        import xml.etree.ElementTree as ET
+        root = ET.parse(FilePath(__file__).parents[1] / &apos;config/navigate.xml&apos;).getroot()
+        recovery = root.find(&apos;.//RecoveryNode&apos;)
+        assert recovery.get(&apos;number_of_retries&apos;) == &apos;6&apos;
+        pipeline = root.find(&apos;.//PipelineSequence&apos;)
+        assert pipeline.get(&apos;name&apos;) == &apos;NavigateWithReplanning&apos;
+        rate = pipeline.find(&apos;RateController&apos;)
+&gt;       assert rate.attrib == {&apos;hz&apos;: &apos;1.0&apos;}
+E       AttributeError: &apos;NoneType&apos; object has no attribute &apos;attrib&apos;
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:261: AttributeError</failure></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="269" name="test_cancel_or_replace_during_session_ack_never_dispatches_old_goal[False]" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_cancel_or_replace_during_0&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_cancel_or_replace_during_0/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="269" name="test_cancel_or_replace_during_session_ack_never_dispatches_old_goal[True]" time="0.000"><error message="test setup failure">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-1/test_cancel_or_replace_during_1&apos;)
+
+    @pytest.fixture
+    def bridge(tmp_path):
+        config = tmp_path / &apos;backend.json&apos;
+        config.write_text(json.dumps({&apos;run_id&apos;: &apos;unit&apos;, &apos;run_epoch_ns&apos;: 42,
+            &apos;map&apos;: {&apos;nominal_body_height_m&apos;: 0.35}, &apos;http&apos;: {&apos;host&apos;: &apos;127.0.0.1&apos;, &apos;port&apos;: 0}}))
+&gt;       rclpy.init(args=[&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=&apos; + str(config)])
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7bc00bc43df0&gt;
+args = [&apos;--ros-args&apos;, &apos;-p&apos;, &apos;config_path:=/tmp/pytest-of-unknown/pytest-1/test_cancel_or_replace_during_1/backend.json&apos;]
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+&gt;           rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+E           RuntimeError: Failed to init: rcl_init called on an already initialized context, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/init.c:79
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:59: RuntimeError</error></testcase></testsuite></testsuites>

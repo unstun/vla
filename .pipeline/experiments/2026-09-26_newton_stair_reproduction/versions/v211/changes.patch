@@ -1,0 +1,258 @@
+--- v207/render_capture.py
++++ v211/render_capture.py
+@@ -1,4 +1,4 @@
+-"""Display-only Linux EGL port of the frozen causal renderer and close camera for v206_linux_full_attempt02."""
++"""Display-only Linux EGL port of the frozen causal renderer and close camera for v210_linux_full_attempt01."""
+ import hashlib
+ import json
+ import os
+@@ -99,13 +99,13 @@
+ 
+ 
+ def main():
+-    contract = json.loads(Path(os.environ['V207_DISPLAY_CONTRACT']).read_text())
++    contract = json.loads(Path(os.environ['V211_DISPLAY_CONTRACT']).read_text())
+     audit = json.loads((HERE / 'source_identity.json').read_text())
+     for name, expected in audit['files'].items():
+         if digest(HERE / name) != expected:
+             raise ValueError('Display source changed: ' + name)
+     if (HERE / 'manifest.json').exists():
+-        verify_manifest('v207')
++        verify_manifest('v211')
+     for version, expected in contract['parent_manifests'].items():
+         if verify_manifest(version) != expected:
+             raise ValueError('Parent manifest changed: ' + version)
+@@ -116,7 +116,7 @@
+         if digest(path) != expected:
+             raise ValueError('Recorded input changed: ' + path)
+     out = Path(os.environ['NEWTON_RUN_DIR'])
+-    if not out.is_dir() or out.parent.parent != Path(os.environ['V207_RENDER_ROOT']):
++    if not out.is_dir() or out.parent.parent != Path(os.environ['V211_RENDER_ROOT']):
+         raise ValueError('Expected managed temporary output')
+     # Reuse the existing Linux EGL recorded-state display backend.
+     os.environ['PYGLET_HEADLESS'] = '1'
+@@ -171,7 +171,7 @@
+     heading_text = replace_once(heading_text, 'OVERVIEW_S = 1.6', 'OVERVIEW_S = 0.0')
+     (out / 'executed_render_episode_host.py').write_text(renderer_text)
+     (out / 'executed_render_heading_host.py').write_text(heading_text)
+-    (out / 'display_contract.json').write_bytes(Path(os.environ['V207_DISPLAY_CONTRACT']).read_bytes())
++    (out / 'display_contract.json').write_bytes(Path(os.environ['V211_DISPLAY_CONTRACT']).read_bytes())
+     remaining = sys.argv[1:]
+     sys.argv = [str(heading_path), '--source-run', source.name, *remaining]
+     exec(compile(heading_text, str(heading_path), 'exec'),
+@@ -187,8 +187,8 @@
+             raise ValueError('Recorded input changed during rendering: ' + path)
+     (out / 'host_port_verification.json').write_text(json.dumps({
+         'kind': 'display_only',
+-        'physical_source_version': 'v206',
+-        'native_source_version': 'Nav2 Foxy linux/amd64 SCAN v206; inherited v196 direct Twist recorder',
++        'physical_source_version': 'v210',
++        'native_source_version': 'Nav2 Foxy linux/amd64 SCAN v206; v208 locomotion; v196 direct Twist recorder',
+         'source_unchanged': True,
+         'render_only_no_physics_steps': True,
+         'adapted_renderer_sha256': digest(out / 'executed_render_episode_host.py'),
+--- v207/verify_video.py
++++ v211/verify_video.py
+@@ -1,4 +1,4 @@
+-"""Validate exact causal timeline, visible curves and the finished MP4 for v206_linux_full_attempt02."""
++"""Validate exact causal timeline, visible curves and the finished MP4 for v210_linux_full_attempt01."""
+ from pathlib import Path
+ import hashlib
+ import json
+@@ -7,8 +7,8 @@
+ 
+ HERE = Path(__file__).resolve().parent
+ BASE = HERE.parents[1]
+-TASK = Path('/data/sun/vla_mppi_20261009/trials/v206_linux_full_attempt02')
+-OUT = TASK / 'video_v207/runs/full01'
++TASK = Path('/data/sun/vla_mppi_20261009/trials/v210_linux_full_attempt01')
++OUT = TASK / 'video_v211/runs/full01'
+ 
+ 
+ def sha(path):
+@@ -20,7 +20,7 @@
+ 
+ 
+ def main():
+-    contract = json.loads((TASK / 'video_v207/display_contract.json').read_text())
++    contract = json.loads((TASK / 'video_v211/display_contract.json').read_text())
+     source = Path(contract['physical_source_root'])
+     original = json.loads((source / 'video_states.json').read_text())
+     route = json.loads(Path(contract['route_verification']).read_text())
+@@ -96,7 +96,7 @@
+     assert port['render_only_no_physics_steps'] and verification['full_decode_passed']
+     expected_status = 'arrived (nav2_arrived)' if outcome['terminal_status']=='FINISHED' else 'failed (nav2_failed)'
+     assert frames[-1]['navigation_status'] == expected_status
+-    assert result['integration_version'] == 'v206'
++    assert result['integration_version'] == 'v210'
+     assert result['frames'] == n and result['fps'] == 30
+     # Verify the delivered Linux EGL stream dimensions.
+     stream = verification['stream']
+@@ -110,8 +110,8 @@
+     data = {
+         'passed': True,
+         'physical_source_run': contract['physical_source_run'],
+-        'physical_source_version': 'v206',
+-        'display_version': 'v207',
++        'physical_source_version': 'v210',
++        'display_version': 'v211',
+         'frames': n,
+         'startup_frames': ns,
+         'startup_original_frames': start,
+@@ -141,9 +141,9 @@
+         'video_sha256': sha(master),
+         'video_bytes': master.stat().st_size,
+         'video_master': str(master),
+-        'source_contract_sha256': sha(TASK / 'video_v207/display_contract.json'),
++        'source_contract_sha256': sha(TASK / 'video_v211/display_contract.json'),
+         'checker_sha256': sha(Path(__file__)),
+-        'claim': ('Entire recorded original-start v206_linux_full_attempt02 attempt, continuous recorded '
++        'claim': ('Entire recorded original-start v210_linux_full_attempt01 attempt, continuous recorded '
+                   f"physical state; {outcome['terminal_status']} at {metrics['actual_physics_end_s']:.9f}s. "
+                   f"Source full-route gate passed={route['passed']}. "
+                   'Display verification creates no new physical acceptance.'),
+--- v207/run_remote.py
++++ v211/run_remote.py
+@@ -1,4 +1,4 @@
+-"""Render v206_linux_full_attempt02 on Linux EGL and verify all outputs."""
++"""Render v210_linux_full_attempt01 on Linux EGL and verify all outputs."""
+ from pathlib import Path
+ import json
+ import os
+@@ -8,19 +8,19 @@
+ 
+ HERE = Path(__file__).resolve().parent
+ BASE = HERE.parents[1]
+-TASK = Path('/data/sun/vla_mppi_20261009/trials/v206_linux_full_attempt02')
++TASK = Path('/data/sun/vla_mppi_20261009/trials/v210_linux_full_attempt01')
+ 
+ 
+ def main():
+     subprocess.run([sys.executable, str(HERE / 'prepare_remote.py')], check=True, timeout=120)
+-    root = TASK / 'video_v207'
++    root = TASK / 'video_v211'
+     out = root / 'runs/full01'
+     out.mkdir(exist_ok=False)
+     env = dict(
+         os.environ,
+         NEWTON_RUN_DIR=str(out),
+-        V207_RENDER_ROOT=str(root),
+-        V207_DISPLAY_CONTRACT=str(root / 'display_contract.json'),
++        V211_RENDER_ROOT=str(root),
++        V211_DISPLAY_CONTRACT=str(root / 'display_contract.json'),
+         WARP_CACHE_PATH=str(root / 'cache'),
+         OPENBLAS_NUM_THREADS='1',
+         OMP_NUM_THREADS='1',
+@@ -32,7 +32,7 @@
+     command = [sys.executable, str(HERE / 'render_capture.py')]
+     (root / 'render_request.json').write_text(json.dumps({
+         'command': command,
+-        'env': {k: env[k] for k in ('NEWTON_RUN_DIR', 'V207_RENDER_ROOT', 'V207_DISPLAY_CONTRACT',
++        'env': {k: env[k] for k in ('NEWTON_RUN_DIR', 'V211_RENDER_ROOT', 'V211_DISPLAY_CONTRACT',
+                                     'WARP_CACHE_PATH', 'PYTHONPATH', 'PYOPENGL_PLATFORM')},
+         'physics_steps_requested': 0,
+     }, indent=2) + '\n')
+@@ -41,7 +41,7 @@
+     subprocess.run([sys.executable, str(HERE / 'verify_video.py')], env=env, check=True, timeout=180)
+     delivered = HERE / 'delivered'
+     delivered.mkdir(exist_ok=True)
+-    shutil.copyfile(out / 'newton_stair_recorded.mp4', delivered / 'v206_linux_full_attempt02.mp4')
++    shutil.copyfile(out / 'newton_stair_recorded.mp4', delivered / 'v210_linux_full_attempt01.mp4')
+     returned = HERE / 'returned'
+     returned.mkdir(exist_ok=True)
+     for name in ('display_contract.json', 'render_request.json'):
+--- v207/prepare_remote.py
++++ v211/prepare_remote.py
+@@ -1,4 +1,4 @@
+-"""Bind the recorded v206_linux_full_attempt02 episode to a full causal review video."""
++"""Bind the recorded v210_linux_full_attempt01 episode to a full causal review video."""
+ from pathlib import Path
+ import hashlib
+ import json
+@@ -7,7 +7,7 @@
+ 
+ HERE = Path(__file__).resolve().parent
+ BASE = HERE.parents[1]
+-TASK = Path('/data/sun/vla_mppi_20261009/trials/v206_linux_full_attempt02')
++TASK = Path('/data/sun/vla_mppi_20261009/trials/v210_linux_full_attempt01')
+ 
+ 
+ def sha(path):
+@@ -19,9 +19,9 @@
+ 
+ 
+ def main():
+-    tag = 'v206_linux_full_attempt02'
++    tag = 'v210_linux_full_attempt01'
+     source = TASK / 'runs' / tag
+-    analysis = BASE / 'versions/v206/results' / tag
++    analysis = BASE / 'versions/v210/results'
+     outcome = analysis / 'outcome.json'
+     route = analysis / 'full_route_verification.json'
+     outcome_data = json.loads(outcome.read_text())
+@@ -35,14 +35,14 @@
+     metrics = json.loads((analysis / 'metrics.json').read_text())
+     assert metrics['terminal']['backend_terminal_status'] == outcome_data['terminal_status']
+     assert metrics['shared_state_verified']
+-    root = TASK / 'video_v207'
++    root = TASK / 'video_v211'
+     root.mkdir(exist_ok=False)
+     (root / 'runs').mkdir()
+     (root / 'cache').mkdir()
+     for name in ('test_overlay.py', 'test_timeline.py'):
+         subprocess.run([sys.executable, str(HERE / name)], check=True)
+     inputs = [route, outcome, analysis / 'metrics.json', analysis / 'latency.csv',
+-              analysis / 'execution_request.json']
++              BASE / 'versions/v210/execution_request.json']
+     inputs += [source / name for name in (
+         'initial_state.json', 'video_states.json', 'factory_video_states.json',
+         'startup_pacing.json', 'raw_capture.zip', 'clock_samples.jsonl',
+@@ -53,18 +53,18 @@
+     contract = {
+         'physical_source_root': str(source),
+         'physical_source_run': tag,
+-        'physical_parent': 'v206',
+-        'display_parent': 'v205',
+-        'native_implementation': 'v206',
++        'physical_parent': 'v210',
++        'display_parent': 'v207',
++        'native_implementation': 'v206 navigation + v208 locomotion',
+         'source_outcome': str(outcome),
+         'route_verification': str(route),
+         'analysis_metrics': str(analysis / 'metrics.json'),
+         'latency_csv': str(analysis / 'latency.csv'),
+-        'parent_manifests': {v: sha(BASE / 'versions' / v / 'manifest.json') for v in ('v205', 'v206')},
++        'parent_manifests': {v: sha(BASE / 'versions' / v / 'manifest.json') for v in ('v207', 'v210')},
+         'input_files': {str(p): sha(p) for p in inputs},
+         'display_source_identity_sha256': sha(HERE / 'source_identity.json'),
+         'source_outcome_sha256': sha(outcome),
+-        'claim': ('Display only. Entire recorded original-start v206_linux_full_attempt02 attempt, '
++        'claim': ('Display only. Entire recorded original-start v210_linux_full_attempt01 attempt, '
+                   f"all pauses retained. {outcome_data['terminal_status']} at {metrics['actual_physics_end_s']:.9f}s physics; "
+                   f"full-route gate passed={route_data['passed']}. "
+                   'One recorded trial only. Zero new physics steps.'),
+--- v207/visual_qa.py
++++ v211/visual_qa.py
+@@ -10,18 +10,18 @@
+ 
+ 
+ def main():
+-    video = HERE / 'delivered/v206_linux_full_attempt02.mp4'
++    video = HERE / 'delivered/v210_linux_full_attempt01.mp4'
+     frames = json.loads((HERE / 'returned/frames.json').read_text())
+     curves = json.loads((HERE / 'returned/curve_frames.json').read_text())
+-    targets = (0.0, 4.0, 10.0, 30.0, 60.0, 65.0, 100.0, 112.5)
++    targets = (0.0, 4.0, 10.0, 30.0, 60.0, 80.0)
+     indices = sorted({min(range(len(frames)), key=lambda i: abs(frames[i]['physics_time_s'] - t))
+                       for t in targets} | {len(frames) - 1})
+-    assert len(indices) == 9 and indices[0] == 0
++    assert indices[0] == 0
+     out = HERE / 'returned/visual_qa'
+     out.mkdir(exist_ok=False)
+     selector = '+'.join(f'eq(n,{i})' for i in indices)
+     command = ['ffmpeg', '-v', 'error', '-i', str(video), '-vf', f"select='{selector}'",
+-               '-fps_mode', 'vfr', '-frames:v', '9', str(out / 'sample_%02d.png')]
++               '-fps_mode', 'vfr', '-frames:v', str(len(indices)), str(out / 'sample_%02d.png')]
+     subprocess.run(command, check=True)
+     contact = Image.new('RGB', (1920, 1170), '#16202b')
+     draw = ImageDraw.Draw(contact)

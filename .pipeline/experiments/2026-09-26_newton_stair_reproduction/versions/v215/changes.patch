@@ -1,0 +1,127 @@
+--- v214/render_capture.py
++++ v215/render_capture.py
+@@ -104,13 +104,13 @@
+ 
+ 
+ def main():
+-    contract = json.loads(Path(os.environ['V214_DISPLAY_CONTRACT']).read_text())
++    contract = json.loads(Path(os.environ['V215_DISPLAY_CONTRACT']).read_text())
+     audit = json.loads((HERE / 'source_identity.json').read_text())
+     for name, expected in audit['files'].items():
+         if digest(HERE / name) != expected:
+             raise ValueError('Display source changed: ' + name)
+     if (HERE / 'manifest.json').exists():
+-        verify_manifest('v214')
++        verify_manifest('v215')
+     for version, expected in contract['parent_manifests'].items():
+         if verify_manifest(version) != expected:
+             raise ValueError('Parent manifest changed: ' + version)
+@@ -121,7 +121,7 @@
+         if digest(path) != expected:
+             raise ValueError('Recorded input changed: ' + path)
+     out = Path(os.environ['NEWTON_RUN_DIR'])
+-    if not out.is_dir() or out.parent.parent != Path(os.environ['V214_RENDER_ROOT']):
++    if not out.is_dir() or out.parent.parent != Path(os.environ['V215_RENDER_ROOT']):
+         raise ValueError('Expected managed temporary output')
+     # Reuse the existing Linux EGL recorded-state display backend.
+     os.environ['PYGLET_HEADLESS'] = '1'
+@@ -176,7 +176,7 @@
+     heading_text = replace_once(heading_text, 'OVERVIEW_S = 1.6', 'OVERVIEW_S = 0.0')
+     (out / 'executed_render_episode_host.py').write_text(renderer_text)
+     (out / 'executed_render_heading_host.py').write_text(heading_text)
+-    (out / 'display_contract.json').write_bytes(Path(os.environ['V214_DISPLAY_CONTRACT']).read_bytes())
++    (out / 'display_contract.json').write_bytes(Path(os.environ['V215_DISPLAY_CONTRACT']).read_bytes())
+     remaining = sys.argv[1:]
+     sys.argv = [str(heading_path), '--source-run', source.name, *remaining]
+     exec(compile(heading_text, str(heading_path), 'exec'),
+--- v214/verify_video.py
++++ v215/verify_video.py
+@@ -8,7 +8,7 @@
+ HERE = Path(__file__).resolve().parent
+ BASE = HERE.parents[1]
+ TASK = Path('/data/sun/vla_mppi_20261009/trials/v212_linux_full_attempt01')
+-OUT = TASK / 'video_v214/runs/full01'
++OUT = TASK / 'video_v215/runs/full01'
+ 
+ 
+ def sha(path):
+@@ -20,7 +20,7 @@
+ 
+ 
+ def main():
+-    contract = json.loads((TASK / 'video_v214/display_contract.json').read_text())
++    contract = json.loads((TASK / 'video_v215/display_contract.json').read_text())
+     source = Path(contract['physical_source_root'])
+     original = json.loads((source / 'video_states.json').read_text())
+     route = json.loads(Path(contract['route_verification']).read_text())
+@@ -112,7 +112,7 @@
+         'passed': True,
+         'physical_source_run': contract['physical_source_run'],
+         'physical_source_version': 'v212',
+-        'display_version': 'v214',
++        'display_version': 'v215',
+         'frames': n,
+         'startup_frames': ns,
+         'startup_original_frames': start,
+@@ -142,7 +142,7 @@
+         'video_sha256': sha(master),
+         'video_bytes': master.stat().st_size,
+         'video_master': str(master),
+-        'source_contract_sha256': sha(TASK / 'video_v214/display_contract.json'),
++        'source_contract_sha256': sha(TASK / 'video_v215/display_contract.json'),
+         'checker_sha256': sha(Path(__file__)),
+         'claim': ('Entire recorded original-start v212_linux_full_attempt01 attempt, continuous recorded '
+                   f"physical state; {('PHYSICAL_FALL' if outcome.get('fallen') else outcome['terminal_status'])} at {metrics['actual_physics_end_s']:.9f}s. "
+--- v214/run_remote.py
++++ v215/run_remote.py
+@@ -13,14 +13,14 @@
+ 
+ def main():
+     subprocess.run([sys.executable, str(HERE / 'prepare_remote.py')], check=True, timeout=120)
+-    root = TASK / 'video_v214'
++    root = TASK / 'video_v215'
+     out = root / 'runs/full01'
+     out.mkdir(exist_ok=False)
+     env = dict(
+         os.environ,
+         NEWTON_RUN_DIR=str(out),
+-        V214_RENDER_ROOT=str(root),
+-        V214_DISPLAY_CONTRACT=str(root / 'display_contract.json'),
++        V215_RENDER_ROOT=str(root),
++        V215_DISPLAY_CONTRACT=str(root / 'display_contract.json'),
+         WARP_CACHE_PATH=str(root / 'cache'),
+         OPENBLAS_NUM_THREADS='1',
+         OMP_NUM_THREADS='1',
+@@ -32,7 +32,7 @@
+     command = [sys.executable, str(HERE / 'render_capture.py')]
+     (root / 'render_request.json').write_text(json.dumps({
+         'command': command,
+-        'env': {k: env[k] for k in ('NEWTON_RUN_DIR', 'V214_RENDER_ROOT', 'V214_DISPLAY_CONTRACT',
++        'env': {k: env[k] for k in ('NEWTON_RUN_DIR', 'V215_RENDER_ROOT', 'V215_DISPLAY_CONTRACT',
+                                     'WARP_CACHE_PATH', 'PYTHONPATH', 'PYOPENGL_PLATFORM')},
+         'physics_steps_requested': 0,
+     }, indent=2) + '\n')
+--- v214/prepare_remote.py
++++ v215/prepare_remote.py
+@@ -34,8 +34,10 @@
+     assert json.loads((source / 'video_states.json').read_text())[0] == proof['frame']
+     metrics = json.loads((analysis / 'metrics.json').read_text())
+     assert (metrics.get('terminal') or {}).get('backend_terminal_status') == outcome_data['terminal_status']
+-    assert metrics['shared_state_verified']
+-    root = TASK / 'video_v214'
++    if not metrics['shared_state_verified']:
++        assert outcome_data.get('fallen') is True
++        assert metrics['closed_shared_state_report']['verified'] is False
++    root = TASK / 'video_v215'
+     root.mkdir(exist_ok=False)
+     (root / 'runs').mkdir()
+     (root / 'cache').mkdir()
+@@ -46,7 +48,7 @@
+     inputs += [source / name for name in (
+         'initial_state.json', 'video_states.json', 'factory_video_states.json',
+         'startup_pacing.json', 'raw_capture.zip', 'clock_samples.jsonl',
+-        'backend_states.jsonl', 'episode_request.json', 'inputs/stair_scenario.json', 'result.json')]
++        'backend_states.jsonl', 'shared_state.json', 'episode_request.json', 'inputs/stair_scenario.json', 'result.json')]
+     identity = json.loads((HERE / 'source_identity.json').read_text())
+     for name, expected in identity['files'].items():
+         assert sha(HERE / name) == expected, name

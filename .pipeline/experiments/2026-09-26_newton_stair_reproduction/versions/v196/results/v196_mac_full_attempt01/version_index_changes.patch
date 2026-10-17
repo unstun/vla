@@ -1,0 +1,218 @@
+--- before/README.md
++++ after/README.md
+@@ -826,7 +826,7 @@
+ [quality](v195/quality.json), [manifest](v195/manifest.json),
+ [protected comparison](v195/returned/protected_after.json), and
+ [delivery provenance](v195/delivery_return.json). v194 remains the latest
+-physical trial and its single-trial acceptance boundary is unchanged.
++physical trial in that historical record. The later v196/v197 delivery is recorded below.
+ 
+ 
+ ## v196 replanning and recovery qualification (2026-10-14)
+@@ -847,11 +847,50 @@
+ Freeze and separate verification passed for **5,019 source pairs / 618 runtime
+ inputs**. Earlier failed/incomplete test attempts remain in the evidence bundle.
+ 
+-**run_mac_full.py was not executed; no navigation goal or physics advance.**
+-This is component and graph qualification only. v194 remains the latest physical
+-trial and v195 remains its display review. The observation-age expansion and
+-physical effects of the repairs still require a separately authorized run.
++**At component freeze, run_mac_full.py had not been executed; no navigation goal or physics advance had occurred.**
++That historical record covers component and graph qualification only. At that
++point, v194 was the latest physical trial and v195 its display review. The
++authorized v196 execution and v197 display are recorded below.
+ 
+ See [results](v196/RESULTS.md), [plan](v196/PLAN.md), [quality](v196/quality.json),
+ [manifest](v196/manifest.json), [source delta](v196/changes.patch), and
+ [protected verification](v196/verification/v196_protected_comparison.json).
++
++
++## v196 reboot recovery, physical trial and v197 delivery (2026-10-14)
++
++The execution workspace was restored from all 11 pinned environment archives.
++The native overlay was rebuilt and passed 93 colcon test entries with zero
++errors, failures or skips. An initial receipt mismatch stopped before physics;
++the failure is retained. Every one of 3,650 pinned source/install files was
++verified after restoring the semantically identical source-identity JSON's
++original formatting. The original runtime receipt then passed the unchanged
++gate. Fresh build/test evidence remains separate. Frozen v196 files are unchanged.
++
++The new **v196_mac_full_attempt01 passed the original full-route gate**:
++FINISHED, route arrival, final PD hold and held XYZ/yaw all passed. The erased
++pre-reboot capture is not combined with this result. Navigation took
++115.561238 simulation seconds / 118.348344 wall seconds (RTF 0.976450), versus
++126.507451 / 126.540360 for v194. Successful planning measured 24.630678 wall Hz;
++controller output measured 29.935137 wall Hz. The old 10.194397-second
++second-floor stall did not recur within its 1 m neighborhood. Direct-command
++stops fell from 17 to 9, while emergency entries increased from 9 to 12.
++PCT published 102 routes; final refresh_status=terminal_approach, retained_count=3.
++These are individual captures, not repeated reliability or a causal speedup test.
++
++See the [complete trial analysis](v196/results/v196_mac_full_attempt01/RESULTS.md),
++[four-version comparison](v196/results/v196_mac_full_attempt01/comparison.json),
++and [verified trial/overlay archives](v196/results/v196_mac_full_attempt01/ARTIFACTS.json).
++The trial archive contains 287 regular files, one symlink and 1,160 verified
++raw ZIP members, at gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v196_20261014/.
++
++**v197 is the frozen display version**, with parent/native implementation v196
++and display parent v195. The [regular MP4](v197/delivered/v196_mac_full_attempt01.mp4)
++contains 3,880 frames at 1280x720/30 FPS (129.333333 seconds), from actual physics
++time 0.0 through the final 126.582062-second held state. All pauses remain;
++startup uses recorded simulation time and navigation uses original wall time.
++All 14 overlay/timeline tests, every causal frame, full decode, source identity,
++nine decoded visual samples, remote video SHA and display freeze checks passed.
++No physics steps were executed during rendering. See [visual QA](v197/VISUAL_QA.md),
++[delivery provenance](v197/delivery_return.json), and
++[source archive verification](v197/returned/source_archive_verified.json).
+--- before/current.json
++++ after/current.json
+@@ -1,9 +1,9 @@
+ {
+-  "current": "v196",
+-  "status": "frozen_component_and_graph_qualified_no_physical_trial",
+-  "last_validated_trial_version": "v194",
++  "current": "v197",
++  "status": "frozen_display_v196_mac_full_attempt01_full_route_passed",
++  "last_validated_trial_version": "v196",
+   "last_validated_condition": "One Mac original historical_full Building trial with final PD hold and XYZ/yaw gate; no general reliability acceptance",
+-  "validated_scope": "One frozen v194 Mac ARM64 CPU Newton / ARM64 Foxy original historical_full Building attempt: FINISHED, route_arrived=true, unchanged full-route verifier passed including continuous original start, final held XYZ/yaw and shared-state closure. Not repeated reliability, sustained 30 Hz, general collision clearance or real-robot validation.",
++  "validated_scope": "One newly executed frozen v196 Mac ARM64 CPU Newton / ARM64 Foxy original historical_full Building attempt after reboot: FINISHED, route_arrived=true, full-route gate and final PD hold passed. No repeated reliability, sustained 30 Hz, general collision-clearance or real-robot validation.",
+   "measured_06_command_forward_mean_mps": [
+     0.566610550435978,
+     0.5655182859929156
+@@ -51,12 +51,13 @@
+     "v58_realtime_trial02": "90s bound complete;27.534281 successfulHz,max659.526460ms,path55.188386m. No>1s late pause after initial1.40s wait; no full arrival or30Hz acceptance.",
+     "v59_realtime_trial01": "90s bound complete;26.425810 successfulHz,max1236.709246ms,path55.041707m;1.099396s late cold-recovery pause, no full arrival or30Hz acceptance.",
+     "v192_mac_full_attempt01": "FAILED/nav2_failed;118.886s physics,107.865sim/117.585wall navigation,RTF0.91734,path72.572m,lastXYerror4.832m,13direct-commandstops,no fall,shared-state verified; full display-only review delivered by v193, no arrival or full-route acceptance.",
+-    "v194_mac_full_attempt01": "Mac ARM64: FINISHED, route_arrived=true, full-route gate PASS; sensor path 77.03407366997271 m; final XY/Z/yaw errors 0.1211678512749522 m / 0.006756114959716786 m / 0.10415752320636183 rad; navigation 126.50745105743408 sim / 126.54035995799859 wall s, RTF 0.999739933562893; local planning 23.6762405369673 Hz, direct controller 29.811494709748814 Hz; 9 emergency entries, 9 exits, 10 self-transitions; 1 completed Wait; 0 spline-wait timeouts; raw archive and all nine protected trees verified."
++    "v194_mac_full_attempt01": "Mac ARM64: FINISHED, route_arrived=true, full-route gate PASS; sensor path 77.03407366997271 m; final XY/Z/yaw errors 0.1211678512749522 m / 0.006756114959716786 m / 0.10415752320636183 rad; navigation 126.50745105743408 sim / 126.54035995799859 wall s, RTF 0.999739933562893; local planning 23.6762405369673 Hz, direct controller 29.811494709748814 Hz; 9 emergency entries, 9 exits, 10 self-transitions; 1 completed Wait; 0 spline-wait timeouts; raw archive and all nine protected trees verified.",
++    "v196_mac_full_attempt01": "One newly executed frozen v196 Mac ARM64 CPU Newton / ARM64 Foxy original historical_full Building attempt after reboot: FINISHED, route_arrived=true, full-route gate and final PD hold passed. No repeated reliability, sustained 30 Hz, general collision-clearance or real-robot validation."
+   },
+   "full_building_navigation_validated": true,
+   "minimum_measured_body_speed_validated": false,
+-  "next_version": "v197 uncreated; v196 is frozen and component/graph qualified. A v196 full Mac run remains unexecuted and requires the next authorized step.",
+-  "execution": "v194_mac_full_attempt01_finished_full_route_gate_passed_raw_archive_verified",
++  "next_version": "v198 uncreated; v196 physical attempt and v197 display are complete and archived.",
++  "execution": "v196_mac_full_attempt01_finished_full_route_gate_passed_raw_archive_verified_v197_video_verified",
+   "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md",
+   "v28_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md",
+   "start_thrash_diagnosis": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-28_v28_start_thrash/RESULT.md",
+@@ -81,8 +82,8 @@
+   "gpu5070ti_port": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/hosts/2026-09-29_gpu5070ti/PORT.md",
+   "previous_index_version": "v48",
+   "previous_index_validation_scope": "v58 endpoint-evidence and v59 sampled-trajectory epoch pass builds and component safety/timing checks. Both90s recordings complete; successful planning27.53/26.43Hz and max659.526/1236.709ms fail sustained30Hz and tail elimination. v59 has a1.099s late cold-recovery hold. No full-route acceptance; v48 remains the experimental reference and v49 stays frozen/rejected. Subsequent native diagnosis proves the v59 epoch fix is incomplete across retries after parent expiry: unchanged sampled PVA is rebased by1.259308s. No production repair in the diagnosis turn.",
+-  "latest_physical_trial_version": "v194",
+-  "latest_physical_trial_run": "v194_mac_full_attempt01",
++  "latest_physical_trial_version": "v196",
++  "latest_physical_trial_run": "v196_mac_full_attempt01",
+   "local_planning_30hz_validated": false,
+   "navigation_contract_fully_validated": false,
+   "v36_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v36/RESULTS.md",
+@@ -352,11 +353,11 @@
+   "v48_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v48/RESULTS.md",
+   "v48_manifest": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v48/manifest.json",
+   "previous_experimental_reference": "v48",
+-  "development_version": "v196",
+-  "development_parent": "v195 version parent / v194 navigation source parent / v176 Mac ARM64 binary underlay",
+-  "development_status": "frozen_component_and_graph_qualified_no_physical_trial",
+-  "last_attempted_version": "v194",
+-  "last_attempted_status": "One Mac original-route attempt FINISHED and full-route gate passed; no repeated reliability or sustained 30 Hz acceptance",
++  "development_version": "v197",
++  "development_parent": "v196",
++  "development_status": "frozen_display_verified",
++  "last_attempted_version": "v196",
++  "last_attempted_status": "One newly executed frozen v196 Mac ARM64 CPU Newton / ARM64 Foxy original historical_full Building attempt after reboot: FINISHED, route_arrived=true, full-route gate and final PD hold passed. No repeated reliability, sustained 30 Hz, general collision-clearance or real-robot validation.",
+   "last_candidate_version": "v196",
+   "last_candidate_status": "frozen_component_and_graph_qualified_no_physical_trial",
+   "v50_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v50/RESULTS.md",
+@@ -369,10 +370,10 @@
+   "v52_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v52/RESULTS.md",
+   "v52_manifest": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v52/manifest.json",
+   "v52_physics_launched": true,
+-  "latest_display_version": "v195",
+-  "latest_display_source_version": "v194",
+-  "latest_display_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v195/VISUAL_QA.md",
+-  "latest_review_video_provenance": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v195/delivery_return.json",
++  "latest_display_version": "v197",
++  "latest_display_source_version": "v196",
++  "latest_display_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v197/VISUAL_QA.md",
++  "latest_review_video_provenance": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v197/delivery_return.json",
+   "latest_repair_report": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-05_safe_mapping_repair/REPORT.md",
+   "v58_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v58/RESULTS.md",
+   "v58_acceptance": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v58/acceptance.json",
+@@ -892,8 +893,8 @@
+     "raw_archive_verified": true,
+     "protected_paths_after_trial": "v194/results/v194_mac_full_attempt01/final_protected_check.json"
+   },
+-  "full_building_navigation_validation_scope": "v194_mac_full_attempt01 only; original frozen scenario and acceptance gate",
+-  "latest_physical_trial_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v194/results/v194_mac_full_attempt01/RESULTS.md",
++  "full_building_navigation_validation_scope": "One newly executed frozen v196 Mac ARM64 CPU Newton / ARM64 Foxy original historical_full Building attempt after reboot: FINISHED, route_arrived=true, full-route gate and final PD hold passed. No repeated reliability, sustained 30 Hz, general collision-clearance or real-robot validation.",
++  "latest_physical_trial_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/results/v196_mac_full_attempt01/RESULTS.md",
+   "v194_physical_trial_20261014": {
+     "measured_path_m": 77.03407366997271,
+     "actual_physics_end_s": 137.5282745361328,
+@@ -1146,5 +1147,64 @@
+     "quality": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/quality.json",
+     "results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/RESULTS.md",
+     "manifest_sha256": "80eb03f67b695f770f2de8920b0e7717ab9f83174f69fc3ec35dd7d89ef0ab7c"
++  },
++  "v196_physical_trial_20261014": {
++    "run": "v196_mac_full_attempt01",
++    "reexecuted_after_reboot": true,
++    "preflight_failures_before_physics": 1,
++    "physical_attempts_this_resume": 1,
++    "terminal_status": "FINISHED",
++    "full_route_gate_passed": true,
++    "final_pd_hold": true,
++    "navigation_sim_s": 115.5612382888794,
++    "navigation_wall_s": 118.3483435420003,
++    "actual_rtf": 0.9764499851057755,
++    "local_planning_successful_wall_hz": 24.630678493320055,
++    "controller_wall_hz": 29.935137379404225,
++    "pct_route_publications": 102,
++    "refresh_status": "terminal_approach",
++    "retained_count": 3,
++    "old_second_floor_ten_second_stall_observed": false,
++    "remote_archive": "/data/sun/vla_mppi_20261009/mac_archive_v196_20261014/v196_mac_full_attempt01.tar",
++    "archive_sha256": "dc3b8620a8e2fb0fb2b04da371c64ac7465ede955492154fdbc1505433610a8d",
++    "archive_bytes": 416542720,
++    "results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/results/v196_mac_full_attempt01/RESULTS.md",
++    "comparison": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/results/v196_mac_full_attempt01/comparison.json",
++    "frozen_manifest_sha256": "80eb03f67b695f770f2de8920b0e7717ab9f83174f69fc3ec35dd7d89ef0ab7c",
++    "frozen_sources_unchanged": true,
++    "scope": "One newly executed frozen v196 Mac ARM64 CPU Newton / ARM64 Foxy original historical_full Building attempt after reboot: FINISHED, route_arrived=true, full-route gate and final PD hold passed. No repeated reliability, sustained 30 Hz, general collision-clearance or real-robot validation."
++  },
++  "v197": {
++    "parent": "v196",
++    "display_parent": "v195",
++    "native_implementation": "v196",
++    "physical_source": "v196_mac_full_attempt01",
++    "video": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v197/delivered/v196_mac_full_attempt01.mp4",
++    "video_sha256": "7e063950f0a8974ddc4f49007ba17a307aeb86c9bd5ff2f4a97fe7e717b74f53",
++    "video_bytes": 12028789,
++    "frames": 3880,
++    "duration_s": 129.33333333333334,
++    "fps": 30,
++    "resolution": [
++      1280,
++      720
++    ],
++    "physics_steps_executed": 0,
++    "full_route_gate_passed": true,
++    "route_arrived": true,
++    "final_pd_hold": true,
++    "terminal_frame": "arrived (nav2_arrived)",
++    "terminal_trajectory_id": null,
++    "remote_sha256_verified": true,
++    "remote_video": "/data/sun/vla_mppi_20261009/mac_archive_v196_20261014/v196_mac_full_attempt01.mp4",
++    "freeze_verified": true,
++    "source_pairs": 5033,
++    "manifest": "v197/manifest.json",
++    "manifest_sha256": "155fbedb8a084856ed39270ebdedcb5cf02b3d3da7f2f30c522051c5422ae83d",
++    "quality": "v197/quality.json",
++    "quality_sha256": "ac742970b3afb4b9aa31451a4910a9670abb6b74bd249e4ffd2421fb108fe31c",
++    "source_archive": "v197/returned/source_archive_verified.json",
++    "source_archive_sha256": "05b75e5ff0243bb3b1b2f96c8cb8ed66b4ff22784f11c4d92bed6a069c9a9869",
++    "claim_scope": "Display of one passed v196 capture; zero new physics or reliability evidence."
+   }
+ }

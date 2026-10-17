@@ -1,0 +1,119 @@
+--- before/README.md
++++ after/README.md
+@@ -792,3 +792,38 @@
+ [quality](v194/quality.json), [manifest](v194/manifest.json),
+ [protected comparison](v194/verification/v194_protected_comparison.json), and
+ [source changes](v194/changes.patch).
++
++
++## v195 full v194 display review (2026-10-14)
++
++v195 is frozen and display-only: physical parent `v194`, display parent `v193`,
++native implementation `v194`. It replays the complete `v194_mac_full_attempt01`
++from physical frame 0 through factory PD startup and the exact final
++137.5282745361328 s state. The source is the one passed original-route trial:
++FINISHED, route_arrived=true, full_route_verification.passed=true and final PD hold.
++This render executes zero physics steps and adds no physical acceptance.
++
++The [regular MP4](v195/delivered/v194_mac_full_attempt01.mp4) is 1280 x 720,
++30 fps, 4,125 frames, 137.500000 s and 13,030,771 bytes.
++Startup uses recorded simulation time; navigation uses original wall time at 1:1.
++All 4,125 causal source indices, both endpoints, curve/route/solve clocks,
++full decoding, 10 decoded visual samples and 14 overlay/timeline tests passed.
++The final caption is `arrived (nav2_arrived)`. The last stored spline #3005 is
++expired and its zero direct command is stale; no cyan curve is displayed during
++the final recorded FIXED_STAND state. All 12 protected trees remain unchanged.
++Freeze and separate verification passed for 4,826 source pairs.
++
++SHA-256: `d3f6ea4caae09a9f607428061362581fbabdffb44ecb2e4fa45431a0176d61b4`.
++The remote MP4 at
++`gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v194_20261014/v194_mac_full_attempt01.mp4`
++has the same hash and size. The frozen display source and review evidence are
++also archived and [verified](v195/returned/source_archive_verified.json).
++An initial partial display attempt was retained after correcting a new check
++that confused Retina framebuffer size with encoded video size; the subsequent
++full run_mac.py execution passed. No physical rerun occurred.
++
++See [plan](v195/PLAN.md), [visual QA](v195/VISUAL_QA.md),
++[quality](v195/quality.json), [manifest](v195/manifest.json),
++[protected comparison](v195/returned/protected_after.json), and
++[delivery provenance](v195/delivery_return.json). v194 remains the latest
++physical trial and its single-trial acceptance boundary is unchanged.
+--- before/current.json
++++ after/current.json
+@@ -1,6 +1,6 @@
+ {
+-  "current": "v194",
+-  "status": "frozen_single_mac_original_full_route_passed",
++  "current": "v195",
++  "status": "frozen_display_review_v194_mac_full_attempt01_passed_full_route",
+   "last_validated_trial_version": "v194",
+   "last_validated_condition": "One Mac original historical_full Building trial with final PD hold and XYZ/yaw gate; no general reliability acceptance",
+   "validated_scope": "One frozen v194 Mac ARM64 CPU Newton / ARM64 Foxy original historical_full Building attempt: FINISHED, route_arrived=true, unchanged full-route verifier passed including continuous original start, final held XYZ/yaw and shared-state closure. Not repeated reliability, sustained 30 Hz, general collision clearance or real-robot validation.",
+@@ -55,7 +55,7 @@
+   },
+   "full_building_navigation_validated": true,
+   "minimum_measured_body_speed_validated": false,
+-  "next_version": "v195 uncreated; no additional physical attempt or code repair executed or authorized by this closure.",
++  "next_version": "v196 uncreated; v195 is display-only. No additional physical attempt or navigation repair was executed.",
+   "execution": "v194_mac_full_attempt01_finished_full_route_gate_passed_raw_archive_verified",
+   "archive_handoff": ".pipeline/handoffs/2026-09-28_newton_v27_archive/README.md",
+   "v28_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v28/RESULTS.md",
+@@ -369,10 +369,10 @@
+   "v52_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v52/RESULTS.md",
+   "v52_manifest": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v52/manifest.json",
+   "v52_physics_launched": true,
+-  "latest_display_version": "v193",
+-  "latest_display_source_version": "v192",
+-  "latest_display_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v193/VISUAL_QA.md",
+-  "latest_review_video_provenance": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v193/delivery_return.json",
++  "latest_display_version": "v195",
++  "latest_display_source_version": "v194",
++  "latest_display_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v195/VISUAL_QA.md",
++  "latest_review_video_provenance": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v195/delivery_return.json",
+   "latest_repair_report": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-05_safe_mapping_repair/REPORT.md",
+   "v58_results": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v58/RESULTS.md",
+   "v58_acceptance": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v58/acceptance.json",
+@@ -1084,5 +1084,42 @@
+     "raw_archive_sha256": "c09b9a3c42338ff11e7598d0a1a7e4fa8d4c64ba56a66027dceaad5b575d7550",
+     "raw_archive_bytes": 445890560,
+     "claim_scope": "One frozen v194 Mac ARM64 CPU Newton / ARM64 Foxy original historical_full Building attempt: FINISHED, route_arrived=true, unchanged full-route verifier passed including continuous original start, final held XYZ/yaw and shared-state closure. Not repeated reliability, sustained 30 Hz, general collision clearance or real-robot validation."
++  },
++  "v195": {
++    "kind": "display_only",
++    "parent": "v194",
++    "display_parent": "v193",
++    "native_implementation": "v194",
++    "physical_source": "v194_mac_full_attempt01",
++    "video": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v195/delivered/v194_mac_full_attempt01.mp4",
++    "video_sha256": "d3f6ea4caae09a9f607428061362581fbabdffb44ecb2e4fa45431a0176d61b4",
++    "video_bytes": 13030771,
++    "frames": 4125,
++    "duration_s": 137.5,
++    "fps": 30,
++    "resolution": [
++      1280,
++      720
++    ],
++    "physics_steps_executed": 0,
++    "remote_sha256_verified": true,
++    "remote_video": "/data/sun/vla_mppi_20261009/mac_archive_v194_20261014/v194_mac_full_attempt01.mp4",
++    "full_route_gate_passed": true,
++    "route_arrived": true,
++    "final_pd_hold": true,
++    "terminal_frame": "arrived (nav2_arrived)",
++    "terminal_trajectory_id": null,
++    "first_physics_s": 0.0,
++    "last_physics_s": 137.5282745361328,
++    "protected_roots_unchanged": 12,
++    "freeze_verified": true,
++    "source_pairs": 4826,
++    "manifest": "v195/manifest.json",
++    "manifest_sha256": "6efa065d2bbdb1ce5d8b4f744f52314a55e0e8417231480911530b966b5105cf",
++    "quality": "v195/quality.json",
++    "quality_sha256": "1267a28aac1692ce12c0fcc1771d6cdeef52872b1800e512e762fad5f39a9436",
++    "source_archive": "v195/returned/source_archive_verified.json",
++    "source_archive_sha256": "527e5aba45a5e2d3f4e35902a1efbf46f8a37957a6c764ad05091c0bf8a5fba0",
++    "claim_scope": "Display review of the one passed v194 original-route trial; no new physics, repeated reliability or broader navigation acceptance."
+   }
+ }

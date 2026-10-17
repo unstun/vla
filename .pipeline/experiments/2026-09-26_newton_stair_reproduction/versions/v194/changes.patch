@@ -1,0 +1,2346 @@
+--- v192/PLAN.md
++++ v194/PLAN.md
+@@ -1,48 +1,52 @@
+-# v192: shared applied-state harness over the qualified native v191 overlay
++# v194: bounded spline waiting and a stable terminal goal
+ 
+-Stage: experiment + analysis. Parent: v191. Authorized scope: remove the
+-remaining synchronous 100 ms applied-state ZMQ lockstep and execute one full
+-Mac Building attempt. The unchanged ROS 2 source and compiled overlay retain
+-native_version=v191; the integration harness is v192. No native rebuild.
++Stage: experiment + analysis. Version parent: v193. Navigation source parent:
++v192. Native version: v194. Mac binary underlay: archived v176.
+ 
+-The episode writes current_command.json atomically through its existing ordered
+-asynchronous evidence writer. Both host and Docker read the same trial bind
+-mount, with no tmpfs shadow, applied receiver, ACK, or port 24603. The finish
+-request is read directly from that shared directory. Driver observation accepts
+-snapshots up to 10 seconds old and waits 15 seconds in the navigation loop to
+-tolerate transient VirtioFS visibility delays. Command watchdogs, native
+-freshness, geometry, policy, startup, route and terminal tolerances are unchanged.
++The local v194 directory is the source of truth. The only new native execution
++copy is `/private/tmp/vla_stop_audit_20261012/recovery_v194`. Step 0 recorded all
++recursive SHA-256/byte counts, symlink targets, directories and special entries
++for v189-v193 and recovery_v176/recovery_v189/recovery_v191 before any edit.
++Those eight trees admit no changes. Docker mounts the parent execution copies
++read-only; only the v194 workspace and task evidence are writable during build.
+ 
+-Closed-state verification compares the host and container file hashes after
+-the producer and graph stop. Analysis rechecks these against the retained raw
+-files. This is a shared-file closure witness, not an ACK/copyback claim or proof
+-of per-step delivery. Failure or missing state remains a recorded failure.
++## Behavior and ownership
+ 
+-Qualification order: host tests; real Docker overlay/lifecycle graph preflight;
+-protected-path hash comparison; qualify_mac.py; freeze_host.py freeze and verify.
+-Protected paths are v189/v190/v191 and recovery_v176/recovery_v189/recovery_v191.
+-The sole authorized v191 edit removes its trailing forward reference to a
+-nonexistent v192 display package; its original bytes are saved in evidence.
+-All v192 src bytes must equal v191 and the existing native source inventory.
++- Controller waiting starts for a new goal or loss of an active spline. Repeated
++  same-goal refreshes and emergency stops preserve the first waiting timestamp.
++  Missing splines fail after 5.0 seconds; invalid samples fail immediately.
++  Stop/deactivate/cleanup reset both waiting and terminal timeout state.
++- The tracker clears its terminal position latch with a cleared trajectory.
++- The stock six-retry RecoveryNode remains. Foxy Wait uses integer `1` second.
++- Each mission locks the complete terminal Pose on its first accepted PCT route.
++  Explicit yaw includes zero. Otherwise the final nondegenerate horizontal
++  segment (length greater than 1e-6 m) determines yaw once. Later PCT routes reuse
++  that exact pose. The final connector must be finite and at most 2.0 m in 3D.
++  This is a connectivity bound, not a collision-clearance claim.
++- A deep-copied accepted path remains on its job for inspection. `pct_no_route`
++  remains a rejected plan; cached route replay is deliberately not introduced.
++  The service carries no mission ID, so attribution uses the active job and its
++  requested/canonical goal coordinates; owner changes during planning reject.
++- Inner yaw capture uses half the configured external tolerance (0.125/0.25 rad).
++  Once captured, zero-command braking remains latched within the outer yaw and
++  position tolerances. A live query and measured stopped velocity are required
++  by GoalChecker. Same-goal setPlan preserves this braking latch in a controller-owned field,
++  including the following GoalChecker.reset() performed by ControllerServer.
+ 
+-Run run_mac_full.py --task-root /private/tmp/vla_stop_audit_20261012 --attempt 1,
+-then close_mac_trial.py for v192_mac_full_attempt01. Report route completion,
+-simulation/wall time, RTF, path, final pose/hold, command stops and measured
+-low-speed intervals. Compare with v189's 20 replacement stops / 34.225422 seconds
+-of cancel-to-proof waiting, without equating removed P2B proofs to physical
+-stillness or claiming reliability from one attempt. Preserve failed captures.
++## Qualification and stop boundary
+ 
+-Only a full recorded route (route_arrived=true and FINISHED) permits the v193
+-display package, following v190's complete causal recorded-state replay with
+-zero physics steps. Deliver the regular MP4 at
+-v193/delivered/v192_mac_full_attempt01.mp4, verify full decode, frame causality
+-and representative visual frames, freeze v193, then archive to
+-gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v192_20261014/.
+-Temporary Mac raw captures stay under the authorized /private/tmp task root;
+-the local repository retains source, compact evidence, reports and the review
+-video (expected below 100 MB). Heavy raw/render evidence is archived remotely
+-with member and archive SHA-256 verification before any cleanup.
++Run build_mac.py, run_host_tests.py, test_overlay_runtime.py, verify_protected.py,
++qualify_mac.py, then freeze_host.py freeze and verify. Bind source inventories,
++11 rebuilt packages, 45 colcon entries, 22 unique controller-package GTests
++(20 controller + parity + shutdown), 2 profile tests, host tests, and the actual
++loaded controller/native libraries into local qualification evidence.
+ 
+-No changes to frozen predecessors, native overlays, upstream projects, training,
+-or real-robot actuation. A failed frozen v192 run is not edited or retried under
+-the same attempt. Component/graph qualification is distinct from route results.
++The graph preflight activates four lifecycle nodes using a static identity TF.
++It sends no navigation goal and advances no physics. Update current.json and the
++version index only after successful freeze verification. Do not invoke
++run_mac_full.py. No full-route, physical stopping, arrival or robot acceptance
++is claimed by this qualification.
++
++Changes are confined to v194 source, tests and qualification scripts plus the
++requested version indexes and task-root v194 artifacts. Prior results remain
++historical evidence. No commit or unrelated worktree cleanup is part of this task.
+--- v192/RESULTS.md
++++ v194/RESULTS.md
+@@ -1,85 +1,70 @@
+-# v192 Mac attempt 01: shared-state transport passed; navigation failed
++# v194 component and graph qualification
+ 
+-Stage: experiment + analysis. Execution date: 2026-10-14. **The authorized full
+-Mac Building attempt ran, but did not complete the route.** The driver reports
+-`route_arrived=false` (no arrival field was produced), `execution_completed=false`,
+-and terminal status `FAILED` with `nav2_failed` / action status 6.
+-The frozen v192 harness reuses native_version=v191; recovery_v191 was not rebuilt.
++Stage: experiment + analysis. Version parent: **v193**. Navigation source
++parent: **v192**. Native source/build: **v194**. Native binary underlay: **v176**.
+ 
+-The pre-run gates passed: 24 Mac host tests, bidirectional Docker bind-mount
+-exchange, all four active Nav2 lifecycle nodes, actual v191 loaded libraries,
+-protected-path checks, and freeze/verify of 4,610 source/snapshot pairs and 618
+-runtime inputs. The native receipt retains its already-qualified 45 colcon
+-entries with zero errors/failures/skips. All 137 copied native snapshot files
+-match v191. The sole predecessor edit removes the explicitly authorized trailing
+-forward-reference paragraph from v191/RESULTS.md.
++The local version directory owns the source and returned evidence. The execution
++copy is `/private/tmp/vla_stop_audit_20261012/recovery_v194`.
+ 
+-| Measurement | Observed result |
+-|---|---:|
+-| Route arrival / terminal | False / FAILED |
+-| Recorded physics end, including factory startup | 118.886292 s |
+-| Navigation interval, simulation / wall | 107.865468 / 117.584898 s |
+-| Navigation RTF | 0.917341 |
+-| Recorded body path (sensor samples) | 72.572289 m |
+-| Last recorded XY distance to original goal | 4.832352 m |
+-| Last recorded yaw error to requested goal | 0.525200 rad |
+-| Final held-pose acceptance | Unavailable; no arrival/terminal PD hold |
+-| Falls / dropped physics steps | 0 / 0 |
+-| Successful local planning / direct command rate | 26.066273 / 29.984195 Hz |
+-| Completed / successful planning rounds | 3124 / 3065 |
+-| Maximum planning-round time | 774.569792 ms |
+-| PCT route / B-spline publications | 13 / 3096 |
+-| Direct-command stop transitions / subsequent restarts | 13 / 12 |
+-| Observed zero-command duration after those transitions | 6.120389 wall s |
+-| Measured low-speed intervals at least 1 s | 2; 3.398132 s and 1.799011 s |
+-| Shared-state closure / retained-byte verification | Passed |
++## Implemented behavior
+ 
+-The original nav2.log records **seven** `Native SCAN did not publish a trajectory
+-before timeout` errors and **six** completed Wait recoveries. Before the final
+-abort, SCAN repeatedly reports an occupied target with no collision-free point
+-on the global trajectory. These are observed failure conditions; the underlying
+-geometry/planner cause is not established by this run. No source repair or retry
+-was performed after freezing v192.
++1. An explicit 5.0 s spline-wait watchdog survives same-goal plan refreshes and
++   repeated emergency stops. A new active-to-wait transition starts a fresh
++   budget. Invalid sampled commands fail immediately. Both failures publish zero
++   through `stop()` without recursively locking the state mutex. Clearing a
++   trajectory also clears the tracker's terminal position latch.
++2. The stock six-retry RecoveryNode uses a positive integer `Wait` duration of
++   1 s. No MeasuredProgressRecovery node was introduced.
++3. Every mission locks its entire terminal Pose on its first accepted PCT plan.
++   Explicit yaw includes 0.0; unspecified yaw comes from the last horizontal
++   segment longer than 1e-6 m. Later routes reuse the exact position and quaternion,
++   with a finite final connector no longer than 2.0 m in 3D. The cache stores a
++   deep copy of the last accepted path. `pct_no_route` remains a rejected plan;
++   cached replay is disabled, since endpoint consistency does not justify
++   treating failed replanning as a successful fresh route.
++4. The controller and tracker enter final-yaw braking at 0.125 rad, while the
++   external checker retains 0.25 rad. Braking remains latched inside the outer
++   yaw and position bands; leaving either band resumes alignment. The checker
++   verifies the live query, goal state, and measured stopped velocity.
+ 
+-The applied-state ZMQ client, receiver, port and tmpfs shadow were absent from
+-the v192 runtime graph. Current command state was written atomically through the
+-existing asynchronous writer; finish status was read from the shared directory.
+-Closed host/container files match byte for byte and the analyzer rechecked the
+-retained originals. This establishes the recorded shared-state closure, not
+-continuous per-step visibility or general VirtioFS reliability. The driver did
+-not abort with a fresh-snapshot timeout.
++The pinned ControllerServer calls `setPlan(path)`, takes `path.poses.back()` as
++its endpoint, and then calls `GoalChecker::reset()`
++(`recovery_v176/src/nav2_controller/src/nav2_controller.cpp:340-353`, inspected
++read-only). v194 therefore keeps the braking latch separately from the checker
++result. The regression exercises `setPlan -> reset -> compute` while yaw drifts
++from 0.11 to 0.16 rad during braking.
+ 
+-v189 recorded **20 replacement stops and 34.225422 wall s** of cancel-to-proof
+-waiting (the requested 34.22 s reference), plus 2.290349 s from proof to the new
+-route. v192 has no P2B measured-stop protocol, so its corresponding proof count
+-and wait are **not applicable**, rather than zero. Its 13 observed cmd_vel
+-nonzero-to-zero transitions and 6.120389 s zero-command exposure use different
+-criteria and cover an incomplete route. Initial zeros are excluded; the last
+-unrestarted zero ends at the last recorded command. They do not establish a
+-full-route stop reduction, successful recovery, or sustained physical holding.
+-v189 traversed the route but failed its final held-yaw gate; v192 never arrived.
++## Direct verification
+ 
+-The launcher/supervisor exited 0 for recording and retention, and retention
+-explicitly records `explicit_failure=true`. That process status is not navigation
+-acceptance. The raw ZIP preserves 1,083 files (313,583,153 bytes). Full-route
+-verification and outcome remain false. `v193` and its review MP4 were **not
+-created**, because the requested route-arrived/FINISHED condition was not met.
+-The completion milestone was not emitted.
++| Check | Result |
++|---|---|
++| ARM64/Foxy build | 11 packages rebuilt; 14 native packages available |
++| colcon | 45 entries; 0 errors, failures or skipped entries |
++| Controller package | 22 unique GTests: 20 controller, 1 parity, 1 shutdown |
++| Bridge | 9 pytest cases; deterministic PCT fixture, real loopback ROS/HTTP |
++| Generated profiles | 2 tests pass; stock recovery and integer Wait checked |
++| Native probes | V176_TERMINAL_CAPTURE_PASS and V194_CORNER_LOOKAHEAD_PASS |
++| Mac host suite | 24 tests; 0 failures, errors or skips |
++| Live graph | Four lifecycle nodes active; actual v194 controller/native libraries loaded |
++| Applied-state transport | Bidirectional shared mount verified |
++| Native source identity | 272 execution files match exact SHA-256 inventory |
++| Protected inventory | All eight trees unchanged, including additions/removals and symlinks |
+ 
+-Evidence: [metrics](results/v192_mac_full_attempt01/metrics.json),
+-[failure/stop audit](results/v192_mac_full_attempt01/failure_metrics.json),
+-[terminal log excerpt](results/v192_mac_full_attempt01/terminal_log_excerpt.txt),
+-[outcome](results/v192_mac_full_attempt01/outcome.json),
+-[shared-state witness](results/v192_mac_full_attempt01/shared_state.json),
+-and [reproducible closed-run analyzer](results/v192_mac_full_attempt01/analyze_outcome.py).
++The first native run compiled all packages but failed two controller test cases:
++the existing `plan()` helper returned after observing an old route instead of
++waiting for the newly published route. The helper was corrected, and the final
++build/test run passed. The first run's logs, XML, source inventory, build request
++and controller review patch are retained as `verification/attempt01_failed_*`.
++The final successful evidence is separately named.
+ 
+-The failed capture is durably archived at
+-`gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v192_20261014/v192_mac_full_attempt01_failed.tar`
+-(373,309,440 bytes; SHA-256
+-`1f8c8c1a9ecc91d0a39a81e2ae0bd8a80a7b562e6fd85321daead2bfad075e17`).
+-Remote verification checked all 137 TAR files and all 1,083 original raw ZIP
+-members. See [artifact/restore record](results/v192_mac_full_attempt01/ARTIFACTS.json).
+-The local temporary trial is retained. This archives failure evidence, not a
+-completed-route display. Post-run [frozen-source verification](results/v192_mac_full_attempt01/final_freeze_verify.json)
+-and [protected-path checks](results/v192_mac_full_attempt01/final_protected_check.json)
+-also passed.
++The graph preflight uses a static identity world-to-base TF, sends no navigation
++goal and advances no physics. `run_mac_full.py` was not executed. This qualifies
++components and graph wiring only: no new route arrival, full-navigation,
++physical-braking, reliability, collision-clearance or real-robot acceptance is
++claimed. The prior v192 physical trial remains failed and untouched.
++
++See `quality.json` for evidence hashes, `verification/` for returned records,
++`native_sources.json` for source identity, `changes.patch` for the v192 delta,
++and `manifest.json` for the frozen source/snapshot bindings. The requested
++workflow ends at `freeze_host.py freeze`, `freeze_host.py verify` and the version
++index update; a physical trial remains a separate authorization boundary.
+--- v192/analyze_remote.py
++++ v194/analyze_remote.py
+@@ -65,7 +65,7 @@
+             pauses.append({'start_sim_s':pause_start,'end_sim_s':last,'duration_sim_s':last-pause_start});pause_start=None
+     if pause_start is not None:pauses.append({'start_sim_s':pause_start,'end_sim_s':last,'duration_sim_s':last-pause_start})
+     request=capture.json('episode_request.json')
+-    metrics={'run':root.name,'host':request['execution_host'],'host_platform':request['execution_host_platform'],'native_version':'Nav2 Foxy '+request['native_platform']+' native v191 SCAN','integration_version':request['integration_version'],
++    metrics={'run':root.name,'host':request['execution_host'],'host_platform':request['execution_host_platform'],'native_version':'Nav2 Foxy '+request['native_platform']+' native v194 SCAN','integration_version':request['integration_version'],
+         'requested_physics_end_s':capture.json('episode_request.json')['max_physics_s'],
+         'actual_physics_end_s':result['physics_duration_s'],'physics_steps':result['physics_steps'],
+         'navigation_sim_duration_s':pace['native_elapsed_s'],'navigation_wall_duration_s':end-begin,
+--- v192/build_mac.py
++++ v194/build_mac.py
+@@ -1,8 +1,9 @@
+-"""Build and test the v191 Option B Mac ARM64 overlay, using archived v176 binaries."""
++"""Build and test the v194 Option B Mac ARM64 overlay, using archived v176 binaries."""
+ from pathlib import Path
+ import argparse
+ import json
+ import platform
++import shutil
+ import subprocess
+ import sys
+ from run_mac_full import ROOT, HERE, validate_task
+@@ -15,19 +16,21 @@
+                         help='Reuse the verified build and rerun its tests and receipt checks.')
+     args = parser.parse_args()
+     assert platform.system() == 'Darwin' and platform.machine() == 'arm64'
++    if (HERE / 'manifest.json').exists():
++        raise ValueError('Never rebuild a frozen version')
+     task = validate_task(args.task_root)
+     image = (task / 'evidence/image_id.txt').read_text().strip()
+     assert subprocess.check_output(['docker', 'image', 'inspect', '--format',
+                                    '{{.Os}}/{{.Architecture}}', image], text=True).strip() == 'linux/arm64'
+-    if not (task / 'recovery_v191').exists():
++    if not (task / 'recovery_v194').exists():
+         if args.verify_existing:
+             raise ValueError('Existing workspace required')
+         subprocess.run([sys.executable, str(HERE / 'prepare_native.py'), '--task-root', str(task)], check=True)
+     origins = json.loads((HERE / 'native_sources.json').read_text())
+     from native_gate import sha
+-    source_files = {'src/' + str(p.relative_to(task / 'recovery_v191/src')): sha(p)
+-                    for p in (task / 'recovery_v191/src').rglob('*') if p.is_file()}
+-    assert source_files == origins['expected_files'], 'Existing source differs from v191 inventory'
++    source_files = {'src/' + str(p.relative_to(task / 'recovery_v194/src')): sha(p)
++                    for p in (task / 'recovery_v194/src').rglob('*') if p.is_file()}
++    assert source_files == origins['expected_files'], 'Existing source differs from v194 inventory'
+     script = '''set -eo pipefail
+ source /opt/ros/foxy/setup.bash
+ source /task/recovery_v176/install/setup.bash
+@@ -41,43 +44,48 @@
+ print('V176_MAC_UNDERLAY_IDENTITY_PASS')
+ VERIFY_PARENT
+ export MAKEFLAGS=-j2
+-cd /task/recovery_v191
++cd /task/recovery_v194
+ colcon build --base-paths src --packages-select lite3_nav2_interfaces scan_planner_msgs lite3_nav2_plugins plan_env bspline_opt path_searching traj_utils scan_planner scan_nav2_controller lite3_nav2_bridge scan_reactive_tracker --executor sequential --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+ source install/setup.bash
+ colcon test --packages-select scan_nav2_controller lite3_nav2_plugins lite3_nav2_bridge --executor sequential --event-handlers console_direct+
+ colcon test-result --verbose
+ source install/setup.bash
+-python3 /repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v191/test_profile_frames.py
+-cmake -S /repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v191 -B terminal_qualification_build
++python3 /repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v194/test_profile_frames.py
++cmake -S /repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v194 -B terminal_qualification_build
+ cmake --build terminal_qualification_build -j2
+-terminal_qualification_build/terminal_capture_probe /repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v191/terminal_fixture.txt
++terminal_qualification_build/terminal_capture_probe /repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v194/terminal_fixture.txt
+ '''
+     if args.verify_existing:
+         script = '\n'.join(line for line in script.split('\n') if not line.startswith('colcon build '))
+     evidence = task / 'evidence'
+-    (evidence / 'v191_build.sh').write_text(script)
++    (evidence / 'v194_build.sh').write_text(script)
+     command = ['docker', 'run', '--rm', '--pull=never', '--platform=linux/arm64',
+                '--network=none', '--cpus=4', '--memory=4g',
+                '-e', 'PYTHONDONTWRITEBYTECODE=1', '-e', 'OPENBLAS_NUM_THREADS=1',
+-               '-e', 'OMP_NUM_THREADS=1', '-v', f'{task}:/task:rw',
++               '-e', 'OMP_NUM_THREADS=1', '-v', f'{task}:/task:ro',
++               '-v', f'{task / "recovery_v194"}:/task/recovery_v194:rw',
++               '-v', f'{evidence}:/task/evidence:rw',
+                '-v', f'{ROOT}:/repo:ro', '--entrypoint', '/bin/bash', image]
+-    (evidence / 'v191_build_request.json').write_text(json.dumps({'command': command,
++    previous_log = evidence / 'v194_native_build_previous.log'
++    if args.verify_existing:
++        shutil.copyfile(evidence / 'v194_native_build.log', previous_log)
++    (evidence / 'v194_build_request.json').write_text(json.dumps({'command': command,
+         'script': script, 'host': platform.platform(), 'reuse_existing_build': args.verify_existing,
+-        'source_identity_sha256': sha(task / 'recovery_v191/source_identity.json'),
+-        'original_build_log_sha256': sha(task / 'recovery_v191/evidence/build-test-attempt-2.log')
++        'source_identity_sha256': sha(task / 'recovery_v194/source_identity.json'),
++        'original_build_log_sha256': sha(previous_log)
+             if args.verify_existing else None}, indent=2) + '\n')
+-    with (evidence / 'v191_native_build.log').open('w') as stream:
++    with (evidence / 'v194_native_build.log').open('w') as stream:
+         if args.verify_existing:
+             stream.write('=== Existing native build evidence (preserved verbatim) ===\n')
+-            stream.write((task / 'recovery_v191/evidence/build-test-attempt-2.log').read_text())
++            stream.write(previous_log.read_text())
+             stream.write('\n=== Current qualification tests and terminal probe ===\n')
+             stream.flush()
+-        subprocess.run(command + ['/task/evidence/v191_build.sh'], stdout=stream,
++        subprocess.run(command + ['/task/evidence/v194_build.sh'], stdout=stream,
+                        stderr=subprocess.STDOUT, check=True, timeout=900)
+     receipt_script = ('source /opt/ros/foxy/setup.bash && source /task/recovery_v176/install/setup.bash && '
+-                      'source /task/recovery_v191/install/setup.bash && '
++                      'source /task/recovery_v194/install/setup.bash && '
+                       'python3 /repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/'
+-                      'v191/create_receipt.py --image-id ' + image)
++                      'v194/create_receipt.py --image-id ' + image)
+     subprocess.run(command + ['-c', receipt_script], check=True, timeout=120)
+ 
+ 
+--- v192/build_remote.py
++++ v194/build_remote.py
+@@ -1,4 +1,4 @@
+-"""Prepare an unqualified Linux v192 Option B overlay over verified v177 binaries."""
++"""Prepare an unqualified Linux v194 Option B overlay over verified v177 binaries."""
+ from pathlib import Path
+ import hashlib
+ import json
+@@ -15,8 +15,8 @@
+     from resource_gate import admit
+     admission = admit()
+     parent = TASK/'recovery_v177'
+-    output = TASK/'results/recovery_v191'; output.mkdir(exist_ok=False)
+-    workspace = TASK/'recovery_v191'; workspace.mkdir(exist_ok=False)
++    output = TASK/'results/recovery_v194'; output.mkdir(exist_ok=False)
++    workspace = TASK/'recovery_v194'; workspace.mkdir(exist_ok=False)
+     previous = json.loads((parent/'source_identity.json').read_text())
+     origins = json.loads((HERE/'native_sources.json').read_text())
+     assert previous['files'] == origins['parent_files']
+@@ -31,8 +31,8 @@
+         shutil.copyfile(HERE/name, workspace/name); source[name] = sha(workspace/name)
+         if name.endswith('scripts/mission_bridge'):
+             (workspace/name).chmod(0o755)
+-    assert source == origins['expected_files'], 'Must match the v192 native source inventory'
+-    identity = {'version':'v192', 'native_parent':'v177', 'linux_binary_underlay':'v177',
++    assert source == origins['expected_files'], 'Must match the v194 native source inventory'
++    identity = {'version':'v194', 'native_parent':'v177', 'linux_binary_underlay':'v177',
+                 'parent_source_identity_sha256':sha(parent/'source_identity.json'),
+                 'inventory_scope':'src/', 'deleted':origins['deleted_files'],
+                 'changes':origins['changed_files'], 'files':source}
+@@ -46,48 +46,48 @@
+ source /opt/ros/foxy/setup.bash
+ source /task/recovery_v177/install/setup.bash
+ export MAKEFLAGS=-j2
+-cd /task/recovery_v191
++cd /task/recovery_v194
+ colcon build --base-paths src --packages-select lite3_nav2_interfaces scan_planner_msgs lite3_nav2_plugins plan_env bspline_opt path_searching traj_utils scan_planner scan_nav2_controller lite3_nav2_bridge scan_reactive_tracker --executor sequential --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+ source install/setup.bash
+ colcon test --packages-select scan_nav2_controller lite3_nav2_plugins lite3_nav2_bridge --executor sequential --event-handlers console_direct+
+ colcon test-result --verbose
+ source install/setup.bash
+-python3 /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v192/test_profile_frames.py
+-cmake -S /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v192 -B terminal_build
++python3 /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v194/test_profile_frames.py
++cmake -S /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v194 -B terminal_build
+ cmake --build terminal_build -j2
+-terminal_build/terminal_capture_probe /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v192/terminal_fixture.txt
++terminal_build/terminal_capture_probe /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v194/terminal_fixture.txt
+ python3 - <<'VERIFY'
+ from ament_index_python.packages import get_package_prefix
+-assert get_package_prefix('lite3_nav2_bridge')=='/task/recovery_v191/install/lite3_nav2_bridge'
+-assert get_package_prefix('scan_nav2_controller')=='/task/recovery_v191/install/scan_nav2_controller'
++assert get_package_prefix('lite3_nav2_bridge')=='/task/recovery_v194/install/lite3_nav2_bridge'
++assert get_package_prefix('scan_nav2_controller')=='/task/recovery_v194/install/scan_nav2_controller'
+ for package in ['lite3_nav2_interfaces','scan_planner_msgs','lite3_nav2_plugins','plan_env',
+                 'bspline_opt','path_searching','traj_utils','scan_planner',
+                 'scan_nav2_controller','lite3_nav2_bridge','scan_reactive_tracker']:
+- assert get_package_prefix(package)=='/task/recovery_v191/install/'+package
++ assert get_package_prefix(package)=='/task/recovery_v194/install/'+package
+ assert get_package_prefix('pct_planner')=='/task/recovery_v175/install/pct_planner'
+-print('V192_UNDERLAY_IDENTITY_PASS')
++print('V194_UNDERLAY_IDENTITY_PASS')
+ VERIFY
+ '''
+     (output/'build.sh').write_text(script)
+     command = ['docker','run','--rm','--network=none','--cpus=4','--memory=4g',
+                '-e','OPENBLAS_NUM_THREADS=1','-e','OMP_NUM_THREADS=1',
+                '-v',f'{TASK}:/task:rw','--entrypoint','/bin/bash',original['image_id'],
+-               '/task/results/recovery_v191/build.sh']
++               '/task/results/recovery_v194/build.sh']
+     (output/'build_request.json').write_text(json.dumps({'command':command,'resource_admission':admission,
+         'source_identity_sha256':sha(workspace/'source_identity.json'),'builder_sha256':sha(Path(__file__))},indent=2)+'\n')
+     with (output/'build.log').open('w') as stream:
+         subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=600)
+     log = (output/'build.log').read_text()
+-    assert '11 packages finished' in log and 'V176_TERMINAL_CAPTURE_PASS' in log and 'V191_CORNER_LOOKAHEAD_PASS' in log and 'V192_UNDERLAY_IDENTITY_PASS' in log
++    assert '11 packages finished' in log and 'V176_TERMINAL_CAPTURE_PASS' in log and 'V194_CORNER_LOOKAHEAD_PASS' in log and 'V194_UNDERLAY_IDENTITY_PASS' in log
+     assert 'Summary: 45 tests, 0 errors, 0 failures, 0 skipped' in log
+     files = dict(original['files'])
+     for directory in ('src','install'):
+         for path in (workspace/directory).rglob('*'):
+             if path.is_file() and '__pycache__' not in path.parts:
+                 files['/task/'+str(path.relative_to(TASK))] = sha(path)
+-    files['/task/recovery_v191/source_identity.json'] = sha(workspace/'source_identity.json')
++    files['/task/recovery_v194/source_identity.json'] = sha(workspace/'source_identity.json')
+     candidate = dict(passed=True,platform='linux/amd64',ros_distro='foxy',variant='candidate',
+-        native_version='v191',image_id=original['image_id'],files=files,
++        native_version='v194',image_id=original['image_id'],files=files,
+         source_identity_sha256=sha(workspace/'source_identity.json'),
+         underlay_receipt_sha256=sha(receipt_path),underlay_native_version='v177',
+         test_log_sha256=sha(output/'build.log'))
+--- v192/close_trial.py
++++ v194/close_trial.py
+@@ -7,8 +7,8 @@
+ sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+ def main():
+  p=argparse.ArgumentParser();p.add_argument('--attempt',type=int,required=True);a=p.parse_args()
+- tag=f'v192_full_candidate_attempt{a.attempt:02d}'
+- trial=TASK/'trials'/tag;r=trial/'runs'/tag;out=TASK/'results/v192_full_repeats'/tag;out.mkdir(parents=True,exist_ok=False)
++ tag=f'v194_full_candidate_attempt{a.attempt:02d}'
++ trial=TASK/'trials'/tag;r=trial/'runs'/tag;out=TASK/'results/v194_full_repeats'/tag;out.mkdir(parents=True,exist_ok=False)
+  execution=json.loads((trial/'evidence/execution.json').read_text())
+  (out/'execution.json').write_text(json.dumps(execution,indent=2)+'\n')
+  try:
+--- v192/create_receipt.py
++++ v194/create_receipt.py
+@@ -1,4 +1,4 @@
+-"""Verify exact Mac v191 Option B native sources, installed overlays and re-executed test evidence."""
++"""Verify exact Mac v194 Option B native sources, installed overlays and re-executed test evidence."""
+ from pathlib import Path
+ import argparse
+ import hashlib
+@@ -17,7 +17,7 @@
+     args = parser.parse_args()
+     assert platform.machine() == 'aarch64'
+     task = Path('/task')
+-    workspace = task / 'recovery_v191'
++    workspace = task / 'recovery_v194'
+     parent = task / 'evidence/v176_native_receipt.json'
+     previous = json.loads(parent.read_text())
+     assert previous['passed'] and previous['platform'] == 'linux/arm64'
+@@ -25,7 +25,7 @@
+     for name, digest in previous['files'].items():
+         assert sha(Path(name)) == digest, name
+     source = json.loads((workspace / 'source_identity.json').read_text())
+-    assert source['version'] == 'v191' and source['native_parent'] == 'v176'
++    assert source['version'] == 'v194' and source['native_parent'] == 'v176'
+     origins = json.loads((HERE / 'native_sources.json').read_text())
+     assert origins['parent_files'] == json.loads((task / 'recovery_v176/source_identity.json').read_text())['files']
+     assert source['files'] == origins['expected_files']
+@@ -68,10 +68,10 @@
+         'RouteHeadingTest.PillarUTurnUsesForwardRouteBeyondExpiredStub',
+         'RouteHeadingTest.FinalGoalCaptureOwnsYawBeforeAndAfterLatch'}
+     assert {'scan_nav2_controller.' + name for name in expected_heading} <= set(cases['test_controller.gtest.xml'])
+-    log = task / 'evidence/v191_native_build.log'
++    log = task / 'evidence/v194_native_build.log'
+     output = log.read_text()
+     for marker in ('Summary: 45 tests, 0 errors, 0 failures, 0 skipped',
+-                   'V176_TERMINAL_CAPTURE_PASS', 'V191_CORNER_LOOKAHEAD_PASS', 'Ran 2 tests', '\nOK\n'):
++                   'V176_TERMINAL_CAPTURE_PASS', 'V194_CORNER_LOOKAHEAD_PASS', 'Ran 2 tests', '\nOK\n'):
+         assert marker in output, marker
+     files = dict(previous['files'])
+     for directory in ('src', 'install'):
+@@ -82,16 +82,16 @@
+     tests = dict(unique_gtest_cases=22, controller_gtest_cases=20,
+                  route_heading_cases=sorted(expected_heading), gtest_cases=cases,
+                  colcon_summary=dict(tests=45, errors=0, failures=0, skipped=0),
+-                 generated_profile_cases=2, terminal_markers=['V176_TERMINAL_CAPTURE_PASS', 'V191_CORNER_LOOKAHEAD_PASS'],
++                 generated_profile_cases=2, terminal_markers=['V176_TERMINAL_CAPTURE_PASS', 'V194_CORNER_LOOKAHEAD_PASS'],
+                  test_xml_sha256={str(path): sha(path) for path in xml_files})
+     receipt = dict(passed=True, platform='linux/arm64', ros_distro='foxy', variant='candidate',
+-                   native_version='v191', image_id=args.image_id, files=files,
++                   native_version='v194', image_id=args.image_id, files=files,
+                    native_packages_available=len(prefixes), package_prefixes=prefixes,
+                    source_identity_sha256=sha(workspace / 'source_identity.json'),
+                    underlay_receipt_sha256=sha(parent), underlay_native_version='v176',
+                    test_log_sha256=sha(log), tests=tests,
+                    claim='Mac Option B component verification only; graph and physical route qualification are separate.')
+-    path = task / 'evidence/v191_native_receipt.json'
++    path = task / 'evidence/v194_native_receipt.json'
+     path.write_text(json.dumps(receipt, indent=2) + '\n')
+     print(json.dumps({'passed': True, 'files': len(files), 'native_packages_available': len(prefixes),
+                       'unique_gtest_cases': 22, 'receipt_sha256': sha(path)}))
+--- v192/freeze_host.py
++++ v194/freeze_host.py
+@@ -1,4 +1,4 @@
+-"""Freeze the v192 Option B direct Nav2+SCAN candidate with v191 as its version parent."""
++"""Freeze the v194 Option B direct Nav2+SCAN candidate with v193 as version parent and v192 as navigation parent."""
+ from pathlib import Path
+ import argparse
+ import hashlib
+@@ -27,8 +27,10 @@
+             raise ValueError('Source/snapshot changed: '+name)
+     if sha(HERE/'quality.json') != manifest['quality_sha256']:
+         raise ValueError('Quality identity changed')
+-    if sha(HERE.parent/'v191/manifest.json') != manifest['parent_manifest_sha256']:
++    if sha(HERE.parent/'v193/manifest.json') != manifest['parent_manifest_sha256']:
+         raise ValueError('Parent identity changed')
++    if sha(HERE.parent/'v192/manifest.json') != manifest['navigation_parent_manifest_sha256']:
++        raise ValueError('Navigation parent identity changed')
+     inputs = json.loads((HERE/'runtime_sync_manifest.json').read_text())
+     for name, expected in inputs['files'].items():
+         if sha(ROOT/name) != expected['sha256']:
+@@ -41,13 +43,13 @@
+     if (HERE/'manifest.json').exists():
+         raise ValueError('Never overwrite a frozen version')
+     verify_quality()
+-    previous = json.loads((HERE.parent/'v191/manifest.json').read_text())
++    previous = json.loads((HERE.parent/'v192/manifest.json').read_text())
+     files, locations = dict(previous['source_files']), dict(previous['snapshot_locations'])
+     selected = [p for p in HERE.iterdir() if p.is_file() and
+                 (p.suffix in ('.py', '.sh', '.yaml', '.cpp') or p.name in (
+                     'CMakeLists.txt', 'Dockerfile', 'Dockerfile.dependencies', 'docker', 'lsof', 'corner_scenario.json',
+                     'navigation_contract.json', 'mission_bridge_input.json', 'physical_floor_input.json', 'runtime_sync_manifest.json',
+-                    'goal_failure_input.json', 'native_sources.json', 'source_audit.json', 'support_coverage_input.json', 'global_map_input.json', 'full_route_input.json', 'terminal_fixture.json', 'terminal_fixture.txt', 'PLAN.md', 'changes.patch', 'query_mask.cpp'))]
++                    'goal_failure_input.json', 'native_sources.json', 'source_audit.json', 'support_coverage_input.json', 'global_map_input.json', 'full_route_input.json', 'terminal_fixture.json', 'terminal_fixture.txt', 'PLAN.md', 'RESULTS.md', 'changes.patch', 'query_mask.cpp'))]
+     selected.append(HERE.parent / 'v156/probe.cpp')
+     selected.extend(p for p in (HERE/'src').rglob('*') if p.is_file() and '__pycache__' not in p.parts)
+     selected.extend(p for p in (HERE/'contract').rglob('*') if p.is_file() and '__pycache__' not in p.parts)
+@@ -64,12 +66,14 @@
+         snapshot.parent.mkdir(parents=True, exist_ok=True)
+         shutil.copyfile(path, snapshot)
+         files[name], locations[name] = digest, str(snapshot.relative_to(ROOT))
+-    manifest = {'version': 'v192', 'parent': 'v191',
+-                'parent_manifest_sha256': sha(HERE.parent/'v191/manifest.json'),
+-                'status': 'frozen_shared_state_harness_candidate',
++    manifest = {'version': 'v194', 'parent': 'v193', 'navigation_parent': 'v192',
++                'native_version': 'v194',
++                'navigation_parent_manifest_sha256': sha(HERE.parent/'v192/manifest.json'),
++                'parent_manifest_sha256': sha(HERE.parent/'v193/manifest.json'),
++                'status': 'frozen_component_and_graph_qualified',
+                 'platform': 'Mac ARM64 / Ubuntu 20.04 ROS 2 Foxy ARM64 container / CPU Newton',
+                 'native_binary_underlay': 'v176',
+-                'native_variants': {'candidate': 'v191'},
++                'native_variants': {'candidate': 'v194'},
+                 'source_files': files, 'snapshot_locations': locations,
+                 'quality_sha256': sha(HERE/'quality.json')}
+     (HERE/'manifest.json').write_text(json.dumps(manifest, indent=2)+'\n')
+--- v192/mac_managed.py
++++ v194/mac_managed.py
+@@ -14,6 +14,6 @@
+ namespace['verify_prepared_mount']=verify_prepared_mount
+ exec(compile(text.replace(old,'verify_prepared_mount(run)'),str(source),'exec'),namespace)
+ managed_run.main=namespace['main']
+-managed_run.a.BASE=Path(os.environ['V192_TEMP_ROOT'])
++managed_run.a.BASE=Path(os.environ['V194_TEMP_ROOT'])
+ managed_run.a.AUDIT=managed_run.a.BASE/'artifact_audit'
+ raise SystemExit(managed_run.main())
+--- v192/mac_supervisor.py
++++ v194/mac_supervisor.py
+@@ -15,13 +15,13 @@
+     text=source.read_text();old='out.mkdir(parents=True, exist_ok=False)'
+     assert text.count(old)==1
+     index=sys.argv.index('--run-id');run_id=sys.argv[index+1]
+-    root=Path(os.environ['V192_TEMP_ROOT'])
++    root=Path(os.environ['V194_TEMP_ROOT'])
+     if platform.system() == 'Darwin':
+-        assert root.parent == Path('/private/tmp/vla_stop_audit_20261012') and root.name.startswith('v192_')
++        assert root.parent == Path('/private/tmp/vla_stop_audit_20261012') and root.name.startswith('v194_')
+     else:
+-        assert root.parent==Path('/data/sun/vla_mppi_20261009/trials') and root.name.startswith('v192_')
++        assert root.parent==Path('/data/sun/vla_mppi_20261009/trials') and root.name.startswith('v194_')
+     verify_prepared_mount(root/'runs'/run_id)
+-    spec=importlib.util.spec_from_file_location('v192_original_supervisor',source)
++    spec=importlib.util.spec_from_file_location('v194_original_supervisor',source)
+     module=importlib.util.module_from_spec(spec)
+     text=text.replace(old,'out.mkdir(parents=True, exist_ok=True)')
+     rss='resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss'
+--- v192/mission_bridge_input.json
++++ v194/mission_bridge_input.json
+@@ -1,5 +1,5 @@
+ {
+-  "schema": "v192_direct_nav2_mission",
++  "schema": "v194_direct_nav2_mission",
+   "http": {"host": "127.0.0.1", "port": 8785},
+   "map": {
+     "epoch": "stair_reactive_coverage_v135",
+--- v192/native_gate.py
++++ v194/native_gate.py
+@@ -1,4 +1,4 @@
+-"""Require native v191 ARM64 source/install and v192 harness preflight evidence."""
++"""Require native v194 ARM64 source/install and v194 harness preflight evidence."""
+ from pathlib import Path
+ import hashlib
+ import json
+@@ -11,7 +11,7 @@
+ 
+ 
+ def validate_quality(quality):
+-    required = dict(passed=True, native_version='v191', execution_platform='linux/arm64',
++    required = dict(passed=True, native_version='v194', execution_platform='linux/arm64',
+                     native_packages_available=14, rebuilt_packages=11,
+                     unique_controller_gtest_cases=22, controller_gtest_cases=20,
+                     native_terminal_regressions=True, generated_profile_cases=2,
+@@ -35,10 +35,10 @@
+ def verify(build, manifest):
+     if build.resolve() != HERE or sha(HERE/'quality.json') != manifest['quality_sha256']:
+         raise ValueError('Wrong source or component quality identity')
+-    variant = os.environ['V192_VARIANT']
++    variant = os.environ['V194_VARIANT']
+     if variant != 'candidate':
+         raise ValueError('Only the tested Mac candidate is qualified')
+-    path = Path(os.environ['V192_BUILD_EVIDENCE'])/'build_receipt.json'
++    path = Path(os.environ['V194_BUILD_EVIDENCE'])/'build_receipt.json'
+     quality = json.loads((HERE/'quality.json').read_text())
+     validate_quality(quality)
+     receipt = json.loads(path.read_text())
+@@ -47,10 +47,10 @@
+     if (platform.system(), platform.machine()) != ('Darwin', 'arm64'):
+         raise ValueError('This quality receipt qualifies only the Mac ARM64 cohort')
+     if (not receipt['passed'] or receipt['platform'] != quality['execution_platform']
+-            or receipt['variant'] != variant or receipt['native_version'] != 'v191'
++            or receipt['variant'] != variant or receipt['native_version'] != 'v194'
+             or receipt['native_packages_available'] != 14):
+         raise ValueError('Wrong execution platform/variant')
+-    container = os.environ['V192_NATIVE_CONTAINER']
++    container = os.environ['V194_NATIVE_CONTAINER']
+     image = subprocess.check_output(['docker', 'inspect', '--format', '{{.Image}}', container], text=True).strip()
+     if image != receipt['image_id']:
+         raise ValueError('Image differs from tested image')
+@@ -59,10 +59,10 @@
+ r=json.loads(Path(sys.argv[1]).read_text())
+ for name,expected in r['files'].items():
+  assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==expected,name
+-print('V191_NATIVE_IDENTITY_PASS')
++print('V194_NATIVE_IDENTITY_PASS')
+ '''
+     result = subprocess.run(['docker', 'exec', container, 'python3', '-c', script, str(path)],
+                             capture_output=True, text=True, check=True, timeout=90)
+-    if 'V191_NATIVE_IDENTITY_PASS' not in result.stdout:
++    if 'V194_NATIVE_IDENTITY_PASS' not in result.stdout:
+         raise ValueError('Missing native identity witness')
+     return {'passed': True, 'variant': variant, 'receipt_sha256': sha(path), 'physics_acceptance': False}
+--- v192/native_graph.py
++++ v194/native_graph.py
+@@ -20,14 +20,14 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v192":
+-        raise ValueError("v192 graph requires the frozen v192 integration identity")
++    if request.get("integration_version") != "v194":
++        raise ValueError("v194 graph requires the frozen v194 integration identity")
+     if request.get("applied_transport") != "shared":
+-        raise ValueError("v192 requires shared applied-state storage")
++        raise ValueError("v194 requires shared applied-state storage")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     variant = request["native_variant"]
+     if variant != "candidate":
+-        raise ValueError("v192 requires the Option B candidate")
++        raise ValueError("v194 requires the Option B candidate")
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+     cfg = BASE / "config_archived"
+--- v192/native_sources.json
++++ v194/native_sources.json
+@@ -1,7 +1,7 @@
+ {
+-  "version": "v191",
+-  "version_parent": "v190",
+-  "semantic_baseline": "v191_option_b_direct_nav2_scan",
++  "version": "v194",
++  "version_parent": "v193",
++  "semantic_baseline": "v194_option_b_direct_nav2_scan",
+   "binary_underlay": "v176",
+   "mac_binary_underlay": "v176",
+   "parent_source_identity_sha256": "29bc30bb33d6c3f97485c2e7f551873c776e90df8760550da98feded18f0d6b7",
+@@ -749,14 +749,14 @@
+     "src/geometry_probe/package.xml": "bc25e602e032f6337511969f7e2199515ce394fc391a4246895aba26e486b086",
+     "src/geometry_probe/src/measured_cloud_probe.cpp": "9b4995eb38051a05c37ba2498ace02a1737b7593fd32db48e974846055212372",
+     "src/lite3_nav2_bridge/CMakeLists.txt": "efced407e47635d6fadafe1ac28b9567520753093e650ad70218cebcb172c300",
+-    "src/lite3_nav2_bridge/config/navigate.xml": "8f38d6125d1eaef5ede05c855cbb0d4dd9721868b0bf67e9969224dc72077625",
++    "src/lite3_nav2_bridge/config/navigate.xml": "3440003d746cc52265e22a59e1b9c8bb6bdc3d2e4c892187fb342e57bfe7cbbf",
+     "src/lite3_nav2_bridge/launch/navigation.launch.py": "136f042b7ca8900ff33b22ebc2113a4af6d2fb7b81ec1b4dec00874509562d91",
+     "src/lite3_nav2_bridge/lite3_nav2_bridge/__init__.py": "6fd034cf029abe862c77a96ad6657c1fe550ee35feb9876a46c9ad9e69883b0e",
+-    "src/lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py": "c8ee13520b813a2ec02996ff7d91462d9f3d477dee6ed734d5284130f947be40",
++    "src/lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py": "090e3d743144977b1e2ab7bc313abad803efc5adf10b502395496d2aa79f172b",
+     "src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py": "c93df47a24e847fad98cfffe1418fe034d7c6b4bdb4f37bd254f06a5f9a80d13",
+     "src/lite3_nav2_bridge/package.xml": "db03bf2252f2c82624bed311f9f041aed927fe8b069d819b3b51868aaa730d16",
+     "src/lite3_nav2_bridge/scripts/mission_bridge": "8dd278faabfab038d70af88b431b56eb0dd1d464c2257b5758e13919161d4fe4",
+-    "src/lite3_nav2_bridge/test/test_mission_bridge.py": "d1cb19e7e9cf10f3426fd259be7ec4f974468dab913dce01eaef7eee5977d90a",
++    "src/lite3_nav2_bridge/test/test_mission_bridge.py": "00550b0ed0eee146ed6521526eb8b79efcf929ddfe2f65d7a5bac0bc8bcab297",
+     "src/lite3_nav2_interfaces/CMakeLists.txt": "bb7e19fb8d078baf8b7b8fda6679fb1cd888a362aee2c00ce3e8c58891c7baa0",
+     "src/lite3_nav2_interfaces/package.xml": "4380b6a3406951d03452cefa295bcc33c49a29095ce46c498a37fbc1e6bdecbd",
+     "src/lite3_nav2_interfaces/srv/PlanRoute.srv": "28f495eaf96b65df50daec0a5b1233fdf3729282de72fc34a858e6f487a8cd1d",
+@@ -967,19 +967,19 @@
+     "src/scan_nav2_controller/README.md": "af794204c8edb213908f851b910ac78e13ec292af23dd3fc64e165e6f6273e92",
+     "src/scan_nav2_controller/config/controller.yaml": "470ffc6924e751b68695a0a3bbe001c21d2db02f559f7a92a1f26fd9bfe3b8ac",
+     "src/scan_nav2_controller/include/scan_nav2_controller/command_output.hpp": "bf2a3e1324465036aad31e5da24b7d30a397c8822583e2c0c8302da649dcf053",
+-    "src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp": "217688c59e7ecc22bf0ecb0b717759b6b246206bf30172dd4f807f60ef9521c7",
++    "src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp": "e562c5f8337139764e0b9932a46fc64bda00f920659b97c794fd630eb2859108",
+     "src/scan_nav2_controller/include/scan_nav2_controller/executor_shutdown.hpp": "18ca8279646cfa9971b629d0c6ae06b82c833960ae97638fbd9dcae22cec7b0a",
+     "src/scan_nav2_controller/include/scan_nav2_controller/native_validation.hpp": "06889fad0379a8845aba5fcbe961885786c3be0834f968fa6869f272dccca070",
+-    "src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp": "a664be53ef188e48011b68bf2b5ac4be1a7def4d5e9990d6cc0cf7d5cb89eefd",
++    "src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp": "c3abeef5cfcb10dc4f61fa2b01269d4ca9d1084af7796b5aa5cc8a3b87342aad",
+     "src/scan_nav2_controller/launch/scan_nav2.launch.py": "7b33f5a61d7ac1c55c1e205ffe35c064696603b9adf1e777cd07e109cc8b7ef3",
+     "src/scan_nav2_controller/package.xml": "91f6aaaf38b75fe46c2e8402edbda35ad195849e0a27fb4aedc4997204849b9a",
+     "src/scan_nav2_controller/plugins.xml": "e998007b50917e8a044ca67f98bdede5d0ce43683dd881fd6b50b147a5153ba7",
+-    "src/scan_nav2_controller/src/controller.cpp": "4cd42ad8c238de0cdeec67c8d60a90ed8388dcef4a8dc9b331d19dd19e4b5aba",
++    "src/scan_nav2_controller/src/controller.cpp": "8fba3c347f010f4210c383574f81e711d142fb3fb32a71ba5e23b19d7d79ae76",
+     "src/scan_nav2_controller/test/legacy_tracking_reference.hpp": "64a29b7ec7cfcf9d4d2fe5b08b440b1317046ba5b6acc8464c08f44164f39c33",
+-    "src/scan_nav2_controller/test/test_controller.cpp": "3c19528fa2255d46e0d6320537196ca2d493a850f65bf4dae4215e12deaa9b66",
++    "src/scan_nav2_controller/test/test_controller.cpp": "69f884440cc74dec71624b6d80e949a7109cf2bdfb5b6f3ec82decce158fce2d",
+     "src/scan_nav2_controller/test/test_executor_shutdown.cpp": "23f00f08965a5e2e31466920d6b0d980b66522a4cc0b1917e5a43fcc62dcb31f",
+     "src/scan_nav2_controller/test/test_tracking_parity.cpp": "409c291af5194c4fe5f38917d0f4644b4a274abde9b0ff5c3d8e42eeadd57876",
+-    "src/scan_nav2_controller/tracking_provenance.json": "5de5f8230e47bc15c0ef2c802932539d492b1e152fd12f4a9b0db76c0c0f64f5",
++    "src/scan_nav2_controller/tracking_provenance.json": "3ba32e26c0531cbea5ee42e92e3380950053271deaa9f7d1f7422926f89791a1",
+     "src/scan_planner_msgs/CMakeLists.txt": "44974fc171fc3f05c6c9c57a064f5fb88d059456b19a28b9a50cfe6d99604063",
+     "src/scan_planner_msgs/msg/Bspline.msg": "731724246215af3b686b9cadcc19693ec58f2cdc2fca6535c2dccb741bf58bbb",
+     "src/scan_planner_msgs/msg/DataDisp.msg": "e5af486e44777df259d35ee0a4d6f99a1a9bcb6d99de0c64687d1e5c02abc7f2",
+@@ -1017,5 +1017,9 @@
+     "traj_utils"
+   ],
+   "inventory_scope": "parent_files preserves all 649 archived v176 entries; expected_files contains only src/ (272 files). Non-src parent metadata and vendored dependencies remain in the pinned underlay.",
+-  "claim": "Exact verified Option B native source snapshot; Mac ARM64 component and graph qualification are separate from full-route acceptance."
++  "claim": "Exact verified Option B native source snapshot; Mac ARM64 component and graph qualification are separate from full-route acceptance.",
++  "parent": "v193",
++  "navigation_parent": "v192",
++  "native_version": "v194",
++  "native_binary_underlay": "v176"
+ }
+--- v192/physical_floor_publisher.py
++++ v194/physical_floor_publisher.py
+@@ -16,7 +16,7 @@
+         super().__init__('pct_physical_floor_publisher')
+         info=json.loads((HERE/'physical_floor_input.json').read_text())
+         assert info['role']=='physical_floor_presence_only' and not info['traversal_authority'] and not info['terrain_return_classification_authority']
+-        data=Path(os.environ['V192_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
++        data=Path(os.environ['V194_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
+         self.points=np.frombuffer(data,dtype='<f4').reshape(-1,4)
+         assert len(self.points)==info['files']['physical_floor.f32']['points'] and np.isfinite(self.points).all()
+         self.gate=SimClockGate();qos=QoSProfile(depth=1,reliability=QoSReliabilityPolicy.RELIABLE,durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+--- v192/prepare_native.py
++++ v194/prepare_native.py
+@@ -1,4 +1,4 @@
+-"""Materialize v191 Option B over the byte-identical, archived Mac v176 source tree."""
++"""Materialize v194 Option B over the byte-identical, archived Mac v176 source tree."""
+ from pathlib import Path
+ import argparse
+ import hashlib
+@@ -14,7 +14,7 @@
+     parser.add_argument('--task-root', type=Path, required=True)
+     args = parser.parse_args()
+     parent = args.task_root / 'recovery_v176'
+-    target = args.task_root / 'recovery_v191'
++    target = args.task_root / 'recovery_v194'
+     prior = json.loads((parent / 'source_identity.json').read_text())
+     origins = json.loads((HERE / 'native_sources.json').read_text())
+     assert prior['version'] == 'v176'
+@@ -45,8 +45,9 @@
+             (target / name).chmod(0o755)
+         files[name] = sha(target / name)
+     assert files == origins['expected_files']
+-    identity = dict(version='v191', native_parent='v176', mac_binary_underlay='v176',
+-                    semantic_baseline='v191_option_b_direct_nav2_scan', inventory_scope='src/',
++    identity = dict(version='v194', parent='v193', navigation_parent='v192', native_version='v194',
++                    native_binary_underlay='v176', native_parent='v176', mac_binary_underlay='v176',
++                    semantic_baseline='v194_option_b_direct_nav2_scan', inventory_scope='src/',
+                     parent_source_identity_sha256=sha(parent / 'source_identity.json'),
+                     restored_inherited_sources=restored,
+                     deleted=origins.get('deleted_files', []),
+--- v192/qualify_mac.py
++++ v194/qualify_mac.py
+@@ -1,4 +1,4 @@
+-"""Write complete pre-freeze Mac v192 Option B quality from actual build, host and graph evidence."""
++"""Write complete pre-freeze Mac v194 Option B quality from actual build, host and graph evidence."""
+ from pathlib import Path
+ import argparse
+ import json
+@@ -11,48 +11,53 @@
+     parser = argparse.ArgumentParser()
+     parser.add_argument('--task-root', type=Path, required=True)
+     args = parser.parse_args()
++    if (HERE / 'manifest.json').exists():
++        raise ValueError('Never rewrite frozen qualification')
+     task = validate_task(args.task_root)
+     evidence = task / 'evidence'
+-    receipt = json.loads((evidence / 'v191_native_receipt.json').read_text())
+-    host = json.loads((evidence / 'v192_host_tests.json').read_text())
+-    graph = json.loads((evidence / 'v192_native_graph_preflight.json').read_text())
+-    loaded = json.loads((evidence / 'v192_overlay_loaded.json').read_text())
+-    protected = json.loads((evidence / 'v192_protected_comparison.json').read_text())
++    receipt = json.loads((evidence / 'v194_native_receipt.json').read_text())
++    host = json.loads((evidence / 'v194_host_tests.json').read_text())
++    graph = json.loads((evidence / 'v194_native_graph_preflight.json').read_text())
++    loaded = json.loads((evidence / 'v194_overlay_loaded.json').read_text())
++    protected = json.loads((evidence / 'v194_protected_comparison.json').read_text())
+     assert protected['passed'] and all(row['passed'] for row in protected['paths'].values())
+-    assert protected['baseline_sha256'] == sha(evidence / 'v192_protected_before.json')
+-    assert receipt['passed'] and receipt['native_version'] == 'v191'
++    assert protected['baseline_sha256'] == sha(evidence / 'v194_protected_before.json')
++    assert receipt['passed'] and receipt['native_version'] == 'v194'
+     assert host['passed'] and host['host'] == 'Darwin/arm64'
+     assert host['errors'] == host['failures'] == host['skipped'] == 0
+     assert graph['passed'] and not graph['physics_advanced'] and loaded['passed']
+     assert graph['applied_transport'] == 'shared' and graph['shared_mount_bidirectional_verified']
+-    assert protected['native_source_unchanged']
++    assert protected['native_source_matches_inventory'] and protected['native_build_reused'] is False
+     assert graph['generated_finish_dist_m'] == 0.02
+     assert graph['route_lookahead_heading_enabled'] is True and graph['route_lookahead_dist'] == 0.5
+     assert graph['navigation_goal_sent'] is False
++    assert graph['recovery_wait_duration_s'] == 1 and graph['stock_recovery_retries'] == 6
+     assert graph['scan_execution'] == loaded['scan_execution'] == 'embedded_native_worker'
+     expected_states = {name: 'active' for name in (
+         '/controller_server', '/planner_server', '/recoveries_server', '/nav2_internal/bt_navigator')}
+     assert graph['lifecycle_states'] == loaded['lifecycle_states'] == expected_states
+     assert loaded['processes'] and not loaded['scan_processes']
+-    assert all(row['libraries'] == ['/task/recovery_v191/install/scan_nav2_controller/lib/libscan_nav2_controller.so']
++    assert all(row['libraries'] == ['/task/recovery_v194/install/scan_nav2_controller/lib/libscan_nav2_controller.so']
+                for row in loaded['processes'])
+-    assert all(row['native_libraries'] == ['/task/recovery_v191/install/scan_planner/lib/libscan_native_core.so']
++    assert all(row['native_libraries'] == ['/task/recovery_v194/install/scan_planner/lib/libscan_native_core.so']
+                for row in loaded['processes'])
+     tests = receipt['tests']
+-    quality = dict(passed=True, integration_version='v192', native_build_reused=True, native_version='v191', execution_platform=receipt['platform'],
++    quality = dict(passed=True, integration_version='v194', native_build_reused=False, parent='v193', navigation_parent='v192', native_binary_underlay='v176', native_version='v194', execution_platform=receipt['platform'],
++        recovery_wait_duration_s=1, stock_recovery_retries=6, canonical_goal_pose_locked=True,
++        control_yaw_tolerance_scale=0.5, cached_path_replay_enabled=False,
+         native_packages_available=receipt['native_packages_available'], rebuilt_packages=11,
+         native_colcon_summary=tests['colcon_summary'],
+         unique_controller_gtest_cases=tests['unique_gtest_cases'],
+         controller_gtest_cases=tests['controller_gtest_cases'],
+         gtest_count_scope='20 controller + 1 tracking parity + 1 executor shutdown + 8 lite3_nav2_plugins + 9 lite3_nav2_bridge pytest; 45 colcon entries include CTest wrappers',
+-        native_terminal_regressions=tests['terminal_markers'] == ['V176_TERMINAL_CAPTURE_PASS', 'V191_CORNER_LOOKAHEAD_PASS'],
++        native_terminal_regressions=tests['terminal_markers'] == ['V176_TERMINAL_CAPTURE_PASS', 'V194_CORNER_LOOKAHEAD_PASS'],
+         generated_profile_cases=tests['generated_profile_cases'], host_tests=host['tests'],
+-        runtime_receipts={'candidate': sha(evidence / 'v191_native_receipt.json')},
+-        actual_graph_verified=True, native_graph_preflight_sha256=sha(evidence / 'v192_native_graph_preflight.json'),
++        runtime_receipts={'candidate': sha(evidence / 'v194_native_receipt.json')},
++        actual_graph_verified=True, native_graph_preflight_sha256=sha(evidence / 'v194_native_graph_preflight.json'),
+         graph_lifecycle_states=expected_states, graph_synthetic_fixture=graph['synthetic_fixture'],
+         physics_advanced=False, navigation_goal_sent=False, scan_execution=graph['scan_execution'],
+-        overlay_loaded_sha256=sha(evidence / 'v192_overlay_loaded.json'),
+-        host_test_results_sha256=sha(evidence / 'v192_host_tests.json'),
++        overlay_loaded_sha256=sha(evidence / 'v194_overlay_loaded.json'),
++        host_test_results_sha256=sha(evidence / 'v194_host_tests.json'),
+         full_navigation_accepted=False,
+         claim='Component and live graph qualification for Mac ARM64 Option B direct Nav2+SCAN; full-route results are appended separately.')
+     validate_quality(quality)
+@@ -61,15 +66,18 @@
+         shutil.rmtree(output)
+     output.mkdir(exist_ok=False)
+     paths = [evidence / name for name in [
+-        'v191_native_receipt.json', 'v191_native_build.log', 'v191_build_request.json',
+-        'v192_native_graph_preflight.json', 'v192_overlay_loaded.json',
+-        'v192_graph_preflight.log',
+-        'v192_host_tests.json', 'v192_host_tests.log',
+-        'v192_protected_before.json', 'v192_protected_comparison.json',
+-        'v191_RESULTS_before_v192.md']]
+-    paths += sorted((task / 'recovery_v191/build/scan_nav2_controller/test_results/scan_nav2_controller').glob('*.gtest.xml'))
++        'v194_native_receipt.json', 'v194_native_build.log', 'v194_build_request.json',
++        'v194_native_graph_preflight.json', 'v194_overlay_loaded.json',
++        'v194_graph_preflight.log',
++        'v194_host_tests.json', 'v194_host_tests.log',
++        'v194_protected_before.json', 'v194_protected_comparison.json']]
++    paths += sorted((task / 'recovery_v194/build/scan_nav2_controller/test_results/scan_nav2_controller').glob('*.gtest.xml'))
+     for path in paths:
+         shutil.copyfile(path, output / path.name)
++    failed = evidence / 'v194_attempt01_failed'
++    for path in sorted(failed.iterdir()):
++        if path.is_file():
++            shutil.copyfile(path, output / ('attempt01_failed_' + path.name))
+     graph_root = Path(graph['graph_root'])
+     for name in ('nav2.log', 'native_commands.json', 'nav2_params.yaml', 'nav2_params.bt.xml',
+                  'selected_route_map.json', 'backend_config.json', 'backend_latest.json',
+@@ -77,7 +85,7 @@
+         shutil.copyfile(graph_root / name, output / ('graph_' + name))
+     shutil.copyfile(task / 'restore_archives/local_manifest.json', output / 'environment_archives.json')
+     shutil.copyfile(task / 'restore_archives/remote_sha256.txt', output / 'environment_remote_sha256.txt')
+-    shutil.copyfile(task / 'recovery_v191/source_identity.json', output / 'native_source_identity.json')
++    shutil.copyfile(task / 'recovery_v194/source_identity.json', output / 'native_source_identity.json')
+     quality['evidence_files'] = {str(path.relative_to(HERE)): sha(path) for path in sorted(output.iterdir())}
+     (HERE / 'quality.json').write_text(json.dumps(quality, indent=2) + '\n')
+     print(json.dumps({'passed': True, 'host_tests': host['tests'], 'quality_sha256': sha(HERE / 'quality.json')}))
+--- v192/run_cohort.py
++++ v194/run_cohort.py
+@@ -4,13 +4,13 @@
+ HERE=Path(__file__).resolve().parent
+ TASK=Path('/data/sun/vla_mppi_20261009')
+ def main():
+- out=TASK/'results/v192_full_repeats';out.mkdir(exist_ok=False)
++ out=TASK/'results/v194_full_repeats';out.mkdir(exist_ok=False)
+  for attempt in range(1,6):
+   with (out/f'attempt{attempt:02d}.log').open('w') as log:
+    r=subprocess.run([sys.executable,str(HERE/'run_remote_full.py'),'--variant','candidate','--attempt',str(attempt)],stdout=log,stderr=subprocess.STDOUT)
+-   if not (TASK/f'trials/v192_full_candidate_attempt{attempt:02d}/evidence/execution.json').exists():raise RuntimeError('Admission failed; do not proceed: '+str(attempt))
++   if not (TASK/f'trials/v194_full_candidate_attempt{attempt:02d}/evidence/execution.json').exists():raise RuntimeError('Admission failed; do not proceed: '+str(attempt))
+    c=subprocess.run([sys.executable,str(HERE/'close_trial.py'),'--attempt',str(attempt)],stdout=log,stderr=subprocess.STDOUT)
+   if c.returncode:raise RuntimeError('Closeout failed; preserve before next trial')
+-  summary=json.loads((out/f'v192_full_candidate_attempt{attempt:02d}/outcome.json').read_text());print(json.dumps(summary),flush=True)
++  summary=json.loads((out/f'v194_full_candidate_attempt{attempt:02d}/outcome.json').read_text());print(json.dumps(summary),flush=True)
+   if r.returncode or 'analysis_error' in summary:raise RuntimeError('Infrastructure failure; diagnose before next trial')
+ if __name__=='__main__':main()
+--- v192/run_host_tests.py
++++ v194/run_host_tests.py
+@@ -17,12 +17,12 @@
+     task = validate_task(args.task_root)
+     assert (platform.system(), platform.machine()) == ('Darwin', 'arm64')
+     suite = unittest.defaultTestLoader.loadTestsFromNames(MODULES)
+-    with (task / 'evidence/v192_host_tests.log').open('w') as stream:
++    with (task / 'evidence/v194_host_tests.log').open('w') as stream:
+         result = unittest.TextTestRunner(stream=stream, verbosity=2).run(suite)
+     summary = dict(passed=result.wasSuccessful() and not result.skipped,
+                    host='Darwin/arm64', modules=MODULES, tests=result.testsRun,
+                    failures=len(result.failures), errors=len(result.errors), skipped=len(result.skipped))
+-    (task / 'evidence/v192_host_tests.json').write_text(json.dumps(summary, indent=2) + '\n')
++    (task / 'evidence/v194_host_tests.json').write_text(json.dumps(summary, indent=2) + '\n')
+     print(json.dumps(summary))
+     if not summary['passed']:
+         raise SystemExit(1)
+--- v192/run_local_episode.py
++++ v194/run_local_episode.py
+@@ -1,4 +1,4 @@
+-"""Own one local native-ROS container and one bounded Newton episode (v192 Option B)."""
++"""Own one local native-ROS container and one bounded Newton episode (v194 Option B)."""
+ import argparse
+ import hashlib
+ import json
+@@ -15,7 +15,7 @@
+ BASE = VERSION.parents[1]
+ PROJECT = BASE.parents[2]
+ BUILD = VERSION
+-IMAGE = os.environ.get("V192_EXECUTION_IMAGE")
++IMAGE = os.environ.get("V194_EXECUTION_IMAGE")
+ 
+ 
+ def verify_integration_version(out, version=None):
+@@ -89,7 +89,7 @@
+     parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v192 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v194 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -127,8 +127,8 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v192":
+-        raise ValueError("This entry point requires frozen integration version v192")
++    if integration_version != "v194":
++        raise ValueError("This entry point requires frozen integration version v194")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+@@ -151,7 +151,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v192 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v194 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -187,7 +187,7 @@
+         "scene": args.scene,
+         "building_route_profile": args.building_route if full_building else None,
+         "integration_version": integration_version,
+-        "native_variant": os.environ["V192_VARIANT"],
++        "native_variant": os.environ["V194_VARIANT"],
+         "execution_host": platform.node(),
+         "execution_host_platform": platform.system() + "/" + platform.machine(),
+         "native_platform": qualification['execution_platform'],
+@@ -213,7 +213,7 @@
+         shutil.copyfile(path, out / ("executed_" + path.name))
+     shutil.copyfile(VERSION / "long_route_driver.py", out / "executed_long_route_driver.py")
+     for name in ("run_local_episode.py", "native_graph.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py", "native_observer.py", "nav2_recorder.py", "initial_frame_v142.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v192_" + name))
++        shutil.copyfile(VERSION / name, out / ("executed_v194_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -232,12 +232,12 @@
+     pythonpath = "/task/foxy_python:" + str(sources / "bridge")
+     script = "\n".join(["set -e", "source /opt/ros/foxy/setup.bash",
+         "source /task/recovery_v176/install/setup.bash",
+-        "source /task/recovery_v191/install/setup.bash",
++        "source /task/recovery_v194/install/setup.bash",
+         "export PYTHONPATH=" + shlex.quote(pythonpath) + ':"${PYTHONPATH:-}"',
+         "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+-    name = os.environ["V192_NATIVE_CONTAINER"]
+-    command = ["docker", "exec", "-e", "V192_PHYSICAL_FLOOR=" + os.environ["V192_PHYSICAL_FLOOR"],
++    name = os.environ["V194_NATIVE_CONTAINER"]
++    command = ["docker", "exec", "-e", "V194_PHYSICAL_FLOOR=" + os.environ["V194_PHYSICAL_FLOOR"],
+         name, "/bin/bash", str(out / "native_inside.sh")]
+     (out / "container_command.json").write_text(json.dumps(command, indent=2) + "\n")
+     with (out / "native_graph.log").open("w") as log:
+--- v192/run_mac_full.py
++++ v194/run_mac_full.py
+@@ -1,4 +1,4 @@
+-"""Bounded original-spatial-start Mac trial using the qualified native v191 Option B ARM64 overlay."""
++"""Bounded original-spatial-start Mac trial using the qualified native v194 Option B ARM64 overlay."""
+ from pathlib import Path
+ import argparse
+ import hashlib
+@@ -19,14 +19,14 @@
+ def validate_task(path):
+     path = path.resolve()
+     if path != Path('/private/tmp/vla_stop_audit_20261012'):
+-        raise ValueError('Expected the explicitly owned v192 Mac temporary root')
++        raise ValueError('Expected the explicitly owned v194 Mac temporary root')
+     return path
+ 
+ 
+ def container_command(task, trial, evidence, container, image, run):
+     return ['docker', 'run', '-d', '--rm', '--pull=never', '--platform=linux/arm64',
+             '--name', container, '--memory=6g', '--cpus=6',
+-            '-e', 'ROS_DOMAIN_ID=192', '-e', 'ROS_LOCALHOST_ONLY=1',
++            '-e', 'ROS_DOMAIN_ID=194', '-e', 'ROS_LOCALHOST_ONLY=1',
+             '-e', 'ROS_LOG_DIR=' + str(evidence / 'ros_logs'),
+             '-e', 'ROS_HOME=' + str(evidence / 'ros_home'),
+             '-e', 'PYTHONDONTWRITEBYTECODE=1', '-e', 'OPENBLAS_NUM_THREADS=1',
+@@ -50,7 +50,7 @@
+     for port in (24600, 24601, 24602, 8785):
+         with socket.socket() as probe:
+             probe.bind(('127.0.0.1', port))
+-    run = f'v192_mac_full_attempt{args.attempt:02d}'
++    run = f'v194_mac_full_attempt{args.attempt:02d}'
+     trial = task / run
+     trial.mkdir(exist_ok=False)
+     (trial / 'scripts').mkdir()
+@@ -59,20 +59,20 @@
+     evidence = trial / 'evidence'
+     (evidence / 'ros_logs').mkdir(parents=True)
+     (evidence / 'ros_home').mkdir()
+-    shutil.copyfile(task / 'evidence/v191_native_receipt.json', evidence / 'build_receipt.json')
++    shutil.copyfile(task / 'evidence/v194_native_receipt.json', evidence / 'build_receipt.json')
+     receipt = json.loads((evidence / 'build_receipt.json').read_text())
+-    assert receipt['platform'] == 'linux/arm64' and receipt['native_version'] == 'v191'
++    assert receipt['platform'] == 'linux/arm64' and receipt['native_version'] == 'v194'
+     image = receipt['image_id']
+     container = run.replace('_', '-')
+     env = os.environ.copy()
+     env.update(DOCKER_CONTEXT='desktop-linux', PYTHONDONTWRITEBYTECODE='1', PYTHONUNBUFFERED='1',
+-               V192_EXECUTION_IMAGE=image, V192_VARIANT='candidate', V192_TEMP_ROOT=str(trial),
+-               V192_NATIVE_CONTAINER=container, V192_BUILD_EVIDENCE=str(evidence),
+-               V192_PHYSICAL_FLOOR=str(trial / 'physical_floor.f32'),
++               V194_EXECUTION_IMAGE=image, V194_VARIANT='candidate', V194_TEMP_ROOT=str(trial),
++               V194_NATIVE_CONTAINER=container, V194_BUILD_EVIDENCE=str(evidence),
++               V194_PHYSICAL_FLOOR=str(trial / 'physical_floor.f32'),
+                PYTHONPATH=str(task / 'host_python') + ':' + str(BASE / 'runtime_sources/bridge'))
+     command = container_command(task, trial, evidence, container, image, run)
+     (evidence / 'request.json').write_text(json.dumps({
+-        'integration_version': 'v192', 'native_version': 'v191', 'host': 'Mac ARM64',
++        'integration_version': 'v194', 'native_version': 'v194', 'host': 'Mac ARM64',
+         'physics_device': 'cpu', 'scene': 'original Building historical_full',
+         'command': command, 'task_root': str(task),
+         'manifest_sha256': hashlib.sha256((HERE / 'manifest.json').read_bytes()).hexdigest(),
+@@ -89,13 +89,13 @@
+                                                  cwd=HERE, env=env, text=True, timeout=100))
+         (evidence / 'native_gate.json').write_text(json.dumps(gate, indent=2) + '\n')
+         subprocess.run([str(PYTHON), str(HERE / 'derive_mac_floor.py'), '--output',
+-                        env['V192_PHYSICAL_FLOOR']], env=env, check=True, timeout=30)
++                        env['V194_PHYSICAL_FLOOR']], env=env, check=True, timeout=30)
+         episode = [str(PYTHON), str(HERE / 'mac_managed.py'), '--run-id', run,
+                    '--deadline', '900', '--retention', 'archive', '--',
+                    str(PYTHON), str(HERE / 'run_local_episode.py'), '--backend-executor', 'single',
+                    '--applied-transport', 'shared', '--geometry-obstacles', '--scene', 'building_full',
+                    '--building-route', 'historical_full', '--goal-wall-budget', '1500',
+-                   '--startup-mode', 'factory_pd', '--stance-hold', '--integration-version', 'v192',
++                   '--startup-mode', 'factory_pd', '--stance-hold', '--integration-version', 'v194',
+                    '--real-time-factor', '1', '--recording-sim-seconds', '600']
+         with (evidence / 'execution.log').open('w') as stream:
+             child = subprocess.run(episode, env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=940)
+--- v192/run_remote_full.py
++++ v194/run_remote_full.py
+@@ -28,13 +28,13 @@
+         raise ValueError('Attempt must be positive')
+     quality = json.loads((HERE/'quality.json').read_text())
+     if quality.get('execution_platform') != 'linux/amd64':
+-        raise ValueError('v192 Mac qualification does not authorize Linux execution')
++        raise ValueError('v194 Mac qualification does not authorize Linux execution')
+     from resource_gate import admit
+     from resource_gate import wait_for_ports
+     port_wait=wait_for_ports()
+     admission=admit()
+     admission["port_wait_seconds"]=port_wait
+-    tag = f'v192_full_{args.variant}_attempt{args.attempt:02d}'
++    tag = f'v194_full_{args.variant}_attempt{args.attempt:02d}'
+     temporary = TASK/'trials'/tag
+     temporary.mkdir(parents=True, exist_ok=False)
+     (temporary/'scripts').mkdir()
+@@ -46,14 +46,14 @@
+     evidence.mkdir()
+     (evidence/'ros_logs').mkdir()
+     (evidence/'ros_home').mkdir()
+-    shutil.copyfile(TASK/'results/recovery_v191'/f'{args.variant}_receipt.json', evidence/'build_receipt.json')
++    shutil.copyfile(TASK/'results/recovery_v194'/f'{args.variant}_receipt.json', evidence/'build_receipt.json')
+     receipt = json.loads((evidence/'build_receipt.json').read_text())
+     container = tag.replace('_', '-')
+     env = os.environ.copy()
+     env.update(PATH=str(HERE)+':'+env['PATH'], PYTHONDONTWRITEBYTECODE='1', PYTHONUNBUFFERED='1',
+-               V192_EXECUTION_IMAGE=receipt['image_id'], V192_VARIANT=args.variant,
+-               V192_TEMP_ROOT=str(temporary), V192_NATIVE_CONTAINER=container,
+-               V192_BUILD_EVIDENCE=str(evidence), V192_PHYSICAL_FLOOR=str(temporary/'physical_floor.f32'),
++               V194_EXECUTION_IMAGE=receipt['image_id'], V194_VARIANT=args.variant,
++               V194_TEMP_ROOT=str(temporary), V194_NATIVE_CONTAINER=container,
++               V194_BUILD_EVIDENCE=str(evidence), V194_PHYSICAL_FLOOR=str(temporary/'physical_floor.f32'),
+                PYTHONPATH=str(TASK/'host_python')+':'+str(BASE/'runtime_sources/bridge')+':'+env.get('PYTHONPATH', ''))
+     for port in (24600, 24601, 24602, 24651, 8785):
+         with socket.socket() as probe:
+@@ -62,13 +62,13 @@
+                '--name', container, '--user', f'{os.getuid()}:{os.getgid()}',
+                '-e', 'ROS_LOG_DIR='+str(evidence/'ros_logs'),
+                '-e', 'ROS_HOME='+str(evidence/'ros_home'), '--memory=6g', '--cpus=6', '--network=host',
+-               '--add-host', 'host.docker.internal:127.0.0.1', '-e', 'ROS_DOMAIN_ID=192',
++               '--add-host', 'host.docker.internal:127.0.0.1', '-e', 'ROS_DOMAIN_ID=194',
+                '-e', 'ROS_LOCALHOST_ONLY=1', '-e', 'PYTHONDONTWRITEBYTECODE=1',
+                '-e', 'OPENBLAS_NUM_THREADS=1', '-e', 'OMP_NUM_THREADS=1',
+                '-v', f'{ROOT}:{ROOT}:ro', '-v', f'{ROOT}:/repo:ro', '-v', f'{TASK}:/task:ro',
+                '-v', f'{temporary}:{temporary}:rw',
+                '--entrypoint', '/bin/bash', receipt['image_id'], '-c', 'exec sleep infinity']
+-    request = {'version': 'v192', 'native_version': 'v191',
++    request = {'version': 'v194', 'native_version': 'v194',
+                'variant': args.variant, 'host': 'gpu5070ti', 'physics_device': 'cpu',
+                'scene': 'original Building historical_full', 'seconds': 600,
+                'manifest_sha256': hashlib.sha256((HERE/'manifest.json').read_bytes()).hexdigest(),
+@@ -81,14 +81,14 @@
+     try:
+         subprocess.run(command, env=env, check=True, capture_output=True, text=True, timeout=30)
+         created = True
+-        subprocess.run([sys.executable, str(HERE/'derive_mac_floor.py'), '--output', env['V192_PHYSICAL_FLOOR']],
++        subprocess.run([sys.executable, str(HERE/'derive_mac_floor.py'), '--output', env['V194_PHYSICAL_FLOOR']],
+                        env=env, check=True, timeout=30)
+         episode = [sys.executable, str(HERE/'mac_managed.py'), '--run-id', tag,
+                    '--deadline', '900', '--retention', 'archive', '--', sys.executable,
+                    str(HERE/'run_local_episode.py'), '--backend-executor', 'single',
+                    '--applied-transport', 'shared', '--geometry-obstacles', '--scene', 'building_full',
+                    '--building-route', 'historical_full', '--goal-wall-budget', '1500',
+-                   '--startup-mode', 'factory_pd', '--stance-hold', '--integration-version', 'v192',
++                   '--startup-mode', 'factory_pd', '--stance-hold', '--integration-version', 'v194',
+                    '--real-time-factor', '1', '--recording-sim-seconds', '600']
+         with (evidence/'execution.log').open('w') as stream:
+             process = subprocess.run(episode, env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=940)
+--- v192/src/lite3_nav2_bridge/config/navigate.xml
++++ v194/src/lite3_nav2_bridge/config/navigate.xml
+@@ -5,7 +5,7 @@
+     <ComputePathToPose goal="{goal}" path="{path}" planner_id="PCT" server_name="/compute_path_to_pose" server_timeout="1000"/>
+     <FollowPath path="{path}" controller_id="SCAN" server_name="/follow_path" server_timeout="1000"/>
+    </Sequence>
+-   <Wait wait_duration="0.1" server_name="/wait" server_timeout="1000"/>
++   <Wait wait_duration="1" server_name="/wait" server_timeout="1000"/>
+   </RecoveryNode>
+  </BehaviorTree>
+ </root>
+--- v192/src/lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py
++++ v194/src/lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py
+@@ -31,6 +31,7 @@
+ 
+ 
+ def set_yaw(pose, yaw):
++    pose.orientation.x = pose.orientation.y = 0.0
+     pose.orientation.z = math.sin(yaw / 2.0)
+     pose.orientation.w = math.cos(yaw / 2.0)
+ 
+@@ -96,6 +97,16 @@
+                 if pose.header.frame_id != self.frame_id or not finite_values((p.x, p.y, p.z, q.x, q.y, q.z, q.w)):
+                     raise ValueError(label + ' must have finite coordinates in world')
+             start, goal = request.start.pose.position, request.goal.pose.position
++            with self._lock:
++                owner = self.current_owner
++                job = self.jobs.get(owner['request_id']) if owner else None
++                targets = [job['target_body_xyz']] if job else []
++                if job and job.get('canonical_goal_pose') is not None:
++                    p = job['canonical_goal_pose'].position
++                    targets.append((p.x, p.y, p.z))
++                matches_goal = job and any(all(abs(a-b) <= 1e-6 for a, b in zip(
++                    (goal.x, goal.y, goal.z), target)) for target in targets)
++                job = job if matches_goal and job['status'] in ('pending', 'running') and not job['cancel_requested'] else None
+             with self._planner_lock:
+                 raw = self._planner.plan([start.x, start.y, start.z], [goal.x, goal.y, goal.z],
+                                          start_layer=None, end_layer=None, optimize=True)
+@@ -131,21 +142,41 @@
+                 path.poses.append(pose)
+             q = request.goal.pose.orientation
+             with self._lock:
+-                owner = self.current_owner
+-                job = self.jobs.get(owner['request_id']) if owner else None
+-                matches_goal = job and all(abs(a-b) <= 1e-6 for a, b in zip(
+-                    (goal.x, goal.y, goal.z), job['target_body_xyz']))
+-                path_heading = bool(matches_goal and job['path_heading'])
+-                explicitly_specified = bool(matches_goal and not job['path_heading'])
+-            non_identity = abs(q.x) + abs(q.y) + abs(q.z) > 1e-12
+-            if not path_heading and (non_identity or explicitly_specified):
+-                if not valid_orientation(q):
+-                    raise ValueError('goal orientation must be a normalized quaternion')
+-                path.poses[-1].pose.orientation = copy.deepcopy(q)
+-            response.path = path
+-            response.accepted = True
+-            response.message = 'planned'
+-            self._path_pub.publish(path)
++                if job is not None:
++                    if (self.current_owner != owner or job['status'] not in ('pending', 'running')
++                            or job['cancel_requested']):
++                        raise ValueError('mission_changed_during_planning')
++                    canonical = job.get('canonical_goal_pose')
++                    if canonical is None:
++                        canonical = copy.deepcopy(path.poses[-1].pose)
++                        target_yaw = job['data'].get('target_yaw_rad')
++                        if target_yaw is None:
++                            for a, b in reversed(list(zip(points, points[1:]))):
++                                dx, dy = b[0]-a[0], b[1]-a[1]
++                                if math.hypot(dx, dy) > 1e-6:
++                                    target_yaw = math.atan2(dy, dx)
++                                    break
++                            if target_yaw is None:
++                                raise ValueError('pct_no_terminal_heading')
++                        set_yaw(canonical, float(target_yaw))
++                    # PCT may move its final sample across replans. Bind the entire
++                    # terminal pose, but reject a disconnected final connector.
++                    a, b = path.poses[-2].pose.position, canonical.position
++                    step = math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
++                    if not math.isfinite(step) or step > 2.0:
++                        raise ValueError('pct_canonical_goal_disconnected')
++                    path.poses[-1].pose = copy.deepcopy(canonical)
++                    job['canonical_goal_pose'] = copy.deepcopy(canonical)
++                    # Evidence/cache only: a failed new PCT plan remains a failure.
++                    job['cached_path'] = copy.deepcopy(path)
++                elif abs(q.x) + abs(q.y) + abs(q.z) > 1e-12:
++                    if not valid_orientation(q):
++                        raise ValueError('goal orientation must be a normalized quaternion')
++                    path.poses[-1].pose.orientation = copy.deepcopy(q)
++                response.path = path
++                response.accepted = True
++                response.message = 'planned'
++                self._path_pub.publish(path)
+         except Exception as exc:
+             response.accepted = False
+             response.message = str(exc)
+@@ -187,6 +218,7 @@
+             body_xyz = [float(xyz[0]), float(xyz[1]), float(xyz[2]) + self.reference_height_m]
+             self.jobs[request_id] = {'request_id': request_id, 'goal_id': goal_id, 'status': 'pending',
+                 'path_heading': yaw is None, 'target_body_xyz': body_xyz, 'cancel_requested': False,
++                'canonical_goal_pose': None, 'cached_path': None,
+                 'submitted_s': time.monotonic(), 'sent': False, 'data': copy.deepcopy(payload)}
+             self.current_owner = {'request_id': request_id, 'goal_id': goal_id}
+             self._dispatch.append(request_id)
+@@ -239,7 +271,10 @@
+                 goal.pose.header.frame_id = self.frame_id
+                 goal.pose.header.stamp = self.get_clock().now().to_msg()
+                 goal.pose.pose.position.x, goal.pose.pose.position.y, goal.pose.pose.position.z = job['target_body_xyz']
+-                set_yaw(goal.pose.pose, float(job['data'].get('target_yaw_rad') or 0.0))
++                yaw = job['data'].get('target_yaw_rad')
++                set_yaw(goal.pose.pose, float(yaw) if yaw is not None else 0.0)
++                if job['canonical_goal_pose'] is not None:
++                    goal.pose.pose = copy.deepcopy(job['canonical_goal_pose'])
+                 try:
+                     job['sent'] = True
+                     self._client.send_goal_async(goal).add_done_callback(
+@@ -296,12 +331,22 @@
+     def get_state(self):
+         with self._lock:
+             body = copy.deepcopy(self.measurement_body_pose)
++            # ROS messages stay internal; the HTTP status remains JSON serializable.
++            jobs = {key: copy.deepcopy({k: v for k, v in job.items()
++                                       if k not in ('canonical_goal_pose', 'cached_path')})
++                    for key, job in self.jobs.items()}
++            for key, job in self.jobs.items():
++                pose = job['canonical_goal_pose']
++                jobs[key]['canonical_goal_pose'] = None if pose is None else {
++                    'position': {axis: getattr(pose.position, axis) for axis in ('x', 'y', 'z')},
++                    'orientation': {axis: getattr(pose.orientation, axis) for axis in ('x', 'y', 'z', 'w')}}
++                jobs[key]['cached_path_available'] = job['cached_path'] is not None
+             return {'run_id': self.config.get('run_id', ''),
+                 'run_epoch_ns': int(self.config.get('run_epoch_ns', 0)),
+                 'readiness': {'body_pose_ready': body is not None,
+                     'applied_snapshot': {'configured': True, 'ready': True}, 'last_error': None},
+                 'measurement_body_pose': body, 'service': {'current_owner': copy.deepcopy(self.current_owner)},
+-                'jobs': copy.deepcopy(self.jobs), 'terminal_results': copy.deepcopy(self.terminal_results),
++                'jobs': jobs, 'terminal_results': copy.deepcopy(self.terminal_results),
+                 'navigation_authority': 'Nav2', 'monotonic_s': time.monotonic()}
+ 
+     def _handler_type(self):
+--- v192/src/lite3_nav2_bridge/test/test_mission_bridge.py
++++ v194/src/lite3_nav2_bridge/test/test_mission_bridge.py
+@@ -1,4 +1,5 @@
+ """Loopback HTTP/ROS tests; PCT's native optimizer is replaced by a deterministic fixture."""
++import copy
+ import json
+ import math
+ import threading
+@@ -145,11 +146,66 @@
+     result = node.plan_route(req, PlanRoute.Response())
+     assert result.accepted
+     assert result.path.poses[-1].pose.orientation.z == pytest.approx(math.sin(math.pi/4))
+-    with node._lock:
+-        node.jobs['request']['path_heading'] = False
++    canonical = copy.deepcopy(result.path.poses[-1].pose)
++    assert node.jobs['request']['canonical_goal_pose'] == canonical
++    # A different final segment, terminal sample, and height cannot move this job goal.
++    with patch.object(node._planner, 'plan', return_value=[[0., 0.], [0.8, 1.0], [1.1, 1.1]]):
++        node._planner.heights = [[0.35], [0.50], [0.65]]
++        repeated = node.plan_route(req, PlanRoute.Response())
++    assert repeated.accepted and repeated.path.poses[-1].pose == canonical
++    assert node.jobs['request']['cached_path'] == repeated.path
++    repeated.path.poses[-1].pose.position.x = 999.0
++    assert node.jobs['request']['canonical_goal_pose'] == canonical
++    assert node.jobs['request']['cached_path'].poses[-1].pose == canonical
++    state = http(node, '/state')
++    assert state['jobs']['request']['cached_path_available']
++    assert state['jobs']['request']['canonical_goal_pose']['position']['x'] == canonical.position.x
++    cached = copy.deepcopy(node.jobs['request']['cached_path'])
++    with patch.object(node._planner, 'plan', return_value=None):
++        failed = node.plan_route(req, PlanRoute.Response())
++    assert not failed.accepted and failed.message == 'pct_no_route'
++    assert not failed.path.poses
++    assert node.jobs['request']['cached_path'] == cached
++    with patch.object(node._planner, 'plan', return_value=[[0., 0.], [100., 100.], [1., 1.]]):
++        failed = node.plan_route(req, PlanRoute.Response())
++    assert not failed.accepted and failed.message == 'pct_canonical_goal_disconnected'
++    assert node.jobs['request']['cached_path'] == cached
++    # Explicit zero is a real orientation, and a new job never inherits a prior pose/cache.
++    node.submit_goal(goal_payload('zero', target_yaw_rad=0.0))
++    assert node.jobs['zero']['canonical_goal_pose'] is None
++    assert node.jobs['zero']['cached_path'] is None
++    result = node.plan_route(req, PlanRoute.Response())
++    assert result.accepted
++    assert result.path.poses[-1].pose.orientation.z == 0.0
++    assert result.path.poses[-1].pose.orientation.w == 1.0
++    assert result.path.poses[-1].pose.position.z == 0.65
++    node.submit_goal(goal_payload('explicit', target_yaw_rad=-0.7))
+     req.goal.pose.orientation.z, req.goal.pose.orientation.w = 0.0, 1.0
+     result = node.plan_route(req, PlanRoute.Response())
+-    assert result.path.poses[-1].pose.orientation.w == 1.0
++    assert result.accepted
++    assert result.path.poses[-1].pose.orientation.z == pytest.approx(math.sin(-0.35))
++    # Resolve from the last nondegenerate horizontal segment, ignoring tiny tail noise.
++    node.submit_goal(goal_payload('degenerate'))
++    node._planner.heights = [[0.35], [0.5], [0.55], [0.55]]
++    with patch.object(node._planner, 'plan', return_value=[[0., 0.], [1., 0.], [1., 1.], [1.+1e-8, 1.]]):
++        result = node.plan_route(req, PlanRoute.Response())
++    assert result.accepted
++    assert result.path.poses[-1].pose.orientation.z == pytest.approx(math.sin(math.pi/4))
++    node.submit_goal(goal_payload('no-heading'))
++    node._planner.heights = [[0.35], [0.45], [0.55]]
++    with patch.object(node._planner, 'plan', return_value=[[1., 1.], [1., 1.], [1., 1.]]):
++        failed = node.plan_route(req, PlanRoute.Response())
++    assert not failed.accepted and failed.message == 'pct_no_terminal_heading'
++    assert node.jobs['no-heading']['canonical_goal_pose'] is None
++    # An owner switch while the optimizer works cannot commit into either job.
++    def switch_owner(*args, **kwargs):
++        node.submit_goal(goal_payload('replacement'))
++        return [[0., 0.], [1., 0.], [1., 1.]]
++    with patch.object(node._planner, 'plan', side_effect=switch_owner):
++        failed = node.plan_route(req, PlanRoute.Response())
++    assert not failed.accepted and failed.message == 'mission_changed_during_planning'
++    assert node.jobs['no-heading']['canonical_goal_pose'] is None
++    assert node.jobs['replacement']['canonical_goal_pose'] is None
+ 
+ 
+ def test_invalid_route_inputs_and_height_count_rejected(bridge):
+@@ -216,11 +272,17 @@
+     node._test_action_servers.append(server)
+     try:
+         wait(node._client.server_is_ready)
+-        response = http(node, '/goal', goal_payload(target_yaw_rad=0.7))
++        with patch.object(node._client, 'server_is_ready', return_value=False):
++            response = http(node, '/goal', goal_payload(target_yaw_rad=0.7))
++            node._planner.heights = [[0.35], [0.45], [0.65]]
++            planned = node.plan_route(request(), PlanRoute.Response())
++            assert planned.accepted
++            canonical = copy.deepcopy(planned.path.poses[-1].pose)
+         assert response == {'ok': True, 'request_id': 'request', 'status': 'pending'}
+         wait(lambda: node.jobs['request']['status'] == 'running')
+         wait(lambda: goals)
+-        assert goals[-1].pose.pose.position.z == pytest.approx(0.55)
++        assert goals[-1].pose.pose.position.z == pytest.approx(0.65)
++        assert goals[-1].pose.pose == canonical
+         assert goals[-1].pose.pose.orientation.z == pytest.approx(math.sin(0.35))
+         assert http(node, '/state')['service']['current_owner']['request_id'] == 'request'
+         if terminal == 'cancelled':
+@@ -269,5 +331,7 @@
+     assert tree.getroot().find('.//Sequence').attrib['name'] == 'NavigateWithDirectRoute'
+     assert tree.getroot().find('.//ComputePathToPose').attrib['planner_id'] == 'PCT'
+     assert tree.getroot().find('.//FollowPath').attrib['controller_id'] == 'SCAN'
+-    assert tree.getroot().find('.//Wait').attrib['wait_duration'] == '0.1'
++    assert tree.getroot().find('.//Wait').attrib['wait_duration'] == '1'
++    assert tree.getroot().find('.//RecoveryNode').attrib == dict(number_of_retries='6', name='NavigateRecovery')
++    assert tree.getroot().find('.//MeasuredProgressRecovery') is None
+     assert tree.getroot().find('.//Wait').attrib['server_name'] == '/wait'
+--- v192/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
++++ v194/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
+@@ -51,7 +51,7 @@
+   void spinBridge();
+   void serviceNativeWork();
+   bool withinGoalPosition(const geometry_msgs::msg::Pose &pose) const;
+-  bool withinGoalYaw(const geometry_msgs::msg::Pose &pose) const;
++  bool withinGoalYaw(const geometry_msgs::msg::Pose &pose, bool braking = false) const;
+   geometry_msgs::msg::TwistStamped stampedCommand(const geometry_msgs::msg::Twist &command);
+ 
+   rclcpp_lifecycle::LifecycleNode::SharedPtr parent_;
+@@ -63,7 +63,10 @@
+   std::string name_, global_frame_, base_frame_, route_topic_;
+   bool native_worker_enabled_{true};
+   bool has_active_plan_{false}, terminal_timeout_started_{false};
++  bool waiting_for_spline_{false};
++  bool goal_braking_{false};  // Survives GoalChecker::reset() on same-goal refreshes.
+   double bspline_timeout_s_{5.0};
++  rclcpp::Time waiting_for_spline_since_{0, 0, RCL_ROS_TIME};
+   rclcpp::Time route_sent_at_{0, 0, RCL_ROS_TIME};
+   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr route_pub_;
+   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr command_pub_;
+--- v192/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
++++ v194/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
+@@ -330,6 +330,7 @@
+   {
+     receive_traj_ = false;
+     emergency_stop_ = false;
++    goal_position_latched_ = false;
+     traj_.clear();
+     exec_time_ = 0.0;
+     sampled_command_ = geometry_msgs::msg::Twist();
+--- v192/src/scan_nav2_controller/src/controller.cpp
++++ v194/src/scan_nav2_controller/src/controller.cpp
+@@ -200,6 +200,8 @@
+   state_->xy_tolerance=tracker_->goal_xy_tolerance_;
+   state_->z_tolerance=tracker_->goal_z_tolerance_;
+   state_->yaw_tolerance=tracker_->goal_yaw_tolerance_;
++  // Enter braking inside the inner band; the goal checker retains the outer band.
++  tracker_->goal_yaw_tolerance_ *= 0.5;
+   rclcpp::NodeOptions bridge_options;
+   bridge_options.use_global_arguments(false);
+   bridge_options.parameter_overrides({rclcpp::Parameter("use_sim_time", use_sim)});
+@@ -253,13 +255,25 @@
+     if ((!p.header.frame_id.empty() && p.header.frame_id != global_frame_) || !finitePose(p.pose))
+       throw nav2_core::PlannerException("Path has an invalid pose or frame");
+   std::lock_guard<std::mutex> lock(state_->mutex);
+-  if (!has_active_plan_ || !state_->has_goal_pose || state_->goal_pose != path.poses.back().pose)
++  const bool same_goal=has_active_plan_ && state_->has_goal_pose &&
++    state_->goal_pose == path.poses.back().pose;
++  if (!same_goal) {
+     tracker_->clearTrajectory();
++    waiting_for_spline_=true;
++    waiting_for_spline_since_=parent_->now();
++    route_sent_at_=waiting_for_spline_since_;
++    state_->goal_reached=false;
++    goal_braking_=false;
++    state_->stopped=false;
++  } else if (!tracker_->haveTrajectory() && !waiting_for_spline_) {
++    waiting_for_spline_=true;
++    waiting_for_spline_since_=parent_->now();
++    route_sent_at_=waiting_for_spline_since_;
++  }
+   tracker_->setReferencePath(path);
+   has_active_plan_=true;
+-  route_sent_at_=parent_->now();
+   terminal_timeout_started_=false;
+-  state_->active=true; state_->goal_reached=false; state_->stopped=false;
++  state_->active=true;
+   state_->has_goal_pose=true; state_->goal_pose=path.poses.back().pose;
+   route_pub_->publish(path);
+ }
+@@ -270,11 +284,18 @@
+   std::lock_guard<std::mutex> lock(state_->mutex);
+   if (!has_active_plan_) return;
+   if (message->emergency_stop) {
++    if (tracker_->haveTrajectory() || !waiting_for_spline_) {
++      waiting_for_spline_=true;
++      waiting_for_spline_since_=parent_->now();
++      route_sent_at_=waiting_for_spline_since_;
++    }
+     tracker_->clearTrajectory();
++    terminal_timeout_started_=false;
+     publishCommand(geometry_msgs::msg::Twist());
+     return;
+   }
+   tracker_->bsplineCallback(message);
++  waiting_for_spline_=false;
+   terminal_timeout_started_=false;
+ }
+ 
+@@ -296,10 +317,11 @@
+   return state_->has_goal_pose && std::hypot(pose.position.x-g.x, pose.position.y-g.y)<=state_->xy_tolerance &&
+     std::abs(pose.position.z-g.z)<=state_->z_tolerance;
+ }
+-bool Controller::withinGoalYaw(const geometry_msgs::msg::Pose &pose) const
++bool Controller::withinGoalYaw(const geometry_msgs::msg::Pose &pose, bool braking) const
+ {
+   return state_->has_goal_pose && std::abs(scan_planner::TrackingNode::normalizeAngle(
+-    tf2::getYaw(state_->goal_pose.orientation)-tf2::getYaw(pose.orientation)))<=state_->yaw_tolerance;
++    tf2::getYaw(state_->goal_pose.orientation)-tf2::getYaw(pose.orientation)))<=
++    (braking ? state_->yaw_tolerance : tracker_->goal_yaw_tolerance_);
+ }
+ geometry_msgs::msg::TwistStamped Controller::stampedCommand(const geometry_msgs::msg::Twist &command)
+ {
+@@ -320,7 +342,7 @@
+ {
+   spinBridge();
+   serviceNativeWork();
+-  std::lock_guard<std::mutex> lock(state_->mutex);
++  std::unique_lock<std::mutex> lock(state_->mutex);
+   if (!has_active_plan_) throw nav2_core::PlannerException("No active plan");
+   if (pose.header.frame_id != global_frame_ || !finitePose(pose.pose) || !finiteTwist(velocity)) {
+     publishCommand(geometry_msgs::msg::Twist());
+@@ -328,17 +350,29 @@
+   }
+   state_->pose=pose.pose; state_->velocity=velocity; state_->pose_valid=true;
+   state_->stopped=stoppedVelocity(velocity);
+-  state_->goal_reached=withinGoalPosition(pose.pose) && withinGoalYaw(pose.pose);
++  goal_braking_=withinGoalPosition(pose.pose) && withinGoalYaw(pose.pose, goal_braking_);
++  state_->goal_reached=goal_braking_;
+   if (state_->goal_reached) return stampedCommand(geometry_msgs::msg::Twist());
+-  if (tracker_->haveTrajectory()) {
+-    const auto sample=tracker_->sampleCommand(pose.pose, velocity, true);
+-    if (sample.valid && finiteTwist(sample.twist)) return stampedCommand(sample.twist);
+-  }
+-  if ((parent_->now()-route_sent_at_).seconds() > bspline_timeout_s_) {
+-    publishCommand(geometry_msgs::msg::Twist());
+-    throw nav2_core::PlannerException("Native SCAN did not publish a trajectory before timeout");
+-  }
+-  return stampedCommand(geometry_msgs::msg::Twist());
++  if (!tracker_->haveTrajectory()) {
++    if (!waiting_for_spline_) {
++      waiting_for_spline_=true;
++      waiting_for_spline_since_=parent_->now();
++      route_sent_at_=waiting_for_spline_since_;
++    }
++    if ((parent_->now()-waiting_for_spline_since_).seconds() > bspline_timeout_s_) {
++      lock.unlock();  // stop() acquires the same state mutex.
++      stop("scan_bspline_timeout");
++      throw nav2_core::PlannerException("Native SCAN did not publish a trajectory before timeout");
++    }
++    return stampedCommand(geometry_msgs::msg::Twist());
++  }
++  const auto sample=tracker_->sampleCommand(pose.pose, velocity, true);
++  if (!sample.valid || !finiteTwist(sample.twist)) {
++    lock.unlock();
++    stop("scan_invalid_command");
++    throw nav2_core::PlannerException("Native SCAN trajectory sample invalid");
++  }
++  return stampedCommand(sample.twist);
+ }
+ 
+ void Controller::bindOutputOwner() {}  // Compatibility with the pinned Foxy stop callback interface.
+@@ -356,6 +390,12 @@
+   if (!state_) return;
+   std::lock_guard<std::mutex> lock(state_->mutex);
+   has_active_plan_=false;
++  goal_braking_=false;
++  waiting_for_spline_=false;
++  terminal_timeout_started_=false;
++  state_->goal_reached=false;
++  state_->has_goal_pose=false;
++  state_->stopped=false;
+   if (tracker_) tracker_->clearTrajectory();
+   publishCommand(geometry_msgs::msg::Twist());
+   RCLCPP_DEBUG(parent_->get_logger(), "SCAN stopped: %s", reason.c_str());
+@@ -370,12 +410,18 @@
+ {
+   if (state_) { std::lock_guard<std::mutex> lock(state_->mutex); state_->goal_reached=false; }
+ }
+-bool GoalChecker::isGoalReached(const geometry_msgs::msg::Pose &,
++bool GoalChecker::isGoalReached(const geometry_msgs::msg::Pose &query,
+   const geometry_msgs::msg::Pose &, const geometry_msgs::msg::Twist &velocity)
+ {
+   if (!state_) return false;
+   std::lock_guard<std::mutex> lock(state_->mutex);
+-  return state_->active && state_->goal_reached && stoppedVelocity(velocity);
++  const auto &g=state_->goal_pose.position;
++  return state_->active && state_->has_goal_pose && state_->goal_reached && state_->stopped &&
++    finitePose(query) && stoppedVelocity(velocity) &&
++    std::hypot(query.position.x-g.x,query.position.y-g.y)<=state_->xy_tolerance &&
++    std::abs(query.position.z-g.z)<=state_->z_tolerance &&
++    std::abs(scan_planner::TrackingNode::normalizeAngle(
++      tf2::getYaw(state_->goal_pose.orientation)-tf2::getYaw(query.orientation)))<=state_->yaw_tolerance;
+ }
+ }  // namespace scan_nav2_controller
+ 
+--- v192/src/scan_nav2_controller/test/test_controller.cpp
++++ v194/src/scan_nav2_controller/test/test_controller.cpp
+@@ -66,7 +66,7 @@
+   void plan()
+   {
+     route.header.stamp=parent->now(); plugin->setPlan(route);
+-    ASSERT_TRUE(wait([&] { return !dispatched.empty(); }));
++    ASSERT_TRUE(wait([&] { return !dispatched.empty() && dispatched.back()==route; }));
+     EXPECT_EQ(dispatched.back(),route);
+   }
+   sm::Bspline curve()
+@@ -234,6 +234,46 @@
+   EXPECT_NEAR(command.angular.z,tracker.kp_yaw_*0.4,1e-9);
+   EXPECT_TRUE(tracker.goal_position_latched_);
+   EXPECT_FALSE(tracker.estimateRouteLookaheadYaw(Eigen::Vector3d(0,0,0.42),yaw));
++  EXPECT_DOUBLE_EQ(actual->state_->yaw_tolerance,0.25);
++  EXPECT_DOUBLE_EQ(tracker.goal_yaw_tolerance_,0.125);
++  const auto set_error=[&](double error) {
++    body.pose.orientation.z=std::sin(-error/2);body.pose.orientation.w=std::cos(-error/2);
++  };
++  for (double error : {0.249,0.20,0.126}) {
++    set_error(error);
++    EXPECT_NEAR(plugin->computeVelocityCommands(body,{}).twist.angular.z,tracker.kp_yaw_*error,1e-9);
++    EXPECT_FALSE(actual->state_->goal_reached);
++    EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
++  }
++  geometry_msgs::msg::Twist rotating;rotating.angular.z=0.1;
++  set_error(0.11);
++  EXPECT_EQ(plugin->computeVelocityCommands(body,rotating).twist,geometry_msgs::msg::Twist());
++  EXPECT_TRUE(actual->state_->goal_reached);
++  EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{})); // Last measured body still moving.
++  plugin->setPlan(route); // Same-goal replans preserve the braking latch too.
++  EXPECT_TRUE(actual->state_->goal_reached);
++  goal->reset(); // The pinned ControllerServer does this after every setPlan().
++  EXPECT_FALSE(actual->state_->goal_reached);
++  EXPECT_TRUE(actual->goal_braking_);
++  set_error(0.16);
++  EXPECT_EQ(plugin->computeVelocityCommands(body,rotating).twist,geometry_msgs::msg::Twist());
++  EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,rotating));
++  EXPECT_EQ(plugin->computeVelocityCommands(body,{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_TRUE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
++  set_error(0.26);
++  EXPECT_GT(plugin->computeVelocityCommands(body,{}).twist.angular.z,0.0);
++  EXPECT_FALSE(actual->state_->goal_reached);
++  set_error(0.20);
++  EXPECT_GT(plugin->computeVelocityCommands(body,{}).twist.angular.z,0.0);
++  set_error(0.11);plugin->computeVelocityCommands(body,{});
++  body.pose.position.x+=0.26;
++  plugin->computeVelocityCommands(body,{});
++  EXPECT_FALSE(actual->state_->goal_reached);
++  body.pose.position=route.poses.back().pose.position;
++  plugin->computeVelocityCommands(body,{});
++  body.pose.position.z+=0.21;
++  plugin->computeVelocityCommands(body,{});
++  EXPECT_FALSE(actual->state_->goal_reached);
+ }
+ 
+ TEST_F(PluginTest, RejectsEmptyNonfiniteUnnormalizedAndWrongFramePaths)
+@@ -256,8 +296,25 @@
+   ASSERT_TRUE(wait([&] {return !received.empty();}));
+   EXPECT_EQ(received.back(),geometry_msgs::msg::Twist());
+   EXPECT_DOUBLE_EQ(actual->bspline_timeout_s_,5.0);
+-  actual->route_sent_at_=parent->now()-rclcpp::Duration::from_seconds(5.1);
++  EXPECT_TRUE(actual->waiting_for_spline_);
++  const auto first_wait=actual->waiting_for_spline_since_;
++  plugin->setPlan(route);
++  EXPECT_EQ(actual->waiting_for_spline_since_,first_wait);
++  actual->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(5.1);
++  actual->route_sent_at_=actual->waiting_for_spline_since_;
++  plugin->setPlan(route);
++  EXPECT_EQ(actual->waiting_for_spline_since_,actual->route_sent_at_);
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
++  EXPECT_FALSE(actual->has_active_plan_);
++  EXPECT_FALSE(actual->waiting_for_spline_);
++  EXPECT_FALSE(actual->terminal_timeout_started_);
++  plan();
++  actual->waiting_for_spline_=false;
++  plugin->setPlan(route);
++  EXPECT_TRUE(actual->waiting_for_spline_);
++  actual->waiting_for_spline_=false;
++  EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_TRUE(actual->waiting_for_spline_);
+ }
+ TEST_F(PluginTest, FreshSplineImmediatelyReplacesTrajectoryAndResetsTimeout)
+ {
+@@ -267,6 +324,7 @@
+   actual->terminal_timeout_started_=true;
+   actual->onSpline(next);
+   EXPECT_EQ(actual->tracker_->traj_id_,2);
++  EXPECT_FALSE(actual->waiting_for_spline_);
+   EXPECT_FALSE(actual->terminal_timeout_started_);
+   EXPECT_GT(plugin->computeVelocityCommands(pose(),{}).twist.linear.x,0);
+ }
+@@ -274,12 +332,32 @@
+ {
+   moving();
+   auto message=std::make_shared<sm::Bspline>(curve());message->emergency_stop=true;
++  actual->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(60);
++  actual->route_sent_at_=actual->waiting_for_spline_since_;
++  actual->tracker_->goal_position_latched_=true;
++  actual->terminal_timeout_started_=true;
+   actual->onSpline(message);
++  EXPECT_TRUE(actual->waiting_for_spline_);
++  EXPECT_FALSE(actual->tracker_->goal_position_latched_);
++  EXPECT_FALSE(actual->terminal_timeout_started_);
++  EXPECT_LT((parent->now()-actual->waiting_for_spline_since_).seconds(),1.0);
++  EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
++  const auto waiting=actual->waiting_for_spline_since_;
++  actual->onSpline(message);
++  plugin->setPlan(route);
++  EXPECT_EQ(actual->waiting_for_spline_since_,waiting);
++  actual->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(5.1);
++  actual->route_sent_at_=actual->waiting_for_spline_since_;
++  actual->onSpline(message);
++  EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
++  EXPECT_FALSE(actual->has_active_plan_);
++  plan();
+   EXPECT_FALSE(actual->tracker_->haveTrajectory());
+   ASSERT_TRUE(wait([&]{return !received.empty() && received.back()==geometry_msgs::msg::Twist();}));
+   message->emergency_stop=false;message->traj_id=2;
+   actual->onSpline(message);
+   EXPECT_TRUE(actual->tracker_->haveTrajectory());
++  EXPECT_FALSE(actual->waiting_for_spline_);
+ }
+ TEST_F(PluginTest, MalformedSplinesNeverReachEvaluator)
+ {
+@@ -296,6 +374,18 @@
+     EXPECT_NO_THROW(actual->onSpline(message));
+     EXPECT_FALSE(actual->tracker_->haveTrajectory());
+   }
++  // A valid trajectory producing nonfinite commands fails immediately, even
++  // within the initial wait budget; it is not treated as an absent spline.
++  actual->onSpline(std::make_shared<sm::Bspline>(curve()));
++  actual->tracker_->kp_yaw_=std::numeric_limits<double>::quiet_NaN();
++  try {
++    plugin->computeVelocityCommands(pose(),{});
++    FAIL() << "Invalid sampled command was accepted";
++  } catch (const nav2_core::PlannerException &error) {
++    EXPECT_STREQ(error.what(),"Native SCAN trajectory sample invalid");
++  }
++  EXPECT_FALSE(actual->has_active_plan_);
++  EXPECT_FALSE(actual->tracker_->haveTrajectory());
+ }
+ TEST_F(PluginTest, InvalidPoseAndVelocityPublishZero)
+ {
+@@ -323,6 +413,16 @@
+   plugin->computeVelocityCommands(at,{});
+   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+   velocity.angular.z=0.1;EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,velocity));
++  auto live=at.pose;live.position.x+=0.3;
++  EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
++  live=at.pose;live.position.z+=0.21;
++  EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
++  live=at.pose;live.orientation.z=std::sin(0.26/2);live.orientation.w=std::cos(0.26/2);
++  EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
++  live=at.pose;live.position.x=std::numeric_limits<double>::quiet_NaN();
++  EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
++  live=at.pose;live.orientation.w=2.0;
++  EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+   goal->reset();EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+ }
+ TEST_F(PluginTest, SameGoalRefreshRetainsCurveNewGoalClearsIt)
+@@ -332,6 +432,7 @@
+   next.poses.back().pose.position.y+=1;
+   plugin->setPlan(next);EXPECT_FALSE(actual->tracker_->haveTrajectory());
+   EXPECT_FALSE(actual->tracker_->goal_position_latched_);
++  EXPECT_TRUE(actual->waiting_for_spline_);
+ }
+ TEST_F(PluginTest, TransientPathIsDeliveredToLateSubscriber)
+ {
+@@ -343,13 +444,18 @@
+ }
+ TEST_F(PluginTest, StopAndDeactivateClearTrajectoryAndRequireNewPlan)
+ {
+-  moving();actual->stop("action_cancelled");
++  moving();actual->waiting_for_spline_=true;actual->terminal_timeout_started_=true;
++  actual->stop("action_cancelled");
++  EXPECT_FALSE(actual->waiting_for_spline_);EXPECT_FALSE(actual->terminal_timeout_started_);
+   EXPECT_FALSE(actual->has_active_plan_);EXPECT_FALSE(actual->tracker_->haveTrajectory());
+   actual->onSpline(std::make_shared<sm::Bspline>(curve()));
+   EXPECT_FALSE(actual->tracker_->haveTrajectory());
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
+   plugin->setPlan(route);actual->onSpline(std::make_shared<sm::Bspline>(curve()));
+-  plugin->deactivate();plugin->activate();
++  actual->waiting_for_spline_=true;actual->terminal_timeout_started_=true;
++  plugin->deactivate();
++  EXPECT_FALSE(actual->waiting_for_spline_);EXPECT_FALSE(actual->terminal_timeout_started_);
++  plugin->activate();
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
+ }
+ TEST_F(PluginTest, NoIndependentTrackingCommandTimer)
+--- v192/src/scan_nav2_controller/tracking_provenance.json
++++ v194/src/scan_nav2_controller/tracking_provenance.json
+@@ -7,7 +7,8 @@
+     "Capture native command instead of publishing it",
+     "Expose callbacks for adapter use; preserve tracking math, phase, goal and hold behavior",
+     "Replace mission identity envelopes with Path, Bspline and Twist interfaces",
+-    "Preserve cubic spline phase and v189 route lookahead heading math"
++    "Preserve cubic spline phase and v189 route lookahead heading math",
++    "v194 clears terminal position latch when a trajectory is cleared; controller applies inner yaw band while retaining the external goal tolerance. The parity fixture instantiates the tracker directly with unchanged defaults."
+   ],
+   "license": "Apache-2.0 as declared by source package"
+ }
+--- v192/terminal_capture_probe.cpp
++++ v194/terminal_capture_probe.cpp
+@@ -95,7 +95,7 @@
+   invalid=std::make_shared<nav_msgs::msg::Path>(*route);
+   invalid->poses.back().pose.orientation.w=2.0;
+   tracker->pathCallback(invalid);require(!tracker->goal_pose_valid_,"Unnormalized goal quaternion accepted");
+-  std::cout << "V191_CORNER_LOOKAHEAD_PASS disabled=1 heading_bands=2 aligned_zero=1 refresh=1 reverse=1 final_capture=1 projection_3d=1 degenerate_path=1 invalid_path=1\n";
++  std::cout << "V194_CORNER_LOOKAHEAD_PASS disabled=1 heading_bands=2 aligned_zero=1 refresh=1 reverse=1 final_capture=1 projection_3d=1 degenerate_path=1 invalid_path=1\n";
+ }
+ }  // namespace
+ 
+--- v192/test_full_route.py
++++ v194/test_full_route.py
+@@ -40,7 +40,7 @@
+         self.assertEqual(values[values.index('--building-route') + 1], 'historical_full')
+         self.assertEqual(values[values.index('--recording-sim-seconds') + 1], '600')
+         self.assertEqual(values[values.index('--goal-wall-budget') + 1], '1500')
+-        self.assertEqual(values[values.index('--integration-version') + 1], 'v192')
++        self.assertEqual(values[values.index('--integration-version') + 1], 'v194')
+ 
+ 
+ if __name__ == '__main__':
+--- v192/test_linux_supervisor.py
++++ v194/test_linux_supervisor.py
+@@ -5,18 +5,18 @@
+ @unittest.skipUnless(platform.system()=='Linux','Linux execution-root integration')
+ class LinuxSupervisorTests(unittest.TestCase):
+  def invoke(self,root,run,code):
+-  env=dict(os.environ,V192_TEMP_ROOT=str(root))
++  env=dict(os.environ,V194_TEMP_ROOT=str(root))
+   return subprocess.run([sys.executable,str(HERE/'mac_supervisor.py'),'--run-id',run,'--deadline','2','--',sys.executable,'-c',code],env=env,capture_output=True,text=True)
+  def test_actual_entry_and_duplicate_rejection(self):
+-  root=Path(tempfile.mkdtemp(prefix='v192_probe_',dir='/data/sun/vla_mppi_20261009/trials'));run='entry'
++  root=Path(tempfile.mkdtemp(prefix='v194_probe_',dir='/data/sun/vla_mppi_20261009/trials'));run='entry'
+   (root/'runs'/run/'artifacts/external_episode').mkdir(parents=True)
+   r=self.invoke(root,run,'print("owned child executed")');self.assertEqual(r.returncode,0,r.stderr)
+   record=json.loads((root/'runs'/run/'process.json').read_text());self.assertEqual(record['exit_code'],0);self.assertFalse(record['timed_out']);self.assertGreater(record['child_peak_rss_bytes'],1024*1024)
+   self.assertIn('owned child executed',(root/'runs'/run/'run.log').read_text())
+   before=(root/'runs'/run/'process.json').read_bytes();r=self.invoke(root,run,'raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertEqual((root/'runs'/run/'process.json').read_bytes(),before)
+  def test_nonowned_root_rejected(self):
+-  r=self.invoke(Path('/private/tmp/v192_nonowned'),'bad','raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertIn('AssertionError',r.stderr)
++  r=self.invoke(Path('/private/tmp/v194_nonowned'),'bad','raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertIn('AssertionError',r.stderr)
+  def test_child_failure_propagates(self):
+-  root=Path(tempfile.mkdtemp(prefix='v192_probe_',dir='/data/sun/vla_mppi_20261009/trials'))
++  root=Path(tempfile.mkdtemp(prefix='v194_probe_',dir='/data/sun/vla_mppi_20261009/trials'))
+   r=self.invoke(root,'child_failure','import sys;sys.exit(7)');self.assertEqual(r.returncode,7,r.stderr)
+ if __name__=='__main__':unittest.main()
+--- v192/test_mac_supervisor.py
++++ v194/test_mac_supervisor.py
+@@ -5,28 +5,28 @@
+ @unittest.skipUnless(platform.system()=='Darwin','Mac execution-root integration')
+ class MacSupervisorTests(unittest.TestCase):
+  def invoke(self,root,run,code):
+-  env=dict(os.environ,V192_TEMP_ROOT=str(root))
++  env=dict(os.environ,V194_TEMP_ROOT=str(root))
+   return subprocess.run([sys.executable,str(HERE/'mac_supervisor.py'),'--run-id',run,'--deadline','2','--',sys.executable,'-c',code],env=env,capture_output=True,text=True)
+  def test_actual_entry_and_duplicate_rejection(self):
+-  root=Path(tempfile.mkdtemp(prefix='v192_probe_',dir='/private/tmp/vla_stop_audit_20261012'));run='entry'
++  root=Path(tempfile.mkdtemp(prefix='v194_probe_',dir='/private/tmp/vla_stop_audit_20261012'));run='entry'
+   (root/'runs'/run/'artifacts/external_episode').mkdir(parents=True)
+   r=self.invoke(root,run,'print("owned child executed")');self.assertEqual(r.returncode,0,r.stderr)
+   record=json.loads((root/'runs'/run/'process.json').read_text());self.assertEqual(record['exit_code'],0);self.assertFalse(record['timed_out']);self.assertGreater(record['child_peak_rss_bytes'],1024*1024)
+   self.assertIn('owned child executed',(root/'runs'/run/'run.log').read_text())
+   before=(root/'runs'/run/'process.json').read_bytes();r=self.invoke(root,run,'raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertEqual((root/'runs'/run/'process.json').read_bytes(),before)
+  def test_nonowned_root_rejected(self):
+-  r=self.invoke(Path('/private/tmp/v192_nonowned'),'bad','raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertIn('AssertionError',r.stderr)
++  r=self.invoke(Path('/private/tmp/v194_nonowned'),'bad','raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertIn('AssertionError',r.stderr)
+  def test_child_failure_propagates(self):
+-  root=Path(tempfile.mkdtemp(prefix='v192_probe_',dir='/private/tmp/vla_stop_audit_20261012'))
++  root=Path(tempfile.mkdtemp(prefix='v194_probe_',dir='/private/tmp/vla_stop_audit_20261012'))
+   r=self.invoke(root,'child_failure','import sys;sys.exit(7)');self.assertEqual(r.returncode,7,r.stderr)
+  def test_actual_managed_retention_chain_and_episode_storage(self):
+   from run_local_episode import prepare_external_directory
+-  root=Path(tempfile.mkdtemp(prefix='v192_managed_probe_',dir='/private/tmp/vla_stop_audit_20261012'))
++  root=Path(tempfile.mkdtemp(prefix='v194_managed_probe_',dir='/private/tmp/vla_stop_audit_20261012'))
+   run=root/'runs'/'entry';(run/'artifacts/external_episode').mkdir(parents=True)
+   prepare_external_directory(run)
+   (root/'scripts').mkdir();(root/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+   code='from pathlib import Path; import os; (Path(os.environ["NEWTON_RUN_DIR"])/"result.json").write_text("{}")'
+-  r=subprocess.run([sys.executable,str(HERE/'mac_managed.py'),'--run-id','entry','--deadline','3','--retention','archive','--',sys.executable,'-c',code],env=dict(os.environ,V192_TEMP_ROOT=str(root)),capture_output=True,text=True)
++  r=subprocess.run([sys.executable,str(HERE/'mac_managed.py'),'--run-id','entry','--deadline','3','--retention','archive','--',sys.executable,'-c',code],env=dict(os.environ,V194_TEMP_ROOT=str(root)),capture_output=True,text=True)
+   self.assertEqual(r.returncode,0,r.stdout+r.stderr)
+   self.assertEqual(json.loads((run/'retention_result.json').read_text())['status'],'completed')
+   (run/'artifacts/external_episode/existing').write_text('preserve')
+--- v192/test_native_gate.py
++++ v194/test_native_gate.py
+@@ -15,11 +15,11 @@
+         self.addCleanup(self.temp.cleanup)
+         self.root = Path(self.temp.name).resolve()
+         self.receipt = dict(passed=True, platform='linux/arm64', variant='candidate',
+-                            native_version='v191', native_packages_available=14,
++                            native_version='v194', native_packages_available=14,
+                             image_id='sha256:test', files={})
+         self.path = self.root / 'build_receipt.json'
+         self.path.write_text(json.dumps(self.receipt))
+-        self.quality = dict(passed=True, native_version='v191', execution_platform='linux/arm64',
++        self.quality = dict(passed=True, native_version='v194', execution_platform='linux/arm64',
+             native_packages_available=14, rebuilt_packages=11, unique_controller_gtest_cases=22,
+             controller_gtest_cases=20, native_terminal_regressions=True, generated_profile_cases=2,
+             actual_graph_verified=True, full_navigation_accepted=False, host_tests=1,
+@@ -31,11 +31,11 @@
+     def invoke(self, quality=None, image='sha256:test'):
+         (self.root / 'quality.json').write_text(json.dumps(quality or self.quality))
+         with patch.object(gate, 'HERE', self.root), patch.dict(os.environ, {
+-            'V192_VARIANT': 'candidate', 'V192_BUILD_EVIDENCE': str(self.root),
+-            'V192_NATIVE_CONTAINER': 'test'}), patch.object(gate.platform, 'system', return_value='Darwin'), \
++            'V194_VARIANT': 'candidate', 'V194_BUILD_EVIDENCE': str(self.root),
++            'V194_NATIVE_CONTAINER': 'test'}), patch.object(gate.platform, 'system', return_value='Darwin'), \
+             patch.object(gate.platform, 'machine', return_value='arm64'), \
+             patch.object(gate.subprocess, 'check_output', return_value=image), \
+-            patch.object(gate.subprocess, 'run', return_value=SimpleNamespace(stdout='V191_NATIVE_IDENTITY_PASS')):
++            patch.object(gate.subprocess, 'run', return_value=SimpleNamespace(stdout='V194_NATIVE_IDENTITY_PASS')):
+             return gate.verify(self.root, {'quality_sha256': gate.sha(self.root / 'quality.json')})
+ 
+     def test_missing_package_count_rejects_before_docker(self):
+--- v192/test_overlay_runtime.py
++++ v194/test_overlay_runtime.py
+@@ -16,19 +16,19 @@
+     parser.add_argument('--task-root', type=Path, required=True)
+     args = parser.parse_args()
+     task = validate_task(args.task_root)
+-    for filename in ('v192_overlay_loaded.json', 'v192_native_graph_preflight.json'):
++    for filename in ('v194_overlay_loaded.json', 'v194_native_graph_preflight.json'):
+         (task / 'evidence' / filename).unlink(missing_ok=True)
+-    trial = task / 'v192_overlay_preflight'
++    trial = task / 'v194_overlay_preflight'
+     if trial.exists():
+         raise ValueError('Preserve the previous preflight directory before retrying')
+-    run = 'v192_overlay_graph_probe'
++    run = 'v194_overlay_graph_probe'
+     out = trial / 'runs' / run
+     (out / 'artifacts/external_episode').mkdir(parents=True, exist_ok=False)
+     evidence = trial / 'evidence'
+     (evidence / 'ros_logs').mkdir(parents=True)
+     (evidence / 'ros_home').mkdir()
+     (out / 'episode_request.json').write_text(json.dumps({
+-        'integration_version': 'v192', 'native_variant': 'candidate', 'probe': True,
++        'integration_version': 'v194', 'native_variant': 'candidate', 'probe': True,
+         'run_epoch_ns': time.time_ns(), 'scene': 'building_full', 'geometry_obstacles': True,
+         'applied_transport': 'shared', 'building_route_profile': 'historical_full',
+         'goal_wall_budget_s': 1500, 'startup_mode': 'factory_pd'}) + '\n')
+@@ -36,7 +36,7 @@
+     subprocess.run([str(PYTHON), str(HERE / 'derive_mac_floor.py'), '--output',
+                     str(trial / 'physical_floor.f32')], check=True)
+     image = (task / 'evidence/image_id.txt').read_text().strip()
+-    name = 'vla-v192-overlay-preflight'
++    name = 'vla-v194-overlay-preflight'
+     command = container_command(task, trial, evidence, name, image, run)
+     made = False
+     try:
+@@ -45,21 +45,21 @@
+         # Exercise both directions of the real trial bind mount without a
+         # simulated command, navigation goal, or physics step.
+         mount_probe = out / 'shared_mount_probe.json'
+-        mount_probe.write_text(json.dumps({'host': 'v192', 'sequence': 1}))
++        mount_probe.write_text(json.dumps({'host': 'v194', 'sequence': 1}))
+         mount_code = """import json,sys
+ from pathlib import Path
+ p=Path(sys.argv[1])
+-assert json.loads(p.read_text())=={'host':'v192','sequence':1}
++assert json.loads(p.read_text())=={'host':'v194','sequence':1}
+ t=p.with_suffix('.tmp')
+-t.write_text(json.dumps({'container':'v192','sequence':2}))
++t.write_text(json.dumps({'container':'v194','sequence':2}))
+ t.replace(p)
+ """
+         subprocess.run(['docker', 'exec', name, 'python3', '-c', mount_code, str(mount_probe)],
+                        check=True, timeout=15)
+-        assert json.loads(mount_probe.read_text()) == {'container': 'v192', 'sequence': 2}
++        assert json.loads(mount_probe.read_text()) == {'container': 'v194', 'sequence': 2}
+         script = '\n'.join(['set -e', 'source /opt/ros/foxy/setup.bash',
+                             'source /task/recovery_v176/install/setup.bash',
+-                            'source /task/recovery_v191/install/setup.bash',
++                            'source /task/recovery_v194/install/setup.bash',
+                             'export PYTHONPATH=' + str(BASE / 'runtime_sources/bridge') + ':${PYTHONPATH:-}',
+                             # A static identity TF permits lifecycle activation without a
+                             # simulator, odometry, clock ticks, navigation goals or motion.
+@@ -69,7 +69,7 @@
+         (out / 'inside.sh').write_text(script + '\n')
+         with (out / 'graph.log').open('w') as stream:
+             process = subprocess.Popen(['docker', 'exec', '-e',
+-                'V192_PHYSICAL_FLOOR=' + str(trial / 'physical_floor.f32'), name,
++                'V194_PHYSICAL_FLOOR=' + str(trial / 'physical_floor.f32'), name,
+                 '/bin/bash', str(out / 'inside.sh')], stdout=stream, stderr=subprocess.STDOUT)
+             started = time.monotonic()
+             deadline = started + 60
+@@ -96,9 +96,9 @@
+   found.append({'pid':int(cmd.parent.name),'libraries':libraries,'native_libraries':native})
+  except (FileNotFoundError,PermissionError):pass
+ assert found, 'No actual ControllerServer process'
+-expected='/task/recovery_v191/install/scan_nav2_controller/lib/libscan_nav2_controller.so'
++expected='/task/recovery_v194/install/scan_nav2_controller/lib/libscan_nav2_controller.so'
+ assert all(r['libraries']==[expected] for r in found),found
+-assert all(r['native_libraries']==['/task/recovery_v191/install/scan_planner/lib/libscan_native_core.so'] for r in found),found
++assert all(r['native_libraries']==['/task/recovery_v194/install/scan_planner/lib/libscan_native_core.so'] for r in found),found
+ scan=[]
+ for cmd in Path('/proc').glob('[0-9]*/cmdline'):
+  try:
+@@ -111,7 +111,7 @@
+ for cmd in Path('/proc').glob('[0-9]*/cmdline'):
+  try:
+   args=cmd.read_bytes().split(b'\\0')
+-  if b'/task/recovery_v191/install/lite3_nav2_bridge/lib/lite3_nav2_bridge/mission_bridge' not in args:continue
++  if b'/task/recovery_v194/install/lite3_nav2_bridge/lib/lite3_nav2_bridge/mission_bridge' not in args:continue
+   libs=sorted(set(line.split()[-1] for line in (cmd.parent/'maps').read_text().splitlines() if '/pct_planner/lib/ele_planner.' in line))
+   bridge.append({'pid':int(cmd.parent.name),'libraries':libs})
+  except (FileNotFoundError,PermissionError):pass
+@@ -120,7 +120,7 @@
+ import rclpy
+ from lifecycle_msgs.srv import GetState
+ rclpy.init()
+-node=rclpy.create_node('v192_preflight_inspector')
++node=rclpy.create_node('v194_preflight_inspector')
+ states={}
+ try:
+  for name in ('/controller_server','/planner_server','/recoveries_server','/nav2_internal/bt_navigator'):
+@@ -155,11 +155,14 @@
+             loaded = subprocess.check_output(['docker','exec',name,'/bin/bash','-c',
+                 'source /opt/ros/foxy/setup.bash && python3 ' + str(inspection)],text=True,timeout=45)
+             overlay = json.loads(loaded)
+-            (task / 'evidence/v192_overlay_loaded.json').write_text(json.dumps(overlay,indent=2)+'\n')
++            (task / 'evidence/v194_overlay_loaded.json').write_text(json.dumps(overlay,indent=2)+'\n')
+             seq_node=ET.parse(out/'nav2_params.bt.xml').getroot().find('.//Sequence')
+             assert seq_node is not None and seq_node.get('name')=='NavigateWithDirectRoute'
+             wait_node = ET.parse(out/'nav2_params.bt.xml').getroot().find('.//Wait')
+             assert wait_node is not None and wait_node.get('server_name') == '/wait'
++            assert wait_node.get('wait_duration') == '1'
++            recovery = ET.parse(out/'nav2_params.bt.xml').getroot().find('.//RecoveryNode')
++            assert recovery.attrib == dict(number_of_retries='6', name='NavigateRecovery')
+             profile=yaml.safe_load((out/'nav2_params.yaml').read_text())
+             assert profile['controller_server']['ros__parameters']['SCAN']['finish_dist']==0.02
+             assert profile['controller_server']['ros__parameters']['SCAN']['command_topic']=='/quad_0/cmd_vel'
+@@ -180,16 +183,19 @@
+                       'physics_advanced': False, 'synthetic_fixture': 'static identity world->base TF only',
+                       'navigation_goal_sent': False, 'scan_execution': overlay['scan_execution'],
+                       'lifecycle_states': overlay['lifecycle_states'], 'recovery_body_frame': 'base',
++                      'recovery_wait_duration_s': 1, 'stock_recovery_retries': 6,
+                       'generated_finish_dist_m': 0.02, 'route_lookahead_heading_enabled': True, 'route_lookahead_dist': 0.5,
+                       'command_topic': '/quad_0/cmd_vel', 'route_topic': '/pct_path',
+                       'graph_root': str(out), 'children': list(commands), 'selected_route_map': selected}
+-            (task / 'evidence/v192_native_graph_preflight.json').write_text(json.dumps(result, indent=2) + '\n')
++            (task / 'evidence/v194_native_graph_preflight.json').write_text(json.dumps(result, indent=2) + '\n')
+             print(json.dumps(result))
+     finally:
+         if made:
+             subprocess.run(['docker', 'rm', '-f', name], capture_output=True, timeout=30)
+             if 'process' in locals():
+                 process.wait(timeout=10)
++        if (out / 'graph.log').exists():
++            shutil.copyfile(out / 'graph.log', task / 'evidence/v194_graph_preflight.log')
+ 
+ 
+ if __name__ == '__main__':
+--- v192/test_profile_frames.py
++++ v194/test_profile_frames.py
+@@ -20,6 +20,10 @@
+                 seq = tree.getroot().find('.//Sequence')
+                 self.assertIsNotNone(seq)
+                 self.assertEqual(seq.get('name'), 'NavigateWithDirectRoute')
++                self.assertEqual(tree.getroot().find('.//Wait').get('wait_duration'), '1')
++                self.assertEqual(tree.getroot().find('.//RecoveryNode').attrib,
++                                 dict(number_of_retries='6', name='NavigateRecovery'))
++                self.assertIsNone(tree.getroot().find('.//MeasuredProgressRecovery'))
+                 self.assertEqual(data['controller_server']['ros__parameters']['SCAN']['finish_dist'], 0.02)
+                 self.assertEqual(bt['robot_base_frame'], frame)
+                 self.assertEqual(data['controller_server']['ros__parameters']['SCAN']['base_frame'], frame)
+--- v192/test_remote_graph.py
++++ v194/test_remote_graph.py
+@@ -20,7 +20,7 @@
+     return ['docker','run','-d','--rm','--pull=never','--platform=linux/amd64',
+       '--name',container,'--user',f'{os.getuid()}:{os.getgid()}',
+       '--memory=6g','--cpus=6','--network=host',
+-      '--add-host','host.docker.internal:127.0.0.1','-e','ROS_DOMAIN_ID=192',
++      '--add-host','host.docker.internal:127.0.0.1','-e','ROS_DOMAIN_ID=194',
+       '-e','ROS_LOCALHOST_ONLY=1','-e','PYTHONDONTWRITEBYTECODE=1',
+       '-e','ROS_LOG_DIR='+str(evidence/'ros_logs'),'-e','ROS_HOME='+str(evidence/'ros_home'),
+       '-e','OPENBLAS_NUM_THREADS=1','-e','OMP_NUM_THREADS=1',
+@@ -35,24 +35,24 @@
+     parser.add_argument('--task-root', type=Path, required=True)
+     args = parser.parse_args()
+     task = validate_task(args.task_root)
+-    (task / 'results/host_v192').mkdir(parents=True, exist_ok=True)
+-    trial = task / 'v192_overlay_preflight'
+-    run = 'v192_overlay_graph_probe'
++    (task / 'results/host_v194').mkdir(parents=True, exist_ok=True)
++    trial = task / 'v194_overlay_preflight'
++    run = 'v194_overlay_graph_probe'
+     out = trial / 'runs' / run
+     (out / 'artifacts/external_episode').mkdir(parents=True, exist_ok=False)
+     evidence = trial / 'evidence'
+     (evidence / 'ros_logs').mkdir(parents=True)
+     (evidence / 'ros_home').mkdir()
+     (out / 'episode_request.json').write_text(json.dumps({
+-        'integration_version': 'v192', 'native_variant': 'candidate', 'probe': True,
++        'integration_version': 'v194', 'native_variant': 'candidate', 'probe': True,
+         'run_epoch_ns': time.time_ns(), 'scene': 'building_full', 'geometry_obstacles': True,
+         'applied_transport': 'shared', 'building_route_profile': 'historical_full',
+         'goal_wall_budget_s': 1500, 'startup_mode': 'factory_pd'}) + '\n')
+     shutil.copyfile(HERE / 'building_planner.yaml', out / 'planner.yaml')
+     subprocess.run([str(PYTHON), str(HERE / 'derive_mac_floor.py'), '--output',
+                     str(trial / 'physical_floor.f32')], check=True)
+-    image = json.loads((task / 'results/recovery_v191/candidate_receipt.json').read_text())['image_id']
+-    name = 'vla-v192-overlay-preflight'
++    image = json.loads((task / 'results/recovery_v194/candidate_receipt.json').read_text())['image_id']
++    name = 'vla-v194-overlay-preflight'
+     command = container_command(task, trial, evidence, name, image, run)
+     made = False
+     try:
+@@ -60,13 +60,13 @@
+         made = True
+         script = '\n'.join(['set -e', 'source /opt/ros/foxy/setup.bash',
+                             'source /task/recovery_v177/install/setup.bash',
+-                            'source /task/recovery_v191/install/setup.bash',
++                            'source /task/recovery_v194/install/setup.bash',
+                             'export PYTHONPATH=' + str(BASE / 'runtime_sources/bridge') + ':${PYTHONPATH:-}',
+                             'exec python3 ' + str(HERE / 'native_graph.py') + ' --output ' + str(out)])
+         (out / 'inside.sh').write_text(script + '\n')
+         with (out / 'graph.log').open('w') as stream:
+             process = subprocess.Popen(['docker', 'exec', '-e',
+-                'V192_PHYSICAL_FLOOR=' + str(trial / 'physical_floor.f32'), name,
++                'V194_PHYSICAL_FLOOR=' + str(trial / 'physical_floor.f32'), name,
+                 '/bin/bash', str(out / 'inside.sh')], stdout=stream, stderr=subprocess.STDOUT)
+             deadline = time.monotonic() + 15
+             while time.monotonic() < deadline:
+@@ -86,7 +86,7 @@
+   found.append({'pid':int(cmd.parent.name),'libraries':libraries})
+  except (FileNotFoundError,PermissionError):pass
+ assert found, 'No actual ControllerServer process'
+-expected='/task/recovery_v191/install/scan_nav2_controller/lib/libscan_nav2_controller.so'
++expected='/task/recovery_v194/install/scan_nav2_controller/lib/libscan_nav2_controller.so'
+ assert all(r['libraries']==[expected] for r in found),found
+ scan=[]
+ for cmd in Path('/proc').glob('[0-9]*/cmdline'):
+@@ -95,7 +95,7 @@
+   if not args or not args[0].endswith(b'/scan_planner_node'):continue
+   scan.append({'pid':int(cmd.parent.name),'exe':args[0].decode()})
+  except (FileNotFoundError,PermissionError):pass
+-assert scan and all(x['exe']=='/task/recovery_v191/install/scan_planner/lib/scan_planner/scan_planner_node' for x in scan),scan
++assert scan and all(x['exe']=='/task/recovery_v194/install/scan_planner/lib/scan_planner/scan_planner_node' for x in scan),scan
+ bridge=[]
+ for cmd in Path('/proc').glob('[0-9]*/cmdline'):
+  try:
+@@ -109,7 +109,7 @@
+ """
+             loaded = subprocess.check_output(['docker','exec',name,'python3','-c',inspect_code],text=True)
+             overlay = json.loads(loaded)
+-            (task / 'results/host_v192/overlay_loaded.json').write_text(json.dumps(overlay,indent=2)+'\n')
++            (task / 'results/host_v194/overlay_loaded.json').write_text(json.dumps(overlay,indent=2)+'\n')
+             seq_node=ET.parse(out/'nav2_params.bt.xml').getroot().find('.//Sequence')
+             assert seq_node is not None and seq_node.get('name')=='NavigateWithDirectRoute'
+             profile=yaml.safe_load((out/'nav2_params.yaml').read_text())
+@@ -130,7 +130,7 @@
+                       'generated_finish_dist_m': 0.02, 'route_lookahead_heading_enabled': True, 'route_lookahead_dist': 0.5,
+                       'command_topic': '/quad_0/cmd_vel', 'route_topic': '/pct_path',
+                       'graph_root': str(out), 'children': list(commands), 'selected_route_map': selected}
+-            (task / 'results/host_v192/native_graph_preflight.json').write_text(json.dumps(result, indent=2) + '\n')
++            (task / 'results/host_v194/native_graph_preflight.json').write_text(json.dumps(result, indent=2) + '\n')
+             print(json.dumps(result))
+     finally:
+         if made:
+--- v192/test_shared_state.py
++++ v194/test_shared_state.py
+@@ -13,7 +13,7 @@
+     def setUp(self):
+         self.temp = tempfile.TemporaryDirectory()
+         self.addCleanup(self.temp.cleanup)
+-        self.out = Path(self.temp.name) / 'v192_test'
++        self.out = Path(self.temp.name) / 'v194_test'
+         self.external = self.out / 'artifacts/external_episode'
+         self.external.mkdir(parents=True)
+         self.values = {
+--- v192/test_source_inventory.py
++++ v194/test_source_inventory.py
+@@ -17,8 +17,8 @@
+         origins = json.loads((HERE / 'native_sources.json').read_text())
+         parent = json.loads((TASK / 'recovery_v176/source_identity.json').read_text())
+         self.assertEqual(origins['parent_files'], parent['files'])
+-        actual = {'src/' + str(p.relative_to(TASK / 'recovery_v191/src')): sha(p)
+-                  for p in (TASK / 'recovery_v191/src').rglob('*') if p.is_file()}
++        actual = {'src/' + str(p.relative_to(TASK / 'recovery_v194/src')): sha(p)
++                  for p in (TASK / 'recovery_v194/src').rglob('*') if p.is_file()}
+         self.assertEqual(actual, origins['expected_files'])
+         self.assertEqual(len(actual), 272)
+         self.assertEqual(origins['changed_files'], sorted(
+@@ -35,18 +35,18 @@
+             self.assertEqual(local, expected, package.name)
+ 
+     def test_clean_materialization_and_duplicate_refusal(self):
+-        with tempfile.TemporaryDirectory(prefix='v191_materialize_') as directory:
++        with tempfile.TemporaryDirectory(prefix='v194_materialize_') as directory:
+             root = Path(directory)
+             (root / 'recovery_v176').symlink_to(TASK / 'recovery_v176', target_is_directory=True)
+             command = [sys.executable, str(HERE / 'prepare_native.py'), '--task-root', str(root)]
+             env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
+             result = subprocess.run(command, env=env, capture_output=True, text=True)
+             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+-            identity = json.loads((root / 'recovery_v191/source_identity.json').read_text())
+-            actual = {'src/' + str(p.relative_to(root / 'recovery_v191/src')): sha(p)
+-                      for p in (root / 'recovery_v191/src').rglob('*') if p.is_file()}
++            identity = json.loads((root / 'recovery_v194/source_identity.json').read_text())
++            actual = {'src/' + str(p.relative_to(root / 'recovery_v194/src')): sha(p)
++                      for p in (root / 'recovery_v194/src').rglob('*') if p.is_file()}
+             self.assertEqual(actual, identity['files'])
+-            self.assertTrue(os.access(root / 'recovery_v191/src/lite3_nav2_bridge/scripts/mission_bridge', os.X_OK))
++            self.assertTrue(os.access(root / 'recovery_v194/src/lite3_nav2_bridge/scripts/mission_bridge', os.X_OK))
+             result = subprocess.run(command, env=env, capture_output=True, text=True)
+             self.assertNotEqual(result.returncode, 0)
+             self.assertIn('FileExistsError', result.stderr)
+--- v192/verify_full_route.py
++++ v194/verify_full_route.py
+@@ -24,7 +24,7 @@
+     scenario = capture.json('inputs/stair_scenario.json')
+     for key in ['spawn_ground_xyz_m', 'spawn_yaw_rad', 'goal_ground_xyz_m']:
+         assert scenario[key] == original[key] == identity[key], key
+-    assert request['integration_version'] == 'v192' and request['scene'] == 'building_full'
++    assert request['integration_version'] == 'v194' and request['scene'] == 'building_full'
+     rows = capture.json('video_states.json')
+     proof = capture.json('initial_state.json')
+     assert rows[0] == proof['frame'] and proof['physics_steps'] == 0
+@@ -71,7 +71,7 @@
+     final_yaw_error = abs(math.atan2(math.sin(final_yaw - goal_yaw), math.cos(final_yaw - goal_yaw)))
+     assert final_yaw_error <= contract['yaw_goal_tolerance_rad'], 'Final held body outside requested yaw tolerance'
+     return {'passed': True, 'profile': 'historical_full', 'run': root.name,
+-            'native_navigation': 'v191 native / v192 shared-state Option B direct Nav2 + SCAN candidate on ' + request['execution_host_platform'],
++            'native_navigation': 'v194 native / v194 shared-state Option B direct Nav2 + SCAN candidate on ' + request['execution_host_platform'],
+             'original_profile_sha256': identity['source_sha256'],
+             'original_spawn_ground_xyz_m': original['spawn_ground_xyz_m'],
+             'actual_initial_body_xyz_m': poses[0].tolist(), 'initial_yaw_error_rad': yaw_error,
+--- v192/verify_protected.py
++++ v194/verify_protected.py
+@@ -1,7 +1,8 @@
+-"""Compare protected bytes against the pre-v192 inventory and one allowed edit."""
++"""Verify all eight protected trees against Step 0, without exceptions."""
+ import hashlib
+ import json
+ import os
++import stat
+ from pathlib import Path
+ 
+ HERE = Path(__file__).resolve().parent
+@@ -11,52 +12,61 @@
+ def sha(path):
+     digest = hashlib.sha256()
+     with path.open('rb') as stream:
+-        for block in iter(lambda: stream.read(4 * 1024**2), b''):
++        for block in iter(lambda: stream.read(8 * 1024**2), b''):
+             digest.update(block)
+     return digest.hexdigest()
+ 
+ 
+ def inventory(root):
++    if not root.is_dir() or root.is_symlink():
++        raise ValueError('Protected root is missing or replaced: ' + str(root))
+     values = {}
+-    for path in sorted(root.rglob('*')):
+-        name = str(path.relative_to(root))
+-        if path.is_symlink():
+-            values[name] = {'symlink': os.readlink(path)}
+-        elif path.is_file():
+-            values[name] = {'sha256': sha(path), 'bytes': path.stat().st_size}
++    def walk(directory):
++        for entry in sorted(os.scandir(directory), key=lambda e: e.name):
++            path = Path(entry.path)
++            name = path.relative_to(root).as_posix()
++            info = entry.stat(follow_symlinks=False)
++            if stat.S_ISLNK(info.st_mode):
++                values[name] = dict(type='symlink', target=os.readlink(path), bytes=info.st_size)
++            elif stat.S_ISDIR(info.st_mode):
++                values[name] = dict(type='directory')
++                walk(path)
++            elif stat.S_ISREG(info.st_mode):
++                values[name] = dict(type='file', sha256=sha(path), bytes=info.st_size)
++                after = path.stat()
++                if (after.st_size, after.st_mtime_ns) != (info.st_size, info.st_mtime_ns):
++                    raise ValueError('File changed while hashing: ' + str(path))
++            else:
++                values[name] = dict(type='special', mode=stat.S_IFMT(info.st_mode), bytes=info.st_size)
++    walk(root)
+     return values
+ 
+ 
+ def main():
+-    baseline_path = TASK / 'evidence/v192_protected_before.json'
++    baseline_path = TASK / 'evidence/v194_protected_before.json'
+     baseline = json.loads(baseline_path.read_text())
+-    original = TASK / 'evidence/v191_RESULTS_before_v192.md'
+-    text = original.read_text()
+-    marker = '\nThe v192 display package replays'
+-    assert marker in text
+-    allowed = (text[:text.index(marker)] + '\n').encode()
++    assert baseline['schema'] == 'v194-protected-inventory-v1'
++    expected_roots = {str(HERE.parent / ('v' + str(v))) for v in (189, 190, 191, 192, 193)}
++    expected_roots.update(str(TASK / ('recovery_v' + str(v))) for v in (176, 189, 191))
++    assert set(baseline['roots']) == expected_roots
+     rows = {}
+-    for root_name, before in baseline.items():
+-        root = Path(root_name)
+-        after = inventory(root)
++    for root_name, before in baseline['roots'].items():
++        after = inventory(Path(root_name))
+         added, removed = sorted(after.keys() - before.keys()), sorted(before.keys() - after.keys())
+         changed = sorted(n for n in before.keys() & after.keys() if before[n] != after[n])
+-        permitted = []
+-        if root == HERE.parent / 'v191':
+-            assert sha(original) == before['RESULTS.md']['sha256']
+-            if (root / 'RESULTS.md').read_bytes() == allowed and 'RESULTS.md' in changed:
+-                permitted = ['RESULTS.md']
+-        rows[root_name] = {'entries': len(after), 'added': added, 'removed': removed,
+-                           'changed': changed, 'authorized_changes': permitted,
+-                           'passed': not added and not removed and changed == permitted}
+-    parent_source = inventory(HERE.parent / 'v191/src')
+-    copied_source = inventory(HERE / 'src')
+-    result = {'passed': all(row['passed'] for row in rows.values()) and parent_source == copied_source,
+-              'baseline_sha256': sha(baseline_path),
+-              'comparison': 'Every regular file SHA-256/size and symlink target, including additions/removals',
+-              'native_source_unchanged': parent_source == copied_source,
+-              'native_source_files': len(parent_source), 'native_build_reused': True, 'paths': rows}
+-    (TASK / 'evidence/v192_protected_comparison.json').write_text(json.dumps(result, indent=2) + '\n')
++        rows[root_name] = dict(entries=len(after), added=added, removed=removed,
++                               changed=changed, passed=not added and not removed and not changed)
++    origins = json.loads((HERE / 'native_sources.json').read_text())
++    actual = {'src/' + str(p.relative_to(TASK / 'recovery_v194/src')): sha(p)
++              for p in (TASK / 'recovery_v194/src').rglob('*') if p.is_file()}
++    local = {str(p.relative_to(HERE)): sha(p) for p in (HERE / 'src').rglob('*') if p.is_file()}
++    matched = actual == origins['expected_files'] and all(actual.get(n) == h for n, h in local.items())
++    result = dict(passed=all(row['passed'] for row in rows.values()) and matched,
++                  baseline_sha256=sha(baseline_path), paths=rows,
++                  comparison='Every recursive file SHA-256/bytes, symlink target/bytes, directory and special entry; no exceptions',
++                  native_source_matches_inventory=matched, native_source_files=len(actual),
++                  native_build_reused=False)
++    (TASK / 'evidence/v194_protected_comparison.json').write_text(json.dumps(result, indent=2) + '\n')
+     print(json.dumps(result))
+     if not result['passed']:
+         raise SystemExit(1)

@@ -627,3 +627,490 @@ Five original-start routes arrived3/5 (01/04/05), endpoint criterion4/5. The
 existing v177 binary cohort (06–10) arrived5/5. Some failures therefore occur
 without any new endpoint logic; the cause of the variation is still unknown.
 Do not pool cohorts. See [v188 results](v188/RESULTS.md).
+
+v189 is frozen and component-qualified on Mac ARM64 over the archived v176
+binary underlay (649 source entries match the v177/v188 baseline). It adds
+0.5 m route lookahead at expired stopped local stubs, with zero translation.
+All 46 GTest cases, two profile tests, both native probe markers, 23 Mac host
+tests and the actual loaded-library/profile graph preflight passed. The quality
+receipt includes the required 14-package count; v184 remains unchanged.
+
+The authorized `v189_mac_full_attempt01` closed with Nav2 arrival and measured
+PD hold at 187.681 simulated seconds, but **failed full-route acceptance**:
+final held yaw error 0.377481 rad exceeds the unchanged 0.25 rad limit. Final
+XY error is 0.138237 m; copyback passed and all 20 replacement owners have
+recorded stop proofs. Preserve this single Mac result; no repeated reliability
+or sustained 30 Hz acceptance is claimed. See [v189 results](v189/RESULTS.md)
+and [the recorded rejection](v189/results/v189_mac_full_attempt01/full_route_verification.json).
+
+v190 is a frozen display-only version (`parent: v189`, `display_parent: v178`)
+that renders `v189_mac_full_attempt01` from its recorded `video_states.json`,
+`raw_capture.zip`, and `latency.csv` on Mac ARM64 Cocoa with zero physics steps
+(`6,708` frames at `30 fps`, `223.600 s`, `4,744` visible local curve frames).
+Local review video: `versions/v190/delivered/v189_mac_full_attempt01.mp4`
+(`17,515,391` bytes, SHA-256 `3ed8e52d98c3ffd16ce55cb5fe3ed19b2949fd02cb330c32d8063a7fbb7f51e9`,
+remote copy `gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v189_20261013/v189_mac_full_attempt01_review.mp4`).
+It preserves the failed full-route gate (`passed: false`, final held yaw error
+`0.377481 rad > 0.25 rad`) and claims no navigation acceptance. See
+[v190 visual QA](v190/VISUAL_QA.md) and [v190 delivery return](v190/delivery_return.json).
+
+
+v191 is the **Option B direct Nav2 + SCAN** candidate, with **v190 as its
+version parent** and the archived Mac ARM64 **v176 binary underlay**. It removes
+the P2B messages, BindRoute service/BT node, gateway/control gate and inherited
+backend/service packages from its source. Nav2 now supplies a standard Path to
+the embedded SCAN worker; the controller consumes Bspline and publishes Twist
+directly on `/quad_0/cmd_vel`. The source inventory has 272 files, 37 changed/new
+paths and 33 deletions relative to its native underlay inventory.
+
+The Mac qualification passed 45 colcon entries (including CTest wrappers),
+22 controller-package GTests, eight plugin GTests, nine bridge pytest cases,
+two generated-profile tests, both terminal/heading probe markers and 25 host
+tests. The repaired graph launches a wait-only recovery server at `/wait` and
+verifies the actual v191 controller/native libraries, embedded SCAN node,
+direct topic types and all four active Nav2 lifecycle nodes. Preflight used a
+labelled static identity TF fixture; no physics or navigation goal was run.
+The 0.02 m capture and 0.5 m route-heading lookahead remain enabled.
+
+The freeze records component/graph qualification only; **full navigation is
+not accepted**. Option B's Wait delay does not retain the removed P2B
+measured-stop/owner-admission protocol. v189, v190, `recovery_v176`, and
+`recovery_v189` match their protected file/symlink baseline. See
+[v191 plan](v191/PLAN.md), [quality](v191/quality.json),
+[manifest](v191/manifest.json), and
+[protected-path comparison](v191/verification/v191_protected_comparison.json).
+
+## v192 shared-state Mac harness (2026-10-14)
+
+v192 is frozen with v191 as its parent and native_version=v191. The native
+overlay was reused without rebuilding. The harness removes synchronous applied
+ZMQ ACKs and the tmpfs shadow; state and finish requests use the trial bind mount.
+Its 24 host tests, actual loaded v191 libraries, four active Nav2 lifecycle nodes,
+bidirectional mount probe and protected-path comparison passed. Driver observation
+allows 10-second snapshot age and 15-second navigation-loop reads; command/native
+freshness and terminal criteria are unchanged. Full-route outcome is separate.
+
+See [plan](v192/PLAN.md), [quality](v192/quality.json),
+[manifest](v192/manifest.json), and
+[protected-path comparison](v192/verification/v192_protected_comparison.json).
+
+Attempt01 ended FAILED/nav2_failed at 118.886 s physics after 72.572 m of the
+original route. Shared-state closure passed; there was no arrival or final hold.
+The log records seven trajectory timeouts and six completed Wait recoveries.
+The 13 direct-command stops / 6.120 s zero-command exposure are not equivalent
+to v189's 20 measured-stop proofs / 34.225 s wait, and the route is incomplete.
+See [v192 results](v192/RESULTS.md). Dr Sun subsequently authorized the full failure-review video; it is delivered by v193 below.
+
+
+## v193 full v192 display review (2026-10-14)
+
+v193 is a frozen display-only version (`parent: v192`, `display_parent: v190`)
+for Option B direct Nav2 + SCAN. It renders `v192_mac_full_attempt01` from
+original physical frame 0 through factory PD startup and the final
+118.88629150390625 s state, preserving the complete 72.57228851559466 m run.
+The source still ends FAILED/nav2_failed: no arrival or full-route acceptance.
+
+The [full MP4](v193/delivered/v192_mac_full_attempt01.mp4) is a regular local file:
+1280 x 720, 30 fps, 3,857 frames, 128.566667 s, 12,804,690 bytes. Startup uses
+recorded simulation timestamps and navigation uses recorded wall time at 1:1.
+All 3,857 source indices, endpoint coverage, direct Bspline/Twist freshness,
+PCT route causality, full decoding and ten decoded visual samples passed.
+No physics steps were executed, and all protected versions/recovery folders
+and original recording bytes remain unchanged. Ten overlay tests and four
+timeline tests passed; freeze/verify passed for 4,622 source pairs.
+
+SHA-256: `3e441643b5c42410bd21e73bbb2aad563ecde613fd7801fc4acdfe2a084956cd`.
+The matching archive copy is
+`gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v192_20261014/v192_mac_full_attempt01.mp4`.
+See [plan](v193/PLAN.md), [visual QA](v193/VISUAL_QA.md),
+[quality](v193/quality.json), [manifest](v193/manifest.json), and
+[delivery provenance](v193/delivery_return.json). No next-step navigation fixes
+were made in this display-review session.
+
+
+## v194 spline watchdog and canonical goal qualification (2026-10-14)
+
+v194 is frozen and component/graph-qualified, with `parent: v193`,
+`navigation_parent: v192`, `native_version: v194`, and
+`native_binary_underlay: v176`. It adds a bounded explicit spline-wait state,
+clears the stale tracker terminal latch, retains the stock six-retry RecoveryNode
+with integer `Wait=1`, locks each job's complete terminal Pose across PCT replans,
+and coordinates the 0.125 rad inner yaw band with 0.25 rad external acceptance.
+A controller-owned braking latch survives ControllerServer's same-goal
+`GoalChecker::reset()`. Cached paths are retained for inspection; failed PCT
+replans remain failures.
+
+The fresh Mac ARM64/Foxy overlay rebuilt 11 packages with 14 available. All 45
+colcon entries passed (22 unique controller-package GTests), as did 2 generated
+profile tests, both native terminal probes and 24 host tests. The live graph
+activated four lifecycle nodes, verified the loaded v194 libraries and shared
+mount, and sent no navigation goal or physics steps. All eight protected trees
+match the pre-edit recursive file/symlink inventory without exceptions. Freeze
+and verify passed for 4,814 source/snapshot pairs and 618 runtime inputs.
+
+The first test attempt and its fixture correction are retained with the final
+passing evidence. The subsequently authorized `v194_mac_full_attempt01` ran once
+and closed **FINISHED, route_arrived=true, full_route_verification.passed=true**.
+Its original-start continuity, final PD hold, XYZ/yaw and shared-state checks
+passed. This validates one declared Mac original route; repeated reliability,
+sustained 30 Hz and general navigation acceptance remain open.
+
+| Attempt 01 measurement | Exact measured result |
+|---|---:|
+| Sensor-sampled body path | 77.03407366997271 m |
+| Final XY / reference-height / yaw error | 0.1211678512749522 m / 0.006756114959716786 m / 0.10415752320636183 rad |
+| Recorded physics endpoint | 137.5282745361328 s |
+| Navigation simulation / wall time | 126.50745105743408 / 126.54035995799859 s |
+| Navigation RTF | 0.999739933562893 |
+| Successful local planning / direct controller rate | 23.6762405369673 / 29.811494709748814 wall Hz |
+| Emergency entries / exits / self-transitions | 9 / 9 / 10; frozen analyzer total 19 includes repeats |
+| Completed stock Wait recoveries / spline-wait timeouts | 1 / 0 |
+| Direct command stops / restarts / zero exposure | 17 / 16 / 9.422262201125704 wall s |
+
+v189 arrived but failed final held yaw (0.3774812462295072 rad); v192 failed
+before arrival (4.832351783345226 m final XY error). Their respective navigation
+wall times were 212.74850833300025 and 117.58489762499994 s, RTF 0.8303702824160138
+and 0.9173411739423418, and successful planning 17.946071772329205 and
+26.066272641362957 Hz. v192's runtime covers an incomplete route, and v189's
+20 P2B measured-stop proofs / 34.225421601 s waiting are a different protocol
+from Option B's command-zero observations. These single trials do not establish
+a causal speed or stop-reduction result. See the [full comparison](v194/results/v194_mac_full_attempt01/comparison.json).
+
+The 445,890,560-byte raw TAR is archived under
+`gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v194_20261014/` with SHA-256
+`c09b9a3c42338ff11e7598d0a1a7e4fa8d4c64ba56a66027dceaad5b575d7550`.
+Remote verification passed for all 287 files, one symlink and 1,269 raw ZIP
+members. Post-trial freeze and all nine protected trees, including the full
+3,721-entry `recovery_v194` tree, passed without changes.
+
+The new [physical-trial report](v194/results/v194_mac_full_attempt01/RESULTS.md)
+is separate because `v194/RESULTS.md` is included in the frozen manifest.
+Its pre-trial statements remain historical qualification evidence; the frozen
+file, v192's failed trial and v193's display remain unchanged.
+
+See [frozen qualification results](v194/RESULTS.md), [plan](v194/PLAN.md),
+[quality](v194/quality.json), [manifest](v194/manifest.json),
+[protected comparison](v194/verification/v194_protected_comparison.json), and
+[source changes](v194/changes.patch).
+
+
+## v195 full v194 display review (2026-10-14)
+
+v195 is frozen and display-only: physical parent `v194`, display parent `v193`,
+native implementation `v194`. It replays the complete `v194_mac_full_attempt01`
+from physical frame 0 through factory PD startup and the exact final
+137.5282745361328 s state. The source is the one passed original-route trial:
+FINISHED, route_arrived=true, full_route_verification.passed=true and final PD hold.
+This render executes zero physics steps and adds no physical acceptance.
+
+The [regular MP4](v195/delivered/v194_mac_full_attempt01.mp4) is 1280 x 720,
+30 fps, 4,125 frames, 137.500000 s and 13,030,771 bytes.
+Startup uses recorded simulation time; navigation uses original wall time at 1:1.
+All 4,125 causal source indices, both endpoints, curve/route/solve clocks,
+full decoding, 10 decoded visual samples and 14 overlay/timeline tests passed.
+The final caption is `arrived (nav2_arrived)`. The last stored spline #3005 is
+expired and its zero direct command is stale; no cyan curve is displayed during
+the final recorded FIXED_STAND state. All 12 protected trees remain unchanged.
+Freeze and separate verification passed for 4,826 source pairs.
+
+SHA-256: `d3f6ea4caae09a9f607428061362581fbabdffb44ecb2e4fa45431a0176d61b4`.
+The remote MP4 at
+`gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v194_20261014/v194_mac_full_attempt01.mp4`
+has the same hash and size. The frozen display source and review evidence are
+also archived and [verified](v195/returned/source_archive_verified.json).
+An initial partial display attempt was retained after correcting a new check
+that confused Retina framebuffer size with encoded video size; the subsequent
+full run_mac.py execution passed. No physical rerun occurred.
+
+See [plan](v195/PLAN.md), [visual QA](v195/VISUAL_QA.md),
+[quality](v195/quality.json), [manifest](v195/manifest.json),
+[protected comparison](v195/returned/protected_after.json), and
+[delivery provenance](v195/delivery_return.json). v194 remains the latest
+physical trial in that historical record. The later v196/v197 delivery is recorded below.
+
+
+## v196 replanning and recovery qualification (2026-10-14)
+
+v196 is frozen with version parent **v195**, navigation source parent **v194**,
+native version **v196** and Mac ARM64 binary underlay **v176**. It restores the
+1 Hz Foxy replanning pipeline with same-mission cached-route fallback, suppresses
+identical active /pct_path refreshes, removes redundant initializer calls,
+recovers expired/stalled local planning from odometry, rebases trajectory freeze
+accounting and uses a version-scoped 0.35 s cloud-age budget. Non-hover emergency
+replanning uses horizontal speed < 0.15 m/s; geometric checks remain active.
+
+The ARM64 build and all rebuilt-package tests passed: **93 colcon entries / 81
+actual cases**, zero errors/failures/skips; 24 Mac host tests; 2 generated-profile
+tests; terminal capture and v196 corner probes. The live graph preflight verified
+four active lifecycle nodes, the actual v196 libraries, runtime cloud-age setting
+and shared mount. All **14 protected trees / 12,427 entries** are unchanged.
+Freeze and separate verification passed for **5,019 source pairs / 618 runtime
+inputs**. Earlier failed/incomplete test attempts remain in the evidence bundle.
+
+**At component freeze, run_mac_full.py had not been executed; no navigation goal or physics advance had occurred.**
+That historical record covers component and graph qualification only. At that
+point, v194 was the latest physical trial and v195 its display review. The
+authorized v196 execution and v197 display are recorded below.
+
+See [results](v196/RESULTS.md), [plan](v196/PLAN.md), [quality](v196/quality.json),
+[manifest](v196/manifest.json), [source delta](v196/changes.patch), and
+[protected verification](v196/verification/v196_protected_comparison.json).
+
+
+## v196 reboot recovery, physical trial and v197 delivery (2026-10-14)
+
+The execution workspace was restored from all 11 pinned environment archives.
+The native overlay was rebuilt and passed 93 colcon test entries with zero
+errors, failures or skips. An initial receipt mismatch stopped before physics;
+the failure is retained. Every one of 3,650 pinned source/install files was
+verified after restoring the semantically identical source-identity JSON's
+original formatting. The original runtime receipt then passed the unchanged
+gate. Fresh build/test evidence remains separate. Frozen v196 files are unchanged.
+
+The new **v196_mac_full_attempt01 passed the original full-route gate**:
+FINISHED, route arrival, final PD hold and held XYZ/yaw all passed. The erased
+pre-reboot capture is not combined with this result. Navigation took
+115.561238 simulation seconds / 118.348344 wall seconds (RTF 0.976450), versus
+126.507451 / 126.540360 for v194. Successful planning measured 24.630678 wall Hz;
+controller output measured 29.935137 wall Hz. The old 10.194397-second
+second-floor stall did not recur within its 1 m neighborhood. Direct-command
+stops fell from 17 to 9, while emergency entries increased from 9 to 12.
+PCT published 102 routes; final refresh_status=terminal_approach, retained_count=3.
+These are individual captures, not repeated reliability or a causal speedup test.
+
+See the [complete trial analysis](v196/results/v196_mac_full_attempt01/RESULTS.md),
+[four-version comparison](v196/results/v196_mac_full_attempt01/comparison.json),
+and [verified trial/overlay archives](v196/results/v196_mac_full_attempt01/ARTIFACTS.json).
+The trial archive contains 287 regular files, one symlink and 1,160 verified
+raw ZIP members, at gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v196_20261014/.
+
+**v197 is the frozen display version**, with parent/native implementation v196
+and display parent v195. The [regular MP4](v197/delivered/v196_mac_full_attempt01.mp4)
+contains 3,880 frames at 1280x720/30 FPS (129.333333 seconds), from actual physics
+time 0.0 through the final 126.582062-second held state. All pauses remain;
+startup uses recorded simulation time and navigation uses original wall time.
+All 14 overlay/timeline tests, every causal frame, full decode, source identity,
+nine decoded visual samples, remote video SHA and display freeze checks passed.
+No physics steps were executed during rendering. See [visual QA](v197/VISUAL_QA.md),
+[delivery provenance](v197/delivery_return.json), and
+[source archive verification](v197/returned/source_archive_verified.json).
+
+
+## Architecture refactor — v198 through v200
+
+The first refactor stage is component-checked. The last physical route evidence
+remains v196 and the display selection remains v197; this first stage ended at v200.
+
+| Version | Logical change | Evidence |
+|---|---|---|
+| [v198](v198/RESULTS.md) | Typed physical execution feedback on the existing TCP connection | Interface build; six host tests; real socket-to-ROS checks |
+| [v199](v199/RESULTS.md) | ControllerServer becomes the sole velocity publisher | Four packages built; 65 distinct component cases including 300 tracking samples |
+| [v200](v200/RESULTS.md) | Two-second physical stand completion, terminal progress exemption, no automatic route replay | Four packages built; 79 distinct component cases including actual BT failure propagation |
+
+All preceding versions are retained. No new full-route experiment or physics
+step was executed. Direct C++ PCT, LocalMotion consolidation, terrain/startup
+cleanup and event-driven replanning remain pending. [Rebuild instructions](v200/BUILD.md).
+
+
+## Direct native PCT — v201
+
+Step 2 now uses `PCTPlanner -> OfflineElePlanner` in C++, with a pre-exported map
+bundle. MissionBridge has no planner service or route cache. Six packages built;
+11 fixed-input comparisons matched all 2,033 XYZ points exactly, and 21 affected
+component cases passed. PCT native algorithm source is unchanged. No new physical
+route experiment was run; 756 protected files were reverified unchanged.
+
+The requested goal pose is now fixed by Nav2; omitted HTTP yaw defaults to zero.
+The launch argument is `pct_map_bundle`. See [results](v201/RESULTS.md),
+[build and interface contract](v201/BUILD.md), and [provenance](v201/PROVENANCE.md).
+At the v201 checkpoint the latest source was v201; the earlier physical/display evidence remains
+v196/v197. Steps 3–5 remain pending.
+
+
+## LocalMotion direct execution — v202
+
+Step 3 is implemented: LocalMotion owns the native SCAN worker and Tracker.
+Routes and trajectory-scoped freeze feedback enter a bounded immutable snapshot;
+completed splines arrive through a direct callback and bounded output slot.
+Cancellation and changed routes invalidate late outputs. Internal route, spline
+and freeze subscriptions are removed; their ROS publishers remain observations.
+External sensor/pose/clock/execution-state input and standalone SCAN are retained.
+
+Seven packages built; 77 unique component cases and 300 fixed tracking samples
+passed, including three worker lifecycle cycles, real native direct output,
+ROS injection isolation, cancellation and terminal/command-owner regressions.
+See [results](v202/RESULTS.md), [rebuild](v202/BUILD.md), and [manifest](v202/manifest.json).
+All 927 protected v196-v201 files are unchanged. No new full-route or physics run.
+At v202, the latest source was v202; physical baseline v196 and display/current v197 are retained.
+Steps 4 (map/startup cleanup) and 5 (event-driven global planning) remain pending.
+
+
+## Unified static terrain and startup cleanup — v203
+
+Step 4 is implemented. One terrain manifest binds the native PCT map, navigation
+support, surface evidence, physical presence and negative-only gap mask. One
+runtime node replaces the three static publishers without changing their payload
+bytes or roles. LocalMotion's 2D projection, TerrainLayer and default Nav2
+inflation are removed, as is the unused Wait recovery server.
+
+Foxy retains a one-cell, 1 Hz TF/lifecycle shell with a disabled input-free stock
+ObstacleLayer: its parser rejects an empty plugin array, and zero update rate
+would block activation. Native SCAN mapping, geometry and support code are unchanged.
+Seven packages built; 97 ROS component cases, one fake-child graph check and
+300 tracking samples passed. No new full-route or physics run. See
+[results](v203/RESULTS.md), [build/launch contract](v203/BUILD.md), and
+[manifest](v203/manifest.json). At v203, latest source was v203; physical/display v196/v197
+remain retained. Only step 5 (event-driven global planning) remains pending.
+
+
+## Restore original mission behavior — v204
+
+Restore v196 terminal pose/yaw selection, same-mission cached-route behavior and
+ordinary Wait 1 s / six-retry recovery. Terminal-settle timeout remains nonretryable.
+Keep the v198-v203 C++ PCT, LocalMotion, single robot command owner and static-terrain
+architecture. Global refresh stays 1 Hz; step 5 is deferred. No new navigation policy.
+
+Seven packages built, including a final clean rebuild of all five owned packages.
+106 unique ROS component cases plus one host graph check passed, with 28 fixed-input
+requests compared to the actually executed frozen v196 methods and 300 tracking
+samples. The two-second terminal hold contract, failure UUID, cancel/replacement,
+stock Wait lifecycle and retained terrain/geometry checks passed. First failed test
+fixtures and the build repair history are retained. 1,116 predecessor files unchanged.
+
+See [results](v204/RESULTS.md), [rebuild](v204/BUILD.md), and [manifest](v204/manifest.json).
+Latest source is v204. Physical baseline v196 and display/current v197 stay selected;
+no new physics, whole-route acceptance or robot actuation. Previous HTML is preserved
+under `v204/previous_html/`.
+
+
+### v204 physical validation — 2026-10-15
+
+Dr Sun authorized one original-route physical trial after the component-only
+refactor. `v204_mac_full_attempt01` **passed** the original v196 full-route gate:
+FINISHED, continuous original start/goal, final PD hold, shared-state verification,
+78.948 m recorded body path and 143.591 s actual physics. Frozen sources unchanged.
+Navigation wall time was 155.602 s versus v196's 118.348 s (+31.48%); successful
+local planning was 14.762 Hz versus 24.631 Hz. This is a successful full-route
+capture with a measured slowdown, not performance parity or repeated reliability.
+See [physical results](v204/results/v204_mac_full_attempt01/RESULTS.md) and
+[comparison](v204/results/v204_mac_full_attempt01/comparison.json). No second
+physical attempt or navigation tuning. v197 display/current remains selected.
+
+
+## Display of the v204 physical capture — v205
+
+The complete v204_mac_full_attempt01 video is delivered as a regular
+[MP4](v205/delivered/v204_mac_full_attempt01.mp4): 4,998 frames, 1280x720 at 30 FPS,
+166.6 seconds. Startup uses original simulation time; navigation retains original
+wall time at 1:1, including pauses and final standing. All causal frames, full
+decode, source hashes, nine decoded visual samples and the remote video checksum
+passed. See [visual QA](v205/VISUAL_QA.md). Zero new physics steps; frozen v204
+navigation and prior v196/v197 evidence retained. Current display is v205.
+
+## Route and command continuity — v206
+
+Latest source/current is v206, derived from navigation v204. v205 remains the
+review video of v204's physical capture. Normal same-goal route refresh no longer
+invalidates the local solver generation, completed output or execution feedback.
+Tracking uses smooth heading attenuation with 1.0/0.6 rad hysteresis and one
+independent command slew history, including the outer normal terminal brake.
+An expired low-speed local curve brakes to exact zero without claiming arrival;
+active small/reverse corrections and the original completion gates are retained.
+PCT/SCAN geometry, 1 Hz global planning and ordinary retries are unchanged.
+
+**gpu5070ti Linux x86_64:** all 14 packages built; 117 distinct native/ROS cases
+plus one lightweight host graph check passed. Colcon's 134 count includes 17
+CTest wrappers. Source, installed libraries and returned evidence are hash-bound.
+No local compilation and no new physical trial. v204 remains the last physical
+result, and v206 performance is not yet physically measured.
+
+See [results](v206/RESULTS.md), [remote build](v206/BUILD.md),
+[changes](v206/changes.patch), and [manifest](v206/manifest.json).
+
+## v206 physical follow-up and v207 video — 2026-10-15
+
+The one moving Linux original-start trial reached the goal vicinity (9.46 cm XY)
+but failed terminal_settle_timeout; final state STAND_SETTLING, not PD hold.
+The unchanged full-route gate failed. A preceding infrastructure startup stopped
+at zero integrations and is retained. No navigation retuning or moving retry.
+See [physical result](v206/results/v206_linux_full_attempt02/RESULTS.md).
+
+v207 displays the exact recorded attempt: 3,785 frames /126.1667 s, 1280x720,
+30FPS. Full decode, causal timeline, source hashes and visual review pass.
+[Video](v207/delivered/v206_linux_full_attempt02.mp4) · [visual QA](v207/VISUAL_QA.md).
+Last physically accepted full-route evidence remains v204; v207 adds no physics.
+
+## v208 — stillness-based RL-to-PD return — 2026-10-15
+
+Navigation remains v206. The versioned locomotion adapter replaces the entry
+load-share gate with body/joint stillness, a two-second PD crossfade and a
+0.2 rad target offset cap, preserving V12's torque-matched stand target.
+10 candidate and 53 original-hold tests pass on gpu5070ti. Two recorded-state
+physical pairs pass for the candidate: fixed PD at 2.359/2.299 s, with measured
+holds lasting 7.656/7.713 s. Neither original control completes the same hold
+within ten seconds. 40,040 actual integrations; no new full route.
+
+The original sources and v204/v206 results remain frozen. The full-navigation
+default is unchanged; the last accepted full route remains v204.
+[Results](v208/RESULTS.md) · [Declared scope](v208/PLAN.md) · [Changes](v208/changes.patch).
+
+## v209 — recorded stop comparison video — 2026-10-15
+
+Display-only left/right replay of the four completed v208 physical probes.
+604 frames / 20.133 seconds; full decode, source identity, causal frame mapping
+and returned MP4 hash pass. No additional physics or navigation changes.
+[Video](v209/delivered/newton_stair_recorded.mp4) · [Results](v209/RESULTS.md).
+
+## v210 — v208 locomotion in full navigation — 2026-10-15
+
+One original-start gpu5070ti trial passed the unchanged full-route gate: 137.005 s
+physics, final XY error 0.1264 m and 4.351 s final fixed PD. Frozen v206 navigation
+strategy and binaries remain unchanged. [Results](v210/RESULTS.md).
+
+## v211 — complete v210 physical video — 2026-10-15
+
+4,104 frames / 136.8 seconds, including original startup and final PD hold.
+Full decode, causal-state/curve checks and local delivery hash pass.
+[Play video](v211/delivered/v210_linux_full_attempt01.mp4) · [Visual QA](v211/VISUAL_QA.md).
+
+## v212 — event-triggered global planning — 2026-10-15
+
+Two packages built and 51 cases pass. One same-route physical trial failed at
+54.142 s during an intermediate stop/PD transfer. Same-window route deliveries
+fell from 39 to 1. Do not adopt over v210; no extra physics or strategy retuning.
+[Results](v212/RESULTS.md) · [Comparison](v212/results/comparison_v210.json).
+
+v213/v214 display preparations are preserved; v215 handles the recorded physical
+fall without inventing a Nav2 terminal result.
+
+## v215 — complete v212 failure video — 2026-10-15
+
+1,618 frames / 53.933 seconds; full decode, causal source checks and local MP4
+hash pass. The last frame explicitly shows physical fall; no fabricated Nav2
+terminal result or physical success.
+[Video](v215/delivered/v212_linux_full_attempt01.mp4) · [Visual QA](v215/VISUAL_QA.md).
+
+## v216-v220: supported PD transfer and local-failure event replanning
+
+v216 requires four-foot support throughout the stillness dwell and immediately
+returns to RL on transition disturbance. 14 host component tests pass on
+5070Ti; the new suite fails against the frozen v208 implementation.
+
+v217 detects absent/expired-braking trajectories, but its one physical attempt
+still exhausted six retries at the stair after 84.665 s. It remained upright and
+held PD there. [Failure report](v217/RESULTS.md) and the complete
+[v218 video](v218/delivered/v217_linux_full_attempt01.mp4) are preserved.
+
+v219 additionally reports actual consecutive SCAN failures to the BT route
+owner after 0.75 s, with exact route identity and without discarding a usable
+curve. Native geometry remains byte-identical after removing result-reporting
+lines. Four packages and 132 distinct cases pass on 5070Ti. One original-start
+full route passes: 123.564 s, 9.39 cm final XY error, 4.338 s final fixed PD.
+The stair still has a recovered PD disturbance and lower local success fraction
+than v210 (56.7% versus 98.8% over 45-55 s). [Results](v219/RESULTS.md).
+
+v220 displays all recorded v219 states, including pauses and final hold: 3,700
+frames / 123.333 s. Full decode, causal indexing, visual QA and local delivery
+hash pass. [Video](v220/delivered/v219_linux_full_attempt01.mp4). No extra physics.
+Latest validated source is v219; current display is v220. v210 and all failures
+remain available. This is one successful condition, not repeated reliability.

@@ -1,0 +1,1126 @@
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_bridge/CMakeLists.txt v203/src/lite3_nav2_bridge/CMakeLists.txt
+--- parent-v202/src/lite3_nav2_bridge/CMakeLists.txt	2026-10-14 23:51:18
++++ v203/src/lite3_nav2_bridge/CMakeLists.txt	2026-10-15 01:29:12
+@@ -3,7 +3,7 @@
+ find_package(ament_cmake REQUIRED)
+ find_package(ament_cmake_python REQUIRED)
+ ament_python_install_package(${PROJECT_NAME})
+-install(PROGRAMS scripts/mission_bridge DESTINATION lib/${PROJECT_NAME})
++install(PROGRAMS scripts/mission_bridge scripts/static_terrain DESTINATION lib/${PROJECT_NAME})
+ install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
+ if(BUILD_TESTING)
+   find_package(ament_cmake_gtest REQUIRED)
+@@ -13,5 +13,7 @@
+   target_compile_definitions(test_terminal_tree PRIVATE NAVIGATION_TREE="${CMAKE_CURRENT_SOURCE_DIR}/config/navigate.xml")
+   find_package(ament_cmake_pytest REQUIRED)
+   ament_add_pytest_test(test_mission_bridge test/test_mission_bridge.py TIMEOUT 60)
++  ament_add_pytest_test(test_static_terrain test/test_static_terrain.py TIMEOUT 30)
++  ament_add_pytest_test(test_terrain_profile test/test_terrain_profile.py TIMEOUT 30)
+ endif()
+ ament_package()
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_bridge/launch/navigation.launch.py v203/src/lite3_nav2_bridge/launch/navigation.launch.py
+--- parent-v202/src/lite3_nav2_bridge/launch/navigation.launch.py	2026-10-15 00:12:53
++++ v203/src/lite3_nav2_bridge/launch/navigation.launch.py	2026-10-15 01:29:12
+@@ -12,10 +12,12 @@
+     use_sim = get('use_sim_time').lower() == 'true'
+     backend = json.loads(Path(get('backend_config')).read_text())
+     profile = write_profile(get('generated_params'), get('native_planner_config'), use_sim,
+-                            pct_map_bundle=get('pct_map_bundle'),
++                            terrain_manifest=get('terrain_manifest'),
+                             reference_height_m=backend.get('map', {}).get('nominal_body_height_m', 0.35),
+                             base_frame=get('base_frame'),odom_topic=get('odom_topic'))
+     return [
++        Node(package='lite3_nav2_bridge', executable='static_terrain', name='static_terrain',
++             parameters=[{'terrain_manifest': get('terrain_manifest'), 'use_sim_time': use_sim}], output='screen'),
+         Node(package='lite3_nav2_bridge', executable='mission_bridge', name='lite3_nav2_mission_bridge',
+              parameters=[{'config_path': get('backend_config'),
+                           'odom_topic': get('odom_topic'), 'use_sim_time': use_sim}], output='screen'),
+@@ -23,23 +25,18 @@
+              parameters=[profile], remappings=[('cmd_vel', '/quad_0/cmd_vel')], output='screen'),
+         Node(package='nav2_planner', executable='planner_server', name='planner_server',
+              parameters=[profile], output='screen'),
+-        Node(package='nav2_recoveries', executable='recoveries_server', name='recoveries_server',
+-             parameters=[{'use_sim_time': use_sim, 'global_frame': 'world',
+-                          'robot_base_frame': get('base_frame'),
+-                          'recovery_plugins': ['wait'], 'wait.plugin': 'nav2_recoveries/Wait'}],
+-             output='screen'),
+         Node(package='nav2_bt_navigator', executable='bt_navigator', name='bt_navigator',
+              namespace='nav2_internal', parameters=[profile], output='screen'),
+         Node(package='nav2_lifecycle_manager', executable='lifecycle_manager', name='lifecycle_manager_navigation',
+              parameters=[{'use_sim_time': use_sim, 'autostart': True,
+-                          'node_names': ['controller_server', 'planner_server', 'recoveries_server',
++                          'node_names': ['controller_server', 'planner_server',
+                                          '/nav2_internal/bt_navigator']}], output='screen')]
+ 
+ 
+ def generate_launch_description():
+     return LaunchDescription([
+         DeclareLaunchArgument('native_planner_config'), DeclareLaunchArgument('backend_config'),
+-        DeclareLaunchArgument('pct_map_bundle'),
++        DeclareLaunchArgument('terrain_manifest'),
+         DeclareLaunchArgument('base_frame',default_value='base_link'),
+         DeclareLaunchArgument('odom_topic',default_value='/quad_0/body_pose'),
+         DeclareLaunchArgument('generated_params'), DeclareLaunchArgument('use_sim_time', default_value='false'),
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py v203/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py
+--- parent-v202/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py	2026-10-15 00:12:53
++++ v203/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py	2026-10-15 01:40:43
+@@ -2,15 +2,29 @@
+ from pathlib import Path
+ import yaml
+ from ament_index_python.packages import get_package_share_directory
++from .terrain_bundle import TerrainBundle
+ 
+ 
+-def write_profile(output, native_config, use_sim_time, *, pct_map_bundle, reference_height_m=0.35,
++def write_profile(output, native_config, use_sim_time, *, terrain_manifest, reference_height_m=0.35,
+                   external_planner=False,
+                   base_frame='base_link', odom_topic='/quad_0/body_pose'):
+     output = Path(output)
+     if output.exists():
+         raise ValueError('Refuse to overwrite a previous launch profile')
+     native_config = Path(native_config).resolve(strict=True)
++    terrain = TerrainBundle(terrain_manifest)
++    static_parameters = terrain.native_parameters()
++    scan_path = output.with_suffix('.scan.yaml')
++    tree_path = output.with_suffix('.bt.xml')
++    if scan_path.exists() or tree_path.exists():
++        raise ValueError('Refuse to overwrite a previous SCAN or BT profile')
++    native = yaml.safe_load(native_config.read_text())
++    section = '/quad_0/scan_planner_node' if '/quad_0/scan_planner_node' in native else 'scan_planner_node'
++    native[section]['ros__parameters'].update(static_parameters)
++    native[section]['ros__parameters']['use_sim_time'] = bool(use_sim_time)
++    output.parent.mkdir(parents=True, exist_ok=True)
++    scan_path.write_text(yaml.safe_dump(native))
++    native_config = scan_path.resolve()
+     bringup = Path(get_package_share_directory('nav2_bringup'))
+     candidates = list(bringup.rglob('nav2_params.yaml'))
+     if len(candidates) != 1:
+@@ -33,19 +47,23 @@
+     for key in ('global_costmap', 'local_costmap'):
+         data[key] = {key: {'ros__parameters': {
+             'global_frame': 'world', 'robot_base_frame': base_frame,
+-            'rolling_window': True, 'width': 6, 'height': 6, 'resolution': 0.1,
+-            'track_unknown_space': True, 'update_frequency': 10.0, 'publish_frequency': 2.0,
+-            'robot_radius': 0.25, 'plugins': ['terrain_layer', 'inflation_layer'],
+-            'terrain_layer': {'plugin': 'lite3_nav2/TerrainLayer', 'base_frame':base_frame},
+-            'inflation_layer': {'plugin': 'nav2_costmap_2d::InflationLayer',
+-                                'inflation_radius': 0.4, 'cost_scaling_factor': 3.0}}}}
++            # Foxy start() waits for one update: zero frequency deadlocks activation.
++            # PCT and SCAN do not read this grid. Keep only the TF/lifecycle shell.
++            'rolling_window': True, 'width': 1, 'height': 1, 'resolution': 1.0,
++            'track_unknown_space': True, 'update_frequency': 1.0, 'publish_frequency': 0.0,
++            'robot_radius': 0.25, 'plugins': ['map_shell'],
++            # Foxy cannot parse an empty YAML parameter array. This stock layer
++            # is disabled and has no input subscriptions or cost updates.
++            'map_shell': {'plugin': 'nav2_costmap_2d::ObstacleLayer', 'enabled': False,
++                          'observation_sources': '', 'footprint_clearing_enabled': False}}}}
++    # The current BT has no recovery action. Do not retain unused default nodes.
++    for key in ('recoveries_server', 'map_server', 'map_saver', 'waypoint_follower'):
++        data.pop(key, None)
+     data['planner_server'] = {'ros__parameters': {
+         'expected_planner_frequency': 1.0, 'planner_plugins': ['PCT'],
+         'PCT': {'plugin': 'lite3_nav2/PCTPlanner',
+-                'map_bundle': str(Path(pct_map_bundle).resolve(strict=True)),
++                'map_bundle': str(terrain.file(terrain.metadata['pct'])),
+                 'reference_height': float(reference_height_m), 'use_quintic': True, 'max_heading_rate': 10.0}}}
+-    tree_path=output.with_suffix('.bt.xml')
+-    if tree_path.exists():raise ValueError('Refuse to overwrite a previous BT profile')
+     output.parent.mkdir(parents=True, exist_ok=True)
+     tree_path.write_text((Path(get_package_share_directory('lite3_nav2_bridge')) /
+                           'config/navigate.xml').read_text())
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_bridge/lite3_nav2_bridge/static_terrain.py v203/src/lite3_nav2_bridge/lite3_nav2_bridge/static_terrain.py
+--- parent-v202/src/lite3_nav2_bridge/lite3_nav2_bridge/static_terrain.py	1969-12-31 16:00:00
++++ v203/src/lite3_nav2_bridge/lite3_nav2_bridge/static_terrain.py	2026-10-15 01:28:21
+@@ -0,0 +1,66 @@
++"""Publish all static terrain roles from one loaded, immutable package."""
++import rclpy
++from rclpy.executors import ExternalShutdownException
++from rclpy.node import Node
++from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, qos_profile_sensor_data
++from rosgraph_msgs.msg import Clock
++from sensor_msgs.msg import PointCloud2, PointField
++
++from .terrain_bundle import TerrainBundle, ClockGate, TOPICS, FIELDS
++
++
++class StaticTerrain(Node):
++    def __init__(self, **kwargs):
++        super().__init__('static_terrain', **kwargs)
++        self.bundle = TerrainBundle(self.declare_parameter('terrain_manifest', '').value)
++        self.gate = ClockGate()
++        self.messages, self.publishers_by_role = {}, {}
++        qos = QoSProfile(depth=1, reliability=QoSReliabilityPolicy.RELIABLE,
++                         durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
++        for role, data in self.bundle.load_clouds().items():
++            message = PointCloud2()
++            message.header.frame_id = self.bundle.metadata['frame']
++            message.height = 1
++            message.width = len(data) // 16
++            message.point_step, message.row_step = 16, len(data)
++            message.is_bigendian = message.is_dense = False
++            message.fields = [PointField(name=n, offset=o, datatype=t, count=c) for n, o, t, c in FIELDS]
++            message.data = data
++            self.messages[role] = message
++            self.publishers_by_role[role] = self.create_publisher(PointCloud2, TOPICS[role], qos)
++        if self.get_parameter('use_sim_time').value:
++            self.create_subscription(Clock, '/clock', self.on_clock, qos_profile_sensor_data)
++        else:
++            self.wall_timer = self.create_timer(0.1, self.on_wall_time)
++        self.get_logger().info('Loaded one static terrain package: ' + str(self.bundle.path))
++
++    def on_clock(self, clock):
++        self.publish_at(int(clock.clock.sec) * 1000000000 + int(clock.clock.nanosec))
++
++    def on_wall_time(self):
++        if self.publish_at(self.get_clock().now().nanoseconds()):
++            self.wall_timer.cancel()
++
++    def publish_at(self, clock_ns):
++        stamp = self.gate.observe(clock_ns)
++        if stamp is None:
++            return False
++        for role, message in self.messages.items():
++            message.header.stamp.sec, message.header.stamp.nanosec = divmod(stamp, 1000000000)
++            self.publishers_by_role[role].publish(message)
++        return True
++
++
++def main():
++    rclpy.init()
++    node = None
++    try:
++        node = StaticTerrain()
++        rclpy.spin(node)
++    except (KeyboardInterrupt, ExternalShutdownException):
++        pass
++    finally:
++        if node is not None:
++            node.destroy_node()
++        if rclpy.ok():
++            rclpy.shutdown()
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_bridge/lite3_nav2_bridge/terrain_bundle.py v203/src/lite3_nav2_bridge/lite3_nav2_bridge/terrain_bundle.py
+--- parent-v202/src/lite3_nav2_bridge/lite3_nav2_bridge/terrain_bundle.py	1969-12-31 16:00:00
++++ v203/src/lite3_nav2_bridge/lite3_nav2_bridge/terrain_bundle.py	2026-10-15 01:28:21
+@@ -0,0 +1,113 @@
++"""One manifest for distinct static navigation, surface and physical-floor roles."""
++import hashlib
++import json
++import math
++from pathlib import Path
++
++import numpy as np
++
++TOPICS = {'navigation': '/pct_tomogram', 'surface': '/pct_ground_surface',
++          'physical_floor': '/pct_physical_floor'}
++FIELDS = (('x', 0, 7, 1), ('y', 4, 7, 1), ('z', 8, 7, 1), ('intensity', 12, 7, 1))
++
++
++def fnv64(data):
++    value = 14695981039346656037
++    for byte in data:
++        value = ((value ^ byte) * 1099511628211) & 0xffffffffffffffff
++    return str(value)
++
++
++class TerrainBundle:
++    """Read metadata once; load cloud bytes once in the sole static publisher."""
++    def __init__(self, manifest):
++        self.path = Path(manifest).resolve(strict=True)
++        self.metadata = json.loads(self.path.read_text())
++        m = self.metadata
++        if m.get('format') != 'LITE3_TERRAIN_V1' or m.get('frame') != 'world':
++            raise ValueError('Unsupported static terrain format/frame')
++        if set(m['clouds']) != set(TOPICS) or m['support_gap'].get('negative_only') is not True:
++            raise ValueError('Static terrain roles must remain distinct')
++        if not math.isfinite(m['resolution']) or m['resolution'] <= 0 or \
++                not all(math.isfinite(x) for x in [*m['physical_origin'], m['z_offset']]) or \
++                len(m['physical_origin']) != 2:
++            raise ValueError('Invalid static terrain geometry')
++        for role, topic in TOPICS.items():
++            entry = m['clouds'][role]
++            if entry['topic'] != topic or entry['role'] != role or entry['points'] <= 0 or \
++                    entry['bytes'] != entry['points'] * 16:
++                raise ValueError('Invalid static cloud role/layout: ' + role)
++            self.file(entry)
++        self.file(m['pct']); self.file(m['support_gap'])
++        self._clouds = None
++
++    def file(self, entry):
++        return (self.path.parent / entry['file']).resolve(strict=True)
++
++    def checked_bytes(self, entry):
++        data = self.file(entry).read_bytes()
++        if len(data) != entry['bytes'] or hashlib.sha256(data).hexdigest() != entry['sha256']:
++            raise ValueError('Static terrain identity mismatch: ' + entry['file'])
++        return data
++
++    def load_clouds(self):
++        if self._clouds is None:
++            clouds = {}
++            for role, entry in self.metadata['clouds'].items():
++                data = self.checked_bytes(entry)
++                if not np.isfinite(np.frombuffer(data, dtype='<f4')).all():
++                    raise ValueError('Nonfinite static cloud: ' + role)
++                prefix = 'pct_physical_floor' if role == 'physical_floor' else 'pct_tomogram'
++                if entry['source_id'] != prefix + '/fnv64/' + fnv64(data):
++                    raise ValueError('Static cloud source ID mismatch: ' + role)
++                clouds[role] = data
++            self._clouds = clouds
++        return self._clouds
++
++    def native_parameters(self):
++        m = self.metadata
++        self.checked_bytes(m['pct'])
++        gap = self.checked_bytes(m['support_gap'])
++        if fnv64(gap) != m['support_gap']['fnv64']:
++            raise ValueError('Static support mask identity mismatch')
++        return {
++            'grid_map.support_gap_path': str(self.file(m['support_gap'])),
++            'grid_map.support_gap_fnv64': m['support_gap']['fnv64'],
++            'grid_map.reactive_surface_ground_topic': TOPICS['surface'],
++            'grid_map.reactive_physical_floor_topic': TOPICS['physical_floor'],
++            'grid_map.physical_floor_source_id': m['clouds']['physical_floor']['source_id'],
++            'grid_map.physical_floor_surface_source_id': m['clouds']['surface']['source_id'],
++            'grid_map.physical_floor_navigation_source_id': m['clouds']['navigation']['source_id'],
++            'grid_map.physical_floor_origin_x': m['physical_origin'][0],
++            'grid_map.physical_floor_origin_y': m['physical_origin'][1],
++            'grid_map.physical_floor_resolution': m['resolution'],
++            'grid_map.reactive_tomogram_resolution': m['resolution'],
++            'grid_map.reactive_tomogram_z_offset': m['z_offset'],
++        }
++
++
++class ClockGate:
++    """Unchanged two-advancing-positive-samples gate, rearmed by clock reset."""
++    def __init__(self):
++        self._first_positive_ns = None
++        self._last_ns = None
++        self._published = False
++
++    def observe(self, clock_ns):
++        if clock_ns <= 0:
++            if self._last_ns is not None and clock_ns < self._last_ns:
++                self._first_positive_ns = None
++                self._published = False
++            self._last_ns = clock_ns
++            return None
++        if self._last_ns is not None and clock_ns < self._last_ns:
++            self._first_positive_ns = None
++            self._published = False
++        self._last_ns = clock_ns
++        if self._first_positive_ns is None:
++            self._first_positive_ns = clock_ns
++            return None
++        if self._published or clock_ns <= self._first_positive_ns:
++            return None
++        self._published = True
++        return clock_ns
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_bridge/package.xml v203/src/lite3_nav2_bridge/package.xml
+--- parent-v202/src/lite3_nav2_bridge/package.xml	2026-10-15 00:12:53
++++ v203/src/lite3_nav2_bridge/package.xml	2026-10-15 01:29:12
+@@ -9,7 +9,8 @@
+  <depend>nav2_msgs</depend><depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend><exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend><exec_depend>lite3_nav2_plugins</exec_depend>
+- <exec_depend>nav2_recoveries</exec_depend>
++ <exec_depend>sensor_msgs</exec_depend><exec_depend>rosgraph_msgs</exec_depend>
++ <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>scan_nav2_controller</exec_depend><exec_depend>python3-yaml</exec_depend>
+  <exec_depend>launch</exec_depend><exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_bridge/scripts/static_terrain v203/src/lite3_nav2_bridge/scripts/static_terrain
+--- parent-v202/src/lite3_nav2_bridge/scripts/static_terrain	1969-12-31 16:00:00
++++ v203/src/lite3_nav2_bridge/scripts/static_terrain	2026-10-15 01:28:21
+@@ -0,0 +1,4 @@
++#!/usr/bin/env python3
++from lite3_nav2_bridge.static_terrain import main
++if __name__ == '__main__':
++    main()
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_bridge/test/test_mission_bridge.py v203/src/lite3_nav2_bridge/test/test_mission_bridge.py
+--- parent-v202/src/lite3_nav2_bridge/test/test_mission_bridge.py	2026-10-15 00:18:21
++++ v203/src/lite3_nav2_bridge/test/test_mission_bridge.py	2026-10-15 01:40:43
+@@ -188,15 +188,15 @@
+     from lite3_nav2_bridge.profile import write_profile
+     native = FilePath(get_package_share_directory('scan_planner')) / 'config/planner.yaml'
+     output = tmp_path / 'navigation.yaml'
+-    bundle = tmp_path / 'map.pct'
+-    bundle.write_bytes(b'profile wiring only')
+-    write_profile(output, native, False, pct_map_bundle=bundle)
++    import os
++    bundle = FilePath(os.environ['TERRAIN_TEST_MANIFEST'])
++    write_profile(output, native, False, terrain_manifest=bundle)
+     config = yaml.safe_load(output.read_text())
+     controller = config['controller_server']['ros__parameters']['SCAN']
+     assert 'command_topic' not in controller
+     assert controller['route_topic'] == '/pct_path'
+     pct = config['planner_server']['ros__parameters']['PCT']
+-    assert pct['map_bundle'] == str(bundle)
++    assert pct['map_bundle'] == str(bundle.parent / 'route.pct')
+     assert pct['reference_height'] == .35
+     assert 'service' not in pct
+     bt = config['/nav2_internal/bt_navigator']['ros__parameters']
+@@ -219,13 +219,13 @@
+     spec = importlib.util.spec_from_file_location('navigation_launch', launch_file)
+     module = importlib.util.module_from_spec(spec)
+     spec.loader.exec_module(module)
+-    pct_map = tmp_path / 'map.pct'
+-    pct_map.write_bytes(b'launch resolves this path but does not load PCT')
++    import os
++    terrain_manifest = os.environ['TERRAIN_TEST_MANIFEST']
+     (tmp_path / 'backend.json').write_text(json.dumps({'map': {'nominal_body_height_m': .3}}))
+     context = LaunchContext()
+     context.launch_configurations.update({
+         'use_sim_time': 'false', 'base_frame': 'base', 'odom_topic': '/quad_0/body_pose',
+-        'generated_params': str(tmp_path / 'params.yaml'), 'pct_map_bundle': str(pct_map),
++        'generated_params': str(tmp_path / 'params.yaml'), 'terrain_manifest': terrain_manifest,
+         'backend_config': str(tmp_path / 'backend.json'),
+         'native_planner_config': str(FilePath(get_package_share_directory('scan_planner')) / 'config/planner.yaml')})
+     with patch.object(module, 'Node', side_effect=lambda **kwargs: kwargs):
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_bridge/test/test_static_terrain.py v203/src/lite3_nav2_bridge/test/test_static_terrain.py
+--- parent-v202/src/lite3_nav2_bridge/test/test_static_terrain.py	1969-12-31 16:00:00
++++ v203/src/lite3_nav2_bridge/test/test_static_terrain.py	2026-10-15 01:40:43
+@@ -0,0 +1,112 @@
++import hashlib
++import json
++import os
++from pathlib import Path
++import time
++
++import pytest
++import rclpy
++from rclpy.executors import SingleThreadedExecutor
++from rclpy.node import Node
++from rclpy.parameter import Parameter
++from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
++from rosgraph_msgs.msg import Clock
++from sensor_msgs.msg import PointCloud2
++
++from lite3_nav2_bridge.terrain_bundle import TerrainBundle, ClockGate, TOPICS, FIELDS
++from lite3_nav2_bridge.static_terrain import StaticTerrain
++
++MANIFEST = Path(os.environ['TERRAIN_TEST_MANIFEST'])
++
++
++def altered_manifest(tmp_path, mutate):
++    metadata = json.loads(MANIFEST.read_text())
++    for entry in [metadata['pct'], metadata['support_gap'], *metadata['clouds'].values()]:
++        entry['file'] = str((MANIFEST.parent / entry['file']).resolve())
++    mutate(metadata)
++    path = tmp_path/'terrain.json'; path.write_text(json.dumps(metadata))
++    return path
++
++
++def test_original_payloads_remain_distinct_and_loaded_once(monkeypatch):
++    bundle = TerrainBundle(MANIFEST)
++    payloads = bundle.load_clouds()
++    expected = {'navigation': '97d2dfbdb60c91e8473ab57f348923360f139da1130b4e9b7dd57e8655c15ca2',
++                'surface': 'b68527dd9d2ea8a4647c64aaf59b884da16364e41b146943c03f2c6da68cfa56',
++                'physical_floor': '20acd5cf1ef156c5bd336b12651efe9a18e9959816905b05178ed44b1a181c96'}
++    assert {key: hashlib.sha256(value).hexdigest() for key,value in payloads.items()} == expected
++    monkeypatch.setattr(Path, 'read_bytes', lambda *_: pytest.fail('Static payload reloaded'))
++    assert bundle.load_clouds() is payloads
++
++
++@pytest.mark.parametrize('fault', ['frame', 'role', 'layout', 'hash', 'source_id', 'gap_role'])
++def test_bad_bundle_rejected(tmp_path, fault):
++    def mutate(m):
++        if fault == 'frame': m['frame'] = 'other'
++        if fault == 'role': m['clouds']['navigation']['topic'] = TOPICS['surface']
++        if fault == 'layout': m['clouds']['navigation']['points'] += 1
++        if fault == 'hash': m['clouds']['navigation']['sha256'] = '0'*64
++        if fault == 'source_id': m['clouds']['navigation']['source_id'] = 'wrong'
++        if fault == 'gap_role': m['support_gap']['negative_only'] = False
++    path = altered_manifest(tmp_path, mutate)
++    with pytest.raises(ValueError): TerrainBundle(path).load_clouds()
++
++
++def test_native_bundle_and_mask_hashes_are_checked(tmp_path):
++    for kind in ['pct', 'support_gap']:
++        path = altered_manifest(tmp_path, lambda m: m[kind].update(sha256='0'*64))
++        with pytest.raises(ValueError): TerrainBundle(path).native_parameters()
++
++
++def test_clock_gate_retains_zero_duplicate_backward_and_reset_behavior():
++    gate = ClockGate()
++    source = [0, 0, 100, 100, 200, 300, 0, 50, 60, 60, 40, 41]
++    assert [gate.observe(x) for x in source] == [None,None,None,None,200,None,None,None,60,None,None,41]
++
++
++def test_one_ros_publisher_retains_three_payloads_for_late_subscribers():
++    rclpy.init()
++    producer = observer = executor = None
++    try:
++        producer = StaticTerrain(parameter_overrides=[Parameter('terrain_manifest', value=str(MANIFEST)),
++                                                       Parameter('use_sim_time', value=True)])
++        observer = Node('static_terrain_observer')
++        clock = observer.create_publisher(Clock, '/clock', 10)
++        executor = SingleThreadedExecutor(); executor.add_node(producer); executor.add_node(observer)
++        def spin_until(predicate, seconds=3):
++            end = time.monotonic()+seconds
++            while time.monotonic()<end:
++                executor.spin_once(timeout_sec=.02)
++                if predicate(): return True
++            return False
++        assert spin_until(lambda: clock.get_subscription_count() >= 1)
++        for ns in [0, 1000000000, 1100000000]:
++            message = Clock(); message.clock.sec, message.clock.nanosec = divmod(ns, 1000000000)
++            clock.publish(message)
++            assert spin_until(lambda: producer.gate._last_ns == ns)
++        # Subscribers start only after all publications, exercising transient-local QoS.
++        received = {role: [] for role in TOPICS}
++        qos = QoSProfile(depth=1, reliability=QoSReliabilityPolicy.RELIABLE,
++                         durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
++        subscriptions = [observer.create_subscription(PointCloud2, topic,
++                         lambda msg, role=role: received[role].append(msg), qos)
++                         for role,topic in TOPICS.items()]
++        assert spin_until(lambda: all(received.values()))
++        for role in TOPICS:
++            msg = received[role][-1]
++            assert bytes(msg.data) == producer.bundle.load_clouds()[role]
++            assert msg.header.frame_id == 'world'
++            assert (msg.header.stamp.sec, msg.header.stamp.nanosec) == (1,100000000)
++            assert [(f.name,f.offset,f.datatype,f.count) for f in msg.fields] == list(FIELDS)
++            assert (msg.height,msg.width,msg.point_step,msg.row_step) == (1,len(msg.data)//16,16,len(msg.data))
++            assert not msg.is_dense and not msg.is_bigendian
++        for ns in [0, 2000000000, 2100000000]:
++            message = Clock(); message.clock.sec, message.clock.nanosec = divmod(ns,1000000000)
++            clock.publish(message); assert spin_until(lambda: producer.gate._last_ns == ns)
++        assert spin_until(lambda: all(len(x)==2 for x in received.values()))
++        assert all((x[-1].header.stamp.sec,x[-1].header.stamp.nanosec)==(2,100000000) for x in received.values())
++    finally:
++        if executor: executor.shutdown()
++        if producer: producer.destroy_node()
++        if observer: observer.destroy_node()
++        rclpy.shutdown()
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_bridge/test/test_terrain_profile.py v203/src/lite3_nav2_bridge/test/test_terrain_profile.py
+--- parent-v202/src/lite3_nav2_bridge/test/test_terrain_profile.py	1969-12-31 16:00:00
++++ v203/src/lite3_nav2_bridge/test/test_terrain_profile.py	2026-10-15 01:40:43
+@@ -0,0 +1,58 @@
++import importlib.util
++import json
++import os
++from pathlib import Path
++import xml.etree.ElementTree as ET
++
++import pytest
++import yaml
++from ament_index_python.packages import get_package_share_directory
++from launch import LaunchContext
++from unittest.mock import patch
++from lite3_nav2_bridge.profile import write_profile
++from lite3_nav2_bridge.terrain_bundle import TerrainBundle
++
++MANIFEST = Path(os.environ['TERRAIN_TEST_MANIFEST'])
++NATIVE = Path(os.environ['TERRAIN_NATIVE_CONFIG'])
++
++
++@pytest.mark.parametrize('frame', ['base', 'base_link'])
++def test_profile_retains_scan_geometry_and_removes_map_work(tmp_path, frame):
++    target = tmp_path/'profile.yaml'
++    original = yaml.safe_load(NATIVE.read_text())['scan_planner_node']['ros__parameters']
++    write_profile(target,NATIVE,False,terrain_manifest=MANIFEST,base_frame=frame)
++    data = yaml.safe_load(target.read_text())
++    for name in ['global_costmap','local_costmap']:
++        parameters = data[name][name]['ros__parameters']
++        assert parameters['plugins'] == ['map_shell']
++        assert parameters['map_shell']['enabled'] is False
++        assert parameters['map_shell']['observation_sources'] == ''
++        assert 'terrain_layer' not in parameters and 'inflation_layer' not in parameters
++        assert parameters['update_frequency'] == 1 and parameters['publish_frequency'] == 0
++        assert parameters['robot_base_frame'] == frame and parameters['global_frame'] == 'world'
++        assert parameters['width'] == parameters['height'] == parameters['resolution'] == 1
++    native = yaml.safe_load(target.with_suffix('.scan.yaml').read_text())['scan_planner_node']['ros__parameters']
++    rebound = TerrainBundle(MANIFEST).native_parameters()
++    assert all(native[k] == v for k,v in original.items() if k not in rebound and k != 'use_sim_time')
++    assert all(native[k] == v for k,v in rebound.items())
++    assert data['planner_server']['ros__parameters']['PCT']['map_bundle'] == str(MANIFEST.parent/'route.pct')
++    assert 'recoveries_server' not in data
++    tree = ET.parse(target.with_suffix('.bt.xml'))
++    assert tree.find('.//Wait') is None and tree.find('.//RecoveryNode') is None
++    assert tree.find('.//RateController').get('hz') == '1.0'  # Step 5 is separate.
++    with pytest.raises(ValueError): write_profile(target,NATIVE,False,terrain_manifest=MANIFEST)
++
++
++def test_launch_owns_one_static_publisher_and_no_recovery_server(tmp_path):
++    launch_file = Path(get_package_share_directory('lite3_nav2_bridge'))/'launch/navigation.launch.py'
++    spec = importlib.util.spec_from_file_location('terrain_launch',launch_file)
++    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
++    backend = tmp_path/'backend.json'; backend.write_text('{}')
++    context = LaunchContext()
++    context.launch_configurations.update({'terrain_manifest':str(MANIFEST), 'native_planner_config':str(NATIVE),
++        'generated_params':str(tmp_path/'profile.yaml'), 'backend_config':str(backend),
++        'use_sim_time':'false','base_frame':'base','odom_topic':'/quad_0/body_pose'})
++    with patch.object(module, 'Node', side_effect=lambda **kwargs: kwargs):
++        actions = module.nodes(context)
++    names = [action['executable'] for action in actions]
++    assert names == ['static_terrain','mission_bridge','controller_server','planner_server','bt_navigator','lifecycle_manager']
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_plugins/CMakeLists.txt v203/src/lite3_nav2_plugins/CMakeLists.txt
+--- parent-v202/src/lite3_nav2_plugins/CMakeLists.txt	2026-10-15 00:16:45
++++ v203/src/lite3_nav2_plugins/CMakeLists.txt	2026-10-15 01:27:15
+@@ -15,11 +15,10 @@
+   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+ ament_target_dependencies(pct_route_planner pct_planner)
+ target_link_libraries(pct_route_planner Eigen3::Eigen gtsam)
+-add_library(lite3_nav2_plugins SHARED src/pct_planner.cpp src/terrain_layer.cpp)
++add_library(lite3_nav2_plugins SHARED src/pct_planner.cpp)
+ target_link_libraries(lite3_nav2_plugins pct_route_planner)
+ ament_target_dependencies(lite3_nav2_plugins ${dependencies})
+ pluginlib_export_plugin_description_file(nav2_core plugins.xml)
+-pluginlib_export_plugin_description_file(nav2_costmap_2d layers.xml)
+ install(TARGETS lite3_nav2_plugins pct_route_planner LIBRARY DESTINATION lib)
+ install(DIRECTORY include/ DESTINATION include)
+ if(BUILD_TESTING)
+@@ -32,7 +31,5 @@
+   ament_add_gtest(test_progress_recovery test/test_progress_recovery.cpp TIMEOUT 30)
+   ament_target_dependencies(test_progress_recovery ${dependencies})
+   target_link_libraries(test_progress_recovery /opt/ros/foxy/lib/libnav2_recovery_node_bt_node.so)
+-  ament_add_gtest(test_terrain_layer test/test_terrain_layer.cpp TIMEOUT 30)
+-  ament_target_dependencies(test_terrain_layer ${dependencies})
+ endif()
+ ament_package()
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_plugins/layers.xml v203/src/lite3_nav2_plugins/layers.xml
+--- parent-v202/src/lite3_nav2_plugins/layers.xml	2026-10-14 11:27:53
++++ v203/src/lite3_nav2_plugins/layers.xml	1969-12-31 16:00:00
+@@ -1,5 +0,0 @@
+-<library path="lite3_nav2_plugins">
+- <class name="lite3_nav2/TerrainLayer" type="lite3_nav2::TerrainLayer" base_class_type="nav2_costmap_2d::Layer">
+-  <description>Projects completed SCAN evidence into Nav2; does not rebuild the 3D map.</description>
+- </class>
+-</library>
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_plugins/src/terrain_layer.cpp v203/src/lite3_nav2_plugins/src/terrain_layer.cpp
+--- parent-v202/src/lite3_nav2_plugins/src/terrain_layer.cpp	2026-10-14 11:27:53
++++ v203/src/lite3_nav2_plugins/src/terrain_layer.cpp	1969-12-31 16:00:00
+@@ -1,74 +0,0 @@
+-#include <cmath>
+-#include <mutex>
+-#include <nav2_costmap_2d/costmap_layer.hpp>
+-#include <nav_msgs/msg/occupancy_grid.hpp>
+-#include <pluginlib/class_list_macros.hpp>
+-
+-namespace lite3_nav2 {
+-class TerrainLayer : public nav2_costmap_2d::CostmapLayer {
+-  std::mutex mutex_;
+-  nav_msgs::msg::OccupancyGrid::ConstSharedPtr latest_;
+-  rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr subscription_;
+-  std::string frame_, base_;
+-  bool fresh(const nav_msgs::msg::OccupancyGrid &grid) const {
+-    const auto age = (node_->now() - rclcpp::Time(grid.header.stamp)).seconds();
+-    return grid.header.stamp.sec >= 0 && age >= 0.0 && age <= 0.25;
+-  }
+-public:
+-  void onInitialize() override {
+-    frame_ = layered_costmap_->getGlobalFrameID();
+-    declareParameter("topic", rclcpp::ParameterValue("/nav2_scan/terrain_slice"));
+-    declareParameter("base_frame", rclcpp::ParameterValue("base_link"));
+-    base_ = node_->get_parameter(name_ + ".base_frame").as_string();
+-    subscription_ = node_->create_subscription<nav_msgs::msg::OccupancyGrid>(
+-      node_->get_parameter(name_ + ".topic").as_string(), rclcpp::QoS(1),
+-      [this](nav_msgs::msg::OccupancyGrid::ConstSharedPtr grid) {
+-        const auto &info = grid->info;
+-        const auto &q = info.origin.orientation;
+-        const uint64_t cells = uint64_t(info.width) * info.height;
+-        if (grid->header.frame_id != frame_ || cells == 0 || cells > 1000000 ||
+-            cells != grid->data.size() || !std::isfinite(info.resolution) || info.resolution <= 0 ||
+-            !std::isfinite(info.origin.position.x) || !std::isfinite(info.origin.position.y) ||
+-            !std::isfinite(info.origin.position.z) || q.x != 0 || q.y != 0 || q.z != 0 || q.w != 1 ||
+-            !fresh(*grid)) return;
+-        for (const auto value : grid->data) if (value < -1 || value > 100) return;
+-        std::lock_guard<std::mutex> lock(mutex_);
+-        if (latest_ && rclcpp::Time(grid->header.stamp) <= rclcpp::Time(latest_->header.stamp)) return;
+-        latest_ = grid;
+-      });
+-    current_ = false;
+-    enabled_ = true;
+-  }
+-  void reset() override { current_ = false; } // Clear-costmap does not erase 3D evidence.
+-  void updateBounds(double x, double y, double, double *min_x, double *min_y,
+-    double *max_x, double *max_y) override {
+-    *min_x = std::min(*min_x, x - 3.0); *min_y = std::min(*min_y, y - 3.0);
+-    *max_x = std::max(*max_x, x + 3.0); *max_y = std::max(*max_y, y + 3.0);
+-    current_ = false;
+-    std::lock_guard<std::mutex> lock(mutex_);
+-    if (!latest_ || !fresh(*latest_)) return;
+-    try {
+-      const auto transform = tf_->lookupTransform(frame_, base_, tf2::TimePointZero);
+-      current_ = std::abs(transform.transform.translation.z - latest_->info.origin.position.z) <= 0.20;
+-    } catch (const tf2::TransformException &) { return; }
+-  }
+-  void updateCosts(nav2_costmap_2d::Costmap2D &master, int min_i, int min_j,
+-    int max_i, int max_j) override {
+-    nav_msgs::msg::OccupancyGrid::ConstSharedPtr grid;
+-    { std::lock_guard<std::mutex> lock(mutex_); grid = latest_; }
+-    if (!current_ || !grid || !fresh(*grid)) { current_ = false; return; }
+-    for (int y = min_j; y < max_j; ++y) for (int x = min_i; x < max_i; ++x) {
+-      double wx, wy; master.mapToWorld(x, y, wx, wy);
+-      const int gx = std::floor((wx - grid->info.origin.position.x) / grid->info.resolution);
+-      const int gy = std::floor((wy - grid->info.origin.position.y) / grid->info.resolution);
+-      if (gx < 0 || gy < 0 || gx >= int(grid->info.width) || gy >= int(grid->info.height)) continue;
+-      const int value = grid->data[gy * grid->info.width + gx];
+-      if (value < 0) continue;
+-      const unsigned char cost = value >= 50 ? nav2_costmap_2d::LETHAL_OBSTACLE : nav2_costmap_2d::FREE_SPACE;
+-      const auto previous = master.getCost(x, y);
+-      if (previous == nav2_costmap_2d::NO_INFORMATION || cost > previous) master.setCost(x, y, cost);
+-    }
+-  }
+-};
+-}
+-PLUGINLIB_EXPORT_CLASS(lite3_nav2::TerrainLayer, nav2_costmap_2d::Layer)
+diff -ruN --exclude=__pycache__ parent-v202/src/lite3_nav2_plugins/test/test_terrain_layer.cpp v203/src/lite3_nav2_plugins/test/test_terrain_layer.cpp
+--- parent-v202/src/lite3_nav2_plugins/test/test_terrain_layer.cpp	2026-10-14 11:27:53
++++ v203/src/lite3_nav2_plugins/test/test_terrain_layer.cpp	1969-12-31 16:00:00
+@@ -1,60 +0,0 @@
+-#include <gtest/gtest.h>
+-#include <chrono>
+-#include <thread>
+-#include <nav2_costmap_2d/layer.hpp>
+-#include <nav2_costmap_2d/layered_costmap.hpp>
+-#include <nav2_util/lifecycle_node.hpp>
+-#include <nav_msgs/msg/occupancy_grid.hpp>
+-#include <geometry_msgs/msg/transform_stamped.hpp>
+-#include <pluginlib/class_loader.hpp>
+-
+-TEST(TerrainLayer, NativeSliceOccupancyExpiryAndFloorMismatch)
+-{
+-  int argc=0; rclcpp::init(argc,nullptr);
+-  auto node=std::make_shared<nav2_util::LifecycleNode>("terrain_layer_test");
+-  auto io=std::make_shared<rclcpp::Node>("terrain_fixture");
+-  tf2_ros::Buffer tf(node->get_clock());
+-  geometry_msgs::msg::TransformStamped transform;
+-  transform.header.frame_id="world"; transform.header.stamp=node->now();
+-  transform.child_frame_id="base_link";
+-  transform.transform.translation.z=0.42; transform.transform.rotation.w=1;
+-  ASSERT_TRUE(tf.setTransform(transform,"fixture",true));
+-  nav2_costmap_2d::LayeredCostmap layers("world",false,true);
+-  layers.resizeMap(60,60,0.1,-3,-3);
+-  pluginlib::ClassLoader<nav2_costmap_2d::Layer> loader("nav2_costmap_2d","nav2_costmap_2d::Layer");
+-  auto layer=loader.createSharedInstance("lite3_nav2/TerrainLayer");
+-  layer->initialize(&layers,"terrain",&tf,node,io,io);
+-  auto pub=io->create_publisher<nav_msgs::msg::OccupancyGrid>("/nav2_scan/terrain_slice",1);
+-  rclcpp::executors::SingleThreadedExecutor executor;
+-  executor.add_node(node->get_node_base_interface()); executor.add_node(io);
+-  const auto spin=[&](int ms) {
+-    auto end=std::chrono::steady_clock::now()+std::chrono::milliseconds(ms);
+-    while(std::chrono::steady_clock::now()<end) {
+-      executor.spin_some(); std::this_thread::sleep_for(std::chrono::milliseconds(2));
+-    }
+-  };
+-  const auto update=[&] {
+-    double minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+-    layer->updateBounds(0,0,0,&minx,&miny,&maxx,&maxy);
+-    layer->updateCosts(*layers.getCostmap(),0,0,60,60);
+-  };
+-  spin(100); update(); EXPECT_FALSE(layer->isCurrent());
+-  nav_msgs::msg::OccupancyGrid grid;
+-  grid.header.frame_id="world"; grid.header.stamp=node->now();
+-  grid.info.width=grid.info.height=60; grid.info.resolution=0.1;
+-  grid.info.origin.position.x=grid.info.origin.position.y=-3;
+-  grid.info.origin.position.z=0.42; grid.info.origin.orientation.w=1;
+-  grid.data.resize(3600,0); grid.data[30*60+40]=100;
+-  pub->publish(grid); spin(30); update();
+-  EXPECT_TRUE(layer->isCurrent());
+-  EXPECT_EQ(layers.getCostmap()->getCost(40,30),nav2_costmap_2d::LETHAL_OBSTACLE);
+-  EXPECT_EQ(layers.getCostmap()->getCost(20,20),nav2_costmap_2d::FREE_SPACE);
+-  spin(270); update(); EXPECT_FALSE(layer->isCurrent());
+-  // Republishing the same old stamp cannot make the layer current.
+-  pub->publish(grid); spin(20); update(); EXPECT_FALSE(layer->isCurrent());
+-  // Fresh evidence from another floor is still inapplicable.
+-  grid.header.stamp=node->now(); grid.info.origin.position.z=2.42;
+-  pub->publish(grid); spin(20); update(); EXPECT_FALSE(layer->isCurrent());
+-  layer.reset(); executor.remove_node(io); executor.remove_node(node->get_node_base_interface());
+-  io.reset(); node.reset(); rclcpp::shutdown();
+-}
+diff -ruN --exclude=__pycache__ parent-v202/src/scan_nav2_controller/CMakeLists.txt v203/src/scan_nav2_controller/CMakeLists.txt
+--- parent-v202/src/scan_nav2_controller/CMakeLists.txt	2026-10-15 01:00:53
++++ v203/src/scan_nav2_controller/CMakeLists.txt	2026-10-15 01:33:16
+@@ -25,6 +25,13 @@
+ ament_export_dependencies(${dependencies})
+ if(BUILD_TESTING)
+   find_package(ament_cmake_gtest REQUIRED)
++  ament_add_gtest(test_map_shell test/test_map_shell.cpp TIMEOUT 12)
++  target_link_libraries(test_map_shell scan_nav2_controller)
++  ament_target_dependencies(test_map_shell ${dependencies})
++  ament_add_gtest(test_static_support test/test_static_support.cpp TIMEOUT 15)
++  target_compile_options(test_static_support PRIVATE -fno-access-control)
++  target_link_libraries(test_static_support scan_nav2_controller)
++  ament_target_dependencies(test_static_support ${dependencies})
+   ament_add_gtest(test_motion_exchange test/test_motion_exchange.cpp TIMEOUT 10)
+   target_link_libraries(test_motion_exchange scan_nav2_controller)
+   ament_target_dependencies(test_motion_exchange ${dependencies})
+diff -ruN --exclude=__pycache__ parent-v202/src/scan_nav2_controller/README.md v203/src/scan_nav2_controller/README.md
+--- parent-v202/src/scan_nav2_controller/README.md	2026-10-15 01:06:27
++++ v203/src/scan_nav2_controller/README.md	2026-10-15 01:40:43
+@@ -33,7 +33,7 @@
+ ros2 launch lite3_nav2_bridge navigation.launch.py \
+   native_planner_config:=/absolute/native.yaml \
+   backend_config:=/absolute/backend_config.json \
+-  pct_map_bundle:=/absolute/map.pct \
++  terrain_manifest:=/absolute/terrain/terrain.json \
+   generated_params:=/absolute/new-profile.yaml \
+   odom_topic:=/quad_0/body_pose
+ ```
+@@ -49,3 +49,9 @@
+ Source the v198 interface (included in this component build) and run the v198
+ bridge/producer for typed physical execution feedback. The v196 bridge cannot
+ produce that new message.
++
++In v203 the 2D terrain-slice publisher and timer are removed. Default Nav2
++costmaps have no active layers, one cell, 1 Hz lifecycle updates and no grid publication.
++SCAN's 3D occupancy, inflation, geometry and support checks remain unchanged.
++The unified terrain manifest binds PCT input and three distinct static cloud
++roles; one `static_terrain` process publishes those clouds. See v203/BUILD.md.
+diff -ruN --exclude=__pycache__ parent-v202/src/scan_nav2_controller/config/controller.yaml v203/src/scan_nav2_controller/config/controller.yaml
+--- parent-v202/src/scan_nav2_controller/config/controller.yaml	2026-10-15 01:05:50
++++ v203/src/scan_nav2_controller/config/controller.yaml	2026-10-15 01:40:43
+@@ -36,11 +36,15 @@
+       global_frame: world
+       robot_base_frame: base_link
+       rolling_window: true
+-      width: 6
+-      height: 6
+-      resolution: 0.1
+-      update_frequency: 5.0
+-      publish_frequency: 1.0
+-      plugins: [inflation_layer]
+-      inflation_layer:
+-        plugin: nav2_costmap_2d::InflationLayer
++      width: 1
++      height: 1
++      resolution: 1.0
++      update_frequency: 1.0
++      publish_frequency: 0.0
++      # Foxy needs a typed nonempty plugin array; this layer performs no work.
++      plugins: [map_shell]
++      map_shell:
++        plugin: nav2_costmap_2d::ObstacleLayer
++        enabled: false
++        observation_sources: ""
++        footprint_clearing_enabled: false
+diff -ruN --exclude=__pycache__ parent-v202/src/scan_nav2_controller/src/local_motion.cpp v203/src/scan_nav2_controller/src/local_motion.cpp
+--- parent-v202/src/scan_nav2_controller/src/local_motion.cpp	2026-10-15 01:00:53
++++ v203/src/scan_nav2_controller/src/local_motion.cpp	2026-10-15 01:27:15
+@@ -7,7 +7,6 @@
+ #include <rcl_yaml_param_parser/parser.h>
+ #include <plan_manage/scan_replan_fsm.h>
+ #include <nav2_core/exceptions.hpp>
+-#include <nav_msgs/msg/occupancy_grid.hpp>
+ 
+ namespace scan_nav2_controller
+ {
+@@ -49,8 +48,6 @@
+       exchange_->publish(current_generation_,spline);
+     };
+     planner_->init(node_.get(),work_group_,std::move(direct));
+-    terrain_pub_=node_->create_publisher<nav_msgs::msg::OccupancyGrid>("/nav2_scan/terrain_slice",1);
+-    terrain_timer_=node_->create_wall_timer(std::chrono::milliseconds(100),[this] { publishTerrain(); },work_group_);
+     // Foxy schedules /clock in the default callback group. Keep native data and
+     // planning serialized, while its real ROS clock can progress during a solve.
+     if (isolated_clock)
+@@ -83,43 +80,6 @@
+   }
+   std::shared_ptr<MotionExchange> exchange_;
+   uint64_t current_generation_{0},input_revision_{0},reset_revision_{0};
+-  void publishTerrain() {
+-    auto map=planner_->nav2Map();
+-    if (!map || !map->mapperHealthy()) return;
+-    // Acquire a completed immutable revision, then immediately release the
+-    // publication lock before reading any cells. This callback shares the native
+-    // executor, so it cannot race another planner read-state update.
+-    { auto lease=map->beginPublication(); }
+-    const double stamp=map->observationStamp();
+-    if (!std::isfinite(stamp) || stamp<=0 || stamp<=terrain_stamp_) return;
+-    Eigen::Vector3d body;
+-    if (!planner_->nav2BodyPosition(body)) return;
+-    nav_msgs::msg::OccupancyGrid grid;
+-    grid.header.frame_id="world";
+-    grid.header.stamp=rclcpp::Time(static_cast<int64_t>(stamp*1e9));
+-    grid.info.resolution=map->getResolution();
+-    grid.info.width=grid.info.height=static_cast<uint32_t>(std::ceil(6.0/grid.info.resolution));
+-    grid.info.origin.position.x=body.x()-3.0;
+-    grid.info.origin.position.y=body.y()-3.0;
+-    grid.info.origin.position.z=body.z(); // Body-height slice; not a ground-height claim.
+-    grid.info.origin.orientation.w=1.0;
+-    grid.data.resize(grid.info.width*grid.info.height,-1);
+-    for (unsigned y=0;y<grid.info.height;++y) for (unsigned x=0;x<grid.info.width;++x) {
+-      bool known=true,occupied=false;
+-      for (double dz=-0.15;dz<=0.15+1e-6;dz+=grid.info.resolution) {
+-        Eigen::Vector3d point(grid.info.origin.position.x+(x+0.5)*grid.info.resolution,
+-          grid.info.origin.position.y+(y+0.5)*grid.info.resolution,body.z()+dz);
+-        if (!map->isInMap(point) || map->isUnknown(point)) { known=false; continue; }
+-        occupied=occupied || map->getOccupancy(point)>0;
+-      }
+-      grid.data[y*grid.info.width+x]=occupied?100:(known?0:-1);
+-    }
+-    terrain_stamp_=stamp;
+-    terrain_pub_->publish(grid);
+-  }
+-  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr terrain_pub_;
+-  rclcpp::TimerBase::SharedPtr terrain_timer_;
+-  double terrain_stamp_{0.0};
+   rclcpp::Node::SharedPtr node_;
+   rclcpp::CallbackGroup::SharedPtr work_group_;
+   std::unique_ptr<scan_planner::SCANReplanFSM> planner_;
+diff -ruN --exclude=__pycache__ parent-v202/src/scan_nav2_controller/test/test_controller.cpp v203/src/scan_nav2_controller/test/test_controller.cpp
+--- parent-v202/src/scan_nav2_controller/test/test_controller.cpp	2026-10-15 01:05:50
++++ v203/src/scan_nav2_controller/test/test_controller.cpp	2026-10-15 01:33:16
+@@ -335,7 +335,7 @@
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
+   EXPECT_FALSE(actual->motion_->has_active_plan_);
+   EXPECT_FALSE(actual->motion_->waiting_for_spline_);
+-  
++
+   plan();
+   actual->motion_->waiting_for_spline_=false;
+   plugin->setPlan(route);
+@@ -349,11 +349,11 @@
+   moving();
+   auto next=std::make_shared<sm::Bspline>(curve());next->traj_id=2;
+   for(auto &p:next->pos_pts)p.x+=1;
+-  
++
+   injectSpline(next);
+   EXPECT_EQ(actual->motion_->tracker_->traj_id_,2);
+   EXPECT_FALSE(actual->motion_->waiting_for_spline_);
+-  
++
+   EXPECT_GT(plugin->computeVelocityCommands(pose(),{}).twist.linear.x,0);
+ }
+ TEST_F(PluginTest, EmergencySplineClearsAndReturnsZeroThenAcceptsReplacement)
+@@ -362,11 +362,11 @@
+   auto message=std::make_shared<sm::Bspline>(curve());message->emergency_stop=true;
+   actual->motion_->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(60);
+   actual->motion_->tracker_->goal_position_latched_=true;
+-  
++
+   injectSpline(message);
+   EXPECT_TRUE(actual->motion_->waiting_for_spline_);
+   EXPECT_FALSE(actual->motion_->tracker_->goal_position_latched_);
+-  
++
+   EXPECT_LT((parent->now()-actual->motion_->waiting_for_spline_since_).seconds(),1.0);
+   EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
+   const auto waiting=actual->motion_->waiting_for_spline_since_;
+@@ -541,6 +541,7 @@
+   for (int cycle=0;cycle<3;++cycle) {
+   plugin->activate();
+   ASSERT_TRUE(wait([&]{return actual->motion_->route_pub_->get_subscription_count()==1;}));
++  EXPECT_EQ(io->count_publishers("/nav2_scan/terrain_slice"),0u);
+   const auto names=io->get_node_names();
+   EXPECT_NE(std::find(names.begin(),names.end(),"/quad_0/scan_planner_node"),names.end());
+   plan();
+diff -ruN --exclude=__pycache__ parent-v202/src/scan_nav2_controller/test/test_map_shell.cpp v203/src/scan_nav2_controller/test/test_map_shell.cpp
+--- parent-v202/src/scan_nav2_controller/test/test_map_shell.cpp	1969-12-31 16:00:00
++++ v203/src/scan_nav2_controller/test/test_map_shell.cpp	2026-10-15 01:40:43
+@@ -0,0 +1,42 @@
++#include <gtest/gtest.h>
++#include <nav2_costmap_2d/costmap_2d_ros.hpp>
++#include <nav2_util/node_thread.hpp>
++#include <lifecycle_msgs/msg/state.hpp>
++#include <geometry_msgs/msg/transform_stamped.hpp>
++#include <cstdlib>
++
++class MapShellTest : public ::testing::Test {
++protected:
++  static void SetUpTestCase() {
++    const char *args[]={"map_shell_test","--ros-args","--params-file",std::getenv("TERRAIN_TEST_PROFILE")};
++    rclcpp::init(4,args);
++  }
++  static void TearDownTestCase() {rclcpp::shutdown();}
++};
++
++TEST_F(MapShellTest, BothMapShellsActivateWithTfAndDisabledInputFreeLayer)
++{
++  for(const char *name:{"local_costmap","global_costmap"}) {
++    auto map=std::make_shared<nav2_costmap_2d::Costmap2DROS>(name);
++    nav2_util::NodeThread executor(map);
++    EXPECT_EQ(map->get_parameter("plugins").as_string_array(),std::vector<std::string>{"map_shell"});
++    map->configure();
++    ASSERT_EQ(map->get_current_state().id(),lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE);
++    ASSERT_EQ(map->getLayeredCostmap()->getPlugins()->size(),1u);
++    EXPECT_FALSE(map->get_parameter("map_shell.enabled").as_bool());
++    EXPECT_TRUE(map->get_parameter("map_shell.observation_sources").as_string().empty());
++    EXPECT_EQ(map->getCostmap()->getSizeInCellsX(),1u);
++    EXPECT_EQ(map->getCostmap()->getSizeInCellsY(),1u);
++    geometry_msgs::msg::TransformStamped tf;
++    tf.header.frame_id="world";tf.child_frame_id="base";tf.header.stamp=map->now();
++    tf.transform.rotation.w=1;
++    ASSERT_TRUE(map->getTfBuffer()->setTransform(tf,"fixture",true));
++    map->activate();
++    EXPECT_EQ(map->get_current_state().id(),lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE);
++    EXPECT_TRUE(map->isCurrent());
++    geometry_msgs::msg::PoseStamped pose;EXPECT_TRUE(map->getRobotPose(pose));
++    EXPECT_EQ(pose.header.frame_id,"world");
++    EXPECT_DOUBLE_EQ(map->get_parameter("publish_frequency").as_double(),0.0);
++    map->deactivate();map->cleanup();
++  }
++}
+diff -ruN --exclude=__pycache__ parent-v202/src/scan_nav2_controller/test/test_static_support.cpp v203/src/scan_nav2_controller/test/test_static_support.cpp
+--- parent-v202/src/scan_nav2_controller/test/test_static_support.cpp	1969-12-31 16:00:00
++++ v203/src/scan_nav2_controller/test/test_static_support.cpp	2026-10-15 01:33:16
+@@ -0,0 +1,45 @@
++#include <gtest/gtest.h>
++#include <plan_manage/scan_replan_fsm.h>
++#include <fstream>
++#include <cstdlib>
++
++TEST(StaticSupport, NativeDecoderRetainsAllThreeRolesAndNegativeGapMask)
++{
++  int argc=0;rclcpp::init(argc,nullptr);
++  {
++    rclcpp::NodeOptions options;options.use_global_arguments(false);
++    options.arguments({"--ros-args","--params-file",std::getenv("TERRAIN_NATIVE_PROFILE")});
++    auto node=std::make_shared<rclcpp::Node>("scan_planner_node",options);
++    scan_planner::SCANReplanFSM planner;planner.init(node.get());
++    auto map=planner.nav2Map();ASSERT_NE(map,nullptr);
++    const std::string folder=std::getenv("TERRAIN_TEST_DIRECTORY");
++    auto cloud=[&](const std::string &name) {
++      auto msg=std::make_shared<sensor_msgs::msg::PointCloud2>();
++      std::ifstream file(folder+"/"+name+".f32",std::ios::binary);
++      msg->data.assign(std::istreambuf_iterator<char>(file),{});
++      msg->header.frame_id="world";msg->header.stamp=rclcpp::Time(10,0);
++      msg->height=1;msg->width=msg->data.size()/16;msg->point_step=16;msg->row_step=msg->data.size();
++      for(const char *field:{"x","y","z","intensity"}) {
++        sensor_msgs::msg::PointField f;f.name=field;f.offset=msg->fields.size()*4;f.datatype=f.FLOAT32;f.count=1;msg->fields.push_back(f);
++      }
++      return msg;
++    };
++    auto navigation=map->decodeReactiveGround(cloud("navigation"));
++    auto surface=map->decodeReactiveGround(cloud("surface"));
++    auto physical=map->decodePhysicalFloor(cloud("physical_floor"));
++    EXPECT_EQ(navigation.source_id,"pct_tomogram/fnv64/5659108921681646177");
++    EXPECT_EQ(surface.source_id,"pct_tomogram/fnv64/14798634034717650828");
++    EXPECT_EQ(physical.source_id,"pct_physical_floor/fnv64/3260540598421060437");
++    auto layers=[](const auto &snapshot) {size_t count=0;for(const auto &entry:snapshot.cells) count+=entry.second.size();return count;};
++    EXPECT_EQ(layers(navigation),86775u);EXPECT_EQ(layers(surface),126659u);EXPECT_EQ(layers(physical),150500u);
++    EXPECT_DOUBLE_EQ(physical.origin_x_m,-7.795314598083496);
++    EXPECT_DOUBLE_EQ(physical.origin_y_m,-9.436811256408692);
++    EXPECT_DOUBLE_EQ(physical.resolution_m,0.1);
++    auto mask=map->mapState().mp_.support_gap_mask_;ASSERT_NE(mask,nullptr);
++    std::ifstream gaps(folder+"/support_gap.txt");double x,y,z;gaps>>x>>y>>z;
++    EXPECT_TRUE(mask->blocks(x,y,z));EXPECT_FALSE(mask->blocks(x,y,100.0));
++    EXPECT_DOUBLE_EQ(map->mapState().mp_.double_cylinder_radius_,0.35);
++    EXPECT_DOUBLE_EQ(map->mapState().mp_.double_cylinder_offset_,0.18);
++  }
++  rclcpp::shutdown();
++}
+--- .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/native_graph.py	2026-10-14 05:36:55
++++ .pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v203/native_graph.py	2026-10-15 01:34:55
+@@ -9,6 +9,7 @@
+ import time
+ 
+ VERSION = Path(__file__).resolve().parent
++BASELINE = VERSION.parent / "v196"
+ BASE = VERSION.parents[1]
+ sys.path.insert(0, str(BASE / "references"))
+ from archived_pilot_driver import get_json
+@@ -17,19 +18,19 @@
+ def main():
+     parser = argparse.ArgumentParser()
+     parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--terrain-manifest", type=Path, required=True)
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v196":
+-        raise ValueError("v196 graph requires the frozen v196 integration identity")
++    if request.get("integration_version") != "v203":
++        raise ValueError("v203 graph requires the v203 integration identity")
+     if request.get("applied_transport") != "shared":
+-        raise ValueError("v196 requires shared applied-state storage")
+-    contract = json.loads((VERSION / "navigation_contract.json").read_text())
++        raise ValueError("v203 requires shared applied-state storage")
++    contract = json.loads((BASELINE / "navigation_contract.json").read_text())
+     variant = request["native_variant"]
+     if variant != "candidate":
+-        raise ValueError("v196 requires the Option B candidate")
++        raise ValueError("v203 requires the Option B candidate")
+     epoch = request["run_epoch_ns"]
+-    sources = BASE / "runtime_sources"
+     cfg = BASE / "config_archived"
+     py = sys.executable
+     children, handles = [], []
+@@ -49,53 +50,26 @@
+         commands[name] = command
+         children.append((name, subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)))
+ 
++    if request.get("scene") != "building_full" or not request.get("geometry_obstacles", False):
++        raise ValueError("v203 graph supports the current Building geometry-sensor profile")
++    terrain_manifest = args.terrain_manifest.resolve(strict=True)
++
+     try:
+-        launch("frequency_observer", [py, str(VERSION / "frequency_observer.py"), "--output", str(out)])
++        launch("frequency_observer", [py, str(BASELINE / "frequency_observer.py"), "--output", str(out)])
+         launch("clock_responder", [py, str(BASE / "scripts/clock_sync.py"), "--port", "24602"])
+-        flat = request.get("scene") in ("flat_static", "flat_box", "flat_empty_long")
+-        long_route = request.get("scene") == "flat_empty_long"
+-        map_path = (BASE / "repairs/2026-09-26_generic_occupancy/flat_inputs_v2/flat_floor.pickle"
+-                    if flat else BASE / "inputs/new_building.pickle")
+-        pct_script = str(BASE / "repairs/2026-09-26_generic_occupancy/flat_support_publisher.py"
+-                         if flat else sources / "bridge/lite3_sim_bridge/pct_sim_clock_publisher.py")
+-        if long_route:
+-            map_path = BASE / "repairs/2026-09-27_pd_long_route/inputs/flat_floor.pickle"
+-            pct_script = str(BASE / "scripts/long_support_publisher.py")
+-        route_map = map_path
+-        if variant in ("baseline", "candidate"):
+-            if flat:
+-                raise ValueError("Static coverage correction is Building-only")
+-            record = json.loads((VERSION / "global_map_input.json").read_text())
+-            route_map = Path(record["file"])
+-            if hashlib.sha256(route_map.read_bytes()).hexdigest() != record["map_sha256"]:
+-                raise ValueError("Global coverage map identity mismatch")
+-        (out / "selected_route_map.json").write_text(json.dumps({
+-            "variant": variant, "path": str(route_map),
+-            "sha256": hashlib.sha256(route_map.read_bytes()).hexdigest()}, indent=2) + "\n")
+-        ground_args = [py, pct_script, "--ros-args", "-p", "map_path:=" + str(map_path), "-p", "use_sim_time:=true"]
+-        if not flat:
+-            ground_args += ["-p", "elevation_path:=" + str(BASE / "inputs/new_building_original_precision.npz")]
+-        launch("pct_support", ground_args)
+-        if not flat:
+-            launch("pct_physical_floor", [py, str(VERSION / "physical_floor_publisher.py"), "--ros-args", "-p", "use_sim_time:=true"])
+-            launch("pct_surface_ground", ground_args + [
+-                "-r", "__node:=pct_surface_ground_publisher",
+-                "-p", "ground_mode:=surface_evidence",
+-                "-p", "dense_surface_path:=" + str(BASE / "inputs/new_building_dense_surface.npy")])
+-        if not request.get("geometry_obstacles", False):
+-            launch("tracking_ground", [py, pct_script, "--ros-args", "-r", "__node:=pct_tracking_ground_publisher",
+-                  "-p", "map_path:=" + str(BASE / "inputs/new_building.pickle"), "-p", "ground_mode:=tracking_physical", "-p", "use_sim_time:=true"])
+-        if not request.get("geometry_obstacles", False):
+-            launch("tracker", ["ros2", "run", "scan_reactive_tracker", "moving_cluster_tracker", "--ros-args", "-p", "use_sim_time:=true",
+-                  "-p", "static_background_pcd:=" + str(BASE / "inputs/static_background/building2_9.pcd")])
+-        launch("health", [py, str(VERSION / "native_observer.py"), "--output", str(out / "artifacts/runtime_health.json"),
++        # navigation.launch.py owns the one static publisher and all map bindings.
++        (out / "selected_terrain.json").write_text(json.dumps({
++            "manifest": str(terrain_manifest),
++            "sha256": hashlib.sha256(terrain_manifest.read_bytes()).hexdigest()}, indent=2) + "\n")
++        launch("health", [py, str(BASELINE / "native_observer.py"), "--output", str(out / "artifacts/runtime_health.json"),
+               "--run-id", out.name, "--epoch", str(epoch), "--ros-args", "-p", "use_sim_time:=true"])
+-        launch("body_tf", [py, str(VERSION / "body_tf_bridge.py"), "--ros-args", "-p", "use_sim_time:=true"])
+-        launch("bridge", [py, "-c", "from lite3_sim_bridge.foxy_bridge_node import main; main()", "--ros-args", "--params-file", str(cfg / "bridge.yaml"),
++        launch("body_tf", [py, str(BASELINE / "body_tf_bridge.py"), "--ros-args", "-p", "use_sim_time:=true"])
++        launch("bridge", [py, "-c", "import sys; sys.path.insert(0, sys.argv.pop(1)); from lite3_sim_bridge.foxy_bridge_node import main; main()",
++              str(VERSION.parent / "v198/runtime/bridge"), "--ros-args", "--params-file", str(cfg / "bridge.yaml"),
+               "-p", "telemetry_host:=host.docker.internal", "-p", "telemetry_port:=24600",
+               "-p", "command_host:=host.docker.internal", "-p", "command_port:=24601",
+               "-p", "scan_audit_path:=" + str(out / "bridge_scan_audit.jsonl")])
+-        backend = json.loads((VERSION / "mission_bridge_input.json").read_text())
++        backend = json.loads((BASELINE / "mission_bridge_input.json").read_text())
+         backend.update(run_id=out.name, run_epoch_ns=epoch)
+         if variant in ("baseline", "candidate"):
+             backend["map"].update(epoch="stair_reactive_coverage_v135", revision=1)
+@@ -115,7 +89,7 @@
+               "native_planner_config:=" + str(out / "planner.yaml"),
+               "backend_config:=" + str(out / "backend_config.json"),
+               "generated_params:=" + str(out / "nav2_params.yaml"),
+-              "pct_map:=" + str(route_map),
++              "terrain_manifest:=" + str(terrain_manifest),
+               "use_sim_time:=true", "base_frame:=base",
+               "odom_topic:=/quad_0/body_pose"])
+         if not request["probe"]:
+@@ -123,7 +97,7 @@
+                       if request.get("geometry_obstacles", False) else BASE / "references/archived_pilot_driver.py")
+             if request.get("startup_mode", "policy") == "pd_stand":
+                 driver = out / "executed_pd_geometry_driver.py"
+-            if long_route or request.get("scene") == "building_full":
++            if request.get("scene") == "building_full":
+                 driver = out / "executed_long_route_driver.py"
+             launch("driver", [py, str(driver),
+                                "--run-root", str(out), "--run-id", out.name, "--http-port", "8785"])

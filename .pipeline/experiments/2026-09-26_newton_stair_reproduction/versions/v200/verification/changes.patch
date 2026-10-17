@@ -1,0 +1,735 @@
+--- parent/src/lite3_nav2_bridge/CMakeLists.txt
++++ v200/src/lite3_nav2_bridge/CMakeLists.txt
+@@ -6,6 +6,11 @@
+ install(PROGRAMS scripts/mission_bridge DESTINATION lib/${PROJECT_NAME})
+ install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
+ if(BUILD_TESTING)
++  find_package(ament_cmake_gtest REQUIRED)
++  find_package(behaviortree_cpp_v3 REQUIRED)
++  ament_add_gtest(test_terminal_tree test/test_terminal_tree.cpp TIMEOUT 10)
++  ament_target_dependencies(test_terminal_tree behaviortree_cpp_v3)
++  target_compile_definitions(test_terminal_tree PRIVATE NAVIGATION_TREE="${CMAKE_CURRENT_SOURCE_DIR}/config/navigate.xml")
+   find_package(ament_cmake_pytest REQUIRED)
+   ament_add_pytest_test(test_mission_bridge test/test_mission_bridge.py TIMEOUT 60)
+ endif()
+--- parent/src/lite3_nav2_bridge/config/navigate.xml
++++ v200/src/lite3_nav2_bridge/config/navigate.xml
+@@ -1,13 +1,10 @@
+ <root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+-  <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+    <PipelineSequence name="NavigateWithReplanning">
+     <RateController hz="1.0">
+     <ComputePathToPose goal="{goal}" path="{path}" planner_id="PCT" server_name="/compute_path_to_pose" server_timeout="1000"/>
+     </RateController>
+     <FollowPath path="{path}" controller_id="SCAN" server_name="/follow_path" server_timeout="1000"/>
+    </PipelineSequence>
+-   <Wait wait_duration="1" server_name="/wait" server_timeout="1000"/>
+-  </RecoveryNode>
+  </BehaviorTree>
+ </root>
+--- parent/src/lite3_nav2_bridge/package.xml
++++ v200/src/lite3_nav2_bridge/package.xml
+@@ -15,5 +15,6 @@
+  <exec_depend>launch</exec_depend><exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <test_depend>ament_cmake_pytest</test_depend><test_depend>python3-pytest</test_depend>
++ <test_depend>ament_cmake_gtest</test_depend><test_depend>behaviortree_cpp_v3</test_depend>
+  <export><build_type>ament_cmake</build_type></export>
+ </package>
+--- parent/src/lite3_nav2_bridge/test/test_mission_bridge.py
++++ v200/src/lite3_nav2_bridge/test/test_mission_bridge.py
+@@ -332,10 +332,10 @@
+     assert tree.getroot().find('.//PipelineSequence').attrib['name'] == 'NavigateWithReplanning'
+     assert tree.getroot().find('.//ComputePathToPose').attrib['planner_id'] == 'PCT'
+     assert tree.getroot().find('.//FollowPath').attrib['controller_id'] == 'SCAN'
+-    assert tree.getroot().find('.//Wait').attrib['wait_duration'] == '1'
+-    assert tree.getroot().find('.//RecoveryNode').attrib == dict(number_of_retries='6', name='NavigateRecovery')
++    assert tree.getroot().find('.//Wait') is None
++    assert tree.getroot().find('.//RecoveryNode') is None
+     assert tree.getroot().find('.//MeasuredProgressRecovery') is None
+-    assert tree.getroot().find('.//Wait').attrib['server_name'] == '/wait'
++
+ 
+ 
+ def test_navigation_launch_assigns_command_topic_to_server(tmp_path):
+@@ -366,15 +366,15 @@
+     import xml.etree.ElementTree as ET
+     root = ET.parse(FilePath(__file__).parents[1] / 'config/navigate.xml').getroot()
+     recovery = root.find('.//RecoveryNode')
+-    assert recovery.attrib == {'number_of_retries': '6', 'name': 'NavigateRecovery'}
+-    pipeline = recovery.find('PipelineSequence')
++    assert recovery is None
++    pipeline = root.find('.//PipelineSequence')
+     assert pipeline.get('name') == 'NavigateWithReplanning'
+     rate = pipeline.find('RateController')
+     assert rate.attrib == {'hz': '1.0'}
+     assert rate.find('ComputePathToPose').attrib == dict(goal='{goal}', path='{path}',
+         planner_id='PCT', server_name='/compute_path_to_pose', server_timeout='1000')
+     assert pipeline.find('FollowPath').get('controller_id') == 'SCAN'
+-    assert recovery.find('Wait').get('wait_duration') == '1'
++    assert root.find('.//Wait') is None
+ 
+ 
+ @pytest.mark.parametrize('failure', ['no_route', 'short', 'heights', 'nonfinite', 'disconnected'])
+--- parent/src/lite3_nav2_bridge/test/test_terminal_tree.cpp
++++ v200/src/lite3_nav2_bridge/test/test_terminal_tree.cpp
+@@ -0,0 +1,42 @@
++#include <gtest/gtest.h>
++#include <behaviortree_cpp_v3/bt_factory.h>
++
++namespace
++{
++int plans=0, follows=0;
++class Plan : public BT::SyncActionNode
++{
++public:
++  Plan(const std::string &name,const BT::NodeConfiguration &config): SyncActionNode(name,config) {}
++  static BT::PortsList providedPorts() {
++    return {BT::InputPort<std::string>("goal"),BT::OutputPort<std::string>("path"),
++      BT::InputPort<std::string>("planner_id"),BT::InputPort<std::string>("server_name"),
++      BT::InputPort<std::string>("server_timeout")};
++  }
++  BT::NodeStatus tick() override {++plans;setOutput("path",std::string("fixed"));return BT::NodeStatus::SUCCESS;}
++};
++class Follow : public BT::SyncActionNode
++{
++public:
++  Follow(const std::string &name,const BT::NodeConfiguration &config): SyncActionNode(name,config) {}
++  static BT::PortsList providedPorts() {
++    return {BT::InputPort<std::string>("path"),BT::InputPort<std::string>("controller_id"),
++      BT::InputPort<std::string>("server_name"),BT::InputPort<std::string>("server_timeout")};
++  }
++  BT::NodeStatus tick() override {++follows;return BT::NodeStatus::FAILURE;}
++};
++}
++
++TEST(TerminalTree, FollowFailureExitsImmediatelyWithoutWaitOrRouteReplay)
++{
++  plans=0;follows=0;
++  BT::BehaviorTreeFactory factory;
++  factory.registerFromPlugin("/opt/ros/foxy/lib/libnav2_pipeline_sequence_bt_node.so");
++  factory.registerFromPlugin("/opt/ros/foxy/lib/libnav2_rate_controller_bt_node.so");
++  factory.registerNodeType<Plan>("ComputePathToPose");
++  factory.registerNodeType<Follow>("FollowPath");
++  auto blackboard=BT::Blackboard::create();blackboard->set("goal",std::string("target"));
++  auto tree=factory.createTreeFromFile(NAVIGATION_TREE,blackboard);
++  EXPECT_EQ(tree.tickRoot(),BT::NodeStatus::FAILURE);
++  EXPECT_EQ(plans,1);EXPECT_EQ(follows,1);
++}
+--- parent/src/nav2_controller/CMakeLists.txt
++++ v200/src/nav2_controller/CMakeLists.txt
+@@ -82,7 +82,7 @@
+   add_subdirectory(plugins/test)
+   ament_add_gtest(test_command_owner test/test_command_owner.cpp TIMEOUT 30)
+   target_compile_features(test_command_owner PRIVATE cxx_std_17)
+-  target_link_libraries(test_command_owner ${library_name})
++  target_link_libraries(test_command_owner ${library_name} simple_progress_checker)
+   ament_target_dependencies(test_command_owner ${dependencies})
+ endif()
+ 
+--- parent/src/nav2_controller/include/nav2_controller/nav2_controller.hpp
++++ v200/src/nav2_controller/include/nav2_controller/nav2_controller.hpp
+@@ -138,6 +138,7 @@
+    * @brief Calculates velocity and publishes to "cmd_vel" topic
+    */
+   void computeAndPublishVelocity();
++  void checkProgress(geometry_msgs::msg::PoseStamped &pose);
+   /**
+    * @brief Calls setPlannerPath method with an updated path received from
+    * action server
+--- parent/src/nav2_controller/src/nav2_controller.cpp
++++ v200/src/nav2_controller/src/nav2_controller.cpp
+@@ -359,10 +359,6 @@
+     throw nav2_core::PlannerException("Failed to obtain robot pose");
+   }
+ 
+-  if (!progress_checker_->check(pose)) {
+-    throw nav2_core::PlannerException("Failed to make progress");
+-  }
+-
+   nav_2d_msgs::msg::Twist2D twist = getThresholdedTwist(odom_sub_->getTwist());
+ 
+   auto cmd_vel_2d =
+@@ -370,6 +366,8 @@
+     pose,
+     nav_2d_utils::twist2Dto3D(twist));
+ 
++  checkProgress(pose);
++
+   std::shared_ptr<Action::Feedback> feedback = std::make_shared<Action::Feedback>();
+   feedback->speed = std::hypot(cmd_vel_2d.twist.linear.x, cmd_vel_2d.twist.linear.y);
+   feedback->distance_to_goal = nav2_util::geometry_utils::euclidean_distance(end_pose_, pose.pose);
+@@ -377,6 +375,20 @@
+ 
+   RCLCPP_DEBUG(get_logger(), "Publishing velocity at time %.2f", now().seconds());
+   publishVelocity(cmd_vel_2d);
++}
++
++void ControllerServer::checkProgress(geometry_msgs::msg::PoseStamped &pose)
++{
++  // Compute first so the first terminal tick cannot fail on an old movement
++  // deadline. Nothing is published until this check succeeds.
++  auto *execution = dynamic_cast<scan_nav2_controller::ExecutionControl *>(
++    controllers_[current_controller_].get());
++  if (execution && execution->terminalPhase()) {
++    progress_checker_->reset();
++  } else if (!progress_checker_->check(pose)) {
++    throw nav2_core::PlannerException("Failed to make progress");
++  }
++
+ }
+ 
+ void ControllerServer::updateGlobalPath()
+--- parent/src/nav2_controller/test/test_command_owner.cpp
++++ v200/src/nav2_controller/test/test_command_owner.cpp
+@@ -3,6 +3,8 @@
+ #include <scan_nav2_controller/controller.hpp>
+ #include <nav2_core/exceptions.hpp>
+ #include <thread>
++#include <rcl/time.h>
++#include <nav2_controller/plugins/simple_progress_checker.hpp>
+ 
+ using namespace std::chrono_literals;
+ 
+@@ -10,6 +12,11 @@
+ {
+ public:
+   using ControllerServer::publishVelocity;
++  using ControllerServer::checkProgress;
++  void initializeProgress() {
++    progress_checker_=std::make_shared<nav2_controller::SimpleProgressChecker>();
++    progress_checker_->initialize(shared_from_this(), "progress_checker");
++  }
+   using ControllerServer::publishZeroVelocity;
+   void attach(const nav2_core::Controller::Ptr &plugin) {
+     controllers_["SCAN"]=plugin;
+@@ -105,3 +112,26 @@
+   EXPECT_TRUE(received.empty());
+   EXPECT_THROW(plugin->computeVelocityCommands(path.poses.front(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
+ }
++
++TEST_F(OutputTest, TerminalTickExemptsExpiredMovementDeadlineAndLeavingResumesIt)
++{
++  server->initializeProgress();
++  auto clock=server->get_clock();
++  ASSERT_EQ(rcl_enable_ros_time_override(clock->get_clock_handle()),RCL_RET_OK);
++  ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),1000000000LL),RCL_RET_OK);
++  auto near=path.poses.back();near.pose.position.x-=.3;
++  server->checkProgress(near);
++  ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),12000000000LL),RCL_RET_OK);
++  EXPECT_THROW(server->checkProgress(near),nav2_core::PlannerException);
++  auto at=path.poses.back();
++  plugin->computeVelocityCommands(at,geometry_msgs::msg::Twist());
++  ASSERT_TRUE(plugin->terminalPhase());
++  EXPECT_NO_THROW(server->checkProgress(at));
++  // Move just outside tolerance but inside the progress movement radius.
++  plugin->setPlan(path);
++  EXPECT_NO_THROW(plugin->computeVelocityCommands(near,geometry_msgs::msg::Twist()));
++  ASSERT_FALSE(plugin->terminalPhase());
++  EXPECT_NO_THROW(server->checkProgress(near));
++  ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),23000000000LL),RCL_RET_OK);
++  EXPECT_THROW(server->checkProgress(near),nav2_core::PlannerException);
++}
+--- parent/src/scan_nav2_controller/CMakeLists.txt
++++ v200/src/scan_nav2_controller/CMakeLists.txt
+@@ -6,7 +6,7 @@
+ find_package(ament_cmake REQUIRED)
+ find_package(Eigen3 REQUIRED)
+ find_package(Threads REQUIRED)
+-set(dependencies rcl_yaml_param_parser scan_planner nav2_core pluginlib rclcpp rclcpp_lifecycle bspline_opt
++set(dependencies lite3_nav2_interfaces rcl_yaml_param_parser scan_planner nav2_core pluginlib rclcpp rclcpp_lifecycle bspline_opt
+   scan_planner_msgs geometry_msgs nav_msgs std_msgs tf2 tf2_geometry_msgs)
+ foreach(dependency ${dependencies})
+   find_package(${dependency} REQUIRED)
+@@ -25,6 +25,9 @@
+ ament_export_dependencies(${dependencies})
+ if(BUILD_TESTING)
+   find_package(ament_cmake_gtest REQUIRED)
++  ament_add_gtest(test_terminal_completion test/test_terminal_completion.cpp TIMEOUT 10)
++  target_link_libraries(test_terminal_completion scan_nav2_controller)
++  ament_target_dependencies(test_terminal_completion ${dependencies})
+   ament_add_gtest(test_controller test/test_controller.cpp TIMEOUT 60)
+   target_compile_options(test_controller PRIVATE -fno-access-control)
+   target_link_libraries(test_controller scan_nav2_controller)
+--- parent/src/scan_nav2_controller/README.md
++++ v200/src/scan_nav2_controller/README.md
+@@ -11,7 +11,9 @@
+ B-spline becomes available to the tracker immediately. While waiting for the
+ first curve, the controller returns zero velocity and fails after the default
+ 5-second timeout. The goal checker requires goal position and yaw acceptance
+-plus measured stopped velocity. The tracker retains the original cubic spline
++plus measured stopped velocity and two seconds of source-stamped FIXED_STAND
++with PD ownership from `/quad_0/execution_state`. Missing feedback cannot complete
++the task; a separate 10-second terminal deadline aborts it. The tracker retains the original cubic spline
+ phase/feedback calculation and the v189 corner route-lookahead heading behavior.
+ Native mapping, optimization and collision checks remain in SCAN.
+ 
+@@ -36,3 +38,9 @@
+ interfaces, goal checking, malformed inputs, lifecycle, route-heading corner
+ cases and 300 samples of tracking parity. These are component tests, not a
+ simulation or hardware navigation trial.
++
++The v200 tree has no generic outer recovery: FollowPath failure ends the task.
++Movement progress checking resumes when the controller leaves terminal waiting.
++Source the v198 interface (included in this component build) and run the v198
++bridge/producer for typed physical execution feedback. The v196 bridge cannot
++produce that new message.
+--- parent/src/scan_nav2_controller/config/controller.yaml
++++ v200/src/scan_nav2_controller/config/controller.yaml
+@@ -21,6 +21,10 @@
+       route_topic: /pct_path
+       spline_topic: /quad_0/planning/bspline
+       bspline_timeout: 5.0
++      execution_state_topic: /quad_0/execution_state
++      stand_hold_seconds: 2.0
++      stand_timeout_seconds: 10.0
++      execution_max_age_seconds: 0.25
+       goal_xy_tolerance: 0.25
+       goal_z_tolerance: 0.20
+       goal_yaw_tolerance: 0.25
+--- parent/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
++++ v200/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
+@@ -6,6 +6,7 @@
+ #include <nav2_core/goal_checker.hpp>
+ #include <scan_nav2_controller/execution_control.hpp>
+ #include <scan_nav2_controller/tracking_node.hpp>
++#include <scan_nav2_controller/terminal_completion.hpp>
+ 
+ namespace scan_nav2_controller
+ {
+@@ -19,6 +20,7 @@
+   geometry_msgs::msg::Pose goal_pose, pose;
+   geometry_msgs::msg::Twist velocity;
+   double xy_tolerance{0.25}, z_tolerance{0.20}, yaw_tolerance{0.25};
++  TerminalCompletion completion;
+ };
+ 
+ class Controller : public nav2_core::Controller, public ExecutionControl
+@@ -42,9 +44,11 @@
+     const geometry_msgs::msg::PoseStamped &pose,
+     const geometry_msgs::msg::Twist &velocity, nav2_core::GoalChecker *);
+   void stop(const std::string &reason) override;
++  bool terminalPhase() const override;
+ 
+ private:
+   void onSpline(scan_planner_msgs::msg::Bspline::ConstSharedPtr message);
++  void onExecution(lite3_nav2_interfaces::msg::RobotExecutionState::ConstSharedPtr message);
+   void spinBridge();
+   void serviceNativeWork();
+   bool withinGoalPosition(const geometry_msgs::msg::Pose &pose) const;
+@@ -68,6 +72,7 @@
+   rclcpp::Time route_sent_at_{0, 0, RCL_ROS_TIME};
+   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr route_pub_;
+   rclcpp::Subscription<scan_planner_msgs::msg::Bspline>::SharedPtr spline_sub_;
++  rclcpp::Subscription<lite3_nav2_interfaces::msg::RobotExecutionState>::SharedPtr execution_sub_;
+ };
+ 
+ class GoalChecker : public nav2_core::GoalChecker
+@@ -80,5 +85,6 @@
+     const geometry_msgs::msg::Pose &goal, const geometry_msgs::msg::Twist &velocity) override;
+ private:
+   std::shared_ptr<State> state_;
++  rclcpp::Clock::SharedPtr clock_;
+ };
+ }  // namespace scan_nav2_controller
+--- parent/src/scan_nav2_controller/include/scan_nav2_controller/execution_control.hpp
++++ v200/src/scan_nav2_controller/include/scan_nav2_controller/execution_control.hpp
+@@ -10,5 +10,6 @@
+ public:
+   virtual ~ExecutionControl() = default;
+   virtual void stop(const std::string &reason) = 0;
++  virtual bool terminalPhase() const = 0;
+ };
+ }  // namespace scan_nav2_controller
+--- parent/src/scan_nav2_controller/include/scan_nav2_controller/terminal_completion.hpp
++++ v200/src/scan_nav2_controller/include/scan_nav2_controller/terminal_completion.hpp
+@@ -0,0 +1,80 @@
++#pragma once
++
++#include <chrono>
++#include <cmath>
++#include <cstdint>
++#include <lite3_nav2_interfaces/msg/robot_execution_state.hpp>
++
++namespace scan_nav2_controller
++{
++// One terminal window, owned by the controller and queried by GoalChecker.
++// Source time proves physical duration; steady time detects a stalled stream.
++class TerminalCompletion
++{
++public:
++  using Sample = lite3_nav2_interfaces::msg::RobotExecutionState;
++  using Clock = std::chrono::steady_clock;
++  using Time = Clock::time_point;
++  double hold_s{2.0}, timeout_s{10.0}, max_gap_s{0.25};
++
++  void resetGoal() {
++    waiting_=false; holding_=false;
++  }
++  void updatePose(bool within, int64_t simulation_ns, Time now=Clock::now()) {
++    if (!within) { resetGoal(); return; }
++    if (!waiting_) {
++      waiting_=true; holding_=false;
++      entered_sim_ns_=simulation_ns; entered_wall_=now;
++    }
++  }
++  bool waiting() const { return waiting_; }
++  void observe(const Sample &sample, Time now=Clock::now()) {
++    if (has_sample_ && (sample.run_epoch_ns!=epoch_ ||
++        sample.state_sequence<=last_sequence_ || sample.simulation_time_ns<=last_sim_ns_)) return;
++    if (!valid(sample)) { holding_=false; return; }
++    const bool gap=has_sample_ &&
++      (seconds(sample.simulation_time_ns-last_sim_ns_)>max_gap_s ||
++       std::chrono::duration<double>(now-last_wall_).count()>max_gap_s);
++    has_sample_=true; epoch_=sample.run_epoch_ns;
++    last_sequence_=sample.state_sequence; last_sim_ns_=sample.simulation_time_ns; last_wall_=now;
++    if (!waiting_ || sample.simulation_time_ns<static_cast<uint64_t>(entered_sim_ns_) ||
++        sample.stance_mode!=Sample::FIXED_STAND || sample.policy_owns_joints ||
++        !sample.navigation_ready || sample.command_stale || !quiet(sample)) {
++      holding_=false; return;
++    }
++    if (!holding_ || gap) { hold_start_ns_=sample.simulation_time_ns; holding_=true; }
++  }
++  bool ready(int64_t simulation_ns, Time now=Clock::now()) const {
++    return waiting_ && holding_ && simulation_ns>=0 &&
++      static_cast<uint64_t>(simulation_ns)>=last_sim_ns_ &&
++      seconds(static_cast<uint64_t>(simulation_ns)-last_sim_ns_)<=max_gap_s &&
++      std::chrono::duration<double>(now-last_wall_).count()<=max_gap_s &&
++      seconds(last_sim_ns_-hold_start_ns_)>=hold_s;
++  }
++  bool timedOut(Time now=Clock::now()) const {
++    return waiting_ && std::chrono::duration<double>(now-entered_wall_).count()>=timeout_s;
++  }
++
++private:
++  static double seconds(uint64_t ns) { return static_cast<double>(ns)*1e-9; }
++  static double norm(const geometry_msgs::msg::Vector3 &v) {
++    return std::hypot(std::hypot(v.x,v.y),v.z);
++  }
++  static bool finite(const geometry_msgs::msg::Twist &v) {
++    return std::isfinite(v.linear.x) && std::isfinite(v.linear.y) && std::isfinite(v.linear.z) &&
++      std::isfinite(v.angular.x) && std::isfinite(v.angular.y) && std::isfinite(v.angular.z);
++  }
++  static bool valid(const Sample &s) {
++    return s.run_epoch_ns!=0 && s.stance_mode<=Sample::REJOIN &&
++      finite(s.measured_velocity) && finite(s.applied_command);
++  }
++  static bool quiet(const Sample &s) {
++    return norm(s.measured_velocity.linear)<=0.03 && norm(s.measured_velocity.angular)<=0.05 &&
++      norm(s.applied_command.linear)<=1e-6 && norm(s.applied_command.angular)<=1e-6;
++  }
++  bool waiting_{false}, holding_{false}, has_sample_{false};
++  int64_t entered_sim_ns_{0};
++  uint64_t epoch_{0}, last_sequence_{0}, last_sim_ns_{0}, hold_start_ns_{0};
++  Time entered_wall_{}, last_wall_{};
++};
++}  // namespace scan_nav2_controller
+--- parent/src/scan_nav2_controller/package.xml
++++ v200/src/scan_nav2_controller/package.xml
+@@ -8,7 +8,7 @@
+   <buildtool_depend>ament_cmake</buildtool_depend>
+   <depend>rcl_yaml_param_parser</depend>
+   <depend>scan_planner</depend>
+-  <depend>nav2_core</depend>
++  <depend>nav2_core</depend><depend>lite3_nav2_interfaces</depend>
+   <depend>pluginlib</depend>
+   <depend>rclcpp</depend>
+   <depend>rclcpp_lifecycle</depend>
+--- parent/src/scan_nav2_controller/src/controller.cpp
++++ v200/src/scan_nav2_controller/src/controller.cpp
+@@ -175,6 +175,13 @@
+   bspline_timeout_s_=parameter(parent_, name_+".bspline_timeout", 5.0);
+   if (!std::isfinite(bspline_timeout_s_) || bspline_timeout_s_ <= 0.0)
+     throw nav2_core::PlannerException("Invalid SCAN B-spline timeout");
++  state_->completion.hold_s=parameter(parent_, name_+".stand_hold_seconds", 2.0);
++  state_->completion.timeout_s=parameter(parent_, name_+".stand_timeout_seconds", 10.0);
++  state_->completion.max_gap_s=parameter(parent_, name_+".execution_max_age_seconds", 0.25);
++  if (!std::isfinite(state_->completion.hold_s) || state_->completion.hold_s<=0 ||
++      !std::isfinite(state_->completion.timeout_s) || state_->completion.timeout_s<=state_->completion.hold_s ||
++      !std::isfinite(state_->completion.max_gap_s) || state_->completion.max_gap_s<=0)
++    throw nav2_core::PlannerException("Invalid terminal completion timing");
+   native_worker_enabled_=parameter(parent_, name_+".native_worker_enabled", true);
+   const bool use_sim=parameter(parent_, "use_sim_time", false);
+   rclcpp::NodeOptions options;
+@@ -212,6 +219,9 @@
+   spline_sub_=bridge_->create_subscription<scan_planner_msgs::msg::Bspline>(
+     parameter(parent_, name_+".spline_topic", std::string("/quad_0/planning/bspline")), 10,
+     std::bind(&Controller::onSpline, this, std::placeholders::_1));
++  execution_sub_=bridge_->create_subscription<lite3_nav2_interfaces::msg::RobotExecutionState>(
++    parameter(parent_, name_+".execution_state_topic", std::string("/quad_0/execution_state")), 10,
++    std::bind(&Controller::onExecution, this, std::placeholders::_1));
+   executor_=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+   executor_->add_node(bridge_);
+   executor_->add_node(tracker_);
+@@ -241,7 +251,7 @@
+ {
+   if (!parent_) return;
+   deactivate();
+-  executor_.reset(); spline_sub_.reset(); route_pub_.reset();
++  executor_.reset(); spline_sub_.reset(); execution_sub_.reset(); route_pub_.reset();
+   tracker_.reset(); bridge_.reset(); parent_.reset(); state_.reset();
+ }
+ 
+@@ -256,6 +266,7 @@
+   const bool same_goal=has_active_plan_ && state_->has_goal_pose &&
+     state_->goal_pose == path.poses.back().pose;
+   if (!same_goal) {
++    state_->completion.resetGoal();
+     tracker_->clearTrajectory();
+     waiting_for_spline_=true;
+     waiting_for_spline_since_=parent_->now();
+@@ -303,6 +314,22 @@
+   terminal_timeout_started_=false;
+ }
+ 
++void Controller::onExecution(lite3_nav2_interfaces::msg::RobotExecutionState::ConstSharedPtr message)
++{
++  if (!message || message->header.frame_id!=base_frame_ || message->header.stamp.sec<0 ||
++      message->header.stamp.nanosec>=1000000000u ||
++      static_cast<uint64_t>(message->header.stamp.sec)*1000000000ULL+
++        message->header.stamp.nanosec!=message->simulation_time_ns) return;
++  std::lock_guard<std::mutex> lock(state_->mutex);
++  state_->completion.observe(*message);
++}
++bool Controller::terminalPhase() const
++{
++  if (!state_) return false;
++  std::lock_guard<std::mutex> lock(state_->mutex);
++  return state_->active && state_->has_goal_pose && state_->completion.waiting();
++}
++
+ void Controller::spinBridge()
+ {
+   if (executor_) executor_->spin_some();
+@@ -354,7 +381,13 @@
+   state_->stopped=stoppedVelocity(velocity);
+   goal_braking_=withinGoalPosition(pose.pose) && withinGoalYaw(pose.pose, goal_braking_);
+   state_->goal_reached=goal_braking_;
+-  if (state_->goal_reached) return stampedCommand(geometry_msgs::msg::Twist());
++  state_->completion.updatePose(goal_braking_, parent_->now().nanoseconds());
++  if (state_->goal_reached) {
++    if (state_->completion.timedOut() &&
++        !(state_->stopped && state_->completion.ready(parent_->now().nanoseconds())))
++      throw nav2_core::PlannerException("terminal_settle_timeout");
++    return stampedCommand(geometry_msgs::msg::Twist());
++  }
+   if (!tracker_->haveTrajectory()) {
+     if (!waiting_for_spline_) {
+       waiting_for_spline_=true;
+@@ -382,6 +415,7 @@
+   if (!state_) return;
+   std::lock_guard<std::mutex> lock(state_->mutex);
+   has_active_plan_=false;
++  state_->completion.resetGoal();
+   goal_braking_=false;
+   waiting_for_spline_=false;
+   terminal_timeout_started_=false;
+@@ -396,6 +430,7 @@
+   const std::string &name)
+ {
+   state_=sharedState(parent, parameter(parent, name+".controller_plugin", std::string("SCAN")));
++  clock_=parent->get_clock();
+ }
+ void GoalChecker::reset()
+ {
+@@ -408,6 +443,7 @@
+   std::lock_guard<std::mutex> lock(state_->mutex);
+   const auto &g=state_->goal_pose.position;
+   return state_->active && state_->has_goal_pose && state_->goal_reached && state_->stopped &&
++    state_->completion.ready(clock_->now().nanoseconds()) &&
+     finitePose(query) && stoppedVelocity(velocity) &&
+     std::hypot(query.position.x-g.x,query.position.y-g.y)<=state_->xy_tolerance &&
+     std::abs(query.position.z-g.z)<=state_->z_tolerance &&
+--- parent/src/scan_nav2_controller/test/test_controller.cpp
++++ v200/src/scan_nav2_controller/test/test_controller.cpp
+@@ -87,6 +87,24 @@
+     }));
+     EXPECT_EQ(commands->get_publisher_count(),0u);
+     EXPECT_TRUE(received.empty());
++  }
++  void completeStand(const geometry_msgs::msg::PoseStamped &at)
++  {
++    const auto clock=parent->get_clock();
++    const int64_t start=clock->now().nanoseconds();
++    ASSERT_EQ(rcl_enable_ros_time_override(clock->get_clock_handle()),RCL_RET_OK);
++    for(int tick=0;tick<=100;++tick) {
++      const auto stamp=start+tick*20000000LL;
++      ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),stamp),RCL_RET_OK);
++      auto sample=std::make_shared<lite3_nav2_interfaces::msg::RobotExecutionState>();
++      sample->header.frame_id="base_link";sample->header.stamp=parent->now();
++      sample->simulation_time_ns=stamp;sample->state_sequence=tick+1;sample->run_epoch_ns=500;
++      sample->stance_mode=sample->FIXED_STAND;sample->policy_owns_joints=false;
++      sample->navigation_ready=true;
++      actual->onExecution(sample);
++      plugin->computeVelocityCommands(at,geometry_msgs::msg::Twist());
++      if(tick<100) EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,geometry_msgs::msg::Twist()));
++    }
+   }
+   void expiredCornerStub(bool reverse=false)
+   {
+@@ -263,6 +281,8 @@
+   EXPECT_EQ(plugin->computeVelocityCommands(body,rotating).twist,geometry_msgs::msg::Twist());
+   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,rotating));
+   EXPECT_EQ(plugin->computeVelocityCommands(body,{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
++  completeStand(body);
+   EXPECT_TRUE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+   set_error(0.26);
+   EXPECT_GT(plugin->computeVelocityCommands(body,{}).twist.angular.z,0.0);
+@@ -414,6 +434,8 @@
+   EXPECT_EQ(plugin->computeVelocityCommands(at,velocity).twist,geometry_msgs::msg::Twist());
+   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,velocity));
+   plugin->computeVelocityCommands(at,{});
++  EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
++  completeStand(at);
+   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+   velocity.angular.z=0.1;EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,velocity));
+   auto live=at.pose;live.position.x+=0.3;
+@@ -465,6 +487,49 @@
+ {
+   moving();EXPECT_EQ(actual->tracker_->cmd_timer_,nullptr);
+   EXPECT_EQ(actual->tracker_->raw_cmd_pub_,nullptr);
++}
++
++TEST_F(PluginTest, TerminalTimeoutFailsWithoutExecutionFeedback)
++{
++  plan();auto at=route.poses.back();
++  EXPECT_EQ(plugin->computeVelocityCommands(at,{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_TRUE(actual->terminalPhase());
++  EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
++  actual->state_->completion.entered_wall_=scan_nav2_controller::TerminalCompletion::Clock::now()-11s;
++  try {
++    plugin->computeVelocityCommands(at,{});
++    FAIL()<<"Missing terminal feedback must time out";
++  } catch(const nav2_core::PlannerException &error) {
++    EXPECT_STREQ(error.what(),"terminal_settle_timeout");
++  }
++  actual->stop("nav2_server_stop");EXPECT_FALSE(actual->terminalPhase());
++}
++
++TEST_F(PluginTest, SameGoalRefreshRetainsHoldAndNewGoalResetsIt)
++{
++  plan();auto at=route.poses.back();plugin->computeVelocityCommands(at,{});
++  completeStand(at);ASSERT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
++  plugin->setPlan(route);goal->reset();plugin->computeVelocityCommands(at,{});
++  EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
++  route.poses.back().pose.position.x+=1.;plugin->setPlan(route);
++  EXPECT_FALSE(actual->terminalPhase());EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
++}
++
++TEST_F(PluginTest, TypedRosExecutionFeedbackReachesControllerCache)
++{
++  using Execution=lite3_nav2_interfaces::msg::RobotExecutionState;
++  auto publisher=io->create_publisher<Execution>("/quad_0/execution_state",10);
++  ASSERT_TRUE(wait([&]{return publisher->get_subscription_count()>0;}));
++  plan();plugin->computeVelocityCommands(route.poses.back(),{});
++  Execution sample;sample.header.frame_id="base_link";sample.header.stamp=parent->now();
++  sample.simulation_time_ns=parent->now().nanoseconds();
++  sample.header.stamp=rclcpp::Time(sample.simulation_time_ns);
++  sample.state_sequence=1;sample.run_epoch_ns=800;sample.stance_mode=sample.FIXED_STAND;
++  sample.navigation_ready=true;sample.policy_owns_joints=false;
++  publisher->publish(sample);
++  ASSERT_TRUE(wait([&]{return actual->state_->completion.has_sample_;}));
++  EXPECT_EQ(actual->state_->completion.last_sequence_,1u);
++  EXPECT_FALSE(goal->isGoalReached(route.poses.back().pose,route.poses.back().pose,{}));
+ }
+ TEST_F(PluginTest, NativeWorkerLifecycleReceivesDirectPath)
+ {
+--- parent/src/scan_nav2_controller/test/test_terminal_completion.cpp
++++ v200/src/scan_nav2_controller/test/test_terminal_completion.cpp
+@@ -0,0 +1,94 @@
++#include <gtest/gtest.h>
++#include <scan_nav2_controller/terminal_completion.hpp>
++#include <limits>
++
++using Completion=scan_nav2_controller::TerminalCompletion;
++using Sample=Completion::Sample;
++using namespace std::chrono_literals;
++
++class CompletionTest : public ::testing::Test
++{
++protected:
++  Completion completion;
++  Completion::Time wall{};
++  Sample sample;
++  void SetUp() override {
++    sample.run_epoch_ns=700;sample.stance_mode=Sample::FIXED_STAND;
++    sample.navigation_ready=true;sample.policy_owns_joints=false;
++    completion.updatePose(true,1000000000,wall);
++  }
++  void step(int tick) {
++    sample.simulation_time_ns=1000000000ULL+tick*20000000ULL;
++    sample.state_sequence=tick+1;
++    completion.observe(sample,wall+tick*20ms);
++  }
++  bool ready(int tick) { return completion.ready(1000000000LL+tick*20000000LL,wall+tick*20ms); }
++  void hold(int first,int last) { for(int i=first;i<=last;++i) step(i); }
++};
++
++TEST_F(CompletionTest, RequiresTwoSecondsOfMeasuredPdHold)
++{
++  hold(0,99);EXPECT_FALSE(ready(99));
++  step(100);EXPECT_TRUE(ready(100));
++}
++TEST_F(CompletionTest, ZeroCommandWithRlOwnershipNeverCompletes)
++{
++  sample.stance_mode=Sample::RL;sample.policy_owns_joints=true;
++  hold(0,120);EXPECT_FALSE(ready(120));
++  sample.stance_mode=Sample::FIXED_STAND;sample.policy_owns_joints=false;
++  hold(121,220);EXPECT_FALSE(ready(220));step(221);EXPECT_TRUE(ready(221));
++}
++TEST_F(CompletionTest, MotionOrOwnershipInterruptionRestartsWindow)
++{
++  hold(0,99);sample.measured_velocity.linear.x=.04;step(100);
++  sample.measured_velocity.linear.x=0;hold(101,200);EXPECT_FALSE(ready(200));
++  sample.policy_owns_joints=true;step(201);sample.policy_owns_joints=false;
++  hold(202,302);EXPECT_TRUE(ready(302));
++}
++TEST_F(CompletionTest, AppliedCommandStalenessAndReadinessAreRequired)
++{
++  for(int reason=0;reason<3;++reason) {
++    completion.resetGoal();completion.updatePose(true,1000000000,wall);
++    sample.run_epoch_ns=700;
++    sample.applied_command.linear.x=reason==0 ? .01 : 0;
++    sample.command_stale=reason==1;sample.navigation_ready=reason!=2;
++    hold(reason*150,reason*150+120);EXPECT_FALSE(ready(reason*150+120));
++  }
++}
++TEST_F(CompletionTest, DuplicateForeignAndNonfiniteSamplesCannotAdvanceHold)
++{
++  hold(0,99);
++  auto good=sample;
++  sample.run_epoch_ns=701;step(100);EXPECT_FALSE(ready(100));
++  sample=good;sample.measured_velocity.angular.z=std::numeric_limits<double>::quiet_NaN();
++  step(101);EXPECT_FALSE(ready(101));
++  sample=good;completion.observe(sample,wall+2020ms);EXPECT_FALSE(ready(101));
++  sample=good;step(102);EXPECT_FALSE(ready(102));hold(103,202);EXPECT_TRUE(ready(202));
++}
++TEST_F(CompletionTest, FreshPacketsWithFrozenSourceTimeDoNotProveDuration)
++{
++  step(0);
++  for(int i=1;i<150;++i) {sample.state_sequence=i+1;completion.observe(sample,wall+i*20ms);}
++  EXPECT_FALSE(ready(149));
++}
++TEST_F(CompletionTest, GapAndStalledClockInvalidateFreshness)
++{
++  hold(0,100);EXPECT_TRUE(ready(100));
++  EXPECT_FALSE(completion.ready(sample.simulation_time_ns,wall+2260ms));
++  step(120);EXPECT_FALSE(ready(120));hold(121,220);EXPECT_TRUE(ready(220));
++  EXPECT_FALSE(completion.ready(sample.simulation_time_ns+260000000,wall+4400ms));
++}
++TEST_F(CompletionTest, CancelNewGoalAndLeavingToleranceResetWindow)
++{
++  hold(0,100);completion.resetGoal();EXPECT_FALSE(ready(100));
++  completion.updatePose(true,3000000000,wall+2s);hold(101,150);EXPECT_FALSE(ready(150));
++  completion.updatePose(false,4000000000,wall+3s);EXPECT_FALSE(completion.waiting());
++  completion.updatePose(true,4020000000,wall+3020ms);hold(151,250);EXPECT_FALSE(ready(250));
++  step(251);EXPECT_TRUE(ready(251));
++}
++TEST_F(CompletionTest, TerminalTimeoutHasItsOwnDeadline)
++{
++  EXPECT_FALSE(completion.timedOut(wall+9999ms));
++  EXPECT_TRUE(completion.timedOut(wall+10s));
++  completion.resetGoal();EXPECT_FALSE(completion.timedOut(wall+11s));
++}

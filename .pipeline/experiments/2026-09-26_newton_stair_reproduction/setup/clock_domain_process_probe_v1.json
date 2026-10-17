@@ -1,0 +1,39 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--name",
+    "vla-newton-clock-process-probe-v1",
+    "--memory=128m",
+    "--cpus=1",
+    "--entrypoint",
+    "/usr/bin/python3",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "-c",
+    "import json,os,subprocess,time\nr={\"pid\":os.getpid(),\"begin\":time.monotonic_ns(),\"clock\":str(time.get_clock_info(\"monotonic\"))}\nfor p in [\"/proc/uptime\",\"/proc/self/timens_offsets\"]:\n try:r[p]=open(p).read()\n except OSError as e:r[p]=str(e)\nfor i in range(2):\n r[\"child\"+str(i)]=json.loads(subprocess.check_output([\"/usr/bin/python3\",\"-c\",\"import os,time,json; print(json.dumps(dict(pid=os.getpid(),monotonic_ns=time.monotonic_ns())))\"]))\n time.sleep(.2)\nr[\"end\"]=time.monotonic_ns();print(json.dumps(r))"
+  ],
+  "host_begin": 129095596881791,
+  "host_end": 129096479692708,
+  "linux": {
+    "pid": 1,
+    "begin": 119163642095,
+    "clock": "namespace(implementation='clock_gettime(CLOCK_MONOTONIC)', monotonic=True, adjustable=False, resolution=0.001)",
+    "/proc/uptime": "119.16 1188.16\n",
+    "/proc/self/timens_offsets": "monotonic           0         0\nboottime            0         0\n",
+    "child0": {
+      "pid": 7,
+      "monotonic_ns": 119241298554
+    },
+    "child1": {
+      "pid": 8,
+      "monotonic_ns": 119531933554
+    },
+    "end": 119742098512
+  },
+  "stderr": "",
+  "claim": "Clock-origin diagnostic only; no synchronization or runtime modification"
+}

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="1" hostname="a563cd3dcedf" name="pytest" skipped="0" tests="10" time="0.409" timestamp="2026-10-15T16:57:20.039890"><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_static_terrain" file="src/lite3_nav2_bridge/test/test_static_terrain.py" line="30" name="test_original_payloads_remain_distinct_and_loaded_once" time="0.231"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_static_terrain" file="src/lite3_nav2_bridge/test/test_static_terrain.py" line="41" name="test_bad_bundle_rejected[frame]" time="0.001"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_static_terrain" file="src/lite3_nav2_bridge/test/test_static_terrain.py" line="41" name="test_bad_bundle_rejected[role]" time="0.000"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_static_terrain" file="src/lite3_nav2_bridge/test/test_static_terrain.py" line="41" name="test_bad_bundle_rejected[layout]" time="0.001"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_static_terrain" file="src/lite3_nav2_bridge/test/test_static_terrain.py" line="41" name="test_bad_bundle_rejected[hash]" time="0.001"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_static_terrain" file="src/lite3_nav2_bridge/test/test_static_terrain.py" line="41" name="test_bad_bundle_rejected[source_id]" time="0.054"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_static_terrain" file="src/lite3_nav2_bridge/test/test_static_terrain.py" line="41" name="test_bad_bundle_rejected[gap_role]" time="0.000"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_static_terrain" file="src/lite3_nav2_bridge/test/test_static_terrain.py" line="54" name="test_native_bundle_and_mask_hashes_are_checked" time="0.021"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_static_terrain" file="src/lite3_nav2_bridge/test/test_static_terrain.py" line="60" name="test_clock_gate_retains_zero_duplicate_backward_and_reset_behavior" time="0.000"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_static_terrain" file="src/lite3_nav2_bridge/test/test_static_terrain.py" line="66" name="test_one_ros_publisher_retains_three_payloads_for_late_subscribers" time="0.003"><failure message="_rclpy.RCLError: Failed to initialize logging: Failed to create log directory: //.ros/log, at /tmp/binarydeb/ros-foxy-rcl-logging-spdlog-1.1.0/src/rcl_logging_spdlog.cpp:100">def test_one_ros_publisher_retains_three_payloads_for_late_subscribers():
+&gt;       rclpy.init()
+
+/work/src/lite3_nav2_bridge/test/test_static_terrain.py:68: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py:71: in init
+    return context.init(args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rclpy.context.Context object at 0x7e0454e0ec40&gt;, args = None
+
+    def init(self, args: Optional[List[str]] = None, *, initialize_logging: bool = True):
+        &quot;&quot;&quot;
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        &quot;&quot;&quot;
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation
+        global g_logging_ref_count
+        with self._handle as capsule, self._lock:
+            rclpy_implementation.rclpy_init(args if args is not None else sys.argv, capsule)
+            if initialize_logging and not self._logging_initialized:
+                with g_logging_configure_lock:
+                    g_logging_ref_count += 1
+                    if g_logging_ref_count == 1:
+&gt;                       rclpy_implementation.rclpy_logging_configure(capsule)
+E                       _rclpy.RCLError: Failed to initialize logging: Failed to create log directory: //.ros/log, at /tmp/binarydeb/ros-foxy-rcl-logging-spdlog-1.1.0/src/rcl_logging_spdlog.cpp:100
+
+/opt/ros/foxy/lib/python3.8/site-packages/rclpy/context.py:64: RCLError</failure></testcase></testsuite></testsuites>

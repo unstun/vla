@@ -1,0 +1,178 @@
+--- v213/render_capture.py
++++ v214/render_capture.py
+@@ -42,6 +42,11 @@
+     renderer_text = replace_once(renderer_text,
+         'source = BASE / "runs" / args.source_run',
+         'source = Path(' + repr(str(source)) + ')')
++    renderer_text = replace_once(renderer_text,
++        '            caption = ("Crouch > PD prepare > PD stand > measured stability > policy" if startup_view else "Navigation: " + status)',
++        '            if i == len(rows)-1 and json.loads((source / "result.json").read_text()).get("fallen", False):\n'
++        '                status = "physical fall (simulation stopped)"\n'
++        '            caption = ("Crouch > PD prepare > PD stand > measured stability > policy" if startup_view else "Navigation: " + status)')
+     renderer_text = replace_once(renderer_text,
+         'source.parent != BASE / "runs"',
+         'source.name != args.source_run')
+@@ -99,13 +104,13 @@
+ 
+ 
+ def main():
+-    contract = json.loads(Path(os.environ['V213_DISPLAY_CONTRACT']).read_text())
++    contract = json.loads(Path(os.environ['V214_DISPLAY_CONTRACT']).read_text())
+     audit = json.loads((HERE / 'source_identity.json').read_text())
+     for name, expected in audit['files'].items():
+         if digest(HERE / name) != expected:
+             raise ValueError('Display source changed: ' + name)
+     if (HERE / 'manifest.json').exists():
+-        verify_manifest('v213')
++        verify_manifest('v214')
+     for version, expected in contract['parent_manifests'].items():
+         if verify_manifest(version) != expected:
+             raise ValueError('Parent manifest changed: ' + version)
+@@ -116,7 +121,7 @@
+         if digest(path) != expected:
+             raise ValueError('Recorded input changed: ' + path)
+     out = Path(os.environ['NEWTON_RUN_DIR'])
+-    if not out.is_dir() or out.parent.parent != Path(os.environ['V213_RENDER_ROOT']):
++    if not out.is_dir() or out.parent.parent != Path(os.environ['V214_RENDER_ROOT']):
+         raise ValueError('Expected managed temporary output')
+     # Reuse the existing Linux EGL recorded-state display backend.
+     os.environ['PYGLET_HEADLESS'] = '1'
+@@ -171,7 +176,7 @@
+     heading_text = replace_once(heading_text, 'OVERVIEW_S = 1.6', 'OVERVIEW_S = 0.0')
+     (out / 'executed_render_episode_host.py').write_text(renderer_text)
+     (out / 'executed_render_heading_host.py').write_text(heading_text)
+-    (out / 'display_contract.json').write_bytes(Path(os.environ['V213_DISPLAY_CONTRACT']).read_bytes())
++    (out / 'display_contract.json').write_bytes(Path(os.environ['V214_DISPLAY_CONTRACT']).read_bytes())
+     remaining = sys.argv[1:]
+     sys.argv = [str(heading_path), '--source-run', source.name, *remaining]
+     exec(compile(heading_text, str(heading_path), 'exec'),
+--- v213/verify_video.py
++++ v214/verify_video.py
+@@ -8,7 +8,7 @@
+ HERE = Path(__file__).resolve().parent
+ BASE = HERE.parents[1]
+ TASK = Path('/data/sun/vla_mppi_20261009/trials/v212_linux_full_attempt01')
+-OUT = TASK / 'video_v213/runs/full01'
++OUT = TASK / 'video_v214/runs/full01'
+ 
+ 
+ def sha(path):
+@@ -20,15 +20,15 @@
+ 
+ 
+ def main():
+-    contract = json.loads((TASK / 'video_v213/display_contract.json').read_text())
++    contract = json.loads((TASK / 'video_v214/display_contract.json').read_text())
+     source = Path(contract['physical_source_root'])
+     original = json.loads((source / 'video_states.json').read_text())
+     route = json.loads(Path(contract['route_verification']).read_text())
+     outcome = json.loads(Path(contract['source_outcome']).read_text())
+     assert outcome['full_route_gate_passed'] == route['passed']
+-    assert outcome['terminal_status'] in ('FINISHED','FAILED')
++    assert outcome['terminal_status'] in ('FINISHED','FAILED') or outcome.get('fallen') is True
+     metrics = json.loads(Path(contract['analysis_metrics']).read_text())
+-    assert metrics['terminal']['backend_terminal_status'] == outcome['terminal_status']
++    assert (metrics.get('terminal') or {}).get('backend_terminal_status') == outcome['terminal_status']
+     proof = json.loads((source / 'initial_state.json').read_text())
+     assert proof['passed'] and proof['physics_steps'] == 0 and proof['physics_time_s'] == 0.0
+     assert original[0] == proof['frame'] and original[0]['physics_time_s'] == 0.0
+@@ -95,6 +95,7 @@
+     assert result['render_only_no_physics_steps'] and port['source_unchanged']
+     assert port['render_only_no_physics_steps'] and verification['full_decode_passed']
+     expected_status = 'arrived (nav2_arrived)' if outcome['terminal_status']=='FINISHED' else 'failed (nav2_failed)'
++    if outcome.get('fallen'): expected_status = 'physical fall (simulation stopped)'
+     assert frames[-1]['navigation_status'] == expected_status
+     assert result['integration_version'] == 'v212'
+     assert result['frames'] == n and result['fps'] == 30
+@@ -111,7 +112,7 @@
+         'passed': True,
+         'physical_source_run': contract['physical_source_run'],
+         'physical_source_version': 'v212',
+-        'display_version': 'v213',
++        'display_version': 'v214',
+         'frames': n,
+         'startup_frames': ns,
+         'startup_original_frames': start,
+@@ -141,10 +142,10 @@
+         'video_sha256': sha(master),
+         'video_bytes': master.stat().st_size,
+         'video_master': str(master),
+-        'source_contract_sha256': sha(TASK / 'video_v213/display_contract.json'),
++        'source_contract_sha256': sha(TASK / 'video_v214/display_contract.json'),
+         'checker_sha256': sha(Path(__file__)),
+         'claim': ('Entire recorded original-start v212_linux_full_attempt01 attempt, continuous recorded '
+-                  f"physical state; {outcome['terminal_status']} at {metrics['actual_physics_end_s']:.9f}s. "
++                  f"physical state; {('PHYSICAL_FALL' if outcome.get('fallen') else outcome['terminal_status'])} at {metrics['actual_physics_end_s']:.9f}s. "
+                   f"Source full-route gate passed={route['passed']}. "
+                   'Display verification creates no new physical acceptance.'),
+     }
+--- v213/run_remote.py
++++ v214/run_remote.py
+@@ -13,14 +13,14 @@
+ 
+ def main():
+     subprocess.run([sys.executable, str(HERE / 'prepare_remote.py')], check=True, timeout=120)
+-    root = TASK / 'video_v213'
++    root = TASK / 'video_v214'
+     out = root / 'runs/full01'
+     out.mkdir(exist_ok=False)
+     env = dict(
+         os.environ,
+         NEWTON_RUN_DIR=str(out),
+-        V213_RENDER_ROOT=str(root),
+-        V213_DISPLAY_CONTRACT=str(root / 'display_contract.json'),
++        V214_RENDER_ROOT=str(root),
++        V214_DISPLAY_CONTRACT=str(root / 'display_contract.json'),
+         WARP_CACHE_PATH=str(root / 'cache'),
+         OPENBLAS_NUM_THREADS='1',
+         OMP_NUM_THREADS='1',
+@@ -32,7 +32,7 @@
+     command = [sys.executable, str(HERE / 'render_capture.py')]
+     (root / 'render_request.json').write_text(json.dumps({
+         'command': command,
+-        'env': {k: env[k] for k in ('NEWTON_RUN_DIR', 'V213_RENDER_ROOT', 'V213_DISPLAY_CONTRACT',
++        'env': {k: env[k] for k in ('NEWTON_RUN_DIR', 'V214_RENDER_ROOT', 'V214_DISPLAY_CONTRACT',
+                                     'WARP_CACHE_PATH', 'PYTHONPATH', 'PYOPENGL_PLATFORM')},
+         'physics_steps_requested': 0,
+     }, indent=2) + '\n')
+--- v213/prepare_remote.py
++++ v214/prepare_remote.py
+@@ -27,15 +27,15 @@
+     outcome_data = json.loads(outcome.read_text())
+     route_data = json.loads(route.read_text())
+     assert outcome_data['run'] == tag
+-    assert outcome_data['terminal_status'] in ('FINISHED','FAILED')
++    assert outcome_data['terminal_status'] in ('FINISHED','FAILED') or outcome_data.get('fallen') is True
+     assert outcome_data['full_route_gate_passed'] == route_data['passed']
+     proof = json.loads((source / 'initial_state.json').read_text())
+     assert proof['passed'] and proof['physics_time_s'] == 0.0 and proof['physics_steps'] == 0
+     assert json.loads((source / 'video_states.json').read_text())[0] == proof['frame']
+     metrics = json.loads((analysis / 'metrics.json').read_text())
+-    assert metrics['terminal']['backend_terminal_status'] == outcome_data['terminal_status']
++    assert (metrics.get('terminal') or {}).get('backend_terminal_status') == outcome_data['terminal_status']
+     assert metrics['shared_state_verified']
+-    root = TASK / 'video_v213'
++    root = TASK / 'video_v214'
+     root.mkdir(exist_ok=False)
+     (root / 'runs').mkdir()
+     (root / 'cache').mkdir()
+@@ -65,7 +65,7 @@
+         'display_source_identity_sha256': sha(HERE / 'source_identity.json'),
+         'source_outcome_sha256': sha(outcome),
+         'claim': ('Display only. Entire recorded original-start v212_linux_full_attempt01 attempt, '
+-                  f"all pauses retained. {outcome_data['terminal_status']} at {metrics['actual_physics_end_s']:.9f}s physics; "
++                  f"all pauses retained. {('PHYSICAL_FALL' if outcome_data.get('fallen') else outcome_data['terminal_status'])} at {metrics['actual_physics_end_s']:.9f}s physics; "
+                   f"full-route gate passed={route_data['passed']}. "
+                   'One recorded trial only. Zero new physics steps.'),
+     }
+--- v213/visual_qa.py
++++ v214/visual_qa.py
+@@ -13,7 +13,7 @@
+     video = HERE / 'delivered/v212_linux_full_attempt01.mp4'
+     frames = json.loads((HERE / 'returned/frames.json').read_text())
+     curves = json.loads((HERE / 'returned/curve_frames.json').read_text())
+-    targets = (0.0, 4.0, 10.0, 30.0, 60.0, 80.0)
++    targets = (0.0, 10.0, 30.0, 48.0, 52.0, 53.8)
+     indices = sorted({min(range(len(frames)), key=lambda i: abs(frames[i]['physics_time_s'] - t))
+                       for t in targets} | {len(frames) - 1})
+     assert indices[0] == 0

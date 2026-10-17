@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="1" hostname="a563cd3dcedf" name="pytest" skipped="0" tests="3" time="0.283" timestamp="2026-10-15T16:57:20.651147"><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile" file="src/lite3_nav2_bridge/test/test_terrain_profile.py" line="18" name="test_profile_retains_scan_geometry_and_removes_map_work[base]" time="0.098"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile" file="src/lite3_nav2_bridge/test/test_terrain_profile.py" line="18" name="test_profile_retains_scan_geometry_and_removes_map_work[base_link]" time="0.091"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile" file="src/lite3_nav2_bridge/test/test_terrain_profile.py" line="47" name="test_launch_owns_one_static_publisher_and_wait_recovery_server" time="0.032"><failure message="PermissionError: [Errno 13] Permission denied: &apos;/.ros&apos;">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-3/test_launch_owns_one_static_pu0&apos;)
+
+    def test_launch_owns_one_static_publisher_and_wait_recovery_server(tmp_path):
+        launch_file = Path(get_package_share_directory(&apos;lite3_nav2_bridge&apos;))/&apos;launch/navigation.launch.py&apos;
+        spec = importlib.util.spec_from_file_location(&apos;terrain_launch&apos;,launch_file)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        backend = tmp_path/&apos;backend.json&apos;; backend.write_text(&apos;{}&apos;)
+&gt;       context = LaunchContext()
+
+/work/src/lite3_nav2_bridge/test/test_terrain_profile.py:53: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/ros/foxy/lib/python3.8/site-packages/launch/launch_context.py:73: in __init__
+    self.__logger = launch.logging.get_logger(__name__)
+/opt/ros/foxy/lib/python3.8/site-packages/launch/logging/__init__.py:297: in get_logger
+    launch_log_file_handler = launch_config.get_log_file_handler()
+/opt/ros/foxy/lib/python3.8/site-packages/launch/logging/__init__.py:271: in get_log_file_handler
+    file_path = self.get_log_file_path(file_name)
+/opt/ros/foxy/lib/python3.8/site-packages/launch/logging/__init__.py:257: in get_log_file_path
+    return os.path.join(self.log_dir, file_name)
+/opt/ros/foxy/lib/python3.8/site-packages/launch/logging/__init__.py:118: in log_dir
+    self._log_dir = _make_unique_log_dir(
+/opt/ros/foxy/lib/python3.8/site-packages/launch/logging/__init__.py:80: in _make_unique_log_dir
+    os.makedirs(log_dir, exist_ok=True)
+/usr/lib/python3.8/os.py:213: in makedirs
+    makedirs(head, exist_ok=exist_ok)
+/usr/lib/python3.8/os.py:213: in makedirs
+    makedirs(head, exist_ok=exist_ok)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = &apos;/.ros&apos;, mode = 511, exist_ok = True
+
+    def makedirs(name, mode=0o777, exist_ok=False):
+        &quot;&quot;&quot;makedirs(name [, mode=0o777][, exist_ok=False])
+    
+        Super-mkdir; create a leaf directory and all intermediate ones.  Works like
+        mkdir, except that any intermediate path segment (not just the rightmost)
+        will be created if it does not exist. If the target directory already
+        exists, raise an OSError if exist_ok is False. Otherwise no exception is
+        raised.  This is recursive.
+    
+        &quot;&quot;&quot;
+        head, tail = path.split(name)
+        if not tail:
+            head, tail = path.split(head)
+        if head and tail and not path.exists(head):
+            try:
+                makedirs(head, exist_ok=exist_ok)
+            except FileExistsError:
+                # Defeats race condition when another thread created the path
+                pass
+            cdir = curdir
+            if isinstance(tail, bytes):
+                cdir = bytes(curdir, &apos;ASCII&apos;)
+            if tail == cdir:           # xxx/newdir/. exists if xxx/newdir exists
+                return
+        try:
+&gt;           mkdir(name, mode)
+E           PermissionError: [Errno 13] Permission denied: &apos;/.ros&apos;
+
+/usr/lib/python3.8/os.py:223: PermissionError</failure></testcase></testsuite></testsuites>

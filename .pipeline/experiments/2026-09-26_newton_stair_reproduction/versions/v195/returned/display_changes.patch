@@ -1,0 +1,439 @@
+--- v193/PLAN.md
++++ v195/PLAN.md
+@@ -1,21 +1,29 @@
+-# v193: full display review of v192_mac_full_attempt01
++# v195: full display review of v194_mac_full_attempt01
+ 
+ Stage: experiment + analysis. Authorized display-only version; physical parent
+-`v192`, display parent `v190`, native implementation `v191`. Skip Trellis for
+-this session. Preserve frozen v189, v190, v191, v192, recovery_v176,
+-recovery_v189, recovery_v191 and every original recording byte.
++`v194`, display parent `v193`, native implementation `v194`. Execution follows
++Dr Sun's explicit scope. No Trellis task is created without separate consent.
++Preserve frozen v189, v190, v191, v192, v193 and v194, recovery_v176,
++recovery_v189, recovery_v191, recovery_v194, and both complete trial directories
++v192_mac_full_attempt01 and v194_mac_full_attempt01. Compare every file hash,
++size, mode, modification time, directory entry and symlink before and after.
+ 
+ Replay physical frame 0, all recorded factory PD startup, and the complete run
+-through its last state at 118.88629150390625 s physics. The source travelled
+-72.57228851559466 m and ended FAILED/nav2_failed, without arrival or full-route
+-acceptance. Rendering cannot change that outcome or qualify navigation.
++through its last state at 137.5282745361328 s physics. The source ended FINISHED,
++with arrived=true, full_route_verification.passed=true and final_pd_hold=true.
++Its sensor-sampled path is 77.03407366997271 m; the complete recorded body path
++is 78.15352131927641 m. These are different sampling measures. This display
++inherits one physical trial's declared result; it adds no physical acceptance.
++The unchanged metrics.json full_qualification=false is retained separately
++from outcome.json full_qualification=true and the passed full-route verifier.
+ 
+-Follow v190's Mac ARM64 Cocoa invisible ViewerGL, CPU model construction and
++Follow v193's Mac ARM64 Cocoa invisible ViewerGL, CPU model construction and
+ recorded-pose replay with zero physics steps. Startup uses recorded simulation
+ timestamps; navigation uses original wall timestamps at 1:1. Use causal
+ zero-order sampling at 30 fps, without pose interpolation, stitching, resets,
+-removed pauses or speedup. Extend the terminal sampling grid by at most one
+-frame to include the exact final source state, which v190's floor grid could omit.
++removed pauses or speedup. Preserve v193's terminal ceiling grid (at most one
++extra frame) to include the exact final source state. Render 1280 x 720 at 30 fps
++inside `/private/tmp/vla_stop_audit_20261012/video_v195` only.
+ 
+ Option B's recorded Bspline messages have no P2B identities/admissions. The
+ latest non-emergency Bspline, keyed by traj_id, becomes active; any emergency
+@@ -29,19 +37,43 @@
+ PCT route (`data.poses`), held until replaced or cleared. Solve timing shows only
+ the latest completed round, including failures.
+ 
++The exact final navigation label is `arrived (nav2_arrived)`. The final physical
++state is FIXED_STAND, command=[0,0,0], policy_owns_joints=false. The last stored
++normal spline is #3005, but its tracking window has expired and the latest direct
++zero command is older than 150 ms on both clocks. Assert no visible final cyan
++trajectory, without deleting the retained original spline.
++
+ Run test_overlay.py (10 cases), test_timeline.py (4 cases), prepare_mac.py,
+ render_capture.py and verify_video.py using the existing Newton Mac interpreter.
+ Validate every frame index, endpoint coverage, curve/route/solve causality,
+ full video decoding and decoded start/startup/middle/corner/end images. Return
+ compact provenance under returned/ and inspect before freezing. Deliver a
+-regular MP4 at delivered/v192_mac_full_attempt01.mp4. Archive the MP4 and compact
+-v193 source/provenance to gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v192_20261014/
++regular MP4 at delivered/v194_mac_full_attempt01.mp4. Archive the MP4 and compact
++v195 source/provenance to gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v194_20261014/
+ and compare SHA-256. Update only the version index/current state after delivery.
+ 
+ Regeneration: use the existing
+ `.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv/bin/python`
+-with `PYTHONDONTWRITEBYTECODE=1` to run `versions/v193/run_mac.py`. The original
+-run lives at `/private/tmp/vla_stop_audit_20261012/v192_mac_full_attempt01/runs/v192_mac_full_attempt01`
+-and its durable source archive is recorded by v192's trial_archive_manifest.json
+-and remote_verification.json. The temporary video_v193 execution folder must be
++with `PYTHONDONTWRITEBYTECODE=1` to run `versions/v195/run_mac.py`. The original
++run lives at `/private/tmp/vla_stop_audit_20261012/v194_mac_full_attempt01/runs/v194_mac_full_attempt01`
++and its durable source archive is recorded by v194's trial_archive_manifest.json
++and remote_verification.json. The temporary video_v195 execution folder must be
+ absent before a fresh run; retain prior execution outputs under a new name.
++
++Changes are limited to this version's display files and the requested
++versions/README.md and versions/current.json index updates. Keep overlay and
++timeline implementations and their 10 + 4 tests byte-identical to v193. Adapt
++only run/version identities, exact successful outcome checks and provenance.
++Local source of truth is this v195 directory. The render must pass input hashes,
++full decode, every-frame causality, visual QA, and local/remote MP4 SHA-256 and
++size equality before freeze. Return source/provenance, frame/event metadata,
++ten representative decoded samples, a contact sheet, and the regular review MP4
++(expected under 80 MB); retain heavy raw inputs and archives on gpu5070ti.
++A failed or incomplete render is display evidence only and cannot change v194.
++
++Execution order: snapshot protected paths; check the remote raw archive; adapt
++and hash display sources; run run_mac.py with the recorded working interpreter;
++inspect decoded samples and write VISUAL_QA.md; archive and verify the regular
++MP4; compare protected paths; freeze and verify; archive the frozen display
++source/review; update only the version index and current metadata. Never remove
++or overwrite earlier execution output or any protected source.
+--- v193/prepare_mac.py
++++ v195/prepare_mac.py
+@@ -1,4 +1,4 @@
+-"""Bind the recorded v192_mac_full_attempt01 episode to a full causal review video."""
++"""Bind the recorded v194_mac_full_attempt01 episode to a full causal review video."""
+ from pathlib import Path
+ import hashlib
+ import json
+@@ -19,50 +19,57 @@
+ 
+ 
+ def main():
+-    tag = 'v192_mac_full_attempt01'
++    tag = 'v194_mac_full_attempt01'
+     source = TASK / tag / 'runs' / tag
+-    analysis = BASE / 'versions/v192/results' / tag
++    analysis = BASE / 'versions/v194/results' / tag
+     outcome = analysis / 'outcome.json'
+     route = analysis / 'full_route_verification.json'
+     outcome_data = json.loads(outcome.read_text())
+     route_data = json.loads(route.read_text())
+     assert outcome_data['run'] == tag
+-    assert outcome_data['arrived'] is False and outcome_data['full_qualification'] is False
++    assert outcome_data['arrived'] is True and outcome_data['full_qualification'] is True
+     assert outcome_data['command_transport'] == 'direct_nav2_twist'
+-    assert route_data['passed'] is False
++    assert route_data['passed'] is True and route_data['arrived'] is True
++    assert route_data['final_pd_hold'] is True
+     proof = json.loads((source / 'initial_state.json').read_text())
+     assert proof['passed'] and proof['physics_time_s'] == 0.0 and proof['physics_steps'] == 0
+     assert json.loads((source / 'video_states.json').read_text())[0] == proof['frame']
+     metrics = json.loads((analysis / 'metrics.json').read_text())
+-    assert metrics['terminal']['backend_terminal_status'] == 'FAILED'
++    assert metrics['terminal']['backend_terminal_status'] == 'FINISHED'
+     assert not metrics['fallen'] and metrics['shared_state_verified']
+-    root = TASK / 'video_v193'
++    root = TASK / 'video_v195'
+     root.mkdir(exist_ok=False)
+     (root / 'runs').mkdir()
+     (root / 'cache').mkdir()
+     for name in ('test_overlay.py', 'test_timeline.py'):
+         subprocess.run([sys.executable, str(HERE / name)], check=True)
+-    inputs = [route, outcome, analysis / 'metrics.json', analysis / 'latency.csv']
++    inputs = [route, outcome, analysis / 'metrics.json', analysis / 'latency.csv',
++              analysis / 'execution_provenance.json', analysis / 'remote_verification.json']
+     inputs += [source / name for name in (
+         'initial_state.json', 'video_states.json', 'factory_video_states.json',
+         'startup_pacing.json', 'raw_capture.zip', 'clock_samples.jsonl',
+-        'backend_states.jsonl', 'episode_request.json', 'inputs/stair_scenario.json')]
++        'backend_states.jsonl', 'episode_request.json', 'inputs/stair_scenario.json', 'result.json')]
+     identity = json.loads((HERE / 'source_identity.json').read_text())
+     for name, expected in identity['files'].items():
+         assert sha(HERE / name) == expected, name
+     contract = {
+         'physical_source_root': str(source),
+         'physical_source_run': tag,
++        'physical_parent': 'v194',
++        'display_parent': 'v193',
++        'native_implementation': 'v194',
++        'source_outcome': str(outcome),
+         'route_verification': str(route),
+         'analysis_metrics': str(analysis / 'metrics.json'),
+         'latency_csv': str(analysis / 'latency.csv'),
+-        'parent_manifests': {v: sha(BASE / 'versions' / v / 'manifest.json') for v in ('v190', 'v192')},
++        'parent_manifests': {v: sha(BASE / 'versions' / v / 'manifest.json') for v in ('v193', 'v194')},
+         'input_files': {str(p): sha(p) for p in inputs},
+         'display_source_identity_sha256': sha(HERE / 'source_identity.json'),
+         'source_outcome_sha256': sha(outcome),
+-        'claim': ('Display only. Complete original-start Option B v192_mac_full_attempt01 episode, '
+-                  'all pauses retained. FAILED/nav2_failed at 118.886s physics and 72.572m path; '
+-                  'no arrival or full-route acceptance. Zero new physics steps.'),
++        'claim': ('Display only. Complete original-start Option B v194_mac_full_attempt01 episode, '
++                  'all pauses retained. FINISHED/nav2_arrived at 137.5282745361328s physics; '
++                  'source arrival, full-route gate and final PD hold passed. '
++                  'One recorded trial only. Zero new physics steps.'),
+     }
+     (root / 'display_contract.json').write_text(json.dumps(contract, indent=2) + '\n')
+     print(json.dumps({
+--- v193/render_capture.py
++++ v195/render_capture.py
+@@ -1,4 +1,4 @@
+-"""Display-only Mac ARM64 port of the frozen causal renderer and close camera for v192_mac_full_attempt01."""
++"""Display-only Mac ARM64 port of the frozen causal renderer and close camera for v194_mac_full_attempt01."""
+ import hashlib
+ import json
+ import os
+@@ -98,13 +98,13 @@
+ 
+ 
+ def main():
+-    contract = json.loads(Path(os.environ['V193_DISPLAY_CONTRACT']).read_text())
++    contract = json.loads(Path(os.environ['V195_DISPLAY_CONTRACT']).read_text())
+     audit = json.loads((HERE / 'source_identity.json').read_text())
+     for name, expected in audit['files'].items():
+         if digest(HERE / name) != expected:
+             raise ValueError('Display source changed: ' + name)
+     if (HERE / 'manifest.json').exists():
+-        verify_manifest('v193')
++        verify_manifest('v195')
+     for version, expected in contract['parent_manifests'].items():
+         if verify_manifest(version) != expected:
+             raise ValueError('Parent manifest changed: ' + version)
+@@ -115,7 +115,7 @@
+         if digest(path) != expected:
+             raise ValueError('Recorded input changed: ' + path)
+     out = Path(os.environ['NEWTON_RUN_DIR'])
+-    if not out.is_dir() or out.parent.parent != Path(os.environ['V193_RENDER_ROOT']):
++    if not out.is_dir() or out.parent.parent != Path(os.environ['V195_RENDER_ROOT']):
+         raise ValueError('Expected managed temporary output')
+     # ViewerGL(headless=True) already requests an invisible window. Mac needs
+     # its native Cocoa context; pyglet's global headless option requests EGL.
+@@ -169,7 +169,7 @@
+     heading_text = replace_once(heading_text, 'OVERVIEW_S = 1.6', 'OVERVIEW_S = 0.0')
+     (out / 'executed_render_episode_host.py').write_text(renderer_text)
+     (out / 'executed_render_heading_host.py').write_text(heading_text)
+-    (out / 'display_contract.json').write_bytes(Path(os.environ['V193_DISPLAY_CONTRACT']).read_bytes())
++    (out / 'display_contract.json').write_bytes(Path(os.environ['V195_DISPLAY_CONTRACT']).read_bytes())
+     remaining = sys.argv[1:]
+     sys.argv = [str(heading_path), '--source-run', source.name, *remaining]
+     exec(compile(heading_text, str(heading_path), 'exec'),
+@@ -185,8 +185,8 @@
+             raise ValueError('Recorded input changed during rendering: ' + path)
+     (out / 'host_port_verification.json').write_text(json.dumps({
+         'kind': 'display_only',
+-        'physical_source_version': 'v192',
+-        'native_source_version': 'Nav2 Foxy linux/arm64 SCAN v191; direct Nav2 Twist recorder v192',
++        'physical_source_version': 'v194',
++        'native_source_version': 'Nav2 Foxy linux/arm64 SCAN v194; direct Nav2 Twist recorder v194',
+         'source_unchanged': True,
+         'render_only_no_physics_steps': True,
+         'adapted_renderer_sha256': digest(out / 'executed_render_episode_host.py'),
+--- v193/verify_video.py
++++ v195/verify_video.py
+@@ -1,4 +1,4 @@
+-"""Validate exact causal timeline, visible curves and the finished MP4 for v192_mac_full_attempt01."""
++"""Validate exact causal timeline, visible curves and the finished MP4 for v194_mac_full_attempt01."""
+ from pathlib import Path
+ import hashlib
+ import json
+@@ -8,7 +8,7 @@
+ HERE = Path(__file__).resolve().parent
+ BASE = HERE.parents[1]
+ TASK = Path('/private/tmp/vla_stop_audit_20261012')
+-OUT = TASK / 'video_v193/runs/full01'
++OUT = TASK / 'video_v195/runs/full01'
+ 
+ 
+ def sha(path):
+@@ -20,13 +20,16 @@
+ 
+ 
+ def main():
+-    contract = json.loads((TASK / 'video_v193/display_contract.json').read_text())
++    contract = json.loads((TASK / 'video_v195/display_contract.json').read_text())
+     source = Path(contract['physical_source_root'])
+     original = json.loads((source / 'video_states.json').read_text())
+     route = json.loads(Path(contract['route_verification']).read_text())
+-    assert route['passed'] is False
++    assert route['passed'] is True and route['arrived'] is True
++    assert route['final_pd_hold'] is True
++    outcome = json.loads(Path(contract['source_outcome']).read_text())
++    assert outcome['arrived'] is True and outcome['full_qualification'] is True
+     metrics = json.loads(Path(contract['analysis_metrics']).read_text())
+-    assert metrics['terminal']['backend_terminal_status'] == 'FAILED'
++    assert metrics['terminal']['backend_terminal_status'] == 'FINISHED'
+     proof = json.loads((source / 'initial_state.json').read_text())
+     assert proof['passed'] and proof['physics_steps'] == 0 and proof['physics_time_s'] == 0.0
+     assert original[0] == proof['frame'] and original[0]['physics_time_s'] == 0.0
+@@ -83,12 +86,37 @@
+         _, wanted = replay.frame(row)
+         assert actual == wanted
+     assert curves[-1]['trajectory_id'] is None
++    # The source ends in PD hold. Retained spline #3005 is no longer displayable:
++    # its tracking window has expired and its last direct command is stale.
++    assert original[-1]['stance_mode'] == 'FIXED_STAND'
++    assert original[-1]['policy_owns_joints'] is False
++    assert original[-1]['command'] == [0.0, 0.0, 0.0]
++    from curve_overlay import FRESH_COMMAND_S, stamp_s
++    last_curve = replay.selection.active
++    last_command = replay.selection.command
++    assert last_curve['data']['traj_id'] == 3005
++    assert not last_curve['data']['emergency_stop']
++    curve_end_s = (stamp_s(last_curve['data']['start_time'])
++                   + last_curve['data']['knots'][-int(last_curve['data']['order'])-1])
++    command_wall_age_s = original[-1]['wall_monotonic_s'] - last_command['host_wall_s']
++    command_sim_age_s = original[-1]['physics_time_s'] - last_command['clock_ns'] / 1e9
++    assert original[-1]['physics_time_s'] > curve_end_s + FRESH_COMMAND_S
++    assert command_wall_age_s > FRESH_COMMAND_S and command_sim_age_s > FRESH_COMMAND_S
++    assert all(value == 0.0 for axis in ('linear', 'angular')
++               for value in last_command['data'][axis].values())
+     result = json.loads((OUT / 'result.json').read_text())
+     verification = json.loads((OUT / 'video_verification.json').read_text())
+     port = json.loads((OUT / 'host_port_verification.json').read_text())
+     assert result['render_only_no_physics_steps'] and port['source_unchanged']
+     assert port['render_only_no_physics_steps'] and verification['full_decode_passed']
+-    assert frames[-1]['navigation_status'].startswith('failed (nav2_failed)')
++    assert frames[-1]['navigation_status'] == 'arrived (nav2_arrived)'
++    assert result['integration_version'] == 'v194'
++    assert result['frames'] == n and result['fps'] == 30
++    # Cocoa's Retina framebuffer is larger than the encoded review stream.
++    stream = verification['stream']
++    assert (stream['width'], stream['height']) == (1280, 720)
++    assert stream['avg_frame_rate'] == '30/1'
++    assert int(stream['nb_read_frames']) == n
+     for name, expected_sha in contract['input_files'].items():
+         assert sha(Path(name)) == expected_sha, name
+     master = OUT / 'newton_stair_recorded.mp4'
+@@ -96,8 +124,8 @@
+     data = {
+         'passed': True,
+         'physical_source_run': contract['physical_source_run'],
+-        'physical_source_version': 'v192',
+-        'display_version': 'v193',
++        'physical_source_version': 'v194',
++        'display_version': 'v195',
+         'frames': n,
+         'startup_frames': ns,
+         'startup_original_frames': start,
+@@ -115,17 +143,31 @@
+         'causal_source_indices_checked': n,
+         'no_future_curve_events': True,
+         'terminal_frame': frames[-1]['navigation_status'],
+-        'full_route_gate_passed': False,
++        'full_route_gate_passed': True,
++        'source_arrived': True,
++        'source_full_qualification': True,
++        'source_metrics_full_qualification': metrics['full_qualification'],
++        'final_pd_hold': True,
++        'terminal_overlay': {
++            'trajectory_id': None,
++            'last_recorded_spline_id': last_curve['data']['traj_id'],
++            'last_curve_end_s': curve_end_s,
++            'last_command_wall_age_s': command_wall_age_s,
++            'last_command_sim_age_s': command_sim_age_s,
++            'reason': 'Expired curve and stale zero direct command; recorded FIXED_STAND, policy owns no joints',
++        },
+         'measured_path_m': metrics['measured_path_m'],
+         'render_only_no_physics_steps': True,
+         'full_decode_passed': True,
+         'video_sha256': sha(master),
+         'video_bytes': master.stat().st_size,
+         'video_master': str(master),
+-        'source_contract_sha256': sha(TASK / 'video_v193/display_contract.json'),
++        'source_contract_sha256': sha(TASK / 'video_v195/display_contract.json'),
+         'checker_sha256': sha(Path(__file__)),
+-        'claim': ('Complete original-start Option B v192_mac_full_attempt01 episode, continuous recorded '
+-                  'physical state; FAILED/nav2_failed at 118.886s and 72.572m. No arrival or full-route acceptance.'),
++        'claim': ('Complete original-start Option B v194_mac_full_attempt01 episode, continuous recorded '
++                  'physical state; FINISHED/nav2_arrived at 137.5282745361328s. '
++                  'Source arrival, full-route gate and final PD hold passed for one trial. '
++                  'Display verification creates no new physical acceptance.'),
+     }
+     (OUT / 'delivery_verification.json').write_text(json.dumps(data, indent=2) + '\n')
+     quality = {
+--- v193/run_mac.py
++++ v195/run_mac.py
+@@ -1,4 +1,4 @@
+-"""Render v192_mac_full_attempt01 on Mac ARM64 Cocoa and verify all outputs."""
++"""Render v194_mac_full_attempt01 on Mac ARM64 Cocoa and verify all outputs."""
+ from pathlib import Path
+ import json
+ import os
+@@ -13,14 +13,14 @@
+ 
+ def main():
+     subprocess.run([sys.executable, str(HERE / 'prepare_mac.py')], check=True, timeout=120)
+-    root = TASK / 'video_v193'
++    root = TASK / 'video_v195'
+     out = root / 'runs/full01'
+     out.mkdir(exist_ok=False)
+     env = dict(
+         os.environ,
+         NEWTON_RUN_DIR=str(out),
+-        V193_RENDER_ROOT=str(root),
+-        V193_DISPLAY_CONTRACT=str(root / 'display_contract.json'),
++        V195_RENDER_ROOT=str(root),
++        V195_DISPLAY_CONTRACT=str(root / 'display_contract.json'),
+         WARP_CACHE_PATH=str(root / 'cache'),
+         OPENBLAS_NUM_THREADS='1',
+         OMP_NUM_THREADS='1',
+@@ -32,7 +32,7 @@
+     command = [sys.executable, str(HERE / 'render_capture.py')]
+     (root / 'render_request.json').write_text(json.dumps({
+         'command': command,
+-        'env': {k: env[k] for k in ('NEWTON_RUN_DIR', 'V193_RENDER_ROOT', 'V193_DISPLAY_CONTRACT',
++        'env': {k: env[k] for k in ('NEWTON_RUN_DIR', 'V195_RENDER_ROOT', 'V195_DISPLAY_CONTRACT',
+                                     'WARP_CACHE_PATH', 'PYTHONPATH', 'PYOPENGL_PLATFORM')},
+         'physics_steps_requested': 0,
+     }, indent=2) + '\n')
+@@ -41,7 +41,7 @@
+     subprocess.run([sys.executable, str(HERE / 'verify_video.py')], env=env, check=True, timeout=180)
+     delivered = HERE / 'delivered'
+     delivered.mkdir(exist_ok=True)
+-    shutil.copyfile(out / 'newton_stair_recorded.mp4', delivered / 'v192_mac_full_attempt01.mp4')
++    shutil.copyfile(out / 'newton_stair_recorded.mp4', delivered / 'v194_mac_full_attempt01.mp4')
+     returned = HERE / 'returned'
+     returned.mkdir(exist_ok=True)
+     for name in ('display_contract.json', 'render_request.json'):
+--- v193/freeze_display.py
++++ v195/freeze_display.py
+@@ -1,4 +1,4 @@
+-"""Freeze the Mac display source for v193 without promoting v192 navigation."""
++"""Freeze the Mac display source for v195, retaining v194's single-trial boundary."""
+ from pathlib import Path
+ import argparse
+ import hashlib
+@@ -16,14 +16,14 @@
+     for n, e in m['source_files'].items():
+         assert sha(ROOT / n) == e and sha(ROOT / m['snapshot_locations'][n]) == e, n
+     assert sha(HERE / 'quality.json') == m['quality_sha256']
+-    assert sha(BASE / 'versions/v192/manifest.json') == m['parent_manifest_sha256']
+-    assert sha(BASE / 'versions/v190/manifest.json') == m['display_parent_manifest_sha256']
+-    print(json.dumps({'passed': True, 'version': 'v193', 'source_pairs': len(m['source_files']), 'display_only': True}))
++    assert sha(BASE / 'versions/v194/manifest.json') == m['parent_manifest_sha256']
++    assert sha(BASE / 'versions/v193/manifest.json') == m['display_parent_manifest_sha256']
++    print(json.dumps({'passed': True, 'version': 'v195', 'source_pairs': len(m['source_files']), 'display_only': True}))
+ 
+ 
+ def freeze():
+     assert not (HERE / 'manifest.json').exists()
+-    p = json.loads((BASE / 'versions/v192/manifest.json').read_text())
++    p = json.loads((BASE / 'versions/v194/manifest.json').read_text())
+     files = dict(p['source_files'])
+     locations = dict(p['snapshot_locations'])
+     q = json.loads((HERE / 'quality.json').read_text())
+@@ -38,13 +38,14 @@
+             files[n] = e
+             locations[n] = str(s.relative_to(ROOT))
+     m = {
+-        'version': 'v193',
+-        'parent': 'v192',
+-        'display_parent': 'v190',
+-        'physical_source': 'v192_mac_full_attempt01',
+-        'parent_manifest_sha256': sha(BASE / 'versions/v192/manifest.json'),
+-        'display_parent_manifest_sha256': sha(BASE / 'versions/v190/manifest.json'),
+-        'status': 'frozen_display_review_v192_mac_full_attempt01_failed_nav2_route',
++        'version': 'v195',
++        'parent': 'v194',
++        'display_parent': 'v193',
++        'native_implementation': 'v194',
++        'physical_source': 'v194_mac_full_attempt01',
++        'parent_manifest_sha256': sha(BASE / 'versions/v194/manifest.json'),
++        'display_parent_manifest_sha256': sha(BASE / 'versions/v193/manifest.json'),
++        'status': 'frozen_display_review_v194_mac_full_attempt01_passed_full_route',
+         'platform': 'Mac ARM64 Cocoa ViewerGL replay, CPU model construction, no physics steps',
+         'source_files': files,
+         'snapshot_locations': locations,

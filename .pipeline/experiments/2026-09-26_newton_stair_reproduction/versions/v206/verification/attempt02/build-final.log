@@ -1,0 +1,1451 @@
+Starting >>> scan_nav2_controller
+--- stderr: scan_nav2_controller
+In file included from /work/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp:22,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:6:
+/work/src/scan_nav2_controller/include/scan_nav2_controller/command_slew.hpp: In member function ‘void scan_nav2_controller::CommandSlew::reset()’:
+/work/src/scan_nav2_controller/include/scan_nav2_controller/command_slew.hpp:18:28: warning: converting to ‘geometry_msgs::msg::Twist_<std::allocator<void> >’ from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+   18 |   void reset() { command_={}; initialized_=false; }
+      |                            ^
+/work/src/scan_nav2_controller/include/scan_nav2_controller/command_slew.hpp:18:28: note: in C++11 and above a default constructor can be explicit
+/work/src/scan_nav2_controller/include/scan_nav2_controller/command_slew.hpp: In member function ‘geometry_msgs::msg::Twist scan_nav2_controller::CommandSlew::update(const Twist&, int64_t)’:
+/work/src/scan_nav2_controller/include/scan_nav2_controller/command_slew.hpp:24:39: warning: converting to ‘geometry_msgs::msg::Twist_<std::allocator<void> >’ from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+   24 |     if (dt<0.0 || dt>0.2) { command_={}; return command_; }
+      |                                       ^
+/work/src/scan_nav2_controller/include/scan_nav2_controller/command_slew.hpp:24:39: note: in C++11 and above a default constructor can be explicit
+In file included from /work/src/scan_nav2_controller/test/test_controller.cpp:6:
+/work/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp: In member function ‘scan_planner::TrackingNode::CommandSample scan_planner::TrackingNode::sampleCommand(const Pose&, const Twist&, bool)’:
+/work/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp:402:60: warning: converting to ‘geometry_msgs::msg::Twist’ {aka ‘geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  402 |     if (!haveTrajectory() || !validGoalPose(pose)) return {};
+      |                                                            ^
+/work/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp:402:60: note: in C++11 and above a default constructor can be explicit
+/work/src/scan_nav2_controller/test/test_controller.cpp: At global scope:
+/work/src/scan_nav2_controller/test/test_controller.cpp:84:94: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+   84 |       const geometry_msgs::msg::PoseStamped &body,const geometry_msgs::msg::Twist &velocity={})
+      |                                                                                              ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:84:94: note: in C++11 and above a default constructor can be explicit
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘void PluginTest::completeStand(const PoseStamped&)’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:123:9: warning: suggest explicit braces to avoid ambiguous ‘else’ [-Wdangling-else]
+  123 |       if(tick<100) EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,geometry_msgs::msg::Twist()));
+      |         ^
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:384,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void RouteHeadingTest_FinalGoalCaptureOwnsYawBeforeAndAfterLatch_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:289:39: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  289 |     EXPECT_NEAR(settledCommand(body,{}).twist.angular.z,tracker.kp_yaw_*error,1e-9);
+      |                                       ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:216:3: note: in expansion of macro ‘GTEST_PRED_FORMAT3_’
+  216 |   GTEST_PRED_FORMAT3_(pred_format, v1, v2, v3, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2117:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT3’
+ 2117 |   EXPECT_PRED_FORMAT3(::testing::internal::DoubleNearPredFormat, \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:289:5: note: in expansion of macro ‘EXPECT_NEAR’
+  289 |     EXPECT_NEAR(settledCommand(body,{}).twist.angular.z,tracker.kp_yaw_*error,1e-9);
+      |     ^~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:289:39: note: in C++11 and above a default constructor can be explicit
+  289 |     EXPECT_NEAR(settledCommand(body,{}).twist.angular.z,tracker.kp_yaw_*error,1e-9);
+      |                                       ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:216:3: note: in expansion of macro ‘GTEST_PRED_FORMAT3_’
+  216 |   GTEST_PRED_FORMAT3_(pred_format, v1, v2, v3, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2117:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT3’
+ 2117 |   EXPECT_PRED_FORMAT3(::testing::internal::DoubleNearPredFormat, \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:289:5: note: in expansion of macro ‘EXPECT_NEAR’
+  289 |     EXPECT_NEAR(settledCommand(body,{}).twist.angular.z,tracker.kp_yaw_*error,1e-9);
+      |     ^~~~~~~~~~~
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:291:74: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  291 |     EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |                                                                          ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:291:5: note: in expansion of macro ‘EXPECT_FALSE’
+  291 |     EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |     ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:291:74: note: in C++11 and above a default constructor can be explicit
+  291 |     EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |                                                                          ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:291:5: note: in expansion of macro ‘EXPECT_FALSE’
+  291 |     EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |     ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:297:72: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  297 |   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{})); // Last measured body still moving.
+      |                                                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:297:3: note: in expansion of macro ‘EXPECT_FALSE’
+  297 |   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{})); // Last measured body still moving.
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:297:72: note: in C++11 and above a default constructor can be explicit
+  297 |   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{})); // Last measured body still moving.
+      |                                                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:297:3: note: in expansion of macro ‘EXPECT_FALSE’
+  297 |   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{})); // Last measured body still moving.
+      |   ^~~~~~~~~~~~
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:384,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:306:35: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  306 |   EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
+      |                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:306:3: note: in expansion of macro ‘EXPECT_EQ’
+  306 |   EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:306:35: note: in C++11 and above a default constructor can be explicit
+  306 |   EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
+      |                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:306:3: note: in expansion of macro ‘EXPECT_EQ’
+  306 |   EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:306:35: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  306 |   EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
+      |                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:306:3: note: in expansion of macro ‘EXPECT_EQ’
+  306 |   EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:306:35: note: in C++11 and above a default constructor can be explicit
+  306 |   EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
+      |                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:306:3: note: in expansion of macro ‘EXPECT_EQ’
+  306 |   EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:307:72: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  307 |   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |                                                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:307:3: note: in expansion of macro ‘EXPECT_FALSE’
+  307 |   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:307:72: note: in C++11 and above a default constructor can be explicit
+  307 |   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |                                                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:307:3: note: in expansion of macro ‘EXPECT_FALSE’
+  307 |   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:309:71: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  309 |   EXPECT_TRUE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |                                                                       ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:309:3: note: in expansion of macro ‘EXPECT_TRUE’
+  309 |   EXPECT_TRUE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |   ^~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:309:71: note: in C++11 and above a default constructor can be explicit
+  309 |   EXPECT_TRUE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |                                                                       ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:309:3: note: in expansion of macro ‘EXPECT_TRUE’
+  309 |   EXPECT_TRUE(goal->isGoalReached(body.pose,route.poses.back().pose,{}));
+      |   ^~~~~~~~~~~
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:384,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:311:35: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  311 |   EXPECT_GT(settledCommand(body,{}).twist.angular.z,0.0);
+      |                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:311:3: note: in expansion of macro ‘EXPECT_GT’
+  311 |   EXPECT_GT(settledCommand(body,{}).twist.angular.z,0.0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:311:35: note: in C++11 and above a default constructor can be explicit
+  311 |   EXPECT_GT(settledCommand(body,{}).twist.angular.z,0.0);
+      |                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:311:3: note: in expansion of macro ‘EXPECT_GT’
+  311 |   EXPECT_GT(settledCommand(body,{}).twist.angular.z,0.0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:314:35: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  314 |   EXPECT_GT(settledCommand(body,{}).twist.angular.z,0.0);
+      |                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:314:3: note: in expansion of macro ‘EXPECT_GT’
+  314 |   EXPECT_GT(settledCommand(body,{}).twist.angular.z,0.0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:314:35: note: in C++11 and above a default constructor can be explicit
+  314 |   EXPECT_GT(settledCommand(body,{}).twist.angular.z,0.0);
+      |                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:314:3: note: in expansion of macro ‘EXPECT_GT’
+  314 |   EXPECT_GT(settledCommand(body,{}).twist.angular.z,0.0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:315:41: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  315 |   set_error(0.11);settledCommand(body,{});
+      |                                         ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:315:41: note: in C++11 and above a default constructor can be explicit
+/work/src/scan_nav2_controller/test/test_controller.cpp:317:25: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  317 |   settledCommand(body,{});
+      |                         ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:317:25: note: in C++11 and above a default constructor can be explicit
+/work/src/scan_nav2_controller/test/test_controller.cpp:320:25: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  320 |   settledCommand(body,{});
+      |                         ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:320:25: note: in C++11 and above a default constructor can be explicit
+/work/src/scan_nav2_controller/test/test_controller.cpp:322:25: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  322 |   settledCommand(body,{});
+      |                         ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:322:25: note: in C++11 and above a default constructor can be explicit
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_NoPlanThrowsAndFirstSplineWaitReturnsZero_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:340:40: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  340 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:340:3: note: in expansion of macro ‘EXPECT_THROW’
+  340 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:340:40: note: in C++11 and above a default constructor can be explicit
+  340 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:340:3: note: in expansion of macro ‘EXPECT_THROW’
+  340 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:384,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:342:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  342 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:342:3: note: in expansion of macro ‘EXPECT_EQ’
+  342 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:342:37: note: in C++11 and above a default constructor can be explicit
+  342 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:342:3: note: in expansion of macro ‘EXPECT_EQ’
+  342 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:342:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  342 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:342:3: note: in expansion of macro ‘EXPECT_EQ’
+  342 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:342:37: note: in C++11 and above a default constructor can be explicit
+  342 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:342:3: note: in expansion of macro ‘EXPECT_EQ’
+  342 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:351:40: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  351 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:351:3: note: in expansion of macro ‘EXPECT_THROW’
+  351 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:351:40: note: in C++11 and above a default constructor can be explicit
+  351 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:351:3: note: in expansion of macro ‘EXPECT_THROW’
+  351 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:384,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:360:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  360 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:360:3: note: in expansion of macro ‘EXPECT_EQ’
+  360 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:360:37: note: in C++11 and above a default constructor can be explicit
+  360 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:360:3: note: in expansion of macro ‘EXPECT_EQ’
+  360 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:360:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  360 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:360:3: note: in expansion of macro ‘EXPECT_EQ’
+  360 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:360:37: note: in C++11 and above a default constructor can be explicit
+  360 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:360:3: note: in expansion of macro ‘EXPECT_EQ’
+  360 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_FreshSplineImmediatelyReplacesTrajectoryAndResetsTimeout_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:373:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  373 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:373:3: note: in expansion of macro ‘EXPECT_GT’
+  373 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:373:37: note: in C++11 and above a default constructor can be explicit
+  373 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:373:3: note: in expansion of macro ‘EXPECT_GT’
+  373 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_EmergencySplineClearsAndReturnsZeroThenAcceptsReplacement_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:387:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  387 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:387:3: note: in expansion of macro ‘EXPECT_EQ’
+  387 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:387:37: note: in C++11 and above a default constructor can be explicit
+  387 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:387:3: note: in expansion of macro ‘EXPECT_EQ’
+  387 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:387:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  387 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:387:3: note: in expansion of macro ‘EXPECT_EQ’
+  387 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:387:37: note: in C++11 and above a default constructor can be explicit
+  387 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:387:3: note: in expansion of macro ‘EXPECT_EQ’
+  387 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:394:40: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  394 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:394:3: note: in expansion of macro ‘EXPECT_THROW’
+  394 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:394:40: note: in C++11 and above a default constructor can be explicit
+  394 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:394:3: note: in expansion of macro ‘EXPECT_THROW’
+  394 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_MalformedSplinesNeverReachEvaluator_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:424:29: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  424 |     settledCommand(pose(),{});
+      |                             ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:424:29: note: in C++11 and above a default constructor can be explicit
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_InvalidPoseAndVelocityThrowForServerToStop_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:436:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  436 |   EXPECT_THROW(settledCommand(bad,{}),nav2_core::PlannerException);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:436:3: note: in expansion of macro ‘EXPECT_THROW’
+  436 |   EXPECT_THROW(settledCommand(bad,{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:436:37: note: in C++11 and above a default constructor can be explicit
+  436 |   EXPECT_THROW(settledCommand(bad,{}),nav2_core::PlannerException);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:436:3: note: in expansion of macro ‘EXPECT_THROW’
+  436 |   EXPECT_THROW(settledCommand(bad,{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:438:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  438 |   EXPECT_THROW(settledCommand(bad,{}),nav2_core::PlannerException);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:438:3: note: in expansion of macro ‘EXPECT_THROW’
+  438 |   EXPECT_THROW(settledCommand(bad,{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:438:37: note: in C++11 and above a default constructor can be explicit
+  438 |   EXPECT_THROW(settledCommand(bad,{}),nav2_core::PlannerException);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:438:3: note: in expansion of macro ‘EXPECT_THROW’
+  438 |   EXPECT_THROW(settledCommand(bad,{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_GoalRequiresHeightYawAndMeasuredStoppedVelocity_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:447:47: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  447 |   at.pose.position.z+=0.3;settledCommand(at,{});
+      |                                               ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:447:47: note: in C++11 and above a default constructor can be explicit
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:448:70: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  448 |   EXPECT_FALSE(goal->isGoalReached(at.pose,route.poses.back().pose,{}));
+      |                                                                      ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:448:3: note: in expansion of macro ‘EXPECT_FALSE’
+  448 |   EXPECT_FALSE(goal->isGoalReached(at.pose,route.poses.back().pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:448:70: note: in C++11 and above a default constructor can be explicit
+  448 |   EXPECT_FALSE(goal->isGoalReached(at.pose,route.poses.back().pose,{}));
+      |                                                                      ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:448:3: note: in expansion of macro ‘EXPECT_FALSE’
+  448 |   EXPECT_FALSE(goal->isGoalReached(at.pose,route.poses.back().pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:450:23: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  450 |   settledCommand(at,{});
+      |                       ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:450:23: note: in C++11 and above a default constructor can be explicit
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:451:70: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  451 |   EXPECT_FALSE(goal->isGoalReached(at.pose,route.poses.back().pose,{}));
+      |                                                                      ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:451:3: note: in expansion of macro ‘EXPECT_FALSE’
+  451 |   EXPECT_FALSE(goal->isGoalReached(at.pose,route.poses.back().pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:451:70: note: in C++11 and above a default constructor can be explicit
+  451 |   EXPECT_FALSE(goal->isGoalReached(at.pose,route.poses.back().pose,{}));
+      |                                                                      ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:451:3: note: in expansion of macro ‘EXPECT_FALSE’
+  451 |   EXPECT_FALSE(goal->isGoalReached(at.pose,route.poses.back().pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:455:23: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  455 |   settledCommand(at,{});
+      |                       ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:455:23: note: in C++11 and above a default constructor can be explicit
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:456:54: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  456 |   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                      ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:456:3: note: in expansion of macro ‘EXPECT_FALSE’
+  456 |   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:456:54: note: in C++11 and above a default constructor can be explicit
+  456 |   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                      ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:456:3: note: in expansion of macro ‘EXPECT_FALSE’
+  456 |   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:458:53: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  458 |   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:458:3: note: in expansion of macro ‘EXPECT_TRUE’
+  458 |   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |   ^~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:458:53: note: in C++11 and above a default constructor can be explicit
+  458 |   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:458:3: note: in expansion of macro ‘EXPECT_TRUE’
+  458 |   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |   ^~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:461:51: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  461 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |                                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:461:3: note: in expansion of macro ‘EXPECT_FALSE’
+  461 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:461:51: note: in C++11 and above a default constructor can be explicit
+  461 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |                                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:461:3: note: in expansion of macro ‘EXPECT_FALSE’
+  461 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:463:51: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  463 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |                                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:463:3: note: in expansion of macro ‘EXPECT_FALSE’
+  463 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:463:51: note: in C++11 and above a default constructor can be explicit
+  463 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |                                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:463:3: note: in expansion of macro ‘EXPECT_FALSE’
+  463 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:465:51: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  465 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |                                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:465:3: note: in expansion of macro ‘EXPECT_FALSE’
+  465 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:465:51: note: in C++11 and above a default constructor can be explicit
+  465 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |                                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:465:3: note: in expansion of macro ‘EXPECT_FALSE’
+  465 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:467:51: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  467 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |                                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:467:3: note: in expansion of macro ‘EXPECT_FALSE’
+  467 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:467:51: note: in C++11 and above a default constructor can be explicit
+  467 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |                                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:467:3: note: in expansion of macro ‘EXPECT_FALSE’
+  467 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:469:51: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  469 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |                                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:469:3: note: in expansion of macro ‘EXPECT_FALSE’
+  469 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:469:51: note: in C++11 and above a default constructor can be explicit
+  469 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |                                                   ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:469:3: note: in expansion of macro ‘EXPECT_FALSE’
+  469 |   EXPECT_FALSE(goal->isGoalReached(live,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:470:68: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  470 |   goal->reset();EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                                    ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:470:17: note: in expansion of macro ‘EXPECT_FALSE’
+  470 |   goal->reset();EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                 ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:470:68: note: in C++11 and above a default constructor can be explicit
+  470 |   goal->reset();EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                                    ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:470:17: note: in expansion of macro ‘EXPECT_FALSE’
+  470 |   goal->reset();EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                 ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_StopAndDeactivateClearTrajectoryAndRequireNewPlan_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:497:40: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  497 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:497:3: note: in expansion of macro ‘EXPECT_THROW’
+  497 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:497:40: note: in C++11 and above a default constructor can be explicit
+  497 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:497:3: note: in expansion of macro ‘EXPECT_THROW’
+  497 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:503:40: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  503 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:503:3: note: in expansion of macro ‘EXPECT_THROW’
+  503 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:503:40: note: in C++11 and above a default constructor can be explicit
+  503 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1301:44: note: in definition of macro ‘GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_’
+ 1301 |   if (::testing::internal::AlwaysTrue()) { statement; }
+      |                                            ^~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1921:3: note: in expansion of macro ‘GTEST_TEST_THROW_’
+ 1921 |   GTEST_TEST_THROW_(statement, expected_exception, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:503:3: note: in expansion of macro ‘EXPECT_THROW’
+  503 |   EXPECT_THROW(settledCommand(pose(),{}),nav2_core::PlannerException);
+      |   ^~~~~~~~~~~~
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:384,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_TerminalTimeoutFailsWithoutExecutionFeedback_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:514:33: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  514 |   EXPECT_EQ(settledCommand(at,{}).twist,geometry_msgs::msg::Twist());
+      |                                 ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:514:3: note: in expansion of macro ‘EXPECT_EQ’
+  514 |   EXPECT_EQ(settledCommand(at,{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:514:33: note: in C++11 and above a default constructor can be explicit
+  514 |   EXPECT_EQ(settledCommand(at,{}).twist,geometry_msgs::msg::Twist());
+      |                                 ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:514:3: note: in expansion of macro ‘EXPECT_EQ’
+  514 |   EXPECT_EQ(settledCommand(at,{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:514:33: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  514 |   EXPECT_EQ(settledCommand(at,{}).twist,geometry_msgs::msg::Twist());
+      |                                 ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:514:3: note: in expansion of macro ‘EXPECT_EQ’
+  514 |   EXPECT_EQ(settledCommand(at,{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:514:33: note: in C++11 and above a default constructor can be explicit
+  514 |   EXPECT_EQ(settledCommand(at,{}).twist,geometry_msgs::msg::Twist());
+      |                                 ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:514:3: note: in expansion of macro ‘EXPECT_EQ’
+  514 |   EXPECT_EQ(settledCommand(at,{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:516:54: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  516 |   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                      ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:516:3: note: in expansion of macro ‘EXPECT_FALSE’
+  516 |   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:516:54: note: in C++11 and above a default constructor can be explicit
+  516 |   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                      ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:516:3: note: in expansion of macro ‘EXPECT_FALSE’
+  516 |   EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:519:25: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  519 |     settledCommand(at,{});
+      |                         ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:519:25: note: in C++11 and above a default constructor can be explicit
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_SameGoalRefreshRetainsHoldAndNewGoalResetsIt_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:530:57: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  530 |   plan();auto at=route.poses.back();settledCommand(at,{});
+      |                                                         ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:530:57: note: in C++11 and above a default constructor can be explicit
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:531:71: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  531 |   completeStand(at);ASSERT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                                       ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:531:21: note: in expansion of macro ‘ASSERT_TRUE’
+  531 |   completeStand(at);ASSERT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                     ^~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:531:71: note: in C++11 and above a default constructor can be explicit
+  531 |   completeStand(at);ASSERT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                                       ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:531:21: note: in expansion of macro ‘ASSERT_TRUE’
+  531 |   completeStand(at);ASSERT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                     ^~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:535:40: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  535 |   plugin->computeVelocityCommands(at,{});
+      |                                        ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:535:40: note: in C++11 and above a default constructor can be explicit
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:536:53: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  536 |   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:536:3: note: in expansion of macro ‘EXPECT_TRUE’
+  536 |   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |   ^~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:536:53: note: in C++11 and above a default constructor can be explicit
+  536 |   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:536:3: note: in expansion of macro ‘EXPECT_TRUE’
+  536 |   EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |   ^~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:538:92: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  538 |   EXPECT_FALSE(actual->terminalPhase());EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                                                            ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:538:41: note: in expansion of macro ‘EXPECT_FALSE’
+  538 |   EXPECT_FALSE(actual->terminalPhase());EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                         ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:538:92: note: in C++11 and above a default constructor can be explicit
+  538 |   EXPECT_FALSE(actual->terminalPhase());EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                                                            ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:538:41: note: in expansion of macro ‘EXPECT_FALSE’
+  538 |   EXPECT_FALSE(actual->terminalPhase());EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                         ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_TypedRosExecutionFeedbackReachesControllerCache_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:546:46: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  546 |   plan();settledCommand(route.poses.back(),{});
+      |                                              ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:546:46: note: in C++11 and above a default constructor can be explicit
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:555:86: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  555 |   EXPECT_FALSE(goal->isGoalReached(route.poses.back().pose,route.poses.back().pose,{}));
+      |                                                                                      ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:555:3: note: in expansion of macro ‘EXPECT_FALSE’
+  555 |   EXPECT_FALSE(goal->isGoalReached(route.poses.back().pose,route.poses.back().pose,{}));
+      |   ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:555:86: note: in C++11 and above a default constructor can be explicit
+  555 |   EXPECT_FALSE(goal->isGoalReached(route.poses.back().pose,route.poses.back().pose,{}));
+      |                                                                                      ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:555:3: note: in expansion of macro ‘EXPECT_FALSE’
+  555 |   EXPECT_FALSE(goal->isGoalReached(route.poses.back().pose,route.poses.back().pose,{}));
+      |   ^~~~~~~~~~~~
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:384,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_ObservationTopicsCannotInjectControlState_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:590:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  590 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:590:3: note: in expansion of macro ‘EXPECT_EQ’
+  590 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:590:37: note: in C++11 and above a default constructor can be explicit
+  590 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:590:3: note: in expansion of macro ‘EXPECT_EQ’
+  590 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:590:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  590 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:590:3: note: in expansion of macro ‘EXPECT_EQ’
+  590 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:590:37: note: in C++11 and above a default constructor can be explicit
+  590 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:590:3: note: in expansion of macro ‘EXPECT_EQ’
+  590 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:592:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  592 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:592:3: note: in expansion of macro ‘EXPECT_GT’
+  592 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:592:37: note: in C++11 and above a default constructor can be explicit
+  592 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:592:3: note: in expansion of macro ‘EXPECT_GT’
+  592 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_CancellationAndNewGoalRejectLateNativeSpline_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:603:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  603 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:603:3: note: in expansion of macro ‘EXPECT_EQ’
+  603 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:603:37: note: in C++11 and above a default constructor can be explicit
+  603 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:603:3: note: in expansion of macro ‘EXPECT_EQ’
+  603 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:603:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  603 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:603:3: note: in expansion of macro ‘EXPECT_EQ’
+  603 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:603:37: note: in C++11 and above a default constructor can be explicit
+  603 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:603:3: note: in expansion of macro ‘EXPECT_EQ’
+  603 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:606:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  606 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:606:3: note: in expansion of macro ‘EXPECT_GT’
+  606 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:606:37: note: in C++11 and above a default constructor can be explicit
+  606 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:606:3: note: in expansion of macro ‘EXPECT_GT’
+  606 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_NativeDirectInterfaceFeedsTrackerAndKeepsObservations_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:636:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  636 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:636:3: note: in expansion of macro ‘EXPECT_GT’
+  636 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:636:37: note: in C++11 and above a default constructor can be explicit
+  636 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:2008:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 2008 |   EXPECT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:636:3: note: in expansion of macro ‘EXPECT_GT’
+  636 |   EXPECT_GT(settledCommand(pose(),{}).twist.linear.x,0);
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:650:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  650 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:650:3: note: in expansion of macro ‘EXPECT_EQ’
+  650 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:650:37: note: in C++11 and above a default constructor can be explicit
+  650 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1997:32: note: in expansion of macro ‘GTEST_IS_NULL_LITERAL_’
+ 1997 |                       EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      |                                ^~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:650:3: note: in expansion of macro ‘EXPECT_EQ’
+  650 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:650:37: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  650 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:650:3: note: in expansion of macro ‘EXPECT_EQ’
+  650 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:650:37: note: in C++11 and above a default constructor can be explicit
+  650 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |                                     ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:76:52: note: in definition of macro ‘GTEST_ASSERT_’
+   76 |   if (const ::testing::AssertionResult gtest_ar = (expression)) \
+      |                                                    ^~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest_pred_impl.h:161:3: note: in expansion of macro ‘GTEST_PRED_FORMAT2_’
+  161 |   GTEST_PRED_FORMAT2_(pred_format, v1, v2, GTEST_NONFATAL_FAILURE_)
+      |   ^~~~~~~~~~~~~~~~~~~
+/opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:1996:3: note: in expansion of macro ‘EXPECT_PRED_FORMAT2’
+ 1996 |   EXPECT_PRED_FORMAT2(::testing::internal:: \
+      |   ^~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:650:3: note: in expansion of macro ‘EXPECT_EQ’
+  650 |   EXPECT_EQ(settledCommand(pose(),{}).twist,geometry_msgs::msg::Twist());
+      |   ^~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_OuterTerminalBrakeUsesSameRampAndStillRequiresPhysicalHold_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:835:61: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  835 |     const auto command=plugin->computeVelocityCommands(at,{}).twist;
+      |                                                             ^
+/work/src/scan_nav2_controller/test/test_controller.cpp:835:61: note: in C++11 and above a default constructor can be explicit
+/work/src/scan_nav2_controller/test/test_controller.cpp:837:7: warning: suggest explicit braces to avoid ambiguous ‘else’ [-Wdangling-else]
+  837 |     if(tick==0) EXPECT_GT(command.linear.x,0.);
+      |       ^
+In file included from /opt/ros/foxy/src/gtest_vendor/include/gtest/gtest.h:60,
+                 from /work/src/scan_nav2_controller/test/test_controller.cpp:1:
+/work/src/scan_nav2_controller/test/test_controller.cpp:838:56: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  838 |     EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:838:5: note: in expansion of macro ‘EXPECT_FALSE’
+  838 |     EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |     ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:838:56: note: in C++11 and above a default constructor can be explicit
+  838 |     EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                        ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:838:5: note: in expansion of macro ‘EXPECT_FALSE’
+  838 |     EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,{}));
+      |     ^~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:844:71: warning: converting to ‘const Twist’ {aka ‘const geometry_msgs::msg::Twist_<std::allocator<void> >’} from initializer list would use explicit constructor ‘geometry_msgs::msg::Twist_<ContainerAllocator>::Twist_(rosidl_runtime_cpp::MessageInitialization) [with ContainerAllocator = std::allocator<void>]’
+  844 |   completeStand(at);EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                                       ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:844:21: note: in expansion of macro ‘EXPECT_TRUE’
+  844 |   completeStand(at);EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                     ^~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:844:71: note: in C++11 and above a default constructor can be explicit
+  844 |   completeStand(at);EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                                                                       ^
+/opt/ros/foxy/src/gtest_vendor/include/gtest/internal/gtest-internal.h:1368:34: note: in definition of macro ‘GTEST_TEST_BOOLEAN_’
+ 1368 |       ::testing::AssertionResult(expression)) \
+      |                                  ^~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:844:21: note: in expansion of macro ‘EXPECT_TRUE’
+  844 |   completeStand(at);EXPECT_TRUE(goal->isGoalReached(at.pose,at.pose,{}));
+      |                     ^~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘geometry_msgs::msg::TwistStamped PluginTest::settledCommand(const PoseStamped&, const Twist&)’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:90:37: warning: ignoring return value of ‘rcl_ret_t rcl_enable_ros_time_override(rcl_clock_t*)’, declared with attribute warn_unused_result [-Wunused-result]
+   90 |         rcl_enable_ros_time_override(clock->get_clock_handle());
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:91:34: warning: ignoring return value of ‘rcl_ret_t rcl_set_ros_time_override(rcl_clock_t*, rcl_time_point_value_t)’, declared with attribute warn_unused_result [-Wunused-result]
+   91 |         rcl_set_ros_time_override(clock->get_clock_handle(),start+tick*33333333LL);
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘void PluginTest::completeStand(const PoseStamped&)’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:120:35: warning: ignoring return value of ‘rcl_ret_t rcl_enable_ros_time_override(rcl_clock_t*)’, declared with attribute warn_unused_result [-Wunused-result]
+  120 |       rcl_enable_ros_time_override(actual->motion_->tracker_->get_clock()->get_clock_handle());
+      |       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:121:32: warning: ignoring return value of ‘rcl_ret_t rcl_set_ros_time_override(rcl_clock_t*, rcl_time_point_value_t)’, declared with attribute warn_unused_result [-Wunused-result]
+  121 |       rcl_set_ros_time_override(actual->motion_->tracker_->get_clock()->get_clock_handle(),stamp);
+      |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp: In member function ‘virtual void PluginTest_OuterTerminalBrakeUsesSameRampAndStillRequiresPhysicalHold_Test::TestBody()’:
+/work/src/scan_nav2_controller/test/test_controller.cpp:832:35: warning: ignoring return value of ‘rcl_ret_t rcl_enable_ros_time_override(rcl_clock_t*)’, declared with attribute warn_unused_result [-Wunused-result]
+  832 |       rcl_enable_ros_time_override(clock->get_clock_handle());
+      |       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/work/src/scan_nav2_controller/test/test_controller.cpp:833:32: warning: ignoring return value of ‘rcl_ret_t rcl_set_ros_time_override(rcl_clock_t*, rcl_time_point_value_t)’, declared with attribute warn_unused_result [-Wunused-result]
+  833 |       rcl_set_ros_time_override(clock->get_clock_handle(),time);
+      |       ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---
+Finished <<< scan_nav2_controller [15.1s]
+
+Summary: 1 package finished [15.2s]
+  1 package had stderr output: scan_nav2_controller

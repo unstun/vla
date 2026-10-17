@@ -1,0 +1,1541 @@
+--- parent/src/pct_planner/CMakeLists.txt
++++ v201/src/pct_planner/CMakeLists.txt
+@@ -7,6 +7,8 @@
+ find_package(pybind11 REQUIRED)
+ 
+ find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
++find_package(Eigen3 REQUIRED)
++find_package(GTSAM REQUIRED)
+ 
+ execute_process(
+   COMMAND "${Python3_EXECUTABLE}" -c "import sysconfig; print(sysconfig.get_path('platlib', vars={'platbase': '.', 'base': '.'}))"
+@@ -26,4 +28,12 @@
+ 
+ ament_python_install_package(${PROJECT_NAME})
+ 
++# Export the existing native implementation without changing algorithm sources.
++install(DIRECTORY lib/src/ DESTINATION include/pct_planner FILES_MATCHING PATTERN "*.h")
++install(TARGETS ele_planner_lib a_star_search gpmp_optimizer map_manager common_smoothing
++  LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
++ament_export_include_directories(include/pct_planner)
++ament_export_libraries(ele_planner_lib a_star_search gpmp_optimizer map_manager common_smoothing)
++ament_export_dependencies(Eigen3 GTSAM)
++install(FILES LICENSE NOTICE DESTINATION share/${PROJECT_NAME})
+ ament_package()
+--- parent/src/pct_planner/LICENSE
++++ v201/src/pct_planner/LICENSE
+@@ -0,0 +1,339 @@
++                    GNU GENERAL PUBLIC LICENSE
++                       Version 2, June 1991
++
++ Copyright (C) 1989, 1991 Free Software Foundation, Inc.,
++ 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ Everyone is permitted to copy and distribute verbatim copies
++ of this license document, but changing it is not allowed.
++
++                            Preamble
++
++  The licenses for most software are designed to take away your
++freedom to share and change it.  By contrast, the GNU General Public
++License is intended to guarantee your freedom to share and change free
++software--to make sure the software is free for all its users.  This
++General Public License applies to most of the Free Software
++Foundation's software and to any other program whose authors commit to
++using it.  (Some other Free Software Foundation software is covered by
++the GNU Lesser General Public License instead.)  You can apply it to
++your programs, too.
++
++  When we speak of free software, we are referring to freedom, not
++price.  Our General Public Licenses are designed to make sure that you
++have the freedom to distribute copies of free software (and charge for
++this service if you wish), that you receive source code or can get it
++if you want it, that you can change the software or use pieces of it
++in new free programs; and that you know you can do these things.
++
++  To protect your rights, we need to make restrictions that forbid
++anyone to deny you these rights or to ask you to surrender the rights.
++These restrictions translate to certain responsibilities for you if you
++distribute copies of the software, or if you modify it.
++
++  For example, if you distribute copies of such a program, whether
++gratis or for a fee, you must give the recipients all the rights that
++you have.  You must make sure that they, too, receive or can get the
++source code.  And you must show them these terms so they know their
++rights.
++
++  We protect your rights with two steps: (1) copyright the software, and
++(2) offer you this license which gives you legal permission to copy,
++distribute and/or modify the software.
++
++  Also, for each author's protection and ours, we want to make certain
++that everyone understands that there is no warranty for this free
++software.  If the software is modified by someone else and passed on, we
++want its recipients to know that what they have is not the original, so
++that any problems introduced by others will not reflect on the original
++authors' reputations.
++
++  Finally, any free program is threatened constantly by software
++patents.  We wish to avoid the danger that redistributors of a free
++program will individually obtain patent licenses, in effect making the
++program proprietary.  To prevent this, we have made it clear that any
++patent must be licensed for everyone's free use or not licensed at all.
++
++  The precise terms and conditions for copying, distribution and
++modification follow.
++
++                    GNU GENERAL PUBLIC LICENSE
++   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
++
++  0. This License applies to any program or other work which contains
++a notice placed by the copyright holder saying it may be distributed
++under the terms of this General Public License.  The "Program", below,
++refers to any such program or work, and a "work based on the Program"
++means either the Program or any derivative work under copyright law:
++that is to say, a work containing the Program or a portion of it,
++either verbatim or with modifications and/or translated into another
++language.  (Hereinafter, translation is included without limitation in
++the term "modification".)  Each licensee is addressed as "you".
++
++Activities other than copying, distribution and modification are not
++covered by this License; they are outside its scope.  The act of
++running the Program is not restricted, and the output from the Program
++is covered only if its contents constitute a work based on the
++Program (independent of having been made by running the Program).
++Whether that is true depends on what the Program does.
++
++  1. You may copy and distribute verbatim copies of the Program's
++source code as you receive it, in any medium, provided that you
++conspicuously and appropriately publish on each copy an appropriate
++copyright notice and disclaimer of warranty; keep intact all the
++notices that refer to this License and to the absence of any warranty;
++and give any other recipients of the Program a copy of this License
++along with the Program.
++
++You may charge a fee for the physical act of transferring a copy, and
++you may at your option offer warranty protection in exchange for a fee.
++
++  2. You may modify your copy or copies of the Program or any portion
++of it, thus forming a work based on the Program, and copy and
++distribute such modifications or work under the terms of Section 1
++above, provided that you also meet all of these conditions:
++
++    a) You must cause the modified files to carry prominent notices
++    stating that you changed the files and the date of any change.
++
++    b) You must cause any work that you distribute or publish, that in
++    whole or in part contains or is derived from the Program or any
++    part thereof, to be licensed as a whole at no charge to all third
++    parties under the terms of this License.
++
++    c) If the modified program normally reads commands interactively
++    when run, you must cause it, when started running for such
++    interactive use in the most ordinary way, to print or display an
++    announcement including an appropriate copyright notice and a
++    notice that there is no warranty (or else, saying that you provide
++    a warranty) and that users may redistribute the program under
++    these conditions, and telling the user how to view a copy of this
++    License.  (Exception: if the Program itself is interactive but
++    does not normally print such an announcement, your work based on
++    the Program is not required to print an announcement.)
++
++These requirements apply to the modified work as a whole.  If
++identifiable sections of that work are not derived from the Program,
++and can be reasonably considered independent and separate works in
++themselves, then this License, and its terms, do not apply to those
++sections when you distribute them as separate works.  But when you
++distribute the same sections as part of a whole which is a work based
++on the Program, the distribution of the whole must be on the terms of
++this License, whose permissions for other licensees extend to the
++entire whole, and thus to each and every part regardless of who wrote it.
++
++Thus, it is not the intent of this section to claim rights or contest
++your rights to work written entirely by you; rather, the intent is to
++exercise the right to control the distribution of derivative or
++collective works based on the Program.
++
++In addition, mere aggregation of another work not based on the Program
++with the Program (or with a work based on the Program) on a volume of
++a storage or distribution medium does not bring the other work under
++the scope of this License.
++
++  3. You may copy and distribute the Program (or a work based on it,
++under Section 2) in object code or executable form under the terms of
++Sections 1 and 2 above provided that you also do one of the following:
++
++    a) Accompany it with the complete corresponding machine-readable
++    source code, which must be distributed under the terms of Sections
++    1 and 2 above on a medium customarily used for software interchange; or,
++
++    b) Accompany it with a written offer, valid for at least three
++    years, to give any third party, for a charge no more than your
++    cost of physically performing source distribution, a complete
++    machine-readable copy of the corresponding source code, to be
++    distributed under the terms of Sections 1 and 2 above on a medium
++    customarily used for software interchange; or,
++
++    c) Accompany it with the information you received as to the offer
++    to distribute corresponding source code.  (This alternative is
++    allowed only for noncommercial distribution and only if you
++    received the program in object code or executable form with such
++    an offer, in accord with Subsection b above.)
++
++The source code for a work means the preferred form of the work for
++making modifications to it.  For an executable work, complete source
++code means all the source code for all modules it contains, plus any
++associated interface definition files, plus the scripts used to
++control compilation and installation of the executable.  However, as a
++special exception, the source code distributed need not include
++anything that is normally distributed (in either source or binary
++form) with the major components (compiler, kernel, and so on) of the
++operating system on which the executable runs, unless that component
++itself accompanies the executable.
++
++If distribution of executable or object code is made by offering
++access to copy from a designated place, then offering equivalent
++access to copy the source code from the same place counts as
++distribution of the source code, even though third parties are not
++compelled to copy the source along with the object code.
++
++  4. You may not copy, modify, sublicense, or distribute the Program
++except as expressly provided under this License.  Any attempt
++otherwise to copy, modify, sublicense or distribute the Program is
++void, and will automatically terminate your rights under this License.
++However, parties who have received copies, or rights, from you under
++this License will not have their licenses terminated so long as such
++parties remain in full compliance.
++
++  5. You are not required to accept this License, since you have not
++signed it.  However, nothing else grants you permission to modify or
++distribute the Program or its derivative works.  These actions are
++prohibited by law if you do not accept this License.  Therefore, by
++modifying or distributing the Program (or any work based on the
++Program), you indicate your acceptance of this License to do so, and
++all its terms and conditions for copying, distributing or modifying
++the Program or works based on it.
++
++  6. Each time you redistribute the Program (or any work based on the
++Program), the recipient automatically receives a license from the
++original licensor to copy, distribute or modify the Program subject to
++these terms and conditions.  You may not impose any further
++restrictions on the recipients' exercise of the rights granted herein.
++You are not responsible for enforcing compliance by third parties to
++this License.
++
++  7. If, as a consequence of a court judgment or allegation of patent
++infringement or for any other reason (not limited to patent issues),
++conditions are imposed on you (whether by court order, agreement or
++otherwise) that contradict the conditions of this License, they do not
++excuse you from the conditions of this License.  If you cannot
++distribute so as to satisfy simultaneously your obligations under this
++License and any other pertinent obligations, then as a consequence you
++may not distribute the Program at all.  For example, if a patent
++license would not permit royalty-free redistribution of the Program by
++all those who receive copies directly or indirectly through you, then
++the only way you could satisfy both it and this License would be to
++refrain entirely from distribution of the Program.
++
++If any portion of this section is held invalid or unenforceable under
++any particular circumstance, the balance of the section is intended to
++apply and the section as a whole is intended to apply in other
++circumstances.
++
++It is not the purpose of this section to induce you to infringe any
++patents or other property right claims or to contest validity of any
++such claims; this section has the sole purpose of protecting the
++integrity of the free software distribution system, which is
++implemented by public license practices.  Many people have made
++generous contributions to the wide range of software distributed
++through that system in reliance on consistent application of that
++system; it is up to the author/donor to decide if he or she is willing
++to distribute software through any other system and a licensee cannot
++impose that choice.
++
++This section is intended to make thoroughly clear what is believed to
++be a consequence of the rest of this License.
++
++  8. If the distribution and/or use of the Program is restricted in
++certain countries either by patents or by copyrighted interfaces, the
++original copyright holder who places the Program under this License
++may add an explicit geographical distribution limitation excluding
++those countries, so that distribution is permitted only in or among
++countries not thus excluded.  In such case, this License incorporates
++the limitation as if written in the body of this License.
++
++  9. The Free Software Foundation may publish revised and/or new versions
++of the General Public License from time to time.  Such new versions will
++be similar in spirit to the present version, but may differ in detail to
++address new problems or concerns.
++
++Each version is given a distinguishing version number.  If the Program
++specifies a version number of this License which applies to it and "any
++later version", you have the option of following the terms and conditions
++either of that version or of any later version published by the Free
++Software Foundation.  If the Program does not specify a version number of
++this License, you may choose any version ever published by the Free Software
++Foundation.
++
++  10. If you wish to incorporate parts of the Program into other free
++programs whose distribution conditions are different, write to the author
++to ask for permission.  For software which is copyrighted by the Free
++Software Foundation, write to the Free Software Foundation; we sometimes
++make exceptions for this.  Our decision will be guided by the two goals
++of preserving the free status of all derivatives of our free software and
++of promoting the sharing and reuse of software generally.
++
++                            NO WARRANTY
++
++  11. BECAUSE THE PROGRAM IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY
++FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW.  EXCEPT WHEN
++OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES
++PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED
++OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS
++TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU.  SHOULD THE
++PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING,
++REPAIR OR CORRECTION.
++
++  12. IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
++WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MAY MODIFY AND/OR
++REDISTRIBUTE THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES,
++INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING
++OUT OF THE USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED
++TO LOSS OF DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY
++YOU OR THIRD PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER
++PROGRAMS), EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE
++POSSIBILITY OF SUCH DAMAGES.
++
++                     END OF TERMS AND CONDITIONS
++
++            How to Apply These Terms to Your New Programs
++
++  If you develop a new program, and you want it to be of the greatest
++possible use to the public, the best way to achieve this is to make it
++free software which everyone can redistribute and change under these terms.
++
++  To do so, attach the following notices to the program.  It is safest
++to attach them to the start of each source file to most effectively
++convey the exclusion of warranty; and each file should have at least
++the "copyright" line and a pointer to where the full notice is found.
++
++    <one line to give the program's name and a brief idea of what it does.>
++    Copyright (C) <year>  <name of author>
++
++    This program is free software; you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation; either version 2 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License along
++    with this program; if not, write to the Free Software Foundation, Inc.,
++    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++
++Also add information on how to contact you by electronic and paper mail.
++
++If the program is interactive, make it output a short notice like this
++when it starts in an interactive mode:
++
++    Gnomovision version 69, Copyright (C) year name of author
++    Gnomovision comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
++    This is free software, and you are welcome to redistribute it
++    under certain conditions; type `show c' for details.
++
++The hypothetical commands `show w' and `show c' should show the appropriate
++parts of the General Public License.  Of course, the commands you use may
++be called something other than `show w' and `show c'; they could even be
++mouse-clicks or menu items--whatever suits your program.
++
++You should also get your employer (if you work as a programmer) or your
++school, if any, to sign a "copyright disclaimer" for the program, if
++necessary.  Here is a sample; alter the names:
++
++  Yoyodyne, Inc., hereby disclaims all copyright interest in the program
++  `Gnomovision' (which makes passes at compilers) written by James Hacker.
++
++  <signature of Ty Coon>, 1 April 1989
++  Ty Coon, President of Vice
++
++This General Public License does not permit incorporating your program into
++proprietary programs.  If your program is a subroutine library, you may
++consider it more useful to permit linking proprietary applications with the
++library.  If this is what you want to do, use the GNU Lesser General
++Public License instead of this License.
+--- parent/src/pct_planner/NOTICE
++++ v201/src/pct_planner/NOTICE
+@@ -0,0 +1,27 @@
++Copyright (c) 2024 Bowen Yang <byangar@connect.ust.hk>, Jie Cheng <jchengai@connect.ust.hk>
++
++PCT_planner contains several third party libraries, with documentation of licensing
++and modifications as follows:
++
++- gtsam 4.1.1: Georgia Tech Smoothing and Mapping Library
++    - Removed unused cmake files and example data
++    - Licenced under BSD, provided in PCT_planner/planner/lib/3rdparty/gtsam-4.1.1/LICENSE.BSD
++- osqp: The Operator Splitting QP Solver
++    - Modified osqp/include/constants.h, osqp/include/osqp_configure.h
++    - Licenced under Apache License v 2.0, provided in PCT_planner/planner/lib/3rdparty/osqp/LICENSE
++- pybind11: Seamless operability between C++11 and Python
++    - Licenced provided in PCT_planner/planner/lib/3rdparty/pybind11/LICENSE
++
++This program is free software; you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 2 of the License, or
++(at your option) any later version.
++
++This program is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License along
++with this program; if not, write to the Free Software Foundation, Inc.,
++51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.--- parent/src/pct_planner/package.xml
++++ v201/src/pct_planner/package.xml
+@@ -14,6 +14,7 @@
+   <buildtool_depend>ament_cmake</buildtool_depend>
+   <buildtool_depend>ament_cmake_python</buildtool_depend>
+   <depend>pybind11_vendor</depend>
++  <depend>eigen</depend><depend>gtsam</depend>
+   <exec_depend>rclpy</exec_depend>
+   <exec_depend>nav_msgs</exec_depend>
+   <exec_depend>geometry_msgs</exec_depend>
+--- parent/src/lite3_nav2_plugins/CMakeLists.txt
++++ v201/src/lite3_nav2_plugins/CMakeLists.txt
+@@ -4,17 +4,31 @@
+ add_compile_options(-Wall -Wextra -Wpedantic)
+ find_package(ament_cmake REQUIRED)
+ set(dependencies nav2_core nav2_costmap_2d nav2_behavior_tree pluginlib rclcpp
+-  rclcpp_lifecycle nav_msgs geometry_msgs std_srvs lite3_nav2_interfaces tf2_ros)
++  rclcpp_lifecycle nav_msgs geometry_msgs std_srvs pct_planner tf2_ros)
+ foreach(dep ${dependencies})
+   find_package(${dep} REQUIRED)
+ endforeach()
++find_package(Eigen3 REQUIRED)
++find_package(GTSAM REQUIRED)
++add_library(pct_route_planner SHARED src/pct_route_planner.cpp)
++target_include_directories(pct_route_planner PUBLIC
++  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
++ament_target_dependencies(pct_route_planner pct_planner)
++target_link_libraries(pct_route_planner Eigen3::Eigen gtsam)
+ add_library(lite3_nav2_plugins SHARED src/pct_planner.cpp src/terrain_layer.cpp)
++target_link_libraries(lite3_nav2_plugins pct_route_planner)
+ ament_target_dependencies(lite3_nav2_plugins ${dependencies})
+ pluginlib_export_plugin_description_file(nav2_core plugins.xml)
+ pluginlib_export_plugin_description_file(nav2_costmap_2d layers.xml)
+-install(TARGETS lite3_nav2_plugins LIBRARY DESTINATION lib)
++install(TARGETS lite3_nav2_plugins pct_route_planner LIBRARY DESTINATION lib)
++install(DIRECTORY include/ DESTINATION include)
+ if(BUILD_TESTING)
+   find_package(ament_cmake_gtest REQUIRED)
++  add_executable(pct_route_probe test/pct_route_probe.cpp)
++  target_link_libraries(pct_route_probe pct_route_planner)
++  ament_add_gtest(test_direct_pct test/test_direct_pct.cpp TIMEOUT 30)
++  ament_target_dependencies(test_direct_pct ${dependencies})
++  target_link_libraries(test_direct_pct pct_route_planner)
+   ament_add_gtest(test_progress_recovery test/test_progress_recovery.cpp TIMEOUT 30)
+   ament_target_dependencies(test_progress_recovery ${dependencies})
+   target_link_libraries(test_progress_recovery /opt/ros/foxy/lib/libnav2_recovery_node_bt_node.so)
+--- parent/src/lite3_nav2_plugins/include/lite3_nav2_plugins/pct_route_planner.hpp
++++ v201/src/lite3_nav2_plugins/include/lite3_nav2_plugins/pct_route_planner.hpp
+@@ -0,0 +1,26 @@
++#pragma once
++
++#include <Eigen/Core>
++#include <ele_planner/offline_ele_planner.h>
++#include <cstdint>
++#include <string>
++#include <vector>
++
++namespace lite3_nav2
++{
++class PCTRoutePlanner
++{
++public:
++  PCTRoutePlanner(const std::string &bundle, double reference_height,
++                  bool quintic=true, double max_heading_rate=10.0);
++  Eigen::Vector3i poseToIndex(const Eigen::Vector3d &pose) const;
++  std::vector<Eigen::Vector3d> plan(const Eigen::Vector3d &start, const Eigen::Vector3d &goal);
++private:
++  int layers_{0}, nx_{0}, ny_{0};
++  double resolution_{0}, cx_{0}, cy_{0}, h0_{0}, dh_{0};
++  bool quintic_;
++  Eigen::MatrixXd ground_;
++  std::vector<uint8_t> ground_valid_;
++  OfflineElePlanner planner_;
++};
++}  // namespace lite3_nav2
+--- parent/src/lite3_nav2_plugins/package.xml
++++ v201/src/lite3_nav2_plugins/package.xml
+@@ -3,10 +3,10 @@
+  <name>lite3_nav2_plugins</name><version>0.1.0</version>
+  <description>Foxy PCT planner, SCAN terrain layer and route binding BT node.</description>
+  <maintainer email="research@example.invalid">Lite3 research</maintainer>
+- <license>Apache-2.0</license><buildtool_depend>ament_cmake</buildtool_depend>
++ <license>Apache-2.0</license><license>GPL-2.0-or-later</license><buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>nav2_core</depend><depend>nav2_costmap_2d</depend><depend>nav2_behavior_tree</depend>
+  <depend>pluginlib</depend><depend>rclcpp</depend><depend>rclcpp_lifecycle</depend>
+- <depend>nav_msgs</depend><depend>geometry_msgs</depend><depend>lite3_nav2_interfaces</depend>
++ <depend>nav_msgs</depend><depend>geometry_msgs</depend><depend>pct_planner</depend>
+  <depend>tf2_ros</depend><depend>std_srvs</depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  <export><build_type>ament_cmake</build_type></export>
+--- parent/src/lite3_nav2_plugins/plugins.xml
++++ v201/src/lite3_nav2_plugins/plugins.xml
+@@ -1,5 +1,5 @@
+ <library path="lite3_nav2_plugins">
+  <class name="lite3_nav2/PCTPlanner" type="lite3_nav2::PCTPlanner" base_class_type="nav2_core::GlobalPlanner">
+-  <description>Calls the mission-bound original PCT worker; preserves native XYZ.</description>
++  <description>Direct OfflineElePlanner call using a pre-exported map; Nav2 owns the fixed target pose.</description>
+  </class>
+ </library>
+--- parent/src/lite3_nav2_plugins/src/pct_planner.cpp
++++ v201/src/lite3_nav2_plugins/src/pct_planner.cpp
+@@ -1,62 +1,84 @@
+-#include <cmath>
++#include <lite3_nav2_plugins/pct_route_planner.hpp>
+ #include <nav2_core/global_planner.hpp>
+ #include <nav2_core/exceptions.hpp>
+-#include <lite3_nav2_interfaces/srv/plan_route.hpp>
+ #include <pluginlib/class_list_macros.hpp>
++#include <mutex>
+ 
+-namespace lite3_nav2 {
+-class PCTPlanner : public nav2_core::GlobalPlanner {
+-  using Service = lite3_nav2_interfaces::srv::PlanRoute;
+-  rclcpp::Node::SharedPtr node_;
+-  rclcpp::Client<Service>::SharedPtr client_;
+-  rclcpp::executors::SingleThreadedExecutor executor_;
++namespace lite3_nav2
++{
++class PCTPlanner : public nav2_core::GlobalPlanner
++{
++  std::mutex mutex_;
++  rclcpp_lifecycle::LifecycleNode::SharedPtr parent_;
++  rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
++  std::unique_ptr<PCTRoutePlanner> planner_;
+   std::string frame_;
+   bool active_{false};
++  template<class T> T parameter(const std::string &name,const T &fallback) {
++    if (!parent_->has_parameter(name)) parent_->declare_parameter<T>(name,fallback);
++    return parent_->get_parameter(name).get_value<T>();
++  }
++  bool valid(const geometry_msgs::msg::PoseStamped &p) const {
++    const auto &q=p.pose.orientation;
++    const double norm=q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w;
++    return p.header.frame_id==frame_ && std::isfinite(p.pose.position.x) &&
++      std::isfinite(p.pose.position.y) && std::isfinite(p.pose.position.z) &&
++      std::isfinite(norm) && std::abs(norm-1.0)<=1e-6;
++  }
+ public:
+-  void configure(rclcpp_lifecycle::LifecycleNode::SharedPtr parent, std::string name,
+-    std::shared_ptr<tf2_ros::Buffer>, std::shared_ptr<nav2_costmap_2d::Costmap2DROS> map) override {
+-    frame_ = map->getGlobalFrameID();
+-    const auto key = name + ".service";
+-    if (!parent->has_parameter(key)) parent->declare_parameter(key, "/lite3_nav2/plan_route");
+-    rclcpp::NodeOptions options;
+-    options.use_global_arguments(false);
+-    options.parameter_overrides({rclcpp::Parameter("use_sim_time", parent->get_parameter("use_sim_time").as_bool())});
+-    node_ = std::make_shared<rclcpp::Node>("pct_nav2_planner_client", options);
+-    client_ = node_->create_client<Service>(parent->get_parameter(key).as_string());
+-    executor_.add_node(node_);
++  void configure(rclcpp_lifecycle::LifecycleNode::SharedPtr parent,std::string name,
++      std::shared_ptr<tf2_ros::Buffer>,std::shared_ptr<nav2_costmap_2d::Costmap2DROS> map) override {
++    std::lock_guard<std::mutex> lock(mutex_);
++    parent_=parent;
++    frame_=map ? map->getGlobalFrameID() : parameter(name+".global_frame",std::string("world"));
++    const auto bundle=parameter(name+".map_bundle",std::string(""));
++    planner_=std::make_unique<PCTRoutePlanner>(bundle,
++      parameter(name+".reference_height",0.35),parameter(name+".use_quintic",true),
++      parameter(name+".max_heading_rate",10.0));
++    path_pub_=parent_->create_publisher<nav_msgs::msg::Path>("/pct_planned_path",10);
+   }
+-  void activate() override { active_ = true; }
+-  void deactivate() override { active_ = false; }
++  void activate() override {
++    std::lock_guard<std::mutex> lock(mutex_);active_=true;path_pub_->on_activate();
++  }
++  void deactivate() override {
++    std::lock_guard<std::mutex> lock(mutex_);active_=false;if(path_pub_) path_pub_->on_deactivate();
++  }
+   void cleanup() override {
+-    active_ = false;
+-    if (node_) executor_.remove_node(node_);
+-    client_.reset(); node_.reset();
++    std::lock_guard<std::mutex> lock(mutex_);active_=false;
++    planner_.reset();path_pub_.reset();parent_.reset();
+   }
+   nav_msgs::msg::Path createPlan(const geometry_msgs::msg::PoseStamped &start,
+-    const geometry_msgs::msg::PoseStamped &goal) override {
+-    if (!active_ || start.header.frame_id != frame_ || goal.header.frame_id != frame_)
+-      throw nav2_core::PlannerException("Inactive PCT planner or frame mismatch");
+-    if (!client_->wait_for_service(std::chrono::milliseconds(200)))
+-      throw nav2_core::PlannerException("PCT mission service unavailable");
+-    auto request = std::make_shared<Service::Request>();
+-    request->start = start; request->goal = goal;
+-    auto future = client_->async_send_request(request);
+-    if (executor_.spin_until_future_complete(future, std::chrono::seconds(6)) != rclcpp::FutureReturnCode::SUCCESS)
+-      throw nav2_core::PlannerException("PCT mission service timeout");
+-    const auto response = future.get();
+-    const auto &path = response->path;
+-    if (!response->accepted || path.header.frame_id != frame_ || path.poses.size() < 2)
+-      throw nav2_core::PlannerException("PCT rejected route: " + response->message);
+-    for (const auto &p : path.poses) {
+-      const auto &q = p.pose.orientation;
+-      const double norm = q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w;
+-      if (p.header.frame_id != frame_ || !std::isfinite(p.pose.position.x) ||
+-          !std::isfinite(p.pose.position.y) || !std::isfinite(p.pose.position.z) ||
+-          !std::isfinite(norm) || std::abs(norm-1.0)>1e-6)
+-        throw nav2_core::PlannerException("Invalid native PCT pose");
++      const geometry_msgs::msg::PoseStamped &goal) override {
++    std::lock_guard<std::mutex> lock(mutex_);
++    if (!active_ || !planner_ || !valid(start) || !valid(goal))
++      throw nav2_core::PlannerException("Inactive PCT planner or invalid world pose");
++    try {
++      const auto xyz=[](const geometry_msgs::msg::PoseStamped &p) {
++        return Eigen::Vector3d(p.pose.position.x,p.pose.position.y,p.pose.position.z);
++      };
++      const auto points=planner_->plan(xyz(start),xyz(goal));
++      // Nav2 owns the requested target. A rejected request never replays a cache.
++      if ((points[points.size()-2]-xyz(goal)).norm()>2.0)
++        throw std::runtime_error("pct_goal_connector_disconnected");
++      nav_msgs::msg::Path path;path.header.frame_id=frame_;path.header.stamp=parent_->now();
++      double yaw=0.0;
++      for(size_t i=0;i<points.size();++i) {
++        if (i+1<points.size()) {
++          const auto delta=points[i+1]-points[i];
++          if (std::hypot(delta.x(),delta.y())>1e-12) yaw=std::atan2(delta.y(),delta.x());
++        }
++        geometry_msgs::msg::PoseStamped p;p.header=path.header;
++        p.pose.position.x=points[i].x();p.pose.position.y=points[i].y();p.pose.position.z=points[i].z();
++        p.pose.orientation.z=std::sin(yaw/2.0);p.pose.orientation.w=std::cos(yaw/2.0);
++        path.poses.push_back(p);
++      }
++      path.poses.back().pose=goal.pose;
++      path_pub_->publish(path);
++      return path;
++    } catch (const std::exception &error) {
++      throw nav2_core::PlannerException(std::string("Native PCT: ")+error.what());
+     }
+-    return path;
+   }
+ };
+-}
++}  // namespace lite3_nav2
+ PLUGINLIB_EXPORT_CLASS(lite3_nav2::PCTPlanner, nav2_core::GlobalPlanner)
+--- parent/src/lite3_nav2_plugins/src/pct_route_planner.cpp
++++ v201/src/lite3_nav2_plugins/src/pct_route_planner.cpp
+@@ -0,0 +1,114 @@
++#include <lite3_nav2_plugins/pct_route_planner.hpp>
++#include <algorithm>
++#include <cmath>
++#include <cstring>
++#include <fstream>
++#include <limits>
++#include <stdexcept>
++
++namespace lite3_nav2
++{
++namespace
++{
++uint64_t readUnsigned(std::istream &stream, int bytes) {
++  uint64_t value=0;
++  for (int i=0;i<bytes;++i) {
++    const auto byte=stream.get();
++    if (byte==std::char_traits<char>::eof()) throw std::runtime_error("Truncated PCT map");
++    value|=static_cast<uint64_t>(static_cast<uint8_t>(byte))<<(8*i);
++  }
++  return value;
++}
++double readDouble(std::istream &stream) {
++  const uint64_t bits=readUnsigned(stream,8);
++  double value;static_assert(sizeof(value)==sizeof(bits),"PCT map requires IEEE float64");
++  std::memcpy(&value,&bits,sizeof(value));
++  if (!std::isfinite(value)) throw std::runtime_error("Nonfinite PCT map value");
++  return value;
++}
++// numpy.round uses ties-to-even, while std::round rounds ties away from zero.
++double roundEven(double value) {
++  const double lower=std::floor(value), fraction=value-lower;
++  if (fraction<0.5) return lower;
++  if (fraction>0.5) return lower+1;
++  return std::fmod(lower,2.0)==0.0 ? lower : lower+1;
++}
++}
++
++PCTRoutePlanner::PCTRoutePlanner(const std::string &bundle,double reference_height,
++    bool quintic,double max_heading_rate): quintic_(quintic),planner_(max_heading_rate,quintic)
++{
++  if (!std::isfinite(reference_height) || !std::isfinite(max_heading_rate) || max_heading_rate<=0)
++    throw std::runtime_error("Invalid PCT optimizer parameters");
++  std::ifstream input(bundle,std::ios::binary);
++  char magic[8];input.read(magic,8);
++  if (!input || std::memcmp(magic,"PCTMAP01",8)!=0) throw std::runtime_error("Invalid PCT map format");
++  const auto layers=readUnsigned(input,4), nx=readUnsigned(input,4), ny=readUnsigned(input,4);
++  if (!layers || !nx || !ny || layers*nx>static_cast<uint64_t>(std::numeric_limits<int>::max()) ||
++      ny>static_cast<uint64_t>(std::numeric_limits<int>::max())) throw std::runtime_error("Invalid PCT dimensions");
++  layers_=static_cast<int>(layers);nx_=static_cast<int>(nx);ny_=static_cast<int>(ny);
++  resolution_=readDouble(input);cx_=readDouble(input);cy_=readDouble(input);
++  h0_=readDouble(input);dh_=readDouble(input);
++  if (resolution_<=0 || dh_<=0) throw std::runtime_error("Invalid PCT map resolution");
++  const auto start=input.tellg();input.seekg(0,std::ios::end);
++  const uint64_t bytes=static_cast<uint64_t>(input.tellg()-start);
++  const uint64_t cells=layers*nx*ny;
++  if (bytes/49!=cells || bytes%49!=0) throw std::runtime_error("PCT map dimensions do not match payload");
++  input.seekg(start);
++  auto matrix=[&]() {
++    Eigen::MatrixXd result(layers_*nx_,ny_);
++    for(int row=0;row<result.rows();++row)
++      for(int col=0;col<result.cols();++col) result(row,col)=readDouble(input);
++    return result;
++  };
++  const auto costs=matrix();ground_=matrix();const auto ceiling=matrix();
++  const auto gateway=matrix(),grad_x=matrix(),grad_y=matrix();
++  ground_valid_.resize(cells);
++  input.read(reinterpret_cast<char *>(ground_valid_.data()),ground_valid_.size());
++  if (!input || std::any_of(ground_valid_.begin(),ground_valid_.end(),[](uint8_t x){return x>1;}))
++    throw std::runtime_error("Invalid PCT ground validity mask");
++  planner_.InitMap(20.0,15.0,resolution_,layers_,0.2,costs,ground_,ceiling,gateway,grad_x,grad_y);
++  planner_.SetReferenceHeight(reference_height);
++}
++
++Eigen::Vector3i PCTRoutePlanner::poseToIndex(const Eigen::Vector3d &pose) const
++{
++  if (!pose.allFinite()) throw std::runtime_error("Nonfinite PCT pose");
++  // Preserve TomogramPlanner.pose2idx's float32 XY input before double map math.
++  const double gx=roundEven((static_cast<float>(pose.x())-cx_)/resolution_)+nx_/2;
++  const double gy=roundEven((static_cast<float>(pose.y())-cy_)/resolution_)+ny_/2;
++  if (gx<0 || gy<0 || gx>=nx_ || gy>=ny_) throw std::runtime_error("PCT pose outside map");
++  const int x=static_cast<int>(gx),y=static_cast<int>(gy);
++  int layer=-1;double distance=std::numeric_limits<double>::infinity();
++  for(int i=0;i<layers_;++i) {
++    if (!ground_valid_[(i*nx_+x)*ny_+y]) continue;
++    // numpy subtracts the scalar from its float32 elevation array before argmin.
++    const double candidate=std::abs(static_cast<float>(ground_(i*nx_+x,y))-static_cast<float>(pose.z()));
++    if (candidate<distance) {distance=candidate;layer=i;}
++  }
++  if (layer<0) layer=static_cast<int>(std::clamp(roundEven((pose.z()-h0_)/dh_),0.0,static_cast<double>(layers_-1)));
++  return Eigen::Vector3i(layer,y,x);
++}
++
++std::vector<Eigen::Vector3d> PCTRoutePlanner::plan(const Eigen::Vector3d &start,const Eigen::Vector3d &goal)
++{
++  Eigen::Vector3i first=poseToIndex(start),last=poseToIndex(goal);
++  Eigen::Ref<const Eigen::Vector3i> first_ref(first),last_ref(last);
++  if (!planner_.Plan(first_ref,last_ref,true) || planner_.get_path_finder().GetResultMatrix().rows()==0)
++    throw std::runtime_error("pct_no_route");
++  const Eigen::MatrixXd trajectory=quintic_ ? planner_.get_trajectory_optimizer_wnoj().GetResultMatrix() :
++    planner_.get_trajectory_optimizer().GetResultMatrix();
++  const Eigen::VectorXd heights=quintic_ ? planner_.get_trajectory_optimizer_wnoj().GetResultHeight() :
++    planner_.get_trajectory_optimizer().GetResultHeight();
++  if (trajectory.rows()<2 || trajectory.rows()!=heights.rows() || trajectory.cols()<4 ||
++      !trajectory.allFinite() || !heights.allFinite()) throw std::runtime_error("pct_invalid_trajectory");
++  std::vector<Eigen::Vector3d> result;
++  for(int i=0;i<trajectory.rows();++i) {
++    const double x=(trajectory(i,trajectory.cols()/2)-nx_/2)*resolution_+cx_;
++    const double y=(trajectory(i,0)-ny_/2)*resolution_+cy_;
++    // The MissionBridge path used get_heights(), replacing the wrapper's +0.5 m.
++    result.emplace_back(x,y,heights(i));
++  }
++  return result;
++}
++}  // namespace lite3_nav2
+--- parent/src/lite3_nav2_plugins/test/pct_route_probe.cpp
++++ v201/src/lite3_nav2_plugins/test/pct_route_probe.cpp
+@@ -0,0 +1,21 @@
++// Fixed-input regression probe, not a navigation executable.
++#include <lite3_nav2_plugins/pct_route_planner.hpp>
++#include <fstream>
++#include <iomanip>
++#include <iostream>
++
++int main(int argc,char **argv)
++{
++  if(argc!=11) return 64;
++  std::ofstream output(argv[10]);output<<std::setprecision(17);
++  try {
++    lite3_nav2::PCTRoutePlanner planner(argv[1],std::stod(argv[2]),std::stoi(argv[3])!=0);
++    const Eigen::Vector3d start(std::stod(argv[4]),std::stod(argv[5]),std::stod(argv[6]));
++    const Eigen::Vector3d goal(std::stod(argv[7]),std::stod(argv[8]),std::stod(argv[9]));
++    output<<planner.poseToIndex(start).transpose()<<"\n"<<planner.poseToIndex(goal).transpose()<<"\n";
++    for(const auto &p:planner.plan(start,goal)) output<<p.transpose()<<"\n";
++    return 0;
++  } catch(const std::exception &error) {
++    output<<"ERROR "<<error.what()<<"\n";std::cerr<<error.what()<<"\n";return 2;
++  }
++}
+--- parent/src/lite3_nav2_plugins/test/test_direct_pct.cpp
++++ v201/src/lite3_nav2_plugins/test/test_direct_pct.cpp
+@@ -0,0 +1,85 @@
++#include <gtest/gtest.h>
++#include <lite3_nav2_plugins/pct_route_planner.hpp>
++#include <nav2_core/global_planner.hpp>
++#include <nav2_core/exceptions.hpp>
++#include <pluginlib/class_loader.hpp>
++#include <cstdlib>
++#include <fstream>
++#include <limits>
++#include <thread>
++
++class PCTTest : public ::testing::Test
++{
++protected:
++  static void SetUpTestCase(){int argc=0;rclcpp::init(argc,nullptr);}
++  static void TearDownTestCase(){rclcpp::shutdown();}
++  void SetUp() override {
++    ASSERT_NE(std::getenv("PCT_TEST_MAP"),nullptr);
++    bundle=std::getenv("PCT_TEST_MAP");
++    parent=std::make_shared<rclcpp_lifecycle::LifecycleNode>("pct_direct_test");
++    parent->declare_parameter("PCT.map_bundle",bundle);
++    loader=std::make_unique<pluginlib::ClassLoader<nav2_core::GlobalPlanner>>("nav2_core","nav2_core::GlobalPlanner");
++    plugin=loader->createSharedInstance("lite3_nav2/PCTPlanner");
++    plugin->configure(parent,"PCT",nullptr,nullptr);
++    plugin->activate();
++    start.header.frame_id=goal.header.frame_id="world";
++    start.pose.orientation.w=goal.pose.orientation.w=1.;
++    start.pose.position.x=.5;start.pose.position.y=-4.;start.pose.position.z=.5;
++    goal.pose.position.x=3.5;goal.pose.position.y=-2.;goal.pose.position.z=.5;
++  }
++  void TearDown() override {
++    if(plugin){plugin->deactivate();plugin->cleanup();}
++    plugin.reset();loader.reset();parent.reset();
++  }
++  std::string bundle;
++  rclcpp_lifecycle::LifecycleNode::SharedPtr parent;
++  std::unique_ptr<pluginlib::ClassLoader<nav2_core::GlobalPlanner>> loader;
++  nav2_core::GlobalPlanner::Ptr plugin;
++  geometry_msgs::msg::PoseStamped start,goal;
++};
++
++TEST_F(PCTTest, PlansDirectlyWithNoMissionServiceAndPreservesZeroYaw)
++{
++  const auto services=parent->get_service_names_and_types();
++  EXPECT_EQ(services.count("/lite3_nav2/plan_route"),0u);
++  const auto path=plugin->createPlan(start,goal);
++  ASSERT_GT(path.poses.size(),2u);EXPECT_EQ(path.header.frame_id,"world");
++  EXPECT_EQ(path.poses.back().pose,goal.pose);
++  for(const auto &pose:path.poses) {
++    EXPECT_EQ(pose.header,path.header);
++    EXPECT_NEAR(pose.pose.position.z,.5,0.01); // No discarded +0.5 m wrapper offset.
++  }
++}
++TEST_F(PCTTest, FailureNeverReturnsPreviousOptimizerRoute)
++{
++  ASSERT_GT(plugin->createPlan(start,goal).poses.size(),2u);
++  EXPECT_THROW(plugin->createPlan(goal,goal),nav2_core::PlannerException);
++  ASSERT_GT(plugin->createPlan(start,goal).poses.size(),2u);
++}
++TEST_F(PCTTest, ChangedGoalAndExplicitYawAreImmediatelyRespected)
++{
++  plugin->createPlan(start,goal);
++  goal.pose.position.x=3.25;goal.pose.orientation.z=std::sin(.35);goal.pose.orientation.w=std::cos(.35);
++  const auto path=plugin->createPlan(start,goal);
++  EXPECT_EQ(path.poses.back().pose,goal.pose);
++}
++TEST_F(PCTTest, InactiveAndMalformedRequestsAreRejected)
++{
++  plugin->deactivate();EXPECT_THROW(plugin->createPlan(start,goal),nav2_core::PlannerException);
++  plugin->activate();auto bad=start;bad.header.frame_id="map";
++  EXPECT_THROW(plugin->createPlan(bad,goal),nav2_core::PlannerException);
++  bad=start;bad.pose.position.x=std::numeric_limits<double>::quiet_NaN();
++  EXPECT_THROW(plugin->createPlan(bad,goal),nav2_core::PlannerException);
++  bad=start;bad.pose.orientation.w=2.;
++  EXPECT_THROW(plugin->createPlan(bad,goal),nav2_core::PlannerException);
++  bad=start;bad.pose.position.x=500.;
++  EXPECT_THROW(plugin->createPlan(bad,goal),nav2_core::PlannerException);
++}
++TEST_F(PCTTest, MapBundleMustBePresentAndVersioned)
++{
++  EXPECT_THROW(lite3_nav2::PCTRoutePlanner("/not/a/pct/map",.35),std::runtime_error);
++  const auto invalid=bundle+".invalid";
++  {std::ofstream out(invalid);out<<"PCTMAP00";}
++  EXPECT_THROW(lite3_nav2::PCTRoutePlanner(invalid,.35),std::runtime_error);
++  std::remove(invalid.c_str());
++}
+--- parent/src/lite3_nav2_bridge/launch/navigation.launch.py
++++ v201/src/lite3_nav2_bridge/launch/navigation.launch.py
+@@ -4,17 +4,20 @@
+ from launch_ros.actions import Node
+ from lite3_nav2_bridge.profile import write_profile
+ from pathlib import Path
++import json
+ 
+ 
+ def nodes(context):
+     get = lambda name: LaunchConfiguration(name).perform(context)
+     use_sim = get('use_sim_time').lower() == 'true'
++    backend = json.loads(Path(get('backend_config')).read_text())
+     profile = write_profile(get('generated_params'), get('native_planner_config'), use_sim,
++                            pct_map_bundle=get('pct_map_bundle'),
++                            reference_height_m=backend.get('map', {}).get('nominal_body_height_m', 0.35),
+                             base_frame=get('base_frame'),odom_topic=get('odom_topic'))
+-    pct_map = Path(get('pct_map')).resolve(strict=True)
+     return [
+         Node(package='lite3_nav2_bridge', executable='mission_bridge', name='lite3_nav2_mission_bridge',
+-             parameters=[{'config_path': get('backend_config'), 'pct_map': str(pct_map),
++             parameters=[{'config_path': get('backend_config'),
+                           'odom_topic': get('odom_topic'), 'use_sim_time': use_sim}], output='screen'),
+         Node(package='nav2_controller', executable='controller_server', name='controller_server',
+              parameters=[profile], remappings=[('cmd_vel', '/quad_0/cmd_vel')], output='screen'),
+@@ -36,7 +39,7 @@
+ def generate_launch_description():
+     return LaunchDescription([
+         DeclareLaunchArgument('native_planner_config'), DeclareLaunchArgument('backend_config'),
+-        DeclareLaunchArgument('pct_map'),
++        DeclareLaunchArgument('pct_map_bundle'),
+         DeclareLaunchArgument('base_frame',default_value='base_link'),
+         DeclareLaunchArgument('odom_topic',default_value='/quad_0/body_pose'),
+         DeclareLaunchArgument('generated_params'), DeclareLaunchArgument('use_sim_time', default_value='false'),
+--- parent/src/lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py
++++ v201/src/lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py
+@@ -1,33 +1,24 @@
+-"""HTTP missions backed by Nav2 and an in-process PCT Path service."""
++"""HTTP task adapter: submit, cancel and observe the Nav2 action."""
+ import copy
+ import json
+ import math
+-import sys
+ import threading
+ import time
+ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+-from pathlib import Path as FilePath
+ 
+ import rclpy
+-from geometry_msgs.msg import PoseStamped
+-from lite3_nav2_interfaces.srv import PlanRoute
+ from nav2_msgs.action import NavigateToPose
+-from nav_msgs.msg import Odometry, Path
++from nav_msgs.msg import Odometry
+ from rclpy.action import ActionClient
+-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
++from rclpy.callback_groups import ReentrantCallbackGroup
+ from rclpy.executors import MultiThreadedExecutor
+ from rclpy.node import Node
+-from rclpy.qos import QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
++from rclpy.qos import qos_profile_sensor_data
+ 
+ 
+ def finite_values(values):
+     return all(not isinstance(v, bool) and isinstance(v, (int, float)) and math.isfinite(v)
+                for v in values)
+-
+-
+-def valid_orientation(q):
+-    return finite_values((q.x, q.y, q.z, q.w)) and abs(
+-        q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w - 1.0) <= 1e-6
+ 
+ 
+ def set_yaw(pose, yaw):
+@@ -40,7 +31,6 @@
+     def __init__(self):
+         super().__init__('lite3_nav2_mission_bridge')
+         config_path = self.declare_parameter('config_path', '').value
+-        pct_map = self.declare_parameter('pct_map', '').value
+         odom_topic = self.declare_parameter('odom_topic', '/quad_0/body_pose').value
+         with open(config_path, encoding='utf-8') as stream:
+             self.config = json.load(stream)
+@@ -49,7 +39,6 @@
+         if not math.isfinite(self.reference_height_m):
+             raise ValueError('nominal_body_height_m must be finite')
+         self._lock = threading.RLock()
+-        self._planner_lock = threading.Lock()
+         self.jobs = {}
+         self.terminal_results = []
+         self.current_owner = None
+@@ -57,15 +46,9 @@
+         self._handles = {}
+         self._dispatch = []
+         self._seq = 0
+-        self._load_planner(pct_map)
+-        self._planning_group = MutuallyExclusiveCallbackGroup()
+         self._input_group = ReentrantCallbackGroup()
+         self._client = ActionClient(self, NavigateToPose, '/nav2_internal/navigate_to_pose',
+                                     callback_group=self._input_group)
+-        self._path_pub = self.create_publisher(Path, '/pct_planned_path', QoSProfile(
+-            depth=10, reliability=ReliabilityPolicy.RELIABLE))
+-        self._plan_service = self.create_service(PlanRoute, '/lite3_nav2/plan_route', self.plan_route,
+-                                                callback_group=self._planning_group)
+         self._odom_sub = self.create_subscription(Odometry, odom_topic, self.on_odometry,
+                                                   qos_profile_sensor_data,
+                                                   callback_group=self._input_group)
+@@ -76,151 +59,6 @@
+                                          self._handler_type())
+         self._http_thread = threading.Thread(target=self._http.serve_forever, daemon=True)
+         self._http_thread.start()
+-
+-    def _load_planner(self, pct_map):
+-        import pct_planner
+-        root = str(FilePath(pct_planner.__file__).resolve().parents[1])
+-        if root not in sys.path:
+-            sys.path.insert(0, root)
+-        from pct_planner.config import Config
+-        from pct_planner.planner_wrapper import TomogramPlanner
+-        path = FilePath(pct_map).expanduser().resolve(strict=True)
+-        self._planner = TomogramPlanner(Config(), str(path.parent))
+-        self._planner.loadTomogram(tomo_file='', tomogram_path=str(path))
+-        if hasattr(self._planner.planner, 'set_reference_height'):
+-            self._planner.planner.set_reference_height(self.reference_height_m)
+-
+-    def _mission_is_current(self, owner, job):
+-        return (self.current_owner == owner and job is not None
+-                and self.jobs.get(owner['request_id']) is job
+-                and job['status'] in ('pending', 'running') and not job['cancel_requested'])
+-
+-    def _retain_cached_path(self, owner, job, response, reason):
+-        # Caller holds _lock. Recheck ownership even on the exception path.
+-        if not self._mission_is_current(owner, job):
+-            raise ValueError('mission_changed_during_planning')
+-        path = copy.deepcopy(job['cached_path'])
+-        path.header.stamp = self.get_clock().now().to_msg()
+-        for pose in path.poses:
+-            pose.header.stamp = copy.deepcopy(path.header.stamp)
+-        response.path, response.accepted = path, True
+-        response.message = 'retained_cached_path'
+-        job['refresh_status'] = reason
+-        job['retained_count'] = job.get('retained_count', 0) + 1
+-        self._path_pub.publish(path)
+-        return response
+-
+-    def plan_route(self, request, response):
+-        owner = job = None
+-        try:
+-            for label, pose in (('start', request.start), ('goal', request.goal)):
+-                p, q = pose.pose.position, pose.pose.orientation
+-                if pose.header.frame_id != self.frame_id or not finite_values((p.x, p.y, p.z, q.x, q.y, q.z, q.w)):
+-                    raise ValueError(label + ' must have finite coordinates in world')
+-            start, goal = request.start.pose.position, request.goal.pose.position
+-            with self._lock:
+-                owner = copy.deepcopy(self.current_owner)
+-                job = self.jobs.get(owner['request_id']) if owner else None
+-                targets = [job['target_body_xyz']] if job else []
+-                if job and job.get('canonical_goal_pose') is not None:
+-                    p = job['canonical_goal_pose'].position
+-                    targets.append((p.x, p.y, p.z))
+-                matches_goal = job and any(all(abs(a-b) <= 1e-6 for a, b in zip(
+-                    (goal.x, goal.y, goal.z), target)) for target in targets)
+-                if owner and (not matches_goal or not self._mission_is_current(owner, job)):
+-                    raise ValueError('mission_changed_during_planning')
+-                if job and job['cached_path'] is not None:
+-                    canonical = job['canonical_goal_pose'].position
+-                    positions = [(start.x, start.y, start.z)]
+-                    body = self.measurement_body_pose
+-                    if body and body.get('frame_id') == self.frame_id:
+-                        positions.append(tuple(body.get(k) for k in ('x', 'y', 'z')))
+-                    if any(finite_values(p) and math.hypot(p[0]-canonical.x, p[1]-canonical.y) <= 1.0
+-                           and abs(p[2]-canonical.z) <= 0.35 for p in positions):
+-                        return self._retain_cached_path(owner, job, response, 'terminal_approach')
+-            with self._planner_lock:
+-                raw = self._planner.plan([start.x, start.y, start.z], [goal.x, goal.y, goal.z],
+-                                         start_layer=None, end_layer=None, optimize=True)
+-                if raw is None:
+-                    raise ValueError('pct_no_route')
+-                optimizer = (self._planner.planner.get_trajectory_optimizer_wnoj()
+-                             if self._planner.use_quintic else
+-                             self._planner.planner.get_trajectory_optimizer())
+-                heights = optimizer.get_heights()
+-                if hasattr(raw, 'tolist'):
+-                    raw = raw.tolist()
+-                if hasattr(heights, 'tolist'):
+-                    heights = heights.tolist()
+-                heights = [float(h[0] if isinstance(h, (list, tuple)) else h) for h in heights]
+-            if len(raw) < 2 or len(raw) != len(heights):
+-                raise ValueError('pct_height_count_mismatch_or_empty_route')
+-            points = [(float(p[0]), float(p[1]), h) for p, h in zip(raw, heights)]
+-            if not all(finite_values(p) for p in points):
+-                raise ValueError('pct_nonfinite_route')
+-            path = Path()
+-            path.header.frame_id = self.frame_id
+-            path.header.stamp = self.get_clock().now().to_msg()
+-            yaw = 0.0
+-            for i, point in enumerate(points):
+-                if i + 1 < len(points):
+-                    dx, dy = points[i+1][0] - point[0], points[i+1][1] - point[1]
+-                    if math.hypot(dx, dy) > 1e-12:
+-                        yaw = math.atan2(dy, dx)
+-                pose = PoseStamped()
+-                pose.header = copy.deepcopy(path.header)
+-                pose.pose.position.x, pose.pose.position.y, pose.pose.position.z = point
+-                set_yaw(pose.pose, yaw)
+-                path.poses.append(pose)
+-            q = request.goal.pose.orientation
+-            with self._lock:
+-                if self.current_owner != owner:
+-                    raise ValueError('mission_changed_during_planning')
+-                if job is not None:
+-                    if not self._mission_is_current(owner, job):
+-                        raise ValueError('mission_changed_during_planning')
+-                    canonical = job.get('canonical_goal_pose')
+-                    if canonical is None:
+-                        canonical = copy.deepcopy(path.poses[-1].pose)
+-                        target_yaw = job['data'].get('target_yaw_rad')
+-                        if target_yaw is None:
+-                            for a, b in reversed(list(zip(points, points[1:]))):
+-                                dx, dy = b[0]-a[0], b[1]-a[1]
+-                                if math.hypot(dx, dy) > 1e-6:
+-                                    target_yaw = math.atan2(dy, dx)
+-                                    break
+-                            if target_yaw is None:
+-                                raise ValueError('pct_no_terminal_heading')
+-                        set_yaw(canonical, float(target_yaw))
+-                    # PCT may move its final sample across replans. Bind the entire
+-                    # terminal pose, but reject a disconnected final connector.
+-                    a, b = path.poses[-2].pose.position, canonical.position
+-                    step = math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
+-                    if not math.isfinite(step) or step > 2.0:
+-                        raise ValueError('pct_canonical_goal_disconnected')
+-                    path.poses[-1].pose = copy.deepcopy(canonical)
+-                    job['canonical_goal_pose'] = copy.deepcopy(canonical)
+-                    job['refresh_status'] = 'planned'
+-                    job['cached_path'] = copy.deepcopy(path)
+-                elif abs(q.x) + abs(q.y) + abs(q.z) > 1e-12:
+-                    if not valid_orientation(q):
+-                        raise ValueError('goal orientation must be a normalized quaternion')
+-                    path.poses[-1].pose.orientation = copy.deepcopy(q)
+-                response.path = path
+-                response.accepted = True
+-                response.message = 'planned'
+-                self._path_pub.publish(path)
+-        except Exception as exc:
+-            with self._lock:
+-                if job is not None and not self._mission_is_current(owner, job):
+-                    exc = ValueError('mission_changed_during_planning')
+-                elif (job is not None and job['cached_path'] is not None and str(exc) in (
+-                        'pct_no_route', 'pct_height_count_mismatch_or_empty_route',
+-                        'pct_canonical_goal_disconnected')):
+-                    return self._retain_cached_path(owner, job, response, str(exc))
+-            response.accepted = False
+-            response.message = str(exc)
+-            self.get_logger().error('PCT planning failed: ' + str(exc))
+-        return response
+ 
+     def on_odometry(self, message):
+         p, q = message.pose.pose.position, message.pose.pose.orientation
+@@ -256,9 +94,7 @@
+                 return {'ok': True, 'request_id': request_id, 'status': self.jobs[request_id]['status']}
+             body_xyz = [float(xyz[0]), float(xyz[1]), float(xyz[2]) + self.reference_height_m]
+             self.jobs[request_id] = {'request_id': request_id, 'goal_id': goal_id, 'status': 'pending',
+-                'path_heading': yaw is None, 'target_body_xyz': body_xyz, 'cancel_requested': False,
+-                'canonical_goal_pose': None, 'cached_path': None,
+-                'refresh_status': 'initial', 'retained_count': 0,
++                'target_body_xyz': body_xyz, 'cancel_requested': False,
+                 'submitted_s': time.monotonic(), 'sent': False, 'data': copy.deepcopy(payload)}
+             self.current_owner = {'request_id': request_id, 'goal_id': goal_id}
+             self._dispatch.append(request_id)
+@@ -313,8 +149,6 @@
+                 goal.pose.pose.position.x, goal.pose.pose.position.y, goal.pose.pose.position.z = job['target_body_xyz']
+                 yaw = job['data'].get('target_yaw_rad')
+                 set_yaw(goal.pose.pose, float(yaw) if yaw is not None else 0.0)
+-                if job['canonical_goal_pose'] is not None:
+-                    goal.pose.pose = copy.deepcopy(job['canonical_goal_pose'])
+                 try:
+                     job['sent'] = True
+                     self._client.send_goal_async(goal).add_done_callback(
+@@ -371,16 +205,7 @@
+     def get_state(self):
+         with self._lock:
+             body = copy.deepcopy(self.measurement_body_pose)
+-            # ROS messages stay internal; the HTTP status remains JSON serializable.
+-            jobs = {key: copy.deepcopy({k: v for k, v in job.items()
+-                                       if k not in ('canonical_goal_pose', 'cached_path')})
+-                    for key, job in self.jobs.items()}
+-            for key, job in self.jobs.items():
+-                pose = job['canonical_goal_pose']
+-                jobs[key]['canonical_goal_pose'] = None if pose is None else {
+-                    'position': {axis: getattr(pose.position, axis) for axis in ('x', 'y', 'z')},
+-                    'orientation': {axis: getattr(pose.orientation, axis) for axis in ('x', 'y', 'z', 'w')}}
+-                jobs[key]['cached_path_available'] = job['cached_path'] is not None
++            jobs = copy.deepcopy(self.jobs)
+             return {'run_id': self.config.get('run_id', ''),
+                 'run_epoch_ns': int(self.config.get('run_epoch_ns', 0)),
+                 'readiness': {'body_pose_ready': body is not None,
+--- parent/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py
++++ v201/src/lite3_nav2_bridge/lite3_nav2_bridge/profile.py
+@@ -4,7 +4,8 @@
+ from ament_index_python.packages import get_package_share_directory
+ 
+ 
+-def write_profile(output, native_config, use_sim_time, *, external_planner=False,
++def write_profile(output, native_config, use_sim_time, *, pct_map_bundle, reference_height_m=0.35,
++                  external_planner=False,
+                   base_frame='base_link', odom_topic='/quad_0/body_pose'):
+     output = Path(output)
+     if output.exists():
+@@ -40,7 +41,9 @@
+                                 'inflation_radius': 0.4, 'cost_scaling_factor': 3.0}}}}
+     data['planner_server'] = {'ros__parameters': {
+         'expected_planner_frequency': 1.0, 'planner_plugins': ['PCT'],
+-        'PCT': {'plugin': 'lite3_nav2/PCTPlanner', 'service': '/lite3_nav2/plan_route'}}}
++        'PCT': {'plugin': 'lite3_nav2/PCTPlanner',
++                'map_bundle': str(Path(pct_map_bundle).resolve(strict=True)),
++                'reference_height': float(reference_height_m), 'use_quintic': True, 'max_heading_rate': 10.0}}}
+     tree_path=output.with_suffix('.bt.xml')
+     if tree_path.exists():raise ValueError('Refuse to overwrite a previous BT profile')
+     output.parent.mkdir(parents=True, exist_ok=True)
+--- parent/src/lite3_nav2_bridge/package.xml
++++ v201/src/lite3_nav2_bridge/package.xml
+@@ -1,17 +1,16 @@
+ <?xml version="1.0"?>
+ <package format="3">
+  <name>lite3_nav2_bridge</name><version>0.1.0</version>
+- <description>Foxy HTTP mission bridge and in-process native PCT route planning.</description>
++ <description>Foxy HTTP task adapter for Nav2 submission, cancellation and status.</description>
+  <maintainer email="research@example.invalid">Lite3 research</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_cmake</buildtool_depend><buildtool_depend>ament_cmake_python</buildtool_depend>
+- <exec_depend>rclpy</exec_depend><depend>lite3_nav2_interfaces</depend>
++ <exec_depend>rclpy</exec_depend>
+  <depend>nav2_msgs</depend><depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend><exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend><exec_depend>lite3_nav2_plugins</exec_depend>
+  <exec_depend>nav2_recoveries</exec_depend>
+  <exec_depend>scan_nav2_controller</exec_depend><exec_depend>python3-yaml</exec_depend>
+- <exec_depend>pct_planner</exec_depend>
+  <exec_depend>launch</exec_depend><exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <test_depend>ament_cmake_pytest</test_depend><test_depend>python3-pytest</test_depend>
+--- parent/src/lite3_nav2_bridge/test/test_mission_bridge.py
++++ v201/src/lite3_nav2_bridge/test/test_mission_bridge.py
+@@ -1,4 +1,4 @@
+-"""Loopback HTTP/ROS tests; PCT's native optimizer is replaced by a deterministic fixture."""
++"""Loopback HTTP/ROS task-adapter checks; no planner is loaded by this process."""
+ import copy
+ import json
+ import math
+@@ -11,7 +11,6 @@
+ import pytest
+ import rclpy
+ from geometry_msgs.msg import PoseStamped
+-from lite3_nav2_interfaces.srv import PlanRoute
+ from nav2_msgs.action import NavigateToPose
+ from nav_msgs.msg import Odometry, Path
+ from rclpy.action import ActionServer, CancelResponse
+@@ -20,28 +19,6 @@
+ from rclpy.qos import qos_profile_sensor_data
+ 
+ from lite3_nav2_bridge.mission_bridge import MissionBridge
+-
+-
+-class Planner:
+-    use_quintic = False
+-
+-    def __init__(self):
+-        self.planner = self
+-        self.heights = [[0.35], [0.45], [0.55]]
+-        self.calls = []
+-
+-    def plan(self, start, goal, **kwargs):
+-        self.calls.append((start, goal, kwargs))
+-        return [[0.0, 0.0, 0.85], [1.0, 0.0, 0.95], [1.0, 1.0, 1.05]]
+-
+-    def get_trajectory_optimizer(self):
+-        return self
+-
+-    def get_trajectory_optimizer_wnoj(self):
+-        return self
+-
+-    def get_heights(self):
+-        return self.heights
+ 
+ 
+ def wait(predicate, seconds=4.0):
+@@ -60,10 +37,7 @@
+     config.write_text(json.dumps({'run_id': 'unit', 'run_epoch_ns': 42,
+         'map': {'nominal_body_height_m': 0.35}, 'http': {'host': '127.0.0.1', 'port': 0}}))
+     rclpy.init(args=['--ros-args', '-p', 'config_path:=' + str(config)])
+-    def load(node, _):
+-        node._planner = Planner()
+-    with patch.object(MissionBridge, '_load_planner', load):
+-        node = MissionBridge()
++    node = MissionBridge()
+     io = rclpy.create_node('mission_test_io')
+     executor = MultiThreadedExecutor(num_threads=4)
+     executor.add_node(node)
+@@ -101,125 +75,6 @@
+ def goal_payload(request_id='request', **kwargs):
+     return dict(request_id=request_id, goal_id='goal-' + request_id, target_ground_xyz=[1.0, 1.0, 0.2],
+                 frame='world', map_epoch='map', map_revision=1, **kwargs)
+-
+-
+-def request():
+-    req = PlanRoute.Request()
+-    for p in (req.start, req.goal):
+-        p.header.frame_id = 'world'
+-        p.pose.orientation.w = 1.0
+-    req.goal.pose.position.x, req.goal.pose.position.y, req.goal.pose.position.z = 1.0, 1.0, 0.55
+-    return req
+-
+-
+-def test_native_heights_tangent_yaw_and_path_publication(bridge):
+-    node, io = bridge
+-    observed = []
+-    sub = io.create_subscription(Path, '/pct_planned_path', observed.append, 10)
+-    wait(lambda: node._path_pub.get_subscription_count() > 0)
+-    client = io.create_client(PlanRoute, '/lite3_nav2/plan_route')
+-    assert client.wait_for_service(timeout_sec=2)
+-    future = client.call_async(request())
+-    wait(future.done)
+-    result = future.result()
+-    assert result.accepted
+-    assert [p.pose.position.z for p in result.path.poses] == [0.35, 0.45, 0.55]
+-    assert result.path.header.frame_id == 'world'
+-    assert result.path.header.stamp.sec > 0
+-    assert result.path.poses[0].pose.orientation.w == 1.0
+-    assert result.path.poses[1].pose.orientation.z == pytest.approx(math.sin(math.pi/4))
+-    assert result.path.poses[2].pose.orientation.z == pytest.approx(math.sin(math.pi/4))
+-    assert node._planner.calls[0][2] == dict(start_layer=None, end_layer=None, optimize=True)
+-    wait(lambda: observed)
+-    assert observed[-1] == result.path
+-    io.destroy_subscription(sub)
+-
+-
+-def test_goal_heading_override_and_unspecified_http_heading(bridge):
+-    node, _ = bridge
+-    req = request()
+-    req.goal.pose.orientation.z = math.sin(-0.3)
+-    req.goal.pose.orientation.w = math.cos(-0.3)
+-    result = node.plan_route(req, PlanRoute.Response())
+-    assert result.accepted and result.path.poses[-1].pose.orientation == req.goal.pose.orientation
+-    node.submit_goal(goal_payload())
+-    result = node.plan_route(req, PlanRoute.Response())
+-    assert result.accepted
+-    assert result.path.poses[-1].pose.orientation.z == pytest.approx(math.sin(math.pi/4))
+-    canonical = copy.deepcopy(result.path.poses[-1].pose)
+-    assert node.jobs['request']['canonical_goal_pose'] == canonical
+-    # A different final segment, terminal sample, and height cannot move this job goal.
+-    with patch.object(node._planner, 'plan', return_value=[[0., 0.], [0.8, 1.0], [1.1, 1.1]]):
+-        node._planner.heights = [[0.35], [0.50], [0.65]]
+-        repeated = node.plan_route(req, PlanRoute.Response())
+-    assert repeated.accepted and repeated.path.poses[-1].pose == canonical
+-    assert node.jobs['request']['cached_path'] == repeated.path
+-    repeated.path.poses[-1].pose.position.x = 999.0
+-    assert node.jobs['request']['canonical_goal_pose'] == canonical
+-    assert node.jobs['request']['cached_path'].poses[-1].pose == canonical
+-    state = http(node, '/state')
+-    assert state['jobs']['request']['cached_path_available']
+-    assert state['jobs']['request']['canonical_goal_pose']['position']['x'] == canonical.position.x
+-    cached = copy.deepcopy(node.jobs['request']['cached_path'])
+-    with patch.object(node._planner, 'plan', return_value=None):
+-        failed = node.plan_route(req, PlanRoute.Response())
+-    assert failed.accepted and failed.message == 'retained_cached_path'
+-    assert [p.pose for p in failed.path.poses] == [p.pose for p in cached.poses]
+-    assert node.jobs['request']['cached_path'] == cached
+-    with patch.object(node._planner, 'plan', return_value=[[0., 0.], [100., 100.], [1., 1.]]):
+-        failed = node.plan_route(req, PlanRoute.Response())
+-    assert failed.accepted and failed.message == 'retained_cached_path'
+-    assert node.jobs['request']['refresh_status'] == 'pct_canonical_goal_disconnected'
+-    assert node.jobs['request']['cached_path'] == cached
+-    # Explicit zero is a real orientation, and a new job never inherits a prior pose/cache.
+-    node.submit_goal(goal_payload('zero', target_yaw_rad=0.0))
+-    assert node.jobs['zero']['canonical_goal_pose'] is None
+-    assert node.jobs['zero']['cached_path'] is None
+-    result = node.plan_route(req, PlanRoute.Response())
+-    assert result.accepted
+-    assert result.path.poses[-1].pose.orientation.z == 0.0
+-    assert result.path.poses[-1].pose.orientation.w == 1.0
+-    assert result.path.poses[-1].pose.position.z == 0.65
+-    node.submit_goal(goal_payload('explicit', target_yaw_rad=-0.7))
+-    req.goal.pose.orientation.z, req.goal.pose.orientation.w = 0.0, 1.0
+-    result = node.plan_route(req, PlanRoute.Response())
+-    assert result.accepted
+-    assert result.path.poses[-1].pose.orientation.z == pytest.approx(math.sin(-0.35))
+-    # Resolve from the last nondegenerate horizontal segment, ignoring tiny tail noise.
+-    node.submit_goal(goal_payload('degenerate'))
+-    node._planner.heights = [[0.35], [0.5], [0.55], [0.55]]
+-    with patch.object(node._planner, 'plan', return_value=[[0., 0.], [1., 0.], [1., 1.], [1.+1e-8, 1.]]):
+-        result = node.plan_route(req, PlanRoute.Response())
+-    assert result.accepted
+-    assert result.path.poses[-1].pose.orientation.z == pytest.approx(math.sin(math.pi/4))
+-    node.submit_goal(goal_payload('no-heading'))
+-    node._planner.heights = [[0.35], [0.45], [0.55]]
+-    with patch.object(node._planner, 'plan', return_value=[[1., 1.], [1., 1.], [1., 1.]]):
+-        failed = node.plan_route(req, PlanRoute.Response())
+-    assert not failed.accepted and failed.message == 'pct_no_terminal_heading'
+-    assert node.jobs['no-heading']['canonical_goal_pose'] is None
+-    # An owner switch while the optimizer works cannot commit into either job.
+-    def switch_owner(*args, **kwargs):
+-        node.submit_goal(goal_payload('replacement'))
+-        return [[0., 0.], [1., 0.], [1., 1.]]
+-    with patch.object(node._planner, 'plan', side_effect=switch_owner):
+-        failed = node.plan_route(req, PlanRoute.Response())
+-    assert not failed.accepted and failed.message == 'mission_changed_during_planning'
+-    assert node.jobs['no-heading']['canonical_goal_pose'] is None
+-    assert node.jobs['replacement']['canonical_goal_pose'] is None
+-
+-
+-def test_invalid_route_inputs_and_height_count_rejected(bridge):
+-    node, _ = bridge
+-    req = request()
+-    req.start.header.frame_id = 'map'
+-    assert not node.plan_route(req, PlanRoute.Response()).accepted
+-    req = request()
+-    req.goal.pose.position.x = float('nan')
+-    assert not node.plan_route(req, PlanRoute.Response()).accepted
+-    assert not node._planner.calls
+-    node._planner.heights.pop()
+-    assert not node.plan_route(request(), PlanRoute.Response()).accepted
+ 
+ 
+ def test_odometry_state_and_http_validation(bridge):
+@@ -251,8 +106,22 @@
+     assert result['status'] == 'not_found'
+ 
+ 
++def test_task_adapter_has_no_planner_service_or_route_cache(bridge):
++    node, _ = bridge
++    assert not hasattr(node, '_planner')
++    assert not hasattr(node, '_planner_lock')
++    assert not hasattr(node, '_plan_service')
++    assert not hasattr(node, '_path_pub')
++    assert '/lite3_nav2/plan_route' not in dict(node.get_service_names_and_types())
++    http(node, '/goal', goal_payload())
++    job = http(node, '/state')['jobs']['request']
++    assert job['target_body_xyz'] == pytest.approx([1., 1., .55])
++    assert not any(key in job for key in ('cached_path', 'canonical_goal_pose', 'retained_count'))
++
++
+ @pytest.mark.parametrize('terminal', ['arrived', 'cancelled', 'failed'])
+-def test_http_nav2_action_lifecycle(bridge, terminal):
++@pytest.mark.parametrize('yaw', [None, 0.0, 0.7])
++def test_http_nav2_action_lifecycle(bridge, terminal, yaw):
+     node, io = bridge
+     release = threading.Event()
+     goals = []
+@@ -273,18 +142,15 @@
+     node._test_action_servers.append(server)
+     try:
+         wait(node._client.server_is_ready)
+-        with patch.object(node._client, 'server_is_ready', return_value=False):
+-            response = http(node, '/goal', goal_payload(target_yaw_rad=0.7))
+-            node._planner.heights = [[0.35], [0.45], [0.65]]
+-            planned = node.plan_route(request(), PlanRoute.Response())
+-            assert planned.accepted
+-            canonical = copy.deepcopy(planned.path.poses[-1].pose)
++        response = http(node, '/goal', goal_payload(**({} if yaw is None else {'target_yaw_rad': yaw})))
+         assert response == {'ok': True, 'request_id': 'request', 'status': 'pending'}
+         wait(lambda: node.jobs['request']['status'] == 'running')
+         wait(lambda: goals)
+-        assert goals[-1].pose.pose.position.z == pytest.approx(0.65)
+-        assert goals[-1].pose.pose == canonical
+-        assert goals[-1].pose.pose.orientation.z == pytest.approx(math.sin(0.35))
++        assert goals[-1].pose.pose.position.z == pytest.approx(0.55)
++        assert goals[-1].pose.pose.position.x == 1.0
++        assert goals[-1].pose.pose.position.y == 1.0
++        assert goals[-1].pose.pose.orientation.z == pytest.approx(math.sin((yaw or 0.) / 2))
++        assert goals[-1].pose.pose.orientation.w == pytest.approx(math.cos((yaw or 0.) / 2))
+         assert http(node, '/state')['service']['current_owner']['request_id'] == 'request'
+         if terminal == 'cancelled':
+             response = http(node, '/cancel', {'request_id': 'cancel', 'target_request_id': 'request'})
+@@ -322,11 +188,17 @@
+     from lite3_nav2_bridge.profile import write_profile
+     native = FilePath(get_package_share_directory('scan_planner')) / 'config/planner.yaml'
+     output = tmp_path / 'navigation.yaml'
+-    write_profile(output, native, False)
++    bundle = tmp_path / 'map.pct'
++    bundle.write_bytes(b'profile wiring only')
++    write_profile(output, native, False, pct_map_bundle=bundle)
+     config = yaml.safe_load(output.read_text())
+     controller = config['controller_server']['ros__parameters']['SCAN']
+     assert 'command_topic' not in controller
+     assert controller['route_topic'] == '/pct_path'
++    pct = config['planner_server']['ros__parameters']['PCT']
++    assert pct['map_bundle'] == str(bundle)
++    assert pct['reference_height'] == .35
++    assert 'service' not in pct
+     bt = config['/nav2_internal/bt_navigator']['ros__parameters']
+     tree = ET.parse(bt['default_bt_xml_filename'])
+     assert tree.getroot().find('.//PipelineSequence').attrib['name'] == 'NavigateWithReplanning'
+@@ -347,12 +219,13 @@
+     spec = importlib.util.spec_from_file_location('navigation_launch', launch_file)
+     module = importlib.util.module_from_spec(spec)
+     spec.loader.exec_module(module)
+-    pct_map = tmp_path / 'map.pickle'
++    pct_map = tmp_path / 'map.pct'
+     pct_map.write_bytes(b'launch resolves this path but does not load PCT')
++    (tmp_path / 'backend.json').write_text(json.dumps({'map': {'nominal_body_height_m': .3}}))
+     context = LaunchContext()
+     context.launch_configurations.update({
+         'use_sim_time': 'false', 'base_frame': 'base', 'odom_topic': '/quad_0/body_pose',
+-        'generated_params': str(tmp_path / 'params.yaml'), 'pct_map': str(pct_map),
++        'generated_params': str(tmp_path / 'params.yaml'), 'pct_map_bundle': str(pct_map),
+         'backend_config': str(tmp_path / 'backend.json'),
+         'native_planner_config': str(FilePath(get_package_share_directory('scan_planner')) / 'config/planner.yaml')})
+     with patch.object(module, 'Node', side_effect=lambda **kwargs: kwargs):
+@@ -377,75 +250,3 @@
+     assert root.find('.//Wait') is None
+ 
+ 
+-@pytest.mark.parametrize('failure', ['no_route', 'short', 'heights', 'nonfinite', 'disconnected'])
+-def test_initial_plan_failure_never_uses_a_cache(bridge, failure):
+-    node, _ = bridge
+-    node.submit_goal(goal_payload(target_yaw_rad=0.0))
+-    raw = [[0., 0.], [1., 0.], [1., 1.]]
+-    if failure == 'no_route': raw = None
+-    elif failure == 'short': raw = [[0., 0.]]
+-    elif failure == 'heights': node._planner.heights = []
+-    elif failure == 'nonfinite': raw[1][0] = float('nan')
+-    else: raw[1] = [100., 100.]
+-    with patch.object(node._planner, 'plan', return_value=raw):
+-        result = node.plan_route(request(), PlanRoute.Response())
+-    assert not result.accepted
+-    assert node.jobs['request']['cached_path'] is None
+-
+-
+-@pytest.mark.parametrize('failure', ['no_route', 'short', 'heights', 'disconnected'])
+-def test_refresh_retains_independent_copy(bridge, failure):
+-    node, _ = bridge
+-    node.submit_goal(goal_payload())
+-    assert node.plan_route(request(), PlanRoute.Response()).accepted
+-    cached = copy.deepcopy(node.jobs['request']['cached_path'])
+-    raw = [[0., 0.], [1., 0.], [1., 1.]]
+-    if failure == 'no_route': raw = None
+-    elif failure == 'short': raw = [[0., 0.]]
+-    elif failure == 'heights': node._planner.heights = []
+-    else: raw[1] = [100., 100.]
+-    with patch.object(node._planner, 'plan', return_value=raw):
+-        result = node.plan_route(request(), PlanRoute.Response())
+-    assert result.accepted and result.message == 'retained_cached_path'
+-    assert result.path.header.stamp != cached.header.stamp
+-    assert [p.pose for p in result.path.poses] == [p.pose for p in cached.poses]
+-    result.path.poses[0].pose.position.x = 1000.0
+-    assert node.jobs['request']['cached_path'] == cached
+-    assert node.jobs['request']['retained_count'] == 1
+-
+-
+-@pytest.mark.parametrize('source', ['start', 'measurement'])
+-def test_terminal_approach_skips_refresh_planner(bridge, source):
+-    node, _ = bridge
+-    node.submit_goal(goal_payload())
+-    assert node.plan_route(request(), PlanRoute.Response()).accepted
+-    req = request()
+-    if source == 'start': req.start.pose.position = copy.deepcopy(req.goal.pose.position)
+-    else: node.measurement_body_pose = dict(frame_id='world', x=1., y=1., z=0.55)
+-    with patch.object(node._planner, 'plan', side_effect=AssertionError('must not call PCT')) as planner:
+-        result = node.plan_route(req, PlanRoute.Response())
+-    assert result.accepted and result.message == 'retained_cached_path'
+-    assert not planner.called
+-    assert node.jobs['request']['refresh_status'] == 'terminal_approach'
+-
+-
+-@pytest.mark.parametrize('change', ['owner', 'cancel', 'goal', 'frame', 'nan', 'nonfinite_route'])
+-def test_refresh_never_hides_owner_or_input_failures(bridge, change):
+-    node, _ = bridge
+-    node.submit_goal(goal_payload())
+-    assert node.plan_route(request(), PlanRoute.Response()).accepted
+-    req = request()
+-    if change == 'frame': req.start.header.frame_id = 'map'
+-    if change == 'nan': req.goal.pose.position.x = float('nan')
+-    if change == 'goal': req.goal.pose.position.x = 30.0
+-    def failed_plan(*args, **kwargs):
+-        if change == 'owner': node.submit_goal(goal_payload('replacement'))
+-        if change == 'cancel': node.jobs['request']['cancel_requested'] = True
+-        if change == 'nonfinite_route': return [[0., 0.], [float('nan'), 0.], [1., 1.]]
+-        return None
+-    with patch.object(node._planner, 'plan', side_effect=failed_plan):
+-        result = node.plan_route(req, PlanRoute.Response())
+-    assert not result.accepted
+-    if change in ('owner', 'cancel', 'goal'):
+-        assert result.message == 'mission_changed_during_planning'
+-    assert node.jobs['request']['retained_count'] == 0

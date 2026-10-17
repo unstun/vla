@@ -1,0 +1,345 @@
+--- v195/freeze_display.py
++++ v197/freeze_display.py
+@@ -1,4 +1,4 @@
+-"""Freeze the Mac display source for v195, retaining v194's single-trial boundary."""
++"""Freeze the Mac display source for v197, retaining v196's single-trial boundary."""
+ from pathlib import Path
+ import argparse
+ import hashlib
+@@ -16,14 +16,14 @@
+     for n, e in m['source_files'].items():
+         assert sha(ROOT / n) == e and sha(ROOT / m['snapshot_locations'][n]) == e, n
+     assert sha(HERE / 'quality.json') == m['quality_sha256']
+-    assert sha(BASE / 'versions/v194/manifest.json') == m['parent_manifest_sha256']
+-    assert sha(BASE / 'versions/v193/manifest.json') == m['display_parent_manifest_sha256']
+-    print(json.dumps({'passed': True, 'version': 'v195', 'source_pairs': len(m['source_files']), 'display_only': True}))
++    assert sha(BASE / 'versions/v196/manifest.json') == m['parent_manifest_sha256']
++    assert sha(BASE / 'versions/v195/manifest.json') == m['display_parent_manifest_sha256']
++    print(json.dumps({'passed': True, 'version': 'v197', 'source_pairs': len(m['source_files']), 'display_only': True}))
+ 
+ 
+ def freeze():
+     assert not (HERE / 'manifest.json').exists()
+-    p = json.loads((BASE / 'versions/v194/manifest.json').read_text())
++    p = json.loads((BASE / 'versions/v196/manifest.json').read_text())
+     files = dict(p['source_files'])
+     locations = dict(p['snapshot_locations'])
+     q = json.loads((HERE / 'quality.json').read_text())
+@@ -38,14 +38,14 @@
+             files[n] = e
+             locations[n] = str(s.relative_to(ROOT))
+     m = {
+-        'version': 'v195',
+-        'parent': 'v194',
+-        'display_parent': 'v193',
+-        'native_implementation': 'v194',
+-        'physical_source': 'v194_mac_full_attempt01',
+-        'parent_manifest_sha256': sha(BASE / 'versions/v194/manifest.json'),
+-        'display_parent_manifest_sha256': sha(BASE / 'versions/v193/manifest.json'),
+-        'status': 'frozen_display_review_v194_mac_full_attempt01_passed_full_route',
++        'version': 'v197',
++        'parent': 'v196',
++        'display_parent': 'v195',
++        'native_implementation': 'v196',
++        'physical_source': 'v196_mac_full_attempt01',
++        'parent_manifest_sha256': sha(BASE / 'versions/v196/manifest.json'),
++        'display_parent_manifest_sha256': sha(BASE / 'versions/v195/manifest.json'),
++        'status': 'frozen_display_review_v196_mac_full_attempt01_passed_full_route',
+         'platform': 'Mac ARM64 Cocoa ViewerGL replay, CPU model construction, no physics steps',
+         'source_files': files,
+         'snapshot_locations': locations,
+--- v195/freeze_host.py
++++ v197/freeze_host.py
+@@ -0,0 +1,9 @@
++"""Freeze or verify the v197 display package."""
++import argparse
++from freeze_display import freeze, verify
++
++if __name__ == "__main__":
++    parser = argparse.ArgumentParser()
++    parser.add_argument("action", choices=("freeze", "verify"))
++    args = parser.parse_args()
++    (freeze if args.action == "freeze" else verify)()
+--- v195/prepare_mac.py
++++ v197/prepare_mac.py
+@@ -1,4 +1,4 @@
+-"""Bind the recorded v194_mac_full_attempt01 episode to a full causal review video."""
++"""Bind the recorded v196_mac_full_attempt01 episode to a full causal review video."""
+ from pathlib import Path
+ import hashlib
+ import json
+@@ -19,9 +19,9 @@
+ 
+ 
+ def main():
+-    tag = 'v194_mac_full_attempt01'
++    tag = 'v196_mac_full_attempt01'
+     source = TASK / tag / 'runs' / tag
+-    analysis = BASE / 'versions/v194/results' / tag
++    analysis = BASE / 'versions/v196/results' / tag
+     outcome = analysis / 'outcome.json'
+     route = analysis / 'full_route_verification.json'
+     outcome_data = json.loads(outcome.read_text())
+@@ -37,7 +37,7 @@
+     metrics = json.loads((analysis / 'metrics.json').read_text())
+     assert metrics['terminal']['backend_terminal_status'] == 'FINISHED'
+     assert not metrics['fallen'] and metrics['shared_state_verified']
+-    root = TASK / 'video_v195'
++    root = TASK / 'video_v197'
+     root.mkdir(exist_ok=False)
+     (root / 'runs').mkdir()
+     (root / 'cache').mkdir()
+@@ -55,19 +55,19 @@
+     contract = {
+         'physical_source_root': str(source),
+         'physical_source_run': tag,
+-        'physical_parent': 'v194',
+-        'display_parent': 'v193',
+-        'native_implementation': 'v194',
++        'physical_parent': 'v196',
++        'display_parent': 'v195',
++        'native_implementation': 'v196',
+         'source_outcome': str(outcome),
+         'route_verification': str(route),
+         'analysis_metrics': str(analysis / 'metrics.json'),
+         'latency_csv': str(analysis / 'latency.csv'),
+-        'parent_manifests': {v: sha(BASE / 'versions' / v / 'manifest.json') for v in ('v193', 'v194')},
++        'parent_manifests': {v: sha(BASE / 'versions' / v / 'manifest.json') for v in ('v195', 'v196')},
+         'input_files': {str(p): sha(p) for p in inputs},
+         'display_source_identity_sha256': sha(HERE / 'source_identity.json'),
+         'source_outcome_sha256': sha(outcome),
+-        'claim': ('Display only. Complete original-start Option B v194_mac_full_attempt01 episode, '
+-                  'all pauses retained. FINISHED/nav2_arrived at 137.5282745361328s physics; '
++        'claim': ('Display only. Complete original-start Option B v196_mac_full_attempt01 episode, '
++                  f"all pauses retained. FINISHED/nav2_arrived at {metrics['actual_physics_end_s']:.9f}s physics; "
+                   'source arrival, full-route gate and final PD hold passed. '
+                   'One recorded trial only. Zero new physics steps.'),
+     }
+--- v195/render_capture.py
++++ v197/render_capture.py
+@@ -1,4 +1,4 @@
+-"""Display-only Mac ARM64 port of the frozen causal renderer and close camera for v194_mac_full_attempt01."""
++"""Display-only Mac ARM64 port of the frozen causal renderer and close camera for v196_mac_full_attempt01."""
+ import hashlib
+ import json
+ import os
+@@ -98,13 +98,13 @@
+ 
+ 
+ def main():
+-    contract = json.loads(Path(os.environ['V195_DISPLAY_CONTRACT']).read_text())
++    contract = json.loads(Path(os.environ['V197_DISPLAY_CONTRACT']).read_text())
+     audit = json.loads((HERE / 'source_identity.json').read_text())
+     for name, expected in audit['files'].items():
+         if digest(HERE / name) != expected:
+             raise ValueError('Display source changed: ' + name)
+     if (HERE / 'manifest.json').exists():
+-        verify_manifest('v195')
++        verify_manifest('v197')
+     for version, expected in contract['parent_manifests'].items():
+         if verify_manifest(version) != expected:
+             raise ValueError('Parent manifest changed: ' + version)
+@@ -115,7 +115,7 @@
+         if digest(path) != expected:
+             raise ValueError('Recorded input changed: ' + path)
+     out = Path(os.environ['NEWTON_RUN_DIR'])
+-    if not out.is_dir() or out.parent.parent != Path(os.environ['V195_RENDER_ROOT']):
++    if not out.is_dir() or out.parent.parent != Path(os.environ['V197_RENDER_ROOT']):
+         raise ValueError('Expected managed temporary output')
+     # ViewerGL(headless=True) already requests an invisible window. Mac needs
+     # its native Cocoa context; pyglet's global headless option requests EGL.
+@@ -169,7 +169,7 @@
+     heading_text = replace_once(heading_text, 'OVERVIEW_S = 1.6', 'OVERVIEW_S = 0.0')
+     (out / 'executed_render_episode_host.py').write_text(renderer_text)
+     (out / 'executed_render_heading_host.py').write_text(heading_text)
+-    (out / 'display_contract.json').write_bytes(Path(os.environ['V195_DISPLAY_CONTRACT']).read_bytes())
++    (out / 'display_contract.json').write_bytes(Path(os.environ['V197_DISPLAY_CONTRACT']).read_bytes())
+     remaining = sys.argv[1:]
+     sys.argv = [str(heading_path), '--source-run', source.name, *remaining]
+     exec(compile(heading_text, str(heading_path), 'exec'),
+@@ -185,8 +185,8 @@
+             raise ValueError('Recorded input changed during rendering: ' + path)
+     (out / 'host_port_verification.json').write_text(json.dumps({
+         'kind': 'display_only',
+-        'physical_source_version': 'v194',
+-        'native_source_version': 'Nav2 Foxy linux/arm64 SCAN v194; direct Nav2 Twist recorder v194',
++        'physical_source_version': 'v196',
++        'native_source_version': 'Nav2 Foxy linux/arm64 SCAN v196; direct Nav2 Twist recorder v196',
+         'source_unchanged': True,
+         'render_only_no_physics_steps': True,
+         'adapted_renderer_sha256': digest(out / 'executed_render_episode_host.py'),
+--- v195/run_mac.py
++++ v197/run_mac.py
+@@ -1,4 +1,4 @@
+-"""Render v194_mac_full_attempt01 on Mac ARM64 Cocoa and verify all outputs."""
++"""Render v196_mac_full_attempt01 on Mac ARM64 Cocoa and verify all outputs."""
+ from pathlib import Path
+ import json
+ import os
+@@ -13,14 +13,14 @@
+ 
+ def main():
+     subprocess.run([sys.executable, str(HERE / 'prepare_mac.py')], check=True, timeout=120)
+-    root = TASK / 'video_v195'
++    root = TASK / 'video_v197'
+     out = root / 'runs/full01'
+     out.mkdir(exist_ok=False)
+     env = dict(
+         os.environ,
+         NEWTON_RUN_DIR=str(out),
+-        V195_RENDER_ROOT=str(root),
+-        V195_DISPLAY_CONTRACT=str(root / 'display_contract.json'),
++        V197_RENDER_ROOT=str(root),
++        V197_DISPLAY_CONTRACT=str(root / 'display_contract.json'),
+         WARP_CACHE_PATH=str(root / 'cache'),
+         OPENBLAS_NUM_THREADS='1',
+         OMP_NUM_THREADS='1',
+@@ -32,7 +32,7 @@
+     command = [sys.executable, str(HERE / 'render_capture.py')]
+     (root / 'render_request.json').write_text(json.dumps({
+         'command': command,
+-        'env': {k: env[k] for k in ('NEWTON_RUN_DIR', 'V195_RENDER_ROOT', 'V195_DISPLAY_CONTRACT',
++        'env': {k: env[k] for k in ('NEWTON_RUN_DIR', 'V197_RENDER_ROOT', 'V197_DISPLAY_CONTRACT',
+                                     'WARP_CACHE_PATH', 'PYTHONPATH', 'PYOPENGL_PLATFORM')},
+         'physics_steps_requested': 0,
+     }, indent=2) + '\n')
+@@ -41,7 +41,7 @@
+     subprocess.run([sys.executable, str(HERE / 'verify_video.py')], env=env, check=True, timeout=180)
+     delivered = HERE / 'delivered'
+     delivered.mkdir(exist_ok=True)
+-    shutil.copyfile(out / 'newton_stair_recorded.mp4', delivered / 'v194_mac_full_attempt01.mp4')
++    shutil.copyfile(out / 'newton_stair_recorded.mp4', delivered / 'v196_mac_full_attempt01.mp4')
+     returned = HERE / 'returned'
+     returned.mkdir(exist_ok=True)
+     for name in ('display_contract.json', 'render_request.json'):
+--- v195/verify_video.py
++++ v197/verify_video.py
+@@ -1,4 +1,4 @@
+-"""Validate exact causal timeline, visible curves and the finished MP4 for v194_mac_full_attempt01."""
++"""Validate exact causal timeline, visible curves and the finished MP4 for v196_mac_full_attempt01."""
+ from pathlib import Path
+ import hashlib
+ import json
+@@ -8,7 +8,7 @@
+ HERE = Path(__file__).resolve().parent
+ BASE = HERE.parents[1]
+ TASK = Path('/private/tmp/vla_stop_audit_20261012')
+-OUT = TASK / 'video_v195/runs/full01'
++OUT = TASK / 'video_v197/runs/full01'
+ 
+ 
+ def sha(path):
+@@ -20,7 +20,7 @@
+ 
+ 
+ def main():
+-    contract = json.loads((TASK / 'video_v195/display_contract.json').read_text())
++    contract = json.loads((TASK / 'video_v197/display_contract.json').read_text())
+     source = Path(contract['physical_source_root'])
+     original = json.loads((source / 'video_states.json').read_text())
+     route = json.loads(Path(contract['route_verification']).read_text())
+@@ -86,15 +86,16 @@
+         _, wanted = replay.frame(row)
+         assert actual == wanted
+     assert curves[-1]['trajectory_id'] is None
+-    # The source ends in PD hold. Retained spline #3005 is no longer displayable:
+-    # its tracking window has expired and its last direct command is stale.
++    # The final recorded PD hold must hide the last causal spline.
+     assert original[-1]['stance_mode'] == 'FIXED_STAND'
+     assert original[-1]['policy_owns_joints'] is False
+     assert original[-1]['command'] == [0.0, 0.0, 0.0]
+     from curve_overlay import FRESH_COMMAND_S, stamp_s
+     last_curve = replay.selection.active
+     last_command = replay.selection.command
+-    assert last_curve['data']['traj_id'] == 3005
++    recorded_splines = [e for e in replay.events if e['event'] == 'bspline'
++                        and e['host_wall_s'] <= original[-1]['wall_monotonic_s']]
++    assert last_curve == recorded_splines[-1]
+     assert not last_curve['data']['emergency_stop']
+     curve_end_s = (stamp_s(last_curve['data']['start_time'])
+                    + last_curve['data']['knots'][-int(last_curve['data']['order'])-1])
+@@ -110,7 +111,7 @@
+     assert result['render_only_no_physics_steps'] and port['source_unchanged']
+     assert port['render_only_no_physics_steps'] and verification['full_decode_passed']
+     assert frames[-1]['navigation_status'] == 'arrived (nav2_arrived)'
+-    assert result['integration_version'] == 'v194'
++    assert result['integration_version'] == 'v196'
+     assert result['frames'] == n and result['fps'] == 30
+     # Cocoa's Retina framebuffer is larger than the encoded review stream.
+     stream = verification['stream']
+@@ -124,8 +125,8 @@
+     data = {
+         'passed': True,
+         'physical_source_run': contract['physical_source_run'],
+-        'physical_source_version': 'v194',
+-        'display_version': 'v195',
++        'physical_source_version': 'v196',
++        'display_version': 'v197',
+         'frames': n,
+         'startup_frames': ns,
+         'startup_original_frames': start,
+@@ -162,10 +163,10 @@
+         'video_sha256': sha(master),
+         'video_bytes': master.stat().st_size,
+         'video_master': str(master),
+-        'source_contract_sha256': sha(TASK / 'video_v195/display_contract.json'),
++        'source_contract_sha256': sha(TASK / 'video_v197/display_contract.json'),
+         'checker_sha256': sha(Path(__file__)),
+-        'claim': ('Complete original-start Option B v194_mac_full_attempt01 episode, continuous recorded '
+-                  'physical state; FINISHED/nav2_arrived at 137.5282745361328s. '
++        'claim': ('Complete original-start Option B v196_mac_full_attempt01 episode, continuous recorded '
++                  f"physical state; FINISHED/nav2_arrived at {metrics['actual_physics_end_s']:.9f}s. "
+                   'Source arrival, full-route gate and final PD hold passed for one trial. '
+                   'Display verification creates no new physical acceptance.'),
+     }
+--- v195/visual_qa.py
++++ v197/visual_qa.py
+@@ -0,0 +1,48 @@
++"""Extract actual MP4 frames and a contact sheet for manual visual review."""
++from pathlib import Path
++import hashlib
++import json
++import subprocess
++
++from PIL import Image, ImageDraw
++
++HERE = Path(__file__).resolve().parent
++
++
++def main():
++    video = HERE / 'delivered/v196_mac_full_attempt01.mp4'
++    frames = json.loads((HERE / 'returned/frames.json').read_text())
++    curves = json.loads((HERE / 'returned/curve_frames.json').read_text())
++    targets = (0.0, 4.0, 10.0, 30.0, 60.0, 65.0, 100.0, 112.5)
++    indices = sorted({min(range(len(frames)), key=lambda i: abs(frames[i]['physics_time_s'] - t))
++                      for t in targets} | {len(frames) - 1})
++    assert len(indices) == 9 and indices[0] == 0
++    out = HERE / 'returned/visual_qa'
++    out.mkdir(exist_ok=False)
++    selector = '+'.join(f'eq(n,{i})' for i in indices)
++    command = ['ffmpeg', '-v', 'error', '-i', str(video), '-vf', f"select='{selector}'",
++               '-fps_mode', 'vfr', '-frames:v', '9', str(out / 'sample_%02d.png')]
++    subprocess.run(command, check=True)
++    contact = Image.new('RGB', (1920, 1170), '#16202b')
++    draw = ImageDraw.Draw(contact)
++    samples = []
++    for j, index in enumerate(indices):
++        path = out / f'sample_{j+1:02d}.png'
++        with Image.open(path) as decoded:
++            assert decoded.size == (1280, 720)
++            contact.paste(decoded.resize((640, 360), Image.Resampling.LANCZOS),
++                          ((j % 3) * 640, (j // 3) * 390))
++        row = frames[index]
++        caption = f"Frame {index} | video {index/30:.2f} s | physics {row['physics_time_s']:.2f} s"
++        draw.text(((j % 3) * 640 + 10, (j // 3) * 390 + 365), caption, fill='white')
++        samples.append(dict(frame=index, file=str(path.relative_to(HERE)),
++                            sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
++                            physics_time_s=row['physics_time_s'], video_time_s=index / 30,
++                            navigation_status=row['navigation_status'], local_curve=curves[index]))
++    contact.save(out / 'contact_sheet.jpg', quality=94)
++    (out / 'samples.json').write_text(json.dumps(samples, indent=2) + '\n')
++    print(json.dumps({'samples': len(samples), 'contact_sheet': str(out / 'contact_sheet.jpg')}))
++
++
++if __name__ == '__main__':
++    main()

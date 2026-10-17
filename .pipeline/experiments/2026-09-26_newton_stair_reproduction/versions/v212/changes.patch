@@ -1,0 +1,309 @@
+--- v204/src/lite3_nav2_bridge/CMakeLists.txt
++++ v212/src/lite3_nav2_bridge/CMakeLists.txt
+@@ -16,6 +16,10 @@
+   target_compile_features(test_terminal_tree PRIVATE cxx_std_17)
+   target_link_libraries(test_terminal_tree /opt/ros/foxy/lib/libnav2_follow_path_action_bt_node.so)
+   target_compile_definitions(test_terminal_tree PRIVATE NAVIGATION_TREE="${CMAKE_CURRENT_SOURCE_DIR}/config/navigate.xml" LEGACY_TREE="/work/fixtures/v196-navigate.xml")
++  ament_add_gtest(test_event_planning test/test_event_planning.cpp TIMEOUT 30)
++  ament_target_dependencies(test_event_planning behaviortree_cpp_v3 lite3_nav2_plugins lite3_nav2_interfaces nav2_behavior_tree)
++  target_compile_features(test_event_planning PRIVATE cxx_std_17)
++  target_compile_definitions(test_event_planning PRIVATE NAVIGATION_TREE="${CMAKE_CURRENT_SOURCE_DIR}/config/navigate.xml" LEGACY_TREE="/work/fixtures/v196-navigate.xml")
+   find_package(ament_cmake_pytest REQUIRED)
+   ament_add_pytest_test(test_wait_recovery test/test_wait_recovery.py TIMEOUT 25)
+   ament_add_pytest_test(test_mission_bridge test/test_mission_bridge.py TIMEOUT 60)
+--- v204/src/lite3_nav2_plugins/src/recovery_bt.cpp
++++ v212/src/lite3_nav2_plugins/src/recovery_bt.cpp
+@@ -1,7 +1,9 @@
+ #include "lite3_nav2_plugins/recovery_bt.hpp"
+ #include <behaviortree_cpp_v3/bt_factory.h>
++#include "lite3_nav2_plugins/plan_on_goal_change.hpp"
+ BT_REGISTER_NODES(factory)
+ {
+   factory.registerNodeType<lite3_nav2::FollowPathWithFailure>("FollowPathWithFailure");
+   factory.registerNodeType<lite3_nav2::RetryAllowed>("RetryAllowed");
++  factory.registerNodeType<lite3_nav2::PlanOnGoalChange>("PlanOnGoalChange");
+ }
+--- v204/src/lite3_nav2_plugins/include/lite3_nav2_plugins/plan_on_goal_change.hpp
++++ v212/src/lite3_nav2_plugins/include/lite3_nav2_plugins/plan_on_goal_change.hpp
+@@ -0,0 +1,53 @@
++#pragma once
++#include <behaviortree_cpp_v3/decorator_node.h>
++#include <geometry_msgs/msg/pose_stamped.hpp>
++#include <optional>
++#include <stdexcept>
++
++namespace lite3_nav2
++{
++// Keep a successful plan until its requested goal changes or the parent halts
++// this branch (cancel, mission completion, or the existing recovery sequence).
++class PlanOnGoalChange : public BT::DecoratorNode
++{
++public:
++  PlanOnGoalChange(const std::string &name, const BT::NodeConfiguration &config)
++  : BT::DecoratorNode(name, config) {}
++
++  static BT::PortsList providedPorts() {
++    return {BT::InputPort<geometry_msgs::msg::PoseStamped>("goal")};
++  }
++
++  BT::NodeStatus tick() override {
++    // PipelineSequence resets successful children to IDLE without calling halt.
++    // Recovery must invalidate that completed plan as well as running actions.
++    if (status() == BT::NodeStatus::IDLE) { requested_.reset(); planned_ = false; }
++    const auto input = getInput<geometry_msgs::msg::PoseStamped>("goal");
++    if (!input) throw std::runtime_error("PlanOnGoalChange requires a goal");
++    const auto &goal = input.value();
++    // A refreshed timestamp is not a new destination. Frame and full pose are.
++    if (!requested_ || requested_->header.frame_id != goal.header.frame_id ||
++        requested_->pose != goal.pose) {
++      resetChild(); // Cancels an in-flight old-goal action before replacement.
++      requested_ = goal;
++      planned_ = false;
++    }
++    if (planned_) return BT::NodeStatus::SUCCESS;
++    const auto result = child_node_->executeTick();
++    if (result == BT::NodeStatus::SUCCESS) planned_ = true;
++    // RUNNING continues the same action; FAILURE reaches the existing retry
++    // owner. This decorator does not retry, alter the route, or renew a budget.
++    return result;
++  }
++
++  void halt() override {
++    requested_.reset();
++    planned_ = false;
++    BT::DecoratorNode::halt();
++  }
++
++private:
++  std::optional<geometry_msgs::msg::PoseStamped> requested_;
++  bool planned_{false};
++};
++}
+--- v204/src/lite3_nav2_bridge/test/test_terminal_tree.cpp
++++ v212/src/lite3_nav2_bridge/test/test_terminal_tree.cpp
+@@ -1,6 +1,7 @@
+ #include <gtest/gtest.h>
+ #include <behaviortree_cpp_v3/bt_factory.h>
+ #include <lite3_nav2_plugins/recovery_bt.hpp>
++#include <lite3_nav2_plugins/plan_on_goal_change.hpp>
+ #include <thread>
+ #include <atomic>
+ using namespace std::chrono_literals;
+@@ -9,7 +10,7 @@
+ class Plan:public BT::SyncActionNode {
+ public:
+   Plan(const std::string &n,const BT::NodeConfiguration &c):SyncActionNode(n,c){}
+-  static BT::PortsList providedPorts(){return {BT::InputPort<std::string>("goal"),BT::OutputPort<nav_msgs::msg::Path>("path"),BT::InputPort<std::string>("planner_id"),BT::InputPort<std::string>("server_name"),BT::InputPort<std::string>("server_timeout")};}
++  static BT::PortsList providedPorts(){return {BT::InputPort<geometry_msgs::msg::PoseStamped>("goal"),BT::OutputPort<nav_msgs::msg::Path>("path"),BT::InputPort<std::string>("planner_id"),BT::InputPort<std::string>("server_name"),BT::InputPort<std::string>("server_timeout")};}
+   BT::NodeStatus tick()override{++plans;setOutput("path",nav_msgs::msg::Path());return plan_failure?BT::NodeStatus::FAILURE:BT::NodeStatus::SUCCESS;}
+ };
+ class Follow:public BT::SyncActionNode {
+@@ -27,6 +28,7 @@
+ void registerNodes(BT::BehaviorTreeFactory &factory,bool realFollow=false) {
+   for(const auto *name:{"pipeline_sequence","rate_controller","recovery_node"})
+     factory.registerFromPlugin(std::string("/opt/ros/foxy/lib/libnav2_")+name+"_bt_node.so");
++  factory.registerNodeType<lite3_nav2::PlanOnGoalChange>("PlanOnGoalChange");
+   factory.registerNodeType<Plan>("ComputePathToPose");factory.registerNodeType<Wait>("Wait");
+   factory.registerNodeType<lite3_nav2::RetryAllowed>("RetryAllowed");
+   if(realFollow)factory.registerNodeType<lite3_nav2::FollowPathWithFailure>("FollowPathWithFailure");
+@@ -48,7 +50,7 @@
+     for(const char *file:{LEGACY_TREE,NAVIGATION_TREE}) {
+       plans=follows=waits=0;failures=count;plan_failure=planner;terminal=false;
+       BT::BehaviorTreeFactory factory;registerNodes(factory);
+-      auto bb=BT::Blackboard::create();bb->set("goal",std::string("fixed"));
++      auto bb=BT::Blackboard::create();bb->set("goal",geometry_msgs::msg::PoseStamped());
+       auto tree=factory.createTreeFromFile(file,bb);
+       const auto result=run(tree);
+       std::vector<int> observed{plans,follows,waits,int(result)};
+@@ -61,7 +63,7 @@
+ TEST(RecoveryTree, TerminalTimeoutDoesNotWaitOrRetryAndFlagIsConsumed) {
+   plans=follows=waits=0;failures=99;plan_failure=false;terminal=true;
+   BT::BehaviorTreeFactory factory;registerNodes(factory);
+-  auto bb=BT::Blackboard::create();bb->set("goal",std::string("fixed"));
++  auto bb=BT::Blackboard::create();bb->set("goal",geometry_msgs::msg::PoseStamped());
+   auto tree=factory.createTreeFromFile(NAVIGATION_TREE,bb);
+   EXPECT_EQ(run(tree),BT::NodeStatus::FAILURE);EXPECT_EQ(plans,1);EXPECT_EQ(follows,1);EXPECT_EQ(waits,0);
+   EXPECT_FALSE(bb->get<bool>("terminal_settle_timeout"));
+@@ -87,7 +89,7 @@
+   {
+     BT::BehaviorTreeFactory factory;registerNodes(factory,true);
+     auto bb=BT::Blackboard::create();bb->set("node",node);bb->set("server_timeout",1000ms);
+-    bb->set("bt_loop_duration",10ms);bb->set("goal",std::string("fixed"));
++    bb->set("bt_loop_duration",10ms);bb->set("goal",geometry_msgs::msg::PoseStamped());
+     auto tree=factory.createTreeFromFile(NAVIGATION_TREE,bb);
+     plans=follows=waits=0;plan_failure=false;
+     EXPECT_EQ(run(tree),BT::NodeStatus::FAILURE);EXPECT_EQ(queries,1);EXPECT_EQ(plans,1);EXPECT_EQ(waits,0);
+--- v204/src/lite3_nav2_bridge/test/test_mission_bridge.py
++++ v212/src/lite3_nav2_bridge/test/test_mission_bridge.py
+@@ -257,8 +257,9 @@
+     assert recovery.get('number_of_retries') == '6'
+     pipeline = root.find('.//PipelineSequence')
+     assert pipeline.get('name') == 'NavigateWithReplanning'
+-    rate = pipeline.find('RateController')
+-    assert rate.attrib == {'hz': '1.0'}
++    assert pipeline.find('RateController') is None
++    rate = pipeline.find('PlanOnGoalChange')
++    assert rate.attrib == {'goal': '{goal}'}
+     assert rate.find('ComputePathToPose').attrib == dict(goal='{goal}', path='{path}',
+         planner_id='PCT', server_name='/compute_path_to_pose', server_timeout='1000')
+     assert pipeline.find('FollowPathWithFailure').get('controller_id') == 'SCAN'
+--- v204/src/lite3_nav2_bridge/test/test_terrain_profile.py
++++ v212/src/lite3_nav2_bridge/test/test_terrain_profile.py
+@@ -40,7 +40,8 @@
+     tree = ET.parse(target.with_suffix('.bt.xml'))
+     assert tree.find('.//Wait').get('wait_duration') == '1'
+     assert tree.find('.//RecoveryNode').get('number_of_retries') == '6'
+-    assert tree.find('.//RateController').get('hz') == '1.0'  # Step 5 is separate.
++    assert tree.find('.//RateController') is None
++    assert tree.find('.//PlanOnGoalChange').get('goal') == '{goal}'
+     with pytest.raises(ValueError): write_profile(target,NATIVE,False,terrain_manifest=MANIFEST)
+ 
+ 
+--- v204/src/lite3_nav2_bridge/test/test_event_planning.cpp
++++ v212/src/lite3_nav2_bridge/test/test_event_planning.cpp
+@@ -0,0 +1,131 @@
++#include <gtest/gtest.h>
++#include <behaviortree_cpp_v3/bt_factory.h>
++#include <behaviortree_cpp_v3/action_node.h>
++#include <geometry_msgs/msg/pose_stamped.hpp>
++#include <nav_msgs/msg/path.hpp>
++#include <thread>
++#include <chrono>
++
++namespace {
++using Pose = geometry_msgs::msg::PoseStamped;
++using Status = BT::NodeStatus;
++int starts, ticks, cancels, follows, waits;
++bool finish_plan, fail_plan, fail_follow, terminal;
++Pose requested;
++
++class Plan : public BT::ActionNodeBase {
++public:
++  Plan(const std::string &n, const BT::NodeConfiguration &c): ActionNodeBase(n,c) {}
++  static BT::PortsList providedPorts() {
++    return {BT::InputPort<Pose>("goal"), BT::OutputPort<nav_msgs::msg::Path>("path"),
++      BT::InputPort<std::string>("planner_id"), BT::InputPort<std::string>("server_name"),
++      BT::InputPort<std::string>("server_timeout")};
++  }
++  Status tick() override {
++    ++ticks;
++    if (status() != Status::RUNNING) { ++starts; requested = getInput<Pose>("goal").value(); }
++    if (fail_plan) return Status::FAILURE;
++    if (!finish_plan) return Status::RUNNING;
++    nav_msgs::msg::Path path; path.poses.push_back(requested); setOutput("path",path);
++    return Status::SUCCESS;
++  }
++  void halt() override {if(status()==Status::RUNNING) ++cancels;setStatus(Status::IDLE);}
++};
++class Follow : public BT::ActionNodeBase {
++public:
++  Follow(const std::string &n,const BT::NodeConfiguration &c):ActionNodeBase(n,c){}
++  static BT::PortsList providedPorts(){return {BT::InputPort<nav_msgs::msg::Path>("path"),
++    BT::InputPort<std::string>("controller_id"),BT::InputPort<std::string>("server_name"),
++    BT::InputPort<std::string>("server_timeout")};}
++  Status tick() override {
++    ++follows;config().blackboard->set("terminal_settle_timeout",terminal);
++    return fail_follow ? Status::FAILURE : Status::RUNNING;
++  }
++  void halt() override {setStatus(Status::IDLE);}
++};
++class Wait : public BT::SyncActionNode {
++public:
++  Wait(const std::string &n,const BT::NodeConfiguration &c):SyncActionNode(n,c){}
++  static BT::PortsList providedPorts(){return {BT::InputPort<double>("wait_duration"),
++    BT::InputPort<std::string>("server_name"),BT::InputPort<std::string>("server_timeout")};}
++  Status tick() override {++waits;EXPECT_EQ(getInput<double>("wait_duration").value(),1.);return Status::SUCCESS;}
++};
++
++class EventPlanning : public ::testing::Test {
++protected:
++  BT::BehaviorTreeFactory factory;
++  BT::Blackboard::Ptr board;
++  Pose goal;
++  void SetUp() override {
++    starts=ticks=cancels=follows=waits=0;
++    finish_plan=true;fail_plan=fail_follow=terminal=false;
++    for(const auto *name:{"pipeline_sequence","rate_controller","recovery_node"})
++      factory.registerFromPlugin(std::string("/opt/ros/foxy/lib/libnav2_")+name+"_bt_node.so");
++    // Load the installed production plugin, not a recompiled test-only copy.
++    factory.registerFromPlugin("/work/install/lite3_nav2_plugins/lib/liblite3_nav2_route_bt.so");
++    factory.unregisterBuilder("FollowPathWithFailure");
++    factory.registerNodeType<Plan>("ComputePathToPose");
++    factory.registerNodeType<Follow>("FollowPathWithFailure");
++    factory.registerNodeType<Follow>("FollowPath");
++    factory.registerNodeType<Wait>("Wait");
++    board=BT::Blackboard::create();goal.header.frame_id="world";
++    goal.pose.position.x=5.;goal.pose.orientation.w=1.;board->set("goal",goal);
++  }
++  BT::Tree tree(const char *file=NAVIGATION_TREE){return factory.createTreeFromFile(file,board);}
++  void update(){board->set("goal",goal);}
++};
++
++TEST_F(EventPlanning, NoPeriodicPlansWhileLocalTrackingKeepsTicking) {
++  auto t=tree();ASSERT_EQ(t.tickRoot(),Status::RUNNING);
++  for(int i=0;i<1000;++i) ASSERT_EQ(t.tickRoot(),Status::RUNNING);
++  std::this_thread::sleep_for(std::chrono::milliseconds(1100));
++  ASSERT_EQ(t.tickRoot(),Status::RUNNING);
++  EXPECT_EQ(starts,1);EXPECT_EQ(ticks,1);EXPECT_EQ(follows,1002);EXPECT_EQ(waits,0);
++}
++TEST_F(EventPlanning, FrozenPeriodicTreeStillReplansAfterOneSecond) {
++  auto t=tree(LEGACY_TREE);t.tickRoot();EXPECT_EQ(starts,1);
++  std::this_thread::sleep_for(std::chrono::milliseconds(1100));t.tickRoot();
++  EXPECT_EQ(starts,2);
++}
++TEST_F(EventPlanning, PositionOrientationAndFrameChangesEachPlanOnce) {
++  auto t=tree();t.tickRoot();
++  goal.pose.position.x+=1.;update();t.tickRoot();EXPECT_EQ(starts,2);
++  goal.pose.orientation.z=.2;goal.pose.orientation.w=.98;update();t.tickRoot();EXPECT_EQ(starts,3);
++  goal.header.frame_id="map";update();t.tickRoot();EXPECT_EQ(starts,4);
++  for(int i=0;i<10;++i)t.tickRoot();EXPECT_EQ(starts,4);
++}
++TEST_F(EventPlanning, StampOnlyRefreshDoesNotPlan) {
++  auto t=tree();t.tickRoot();
++  for(int i=1;i<100;++i){goal.header.stamp.sec=i;update();t.tickRoot();}
++  EXPECT_EQ(starts,1);
++}
++TEST_F(EventPlanning, InFlightGoalReplacementCancelsOldAndPublishesOnlyNewPath) {
++  finish_plan=false;auto t=tree();
++  for(int i=0;i<20;++i)EXPECT_EQ(t.tickRoot(),Status::RUNNING);
++  EXPECT_EQ(starts,1);EXPECT_EQ(follows,0);
++  goal.pose.position.y=2.;update();t.tickRoot();EXPECT_EQ(starts,2);EXPECT_EQ(cancels,1);
++  finish_plan=true;t.tickRoot();
++  EXPECT_EQ(board->get<nav_msgs::msg::Path>("path").poses.back(),goal);
++  EXPECT_EQ(starts,2);EXPECT_EQ(follows,1);
++}
++TEST_F(EventPlanning, CancelAndNewMissionWithSamePoseMustPlanAgain) {
++  auto t=tree();t.tickRoot();t.haltTree();t.tickRoot();EXPECT_EQ(starts,2);
++  finish_plan=false;goal.pose.position.y=1.;update();t.tickRoot();
++  t.haltTree();EXPECT_EQ(cancels,1);finish_plan=true;t.tickRoot();EXPECT_EQ(starts,4);
++}
++TEST_F(EventPlanning, OrdinaryFailureReplansWithUnchangedSixRetryBudget) {
++  auto t=tree();t.tickRoot();fail_follow=true;
++  Status result=Status::RUNNING;
++  for(int i=0;i<100 && result==Status::RUNNING;++i)result=t.tickRoot();
++  EXPECT_EQ(result,Status::FAILURE);EXPECT_EQ(starts,7);EXPECT_EQ(waits,6);
++}
++TEST_F(EventPlanning, PlanningFailureRetainsOriginalRetries) {
++  fail_plan=true;auto t=tree();Status result=Status::RUNNING;
++  for(int i=0;i<100 && result==Status::RUNNING;++i)result=t.tickRoot();
++  EXPECT_EQ(result,Status::FAILURE);EXPECT_EQ(starts,7);EXPECT_EQ(waits,6);EXPECT_EQ(follows,0);
++}
++TEST_F(EventPlanning, TerminalStandTimeoutNeverReplans) {
++  auto t=tree();t.tickRoot();terminal=true;fail_follow=true;
++  EXPECT_EQ(t.tickRoot(),Status::FAILURE);EXPECT_EQ(starts,1);EXPECT_EQ(waits,0);
++}
++}
+--- v204/src/lite3_nav2_bridge/config/navigate.xml
++++ v212/src/lite3_nav2_bridge/config/navigate.xml
+@@ -2,9 +2,9 @@
+  <BehaviorTree ID="MainTree">
+   <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+    <PipelineSequence name="NavigateWithReplanning">
+-    <RateController hz="1.0">
++    <PlanOnGoalChange goal="{goal}">
+      <ComputePathToPose goal="{goal}" path="{path}" planner_id="PCT" server_name="/compute_path_to_pose" server_timeout="1000"/>
+-    </RateController>
++    </PlanOnGoalChange>
+     <FollowPathWithFailure path="{path}" controller_id="SCAN" server_name="/follow_path" server_timeout="1000"/>
+    </PipelineSequence>
+    <Sequence>

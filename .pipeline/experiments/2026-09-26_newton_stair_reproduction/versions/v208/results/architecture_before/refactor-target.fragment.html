@@ -1,0 +1,206 @@
+<section id="target" role="tabpanel" aria-labelledby="tab-target" hidden>
+  <div class="lead">
+    <div>
+      <div class="subtle-title">架构简化保留 · 指令连续性修复 · v206</div>
+      <h2>保留架构，修复速度跳变与代次误杀。</h2>
+      <p>在 v204 上修复路径交接与速度执行。PCT / SCAN 几何算法、1 Hz 全局刷新、终点规则和普通失败重试保持原样。</p>
+    </div>
+    <button class="quiet" data-open-tab="overview">对照 v196 基线 →</button>
+  </div>
+
+  <article class="panel" style="margin-bottom:24px">
+    <div class="subtle-title">最新物理结果 · v206 · gpu5070ti · 视频 v207</div>
+    <h3>走到终点附近，但站稳超时，整路线验收未通过。</h3>
+    <p>实际行走约 76.23 米，最后距目标 XY 约 9.46 厘米。在 126.40 秒物理时间时触发 <code>terminal_settle_timeout</code>；命令已归零，但仍是 <code>STAND_SETTLING</code>，支撑平衡尚未满足，未进入 PD 站立锁。</p>
+    <p>这一结果说明组件回归通过还不足以替代物理验收。v204 的原始通过记录保留；本次没有修改导航参数或追加行走重试。v207 视频保留启动、行走、末段等待和失败提示，时长 2 分 6 秒。</p>
+    <div data-refs="physical_v206"></div>
+  </article>
+
+  <article class="panel" style="margin-bottom:24px">
+    <div class="subtle-title">v206 · 已授权的跟踪行为修正 · 5070ti 构建</div>
+    <h3>路径刷新不再作废在算样条；行走、转向和停车使用同一速度斜率限幅。</h3>
+    <div class="table-scroll"><table><thead><tr><th>问题</th><th>v206 处理</th><th>边界</th></tr></thead><tbody>
+      <tr><td>1 Hz 刷新误杀局部结果</td><td>同目标只更新 revision 和路线，保留 generation、已完成结果与冻结反馈。</td><td>换目标或取消任务仍作废旧代次。</td></tr>
+      <tr><td>航向阈值附近走停跳变</td><td>连续衰减线速度；1.0 rad 进入原地转向，0.6 rad 恢复。回差状态跨样条保留。</td><td>SCAN 的冻结反馈仍与实际轨迹 ID 绑定。</td></tr>
+      <tr><td>单帧速度阶跃</td><td>x/y 加速 1.0、减速 2.0 m/s²；yaw 加速 2.0、减速 3.0 rad/s²。终点正常制动也经过同一限幅。</td><td>急停、取消、无有效样条直接归零；限幅计时不被新样条重置。</td></tr>
+      <tr><td>到期样条长期低速纠偏</td><td>到期且剩余指令低于 0.20 m/s 时平滑归零，锁住该样条的停止；新样条可恢复跟踪。</td><td>不报告到达、不清路线；保留 2 cm 局部完成界限。未到期短距离纠偏不做一刀切。</td></tr>
+    </tbody></table></div>
+    <p>低速门槛是本次明确选择的到期样条处理规则，不宣称它是 V12 的统一训练死区。减速过程中允许短暂经过低速区；最终必须精确为零，给 StanceHold 接管的条件。</p>
+    <p id="v206-checks"><strong>验证状态：</strong>5070ti 上 14 个包构建通过，117 个独立组件用例及 1 个启动图检查通过。源码与回传证据哈希一致；本地未编译，本轮没有物理仿真。</p>
+    <div data-refs="continuity_exchange,continuity_tracker,continuity_slew,continuity_plan,continuity_checks"></div>
+  </article>
+
+  <article class="panel" style="margin-bottom:24px">
+    <div class="subtle-title">新增物理验证 · 2026-10-15 · v204 attempt 01</div>
+    <h3>完整路线跑通了，但这次比 v196 慢。</h3>
+    <p>沿原始起点连续走到原始终点，实测约 79 米，最终 PD 站稳；v196 原整路线验收通过。v204 源码没有改动。</p>
+    <p><strong>实际导航耗时：</strong>155.6 秒，对比 v196 的 118.3 秒，增加 31.5%。<strong>局部规划成功频率：</strong>14.8 Hz，对比 24.6 Hz。控制器输出仍约 30 Hz。</p>
+    <p>这是一次完整物理仿真的结果。尚未定位变慢的原因；本次没有继续调参或再跑第二条路线。原始记录已归档并校验。</p>
+    <div data-refs="physical_v204,physical_v204_gate"></div>
+  </article>
+
+  <article class="panel" style="margin-bottom:24px">
+    <div class="subtle-title">v204 · 恢复行为，不撤回架构简化</div>
+    <h3>三件事回到原规则，站稳超时保留单独处理。</h3>
+    <div class="table-scroll"><table><thead><tr><th>行为</th><th>恢复后的规则</th><th>现在由谁负责</th></tr></thead><tbody>
+      <tr><td>终点与朝向</td><td>第一次成功路线的末点锁定为终点；明确给朝向就采用，包括 0；未给朝向则取路线最后有效方向。后续刷新保持整个终点位姿。</td><td>C++ RoutePolicy，归属于 Nav2 的 PCT 插件</td></tr>
+      <tr><td>旧路线保留</td><td>同一任务遇到原有三类规划失败，或进入原有终点接近范围，返回最后有效路线。取消或换任务隔离缓存；不扩大允许回退的错误类型。</td><td>导航层缓存；实时几何与支撑检查仍由 SCAN 完成</td></tr>
+      <tr><td>普通失败重试</td><td>规划或跟踪普通失败：Wait 1 秒，最多重试 6 次。站稳超时：直接失败，0 次重试。</td><td>原 Nav2 RecoveryNode；通过准确的 FollowPath 动作身份识别站稳超时</td></tr>
+    </tbody></table></div>
+    <p>任务入口只补传“任务身份、是否省略朝向”的开始／结束消息，不参与逐次规划。PCT 算法、局部规划策略、避障参数和重试预算保持原样。</p>
+    <p><strong>验证：</strong><span id="v204-checks">七个相关包构建通过；106 个 ROS 组件用例、1 个启动图检查通过，包含 28 次旧实现固定输入对照和 300 组跟踪对照。</span> 重构阶段的组件验证之外，本次新增一次物理路线，结果见上方。</p>
+    <div data-refs="restore_policy,restore_tree,restore_failure,restore_session,restore_checks"></div>
+  </article>
+
+  <article class="panel" style="margin-bottom:24px">
+    <h3>历史实施记录：v198–v203</h3>
+    <p><strong>v198：</strong>沿现有 TCP 把真实站姿、关节控制权和实测速度送到 ROS。<strong>v199：</strong>删除插件的速度发布器，ControllerServer 成为唯一出口。<strong>v200：</strong>GoalChecker 等待两秒 PD 站稳；终点等待暂停行走进度计时。曾移除全部重试，v204 恢复普通失败重试。</p>
+    <p>四个相关 ROS 包构建通过，v200 的 79 个独立组件用例通过，包含 300 组原跟踪算法对照。v198 另有 6 个主机回归和真实 TCP→ROS 联调。旧版本保留，本轮没有新增整路线实验。</p>
+    <p><strong>v201：</strong>PCTPlanner 直接调用 C++ OfflineElePlanner。MissionBridge 删除规划服务、规划锁和路线缓存，只保留提交、取消和查询。六个相关包构建通过；11 组固定输入、2033 个 XYZ 对照点最大差值为 0；21 项插件与接口回归通过。</p>
+    <p><strong>v202：</strong>LocalMotion 统一持有 SCAN、Tracker 和执行快照。路线与冻结反馈直接交换，完成样条通过函数回调传递；原来的三个 ROS 话题只用于观测。七个相关包构建通过，77 个独立组件用例通过，包含 300 组跟踪对照、迟到轨迹丢弃、话题注入隔离和三次工作线程启停。</p>
+    <p><strong>v203：</strong>三份静态地形由一个节点加载和发布，PCT、SCAN 从同一个地形清单取得各自输入。删除 2D 切片生成、TerrainLayer 与默认膨胀，当时移除 Wait 服务；v204 随普通重试一起恢复。七个包构建通过；97 个 ROS 组件用例、1 个启动图检查通过。三份地形数据逐字节不变，SCAN 原生解码与支撑缺口检查通过。</p>
+    <p class="tiny muted">系统总览对应已有完整路线证据的 v196；本页新增 v206 指令修复，v204 物理证据单独保留。v200 的全失败退出、v201 的固定输入终点和省略朝向默认 0，均由本次恢复替代。第 5 步暂停，保留 1 Hz。</p>
+    <div data-refs="refactor_wire,refactor_bridge,refactor_completion,refactor_server,refactor_bt,refactor_checks"></div>
+    <div data-refs="refactor_pct_plugin,refactor_pct_native,refactor_mission,refactor_pct_checks" style="margin-top:10px"></div>
+    <div data-refs="refactor_motion,refactor_exchange,refactor_native_io,refactor_motion_checks" style="margin-top:10px"></div>
+    <div data-refs="refactor_terrain_bundle,refactor_static_pub,refactor_map_profile,refactor_map_checks" style="margin-top:10px"></div>
+  </article>
+
+
+  <div class="target-principles">
+    <div><span>01</span><strong>一个任务调度者</strong><p>Nav2 决定继续、重试、取消和完成。</p></div>
+    <div><span>02</span><strong>一个速度命令出口</strong><p>ControllerServer 发 Twist；插件返回结果。</p></div>
+    <div><span>03</span><strong>一个对外完成判定</strong><p>到达后确认站稳，再向上层报告完成。</p></div>
+  </div>
+
+  <article class="panel target-architecture">
+    <div class="subtle-title">目标运行链</div>
+    <h3>任务向下传，状态向上报。规划不再绕回任务入口。</h3>
+    <div class="target-entry">
+      <div><strong>上层输入适配</strong><span>人工目标 / 未来 VLA</span><p>完成坐标转换与输入归一化；只提交任务、取消任务、查询状态。</p></div>
+      <span class="target-arrow" aria-hidden="true">↓</span>
+      <div class="target-owner"><strong>Nav2 任务调度</strong><span>唯一任务生命周期</span><p>选择路线来源，处理任务级重试；现有 GoalChecker 将站稳确认纳入任务成功条件。</p></div>
+    </div>
+    <div class="target-route-row">
+      <div class="target-route"><strong>PCT 路线来源</strong><span>世界系目的地 → 全局参考路径</span><p>Nav2 插件直接调用既有 PCT 原生算法。保持原有 1 Hz 刷新，按原规则锁定终点和保留旧路线；不加入动态堵塞掩码。</p></div>
+      <div class="target-route target-future"><strong>VLA 局部路线来源</strong><span>局部子目标 / 短轨迹 → 同一参考路径接口</span><p>后续接入时可以跳过 PCT，仍由同一个任务调度者管理，进入同一个局部执行模块。</p></div>
+    </div>
+    <p class="target-junction">二选一的路线来源 → 统一 Route 接口 → 不重复拥有任务状态</p>
+    <div class="target-track">
+      <div><strong>LocalMotion</strong><span>SCAN + Tracker</span><p>v202 已实现：内部完成局部目标、求解、样条跟踪和紧急制动。对外接收路线、返回速度、响应取消。</p></div>
+      <span class="target-arrow" aria-hidden="true">→</span>
+      <div><strong>ControllerServer</strong><span>唯一 Twist 出口</span><p>发布行走速度；取消、失败、等待时发布零命令。取消不会留下一条旧轨迹继续执行。</p></div>
+      <span class="target-arrow" aria-hidden="true">→</span>
+      <div><strong>机器人适配</strong><span>V12 / PD / 仿真或真机桥</span><p>执行身体速度，沿现有 TCP 遥测链传递站姿、关节控制权和实际运动，桥接为 ROS 执行状态。GoalChecker 从缓存读取，不轮询共享文件。</p></div>
+    </div>
+    <div class="target-support"><strong>共同输入：定位与时钟 · 静态地形包 · 实时局部地图快照</strong><p>v203 的统一地形包绑定 PCT 地图、三种静态点云和支撑缺口掩码；一个节点发布三种点云。各自的来源与判断作用保持分开，实时局部地图仍由 SCAN 更新。</p></div>
+  </article>
+
+  <article class="panel" style="margin-bottom:26px">
+    <div class="subtle-title">LocalMotion 内部 · v202 已实现</div>
+    <h3>两个线程各管自己的状态，中间只交接快照。</h3>
+    <div class="target-track">
+      <div><strong>控制线程 · Tracker</strong><span>路线进，速度出</span><p>Nav2 设置路线、逐拍取速度、取消任务。只有这个线程修改 Tracker 和执行相位。</p></div>
+      <span class="target-arrow" aria-hidden="true">⇄</span>
+      <div><strong>MotionExchange</strong><span>一个输入槽 + 一个结果槽</span><p>输入保存最新路线与冻结反馈；结果保存最新完整样条。取消或换目标后，旧代次的求解结果直接丢弃。</p></div>
+      <span class="target-arrow" aria-hidden="true">⇄</span>
+      <div><strong>规划线程 · SCAN</strong><span>保留原生求解与几何检查</span><p>在原有工作节拍读取快照，完成求解后直接回调。冻结反馈只作用于对应轨迹；地图读取与碰撞检查保持原样。</p></div>
+    </div>
+    <p class="tiny muted">只取消三条内部控制订阅：Path、Bspline、execution_frozen。传感器、定位、时钟和真实执行状态仍从 ROS 输入；相应的路线、样条与冻结话题继续用于观测。独立运行的旧 SCAN 接口保留在旧模式中。</p>
+    <div data-refs="refactor_motion,refactor_worker_direct,refactor_exchange,refactor_native_io"></div>
+  </article>
+
+  <article class="panel" style="margin-bottom:26px">
+    <div class="subtle-title">静态地形与启动链 · v203 已实现</div>
+    <h3>一份地形清单，一个加载节点，各种地形仍各司其职。</h3>
+    <div class="target-track">
+      <div><strong>离线地形包</strong><span>terrain.json 统一绑定来源</span><p>PCT 原生地图、可通行地面、表面证据、物理地面和支撑缺口掩码。导出一次，运行时按清单读取。</p></div>
+      <span class="target-arrow" aria-hidden="true">→</span>
+      <div><strong>统一加载节点</strong><span>StaticTerrain · 三种点云各读一次</span><p>替代三个发布进程，保留原来的三个主题、原始字节与时钟门槛。晚加入的消费者仍能收到静态数据。</p></div>
+      <span class="target-arrow" aria-hidden="true">→</span>
+      <div><strong>原生 SCAN 判断</strong><span>几何、支撑、3D 碰撞不变</span><p>三种输入保持不同用途；支撑缺口掩码只负责否决。局部地图更新和 3D 膨胀保持原样，PCT 单独读取清单中的原生地图。</p></div>
+    </div>
+    <p><strong>从默认闭环删除：</strong>2D 地形切片的定时计算与发布、TerrainLayer、Nav2 的冗余 2D 膨胀。Wait 恢复服务已在 v204 随普通重试恢复。</p>
+    <p class="tiny muted">Foxy 仍需要地图对象完成 TF 和生命周期初始化。这里只留 1×1 网格、1 Hz 更新、不发布网格；用禁用且没有传感器输入的现成图层占位，避免空插件数组的解析问题。它不承担障碍判断。</p>
+    <div data-refs="refactor_terrain_bundle,refactor_static_pub,refactor_map_profile,refactor_map_graph,refactor_map_checks"></div>
+  </article>
+
+  <div class="split">
+    <article class="panel">
+      <h3>保留什么</h3>
+      <ul class="target-list">
+        <li><strong>Nav2 的任务生命周期。</strong>使用现成 action、取消和行为树；不再自建第二套导航框架。</li>
+        <li><strong>PCT 的分层规划与优化。</strong>迁移调用位置，不改写算法。</li>
+        <li><strong>SCAN 的局部搜索、样条优化和几何检查。</strong>求解细节收进 LocalMotion。</li>
+        <li><strong>异步地图快照。</strong>规划读取明确 revision，地图更新由单独写入方维护。</li>
+        <li><strong>V12 与 PD 站立控制。</strong>本轮不碰行走策略权重。</li>
+      </ul>
+      <div data-refs="bt,pct_core,pct_native,optimizer,mapper,policy"></div>
+    </article>
+    <article class="panel">
+      <h3>从默认运行链删除什么</h3>
+      <ul class="target-list">
+        <li><strong>PCT 服务绕回 MissionBridge。</strong>任务入口不再装载地图、运行规划器、缓存路线。</li>
+        <li><strong>SCAN 外露的第二套任务恢复决策。</strong>保留算法内部尝试和紧急制动，任务重试交给 Nav2。</li>
+        <li><strong>插件直接发 Twist、服务端再绕开发布的双套接口。</strong>统一恢复标准“计算返回、服务端发布”。</li>
+        <li><strong>没有算法消费者的 2D 地形切片与膨胀计算。</strong>移出默认闭环，Nav2 必要的 TF／生命周期设施保留。</li>
+      </ul>
+      <div data-refs="mission,pct_plugin,bt,control,worker,terrain"></div>
+    </article>
+  </div>
+
+  <article class="panel" style="margin-top:26px">
+    <h3>接口要小，但责任必须完整</h3>
+    <div class="table-scroll"><table>
+      <thead><tr><th>模块</th><th>对外接口（目标）</th><th>只由它维护的内容</th><th>不再做什么</th></tr></thead>
+      <tbody>
+        <tr><td>任务入口</td><td>提交 / 取消 / 查询</td><td>输入转换、请求与 Nav2 action 的对应关系</td><td>不运行 PCT、不缓存路线、不制定重试策略</td></tr>
+        <tr><td>Nav2 任务层</td><td>任务状态与最终结果</td><td>任务身份、目标、重规划原因、重试次数、终点等待阶段与终态</td><td>不直接操纵样条时间或关节状态</td></tr>
+        <tr><td>RouteProvider</td><td>规划一次，返回路线或明确原因</td><td>路线生成、坐标/高度转换、任务内终点锁定和有效路线缓存</td><td>不接管导航 action，不改变原有规划失败回退条件</td></tr>
+        <tr><td>LocalMotion</td><td>接收 Route；计算 Velocity + Status；取消</td><td>局部地图绑定、轨迹编号、执行相位、局部求解与制动</td><td>不宣布整个任务成功，不反复启动上层任务</td></tr>
+        <tr><td>地形模块</td><td>一次加载静态地形包；读取版本化局部快照</td><td>来源身份、地面/表面/支撑/代价的各自含义</td><td>不让三个独立发布器各自拼接配置和来源</td></tr>
+        <tr><td>机器人适配</td><td>接收速度；报告执行与站立状态</td><td>指令时效、RL/PD 切换；沿现有通信链发布实测速度、stance_mode 与 policy_owns_joints</td><td>不改变目的地，不自己决定全局重试</td></tr>
+      </tbody>
+    </table></div>
+    <p class="target-migration-note"><strong>PCT 迁移的具体落点：</strong>直接复用 OfflineElePlanner 的 InitMap、Plan 和 SetReferenceHeight。原包装层含额外 Z 偏移，而当前 MissionBridge 实际用优化器高度覆盖了它；迁移必须保留这一实际语义，身体参考高度只加一次。终点与取消归属留在 Nav2 任务上下文，不把整套 jobs 字典搬进规划插件。</p><div data-refs="pct_native,pct_core,pct_conversion,cache"></div>
+    <p class="tiny muted" style="margin-top:14px">LocalMotion 已在 v202 实现；RouteProvider 仍是未来统一路线来源接口的工作名称。</p>
+  </article>
+
+  <div class="split">
+    <article class="panel">
+      <h3>全局刷新：保留 1 Hz，第 5 步暂停</h3>
+      <p>本次恢复不引入“明显偏离”的新阈值，不改全局刷新条件，也不把局部堵塞变成新的全局策略。</p>
+      <p>未来 VLA 仍保留平级路线来源的位置。接入方式和刷新策略另行决定；本轮不改 PCT 的代价图，不加动态堵塞掩码。</p>
+      <div data-refs="restore_tree"></div>
+    </article>
+    <article class="panel">
+      <h3>完成：上层只收到一种最终答案</h3>
+      <div class="target-completion" aria-label="目标任务状态流程"><span>规划</span><b>→</b><span>行走</span><b>→</b><span>站稳确认</span><b>→</b><span>完成</span></div>
+      <p>位置和朝向到达作为内部制动状态；FollowPath 保持运行，现有 GoalChecker 继续等待站稳；通过后才结束整个任务。</p>
+      <p>进入终点制动后，暂停行走 ProgressChecker，采用单独的站稳截止时间。取消和失败沿同一任务通道传播。GoalChecker 连续确认 FIXED_STAND、关节已由 PD 接管和实测低速度 2 秒才成功。取消或新目标重置该窗口；站稳超时作为不可重试的终局失败，绕过普通 FollowPath 的 Wait/重规划恢复分支；不能由笼统 RecoveryNode 再走一遍路线。</p>
+      <div class="note">外部测试脚本负责观察和断言，不再成为完成任务不可缺少的控制环节。</div>
+      <div data-refs="goalcheck,driver,stance"></div>
+    </article>
+  </div>
+
+  <article class="panel" style="margin-top:26px">
+    <div class="subtle-title">实施顺序</div>
+    <h3>每一步都有明确的搬迁和删除结果</h3>
+    <div class="table-scroll"><table>
+      <thead><tr><th>顺序</th><th>具体改动</th><th>主要代码入口</th><th>交付判据</th></tr></thead>
+      <tbody>
+        <tr><td>1 · 已实现<br>v198–v200</td><td>真实执行状态沿 TCP→ROS 上报；Tracker 返回命令、ControllerServer 统一发布。GoalChecker 等站稳，终点阶段豁免行走进度检查；v204 恢复普通失败重试，仅站稳超时直接结束。</td><td><code>RobotExecutionState / controller.cpp / terminal_completion.hpp / navigate.xml</code></td><td>构建与组件回归已通过：单一发布者、取消清轨迹、两秒站稳、超时无重跑。未新增物理路线验证。</td></tr>
+        <tr><td>2 · 已实现<br>v201</td><td>PCT 插件直接链接 ele_planner_lib；一次导出原生地图包，保留 XY 交换、楼层选择与优化器高度。MissionBridge 删除规划服务及路线缓存，Nav2 固定任务终点。</td><td><code>PCTRoutePlanner / OfflineElePlanner / export_pct_map.py / mission_bridge.py</code></td><td>六个包构建通过；11 组固定输入的 2033 个 XYZ 点差值为 0；真实插件在没有规划服务时完成规划。</td></tr>
+        <tr><td>3 · 已实现<br>v202</td><td>LocalMotion 持有 SCAN + Tracker；规划线程与控制线程通过两个有界快照槽交换状态。路线代次隔离迟到结果，冻结反馈绑定轨迹编号；三个 ROS 话题只发布观测。</td><td><code>LocalMotion / MotionExchange / SCANReplanFSM::DirectIO</code></td><td>七个包构建通过；77 个组件用例、300 组跟踪对照通过。旧话题不能注入控制；取消、换目标、启停回归通过。</td></tr>
+        <tr><td>4 · 已实现<br>v203</td><td>统一地形包和加载节点；删除 2D 切片与 TerrainLayer，移除默认膨胀；Wait 服务在 v204 恢复。保留 Nav2 必需的最小地图／TF 外壳。</td><td><code>TerrainBundle / StaticTerrain / profile.py / native_graph.py</code></td><td>七个包构建通过；97 个 ROS 组件用例 + 1 个启动图检查通过。三份载荷逐字节一致，真实地图激活与 SCAN 支撑解码通过。</td></tr>
+        <tr><td>5 · 暂停</td><td>保留原有 1 Hz 刷新。未来 VLA 接口位置保留。</td><td><code>navigate.xml / RouteProvider</code></td><td>本轮不改变全局重规划策略、PCT 代价图或局部避障策略。</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <div class="rules">
+    <h3>这轮把“结构收敛”作为交付目标</h3>
+    <p>采用构建、固定输入回归和接口联调确认搬迁结果。重点检查路线身份、取消、命令发布和完成状态；不再以新增整路线实验、训练或性能调参作为本轮前置条件。</p>
+    <p class="tiny muted">最新授权是 v206 的四项指令与交接修复，保留此前的架构简化和 v204 恢复行为。v204 完整物理结果单独保留；v206 只做 5070ti 构建与组件回归，不把它们写成物理路线通过。</p>
+  </div>
+</section>

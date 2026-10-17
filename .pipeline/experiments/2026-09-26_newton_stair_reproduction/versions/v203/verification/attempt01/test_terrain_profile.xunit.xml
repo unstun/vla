@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="1" hostname="4d9fc3466edf" name="pytest" skipped="0" tests="3" time="0.366" timestamp="2026-10-15T08:38:40.622179"><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile" file="src/lite3_nav2_bridge/test/test_terrain_profile.py" line="18" name="test_profile_retains_scan_geometry_and_removes_map_work[base]" time="0.116"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile" file="src/lite3_nav2_bridge/test/test_terrain_profile.py" line="18" name="test_profile_retains_scan_geometry_and_removes_map_work[base_link]" time="0.112"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile" file="src/lite3_nav2_bridge/test/test_terrain_profile.py" line="43" name="test_launch_owns_one_static_publisher_and_no_recovery_server" time="0.093"><failure message="AttributeError: &apos;Node&apos; object has no attribute &apos;node_executable&apos;">tmp_path = PosixPath(&apos;/tmp/pytest-of-root/pytest-2/test_launch_owns_one_static_pu0&apos;)
+
+    def test_launch_owns_one_static_publisher_and_no_recovery_server(tmp_path):
+        launch_file = Path(get_package_share_directory(&apos;lite3_nav2_bridge&apos;))/&apos;launch/navigation.launch.py&apos;
+        spec = importlib.util.spec_from_file_location(&apos;terrain_launch&apos;,launch_file)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        backend = tmp_path/&apos;backend.json&apos;; backend.write_text(&apos;{}&apos;)
+        context = LaunchContext()
+        context.launch_configurations.update({&apos;terrain_manifest&apos;:str(MANIFEST), &apos;native_planner_config&apos;:str(NATIVE),
+            &apos;generated_params&apos;:str(tmp_path/&apos;profile.yaml&apos;), &apos;backend_config&apos;:str(backend),
+            &apos;use_sim_time&apos;:&apos;false&apos;,&apos;base_frame&apos;:&apos;base&apos;,&apos;odom_topic&apos;:&apos;/quad_0/body_pose&apos;})
+        actions = module.nodes(context)
+&gt;       names = [perform_substitutions(context, action.node_executable) for action in actions]
+
+/work/src/lite3_nav2_bridge/test/test_terrain_profile.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;list_iterator object at 0xffff834e2130&gt;
+
+&gt;   names = [perform_substitutions(context, action.node_executable) for action in actions]
+E   AttributeError: &apos;Node&apos; object has no attribute &apos;node_executable&apos;
+
+/work/src/lite3_nav2_bridge/test/test_terrain_profile.py:54: AttributeError</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,272 @@
+--- .pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/stance_hold.py
++++ v208/stance_hold.py
+@@ -1,5 +1,10 @@
+ #!/usr/bin/env python3
+-"""PD stance hold state machine for the patched V12 Isaac Building runner.
++"""v208 stillness-based return, preserving V12 torque-matched stand targets.
++
++This version replaces the old entry load-share gate with the machine-dog
++A5/A7 body/joint stillness gate, uses xfade2s, and applies its A6 target cap.
++Factory hold, disturbance exit and rejoin retain the parent behavior.
++The historical implementation notes below describe the shared parent code.
+ 
+ Pure Python + NumPy; no Isaac, Torch or ROS import. `materialize_runner_patch.py`
+ inserts the text between the two body markers verbatim into the patched runner,
+@@ -65,6 +70,9 @@
+ # the full 3-D base linear/angular velocity (MJ _hold_motion_metrics, MJ:2374-2396).
+ SETTLE_LINEAR_SPEED_MAX = 0.15
+ SETTLE_ANGULAR_SPEED_MAX = 0.5
++SETTLE_JOINT_SPEED_MAX = 1.0
++SETTLE_TILT_MAX_DEG = math.degrees(0.15)
++RETURN_TARGET_CAP_RAD = 0.2
+ # MJ HOLD_TILT_LIMIT_DEG (MJ:112): angle between body z and world z.
+ TILT_MAX_DEG = 10.0
+ # MJ FIXED_STAND_ENTRY_FORCE_N (MJ:152): every foot >= 10 N to enter.
+@@ -120,7 +128,7 @@
+ ENTRY_GRACE_VARIANTS = ("xfade1s", "xfade2s")
+ STANCE_ENTRY_RAMP_VARIANTS = ("ramp", "step1", "step2p5")
+ STANCE_ENTRY_KD_MODES = STANCE_ENTRY_RAMP_VARIANTS + ("xfade1s", "xfade2s")
+-STANCE_ENTRY_KD_DEFAULT = "ramp"
++STANCE_ENTRY_KD_DEFAULT = "xfade2s"
+ ENTRY_LANDING_KD = 2.5
+ # MJ FIXED_STAND_CONTACT_THRESHOLD (MJ:130): hold needs every foot > 1 N.
+ HOLD_CONTACT_N = 1.0
+@@ -150,9 +158,13 @@
+         "settle_linear_speed_max_mps": SETTLE_LINEAR_SPEED_MAX,
+         "settle_angular_speed_max_radps": SETTLE_ANGULAR_SPEED_MAX,
+         "tilt_max_deg": TILT_MAX_DEG,
+-        "entry_foot_force_n": ENTRY_FOOT_FORCE_N,
++        "entry_gate": "quiet_body_and_joints",
++        "settle_joint_speed_max_radps": SETTLE_JOINT_SPEED_MAX,
++        "settle_tilt_max_deg": SETTLE_TILT_MAX_DEG,
++        "return_target_cap_rad": RETURN_TARGET_CAP_RAD,
++        "entry_foot_force_n": None,
+         "settle_dwell_s": SETTLE_DWELL_S,
+-        "balance_band": [BALANCE_LOW, BALANCE_HIGH],
++        "balance_band": None,
+         "balance_shares": ["FL+FR", "FL+HL", "FL+HR"],
+         "transition_s": TRANSITION_S,
+         "rejoin_s": REJOIN_S,
+@@ -327,6 +339,7 @@
+         self._settle_split_count = 0
+         self._settle_block_reason = "dwell"
+         self._hold_target = None
++        self._capped_return = False
+         self._entry_q0 = None
+         self._entry_target0 = None
+         self._entry_kp0 = None
+@@ -435,7 +448,7 @@
+             return self._landing_kd + (self._hold_kd - self._landing_kd) * blend
+         self._fail("unhandled entry_kd variant: " + str(self.entry_kd))
+ 
+-    def _entry_crossfade(self, elapsed_s: float, policy_target):
++    def _entry_crossfade(self, elapsed_s: float, policy_target, joint_pos):
+         """Target, Kp, Kd and weight of the crossfade entry (PRD D6).
+ 
+         The end points are exact: weight 0 gives this step's policy target at the
+@@ -443,16 +456,23 @@
+         with the hold gains, which is also the FIXED_STAND output.
+         """
+         duration = self._crossfade_s
++        hold_target = self._return_target(joint_pos)
+         if elapsed_s + STANCE_TIME_EPS >= duration:
+-            return self._hold_target, self._hold_kp, self._hold_kd, 1.0
++            return hold_target, self._hold_kp, self._hold_kd, 1.0
+         weight = _stance_smoothstep(elapsed_s / duration)
+         if weight <= 0.0:
+             return policy_target, self._entry_kp0, self._hold_kd, 0.0
+         kp = (1.0 - weight) * self._entry_kp0 + weight * self._hold_kp
+         # kp > 0: Kp0 >= 0 is validated, HOLD_KP > 0 and weight > 0.
+         target = ((1.0 - weight) * self._entry_kp0 * policy_target
+-                  + weight * self._hold_kp * self._hold_target) / kp
++                  + weight * self._hold_kp * hold_target) / kp
+         return target, kp, self._hold_kd, weight
++
++    def _return_target(self, joint_pos):
++        if not self._capped_return:
++            return self._hold_target
++        return joint_pos + np.clip(self._hold_target - joint_pos,
++                                   -RETURN_TARGET_CAP_RAD, RETURN_TARGET_CAP_RAD)
+ 
+     # -- update ----------------------------------------------------------------
+     def update(self, x: HoldInput) -> HoldOutput:
+@@ -474,7 +494,7 @@
+             now = _stance_scalar("now_s", x.now_s)
+             command = _stance_vector("command", x.command, 3)
+             joint_pos = _stance_vector("joint_pos", x.joint_pos, n)
+-            _stance_vector("joint_vel", x.joint_vel, n)
++            joint_vel = _stance_vector("joint_vel", x.joint_vel, n)
+             policy_target = _stance_vector("policy_target", x.policy_target, n)
+             applied_target = _stance_vector("applied_target", x.applied_target, n)
+             applied_kp = _stance_vector("applied_kp", x.applied_kp, n)
+@@ -502,14 +522,14 @@
+             if self._entry_grace and now + STANCE_TIME_EPS < ENTRY_GRACE_S:
+                 self.reason = "entry_grace"
+             else:
+-                self._set_mode("STAND_SETTLING", "waiting_for_quiet_four_contact", now)
++                self._set_mode("STAND_SETTLING", "waiting_for_stillness", now)
+                 self.progress = 0.0
+                 self._phase_start = now
+                 self._settle_started = None
+                 self.counters["settle_starts"] += 1
+ 
+         if self.mode == "STAND_SETTLING":
+-            # Whole-body settle gate (MJ:1583-1708, per-leg latch path omitted).
++            # Measured body/joint stillness; contact loads remain observations.
+             failure = None
+             if not zero_command:
+                 failure = "new_command"
+@@ -517,10 +537,10 @@
+                 failure = "linear_speed"
+             elif angular_speed > SETTLE_ANGULAR_SPEED_MAX:
+                 failure = "angular_speed"
+-            elif tilt_deg > TILT_MAX_DEG:
++            elif tilt_deg > SETTLE_TILT_MAX_DEG:
+                 failure = "tilt"
+-            elif not bool(np.all(forces >= ENTRY_FOOT_FORCE_N)):
+-                failure = "four_contact"
++            elif bool(np.any(np.abs(joint_vel) > SETTLE_JOINT_SPEED_MAX)):
++                failure = "joint_speed"
+             if failure == "new_command":
+                 self._set_mode("RL", "fixed_stand_cancelled:new_command", now)
+                 self.progress = 0.0
+@@ -535,56 +555,45 @@
+                     self._settle_started = now
+                     self._settle_split_sum = np.zeros(3)
+                     self._settle_split_count = 0
+-                self._settle_split_sum += np.array([
+-                    forces[0] + forces[1],
+-                    forces[0] + forces[2],
+-                    forces[0] + forces[3],
+-                ]) / float(np.sum(forces))
+                 self._settle_split_count += 1
+                 dwell = now - self._settle_started
+                 self.progress = _stance_progress(dwell, SETTLE_DWELL_S)
++                self.reason = "still_dwell"
+                 if dwell + STANCE_TIME_EPS >= SETTLE_DWELL_S:
+-                    splits = self._settle_split_sum / self._settle_split_count
+-                    if bool(np.any(splits < BALANCE_LOW) or np.any(splits > BALANCE_HIGH)):
+-                        self._settle_started = None
+-                        self._settle_block_reason = "support_balance"
+-                        self.progress = 0.0
+-                        self.reason = "waiting_for_support_balance"
+-                        self.counters["support_balance_blocks"] += 1
+-                    else:
+-                        # Torque-matched seed (MJ:1686-1703): the target offset that
+-                        # reproduces the applied PD stiffness torque at the hold gain.
+-                        self._hold_target = joint_pos + (applied_kp / self._hold_kp) * (
+-                            applied_target - joint_pos
+-                        )
+-                        # Entry gain ramp start point (PRD D4); Kp0 also weights the
+-                        # policy law in the PRD D6 crossfade.
+-                        self._entry_q0 = joint_pos.copy()
+-                        self._entry_target0 = applied_target.copy()
+-                        self._entry_kp0 = applied_kp.copy()
+-                        self._entry_kd0 = applied_kd.copy()
+-                        self._entry_ramp_done = False
+-                        self._set_mode("STAND_TRANSITION", "quiet_four_contact_confirmed", now)
+-                        self.progress = 0.0
+-                        self._phase_start = now
+-                        self.counters["entries"] += 1
+-                        stiffness_torque = applied_kp * (applied_target - joint_pos)
+-                        self.last_entry = {
+-                            "t_s": now,
+-                            "support_shares": [float(v) for v in splits],
+-                            "dwell_samples": int(self._settle_split_count),
+-                            "foot_forces_n": [float(v) for v in forces],
+-                            "entry_ramp_s": ENTRY_RAMP_S if self._crossfade_s is None else self._crossfade_s,
+-                            "entry_ramp_complete_t_s": None,
+-                            "entry_kd": self.entry_kd,
+-                            "q0": [float(v) for v in joint_pos],
+-                            "applied_target_t0": [float(v) for v in applied_target],
+-                            "kp0_mean": float(np.mean(applied_kp)),
+-                            "kd0_mean": float(np.mean(applied_kd)),
+-                            "t0_minus_q0_max_abs": float(np.max(np.abs(applied_target - joint_pos))),
+-                            "seed_minus_t0_max_abs": float(np.max(np.abs(self._hold_target - applied_target))),
+-                            "stiffness_torque_max_abs_nm": float(np.max(np.abs(stiffness_torque))),
+-                        }
++                    # Torque-matched seed (MJ:1686-1703): the target offset that
++                    # reproduces the applied PD stiffness torque at the hold gain.
++                    self._capped_return = True
++                    self._hold_target = joint_pos + (applied_kp / self._hold_kp) * (
++                        applied_target - joint_pos
++                    )
++                    # Entry gain ramp start point (PRD D4); Kp0 also weights the
++                    # policy law in the PRD D6 crossfade.
++                    self._entry_q0 = joint_pos.copy()
++                    self._entry_target0 = applied_target.copy()
++                    self._entry_kp0 = applied_kp.copy()
++                    self._entry_kd0 = applied_kd.copy()
++                    self._entry_ramp_done = False
++                    self._set_mode("STAND_TRANSITION", "still_confirmed", now)
++                    self.progress = 0.0
++                    self._phase_start = now
++                    self.counters["entries"] += 1
++                    stiffness_torque = applied_kp * (applied_target - joint_pos)
++                    self.last_entry = {
++                        "t_s": now,
++                        "entry_gate": "quiet_body_and_joints",
++                        "dwell_samples": int(self._settle_split_count),
++                        "foot_forces_n": [float(v) for v in forces],
++                        "entry_ramp_s": ENTRY_RAMP_S if self._crossfade_s is None else self._crossfade_s,
++                        "entry_ramp_complete_t_s": None,
++                        "entry_kd": self.entry_kd,
++                        "q0": [float(v) for v in joint_pos],
++                        "applied_target_t0": [float(v) for v in applied_target],
++                        "kp0_mean": float(np.mean(applied_kp)),
++                        "kd0_mean": float(np.mean(applied_kd)),
++                        "t0_minus_q0_max_abs": float(np.max(np.abs(applied_target - joint_pos))),
++                        "seed_minus_t0_max_abs": float(np.max(np.abs(self._hold_target - applied_target))),
++                        "stiffness_torque_max_abs_nm": float(np.max(np.abs(stiffness_torque))),
++                    }
+             else:
+                 self._settle_started = None
+                 self._settle_block_reason = failure
+@@ -619,6 +628,7 @@
+ 
+         if self.mode in ("STAND_TRANSITION", "FIXED_STAND") and not zero_command:
+             # New command: blend back from what was actually applied (MJ:1747-1756).
++            self._capped_return = False
+             self._set_mode("REJOIN", "new_command_rejoin", now)
+             self.progress = 0.0
+             self._phase_start = now
+@@ -639,7 +649,7 @@
+                 ramp = (ramp[0], ramp[1], self._entry_damping(elapsed, ramp[2]), ramp[3])
+                 ramp_reason = "entry_gain_ramp"
+             else:
+-                ramp = self._entry_crossfade(elapsed, policy_target)
++                ramp = self._entry_crossfade(elapsed, policy_target, joint_pos)
+                 ramp_reason = "entry_crossfade"
+             # The entry step (blend 0) keeps the transition reason; later steps
+             # name the ramp or crossfade so metrics rows show when the hold gains
+@@ -670,7 +680,7 @@
+         if self.mode == "STAND_TRANSITION":
+             return self._output(self._clip_target(ramp[0]), ramp[1], ramp[2], False)
+         if self.mode == "FIXED_STAND":
+-            return self._output(self._clip_target(self._hold_target), self._hold_kp, self._hold_kd, False)
++            return self._output(self._clip_target(self._return_target(joint_pos)), self._hold_kp, self._hold_kd, False)
+         if self.mode == "REJOIN":
+             blend = _stance_smoothstep(self.progress)
+             return self._output(
+--- .pipeline/experiments/2026-09-26_newton_macos_policy/scripts/newton_stance.py
++++ v208/newton_stance.py
+@@ -7,8 +7,8 @@
+ import mujoco
+ import numpy as np
+ 
+-SOURCE = Path(__file__).resolve().parents[2] / "2026-09-16_pi_cortex_harnessvln/isaac_runner/stance_hold.py"
+-SOURCE_SHA256 = "9a97879a5d5ed2f7c9c3e327c1193b1c42cf079eaaf073a855afad53a7dbc306"
++SOURCE = Path(__file__).resolve().with_name("stance_hold.py")
++SOURCE_SHA256 = "3974c8b3d641a80c3d3a2a54bed021df8494e0dc0fcf2428c7a9692c4e2c130c"
+ if hashlib.sha256(SOURCE.read_bytes()).hexdigest() != SOURCE_SHA256:
+     raise ValueError("Existing PD hold source identity changed")
+ spec = importlib.util.spec_from_file_location("vla_existing_stance_hold", SOURCE)
+@@ -48,7 +48,7 @@
+         # collision pipeline's pre-step geometry/scoring buffer.
+             self.contacts = newton.Contacts(robot.solver.get_max_contact_count(), 0,
+                                            requested_attributes={"force"})
+-        self.hold = hold_module.StanceHold("auto", entry_kd="xfade1s",
++        self.hold = hold_module.StanceHold("auto", entry_kd="xfade2s",
+             joint_lower=robot.model.joint_limit_lower.numpy()[robot.qd_indices],
+             joint_upper=robot.model.joint_limit_upper.numpy()[robot.qd_indices])
+         self.forces = np.zeros(4)

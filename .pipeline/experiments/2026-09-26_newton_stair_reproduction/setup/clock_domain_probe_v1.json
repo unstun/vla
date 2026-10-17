@@ -1,0 +1,30 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--name",
+    "vla-newton-clock-identity-v1",
+    "--memory=128m",
+    "--cpus=1",
+    "--entrypoint",
+    "/usr/bin/python3",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "-c",
+    "import json,platform,time; print(json.dumps({\"system\":platform.system(),\"monotonic_ns\":time.monotonic_ns(),\"wall_time_ns\":time.time_ns()}))"
+  ],
+  "host_begin_monotonic_ns": 128976336435708,
+  "host_end_monotonic_ns": 128977837818791,
+  "exit_code": 0,
+  "stderr": "",
+  "stdout": "{\"system\": \"Linux\", \"monotonic_ns\": 1112536999, \"wall_time_ns\": 1790439869160831208}\n",
+  "claim": "Read-only clock-domain diagnostic, not clock synchronization or an adopted adapter",
+  "linux_minus_mac_offset_interval_s": [
+    -128976.725281792,
+    -128975.223898709
+  ],
+  "same_monotonic_origin_possible": false
+}

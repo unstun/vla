@@ -1,0 +1,29 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--memory=2g",
+    "--cpus=2",
+    "--name",
+    "vla-v5-replay-inputs01",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction:/base:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/v5_replay_inputs01:/attempt:rw",
+    "--entrypoint",
+    "python3",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/prepare_inputs.py",
+    "/base",
+    "/attempt"
+  ],
+  "deadline_s": 60,
+  "exit_code": 0,
+  "stdout": "{\n  \"building_measured_fixed\": 666,\n  \"building_measured_height\": 666,\n  \"flat_measured\": 746\n}\n",
+  "stderr": "",
+  "wall_s": 0.7837557499988179
+}

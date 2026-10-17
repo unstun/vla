@@ -1,0 +1,59 @@
+--- attempt01/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
++++ v194/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
+@@ -64,6 +64,7 @@
+   bool native_worker_enabled_{true};
+   bool has_active_plan_{false}, terminal_timeout_started_{false};
+   bool waiting_for_spline_{false};
++  bool goal_braking_{false};  // Survives GoalChecker::reset() on same-goal refreshes.
+   double bspline_timeout_s_{5.0};
+   rclcpp::Time waiting_for_spline_since_{0, 0, RCL_ROS_TIME};
+   rclcpp::Time route_sent_at_{0, 0, RCL_ROS_TIME};
+--- attempt01/scan_nav2_controller/src/controller.cpp
++++ v194/src/scan_nav2_controller/src/controller.cpp
+@@ -263,6 +263,7 @@
+     waiting_for_spline_since_=parent_->now();
+     route_sent_at_=waiting_for_spline_since_;
+     state_->goal_reached=false;
++    goal_braking_=false;
+     state_->stopped=false;
+   } else if (!tracker_->haveTrajectory() && !waiting_for_spline_) {
+     waiting_for_spline_=true;
+@@ -349,7 +350,8 @@
+   }
+   state_->pose=pose.pose; state_->velocity=velocity; state_->pose_valid=true;
+   state_->stopped=stoppedVelocity(velocity);
+-  state_->goal_reached=withinGoalPosition(pose.pose) && withinGoalYaw(pose.pose, state_->goal_reached);
++  goal_braking_=withinGoalPosition(pose.pose) && withinGoalYaw(pose.pose, goal_braking_);
++  state_->goal_reached=goal_braking_;
+   if (state_->goal_reached) return stampedCommand(geometry_msgs::msg::Twist());
+   if (!tracker_->haveTrajectory()) {
+     if (!waiting_for_spline_) {
+@@ -388,6 +390,7 @@
+   if (!state_) return;
+   std::lock_guard<std::mutex> lock(state_->mutex);
+   has_active_plan_=false;
++  goal_braking_=false;
+   waiting_for_spline_=false;
+   terminal_timeout_started_=false;
+   state_->goal_reached=false;
+--- attempt01/scan_nav2_controller/test/test_controller.cpp
++++ v194/src/scan_nav2_controller/test/test_controller.cpp
+@@ -66,7 +66,7 @@
+   void plan()
+   {
+     route.header.stamp=parent->now(); plugin->setPlan(route);
+-    ASSERT_TRUE(wait([&] { return !dispatched.empty(); }));
++    ASSERT_TRUE(wait([&] { return !dispatched.empty() && dispatched.back()==route; }));
+     EXPECT_EQ(dispatched.back(),route);
+   }
+   sm::Bspline curve()
+@@ -252,6 +252,9 @@
+   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,{})); // Last measured body still moving.
+   plugin->setPlan(route); // Same-goal replans preserve the braking latch too.
+   EXPECT_TRUE(actual->state_->goal_reached);
++  goal->reset(); // The pinned ControllerServer does this after every setPlan().
++  EXPECT_FALSE(actual->state_->goal_reached);
++  EXPECT_TRUE(actual->goal_braking_);
+   set_error(0.16);
+   EXPECT_EQ(plugin->computeVelocityCommands(body,rotating).twist,geometry_msgs::msg::Twist());
+   EXPECT_FALSE(goal->isGoalReached(body.pose,route.poses.back().pose,rotating));

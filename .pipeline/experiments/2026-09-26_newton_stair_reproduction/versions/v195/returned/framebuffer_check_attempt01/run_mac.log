@@ -1,0 +1,32 @@
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 0.004s
+
+OK
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.005s
+
+OK
+{"prepared": true, "root": "/private/tmp/vla_stop_audit_20261012/video_v195", "source": "v194_mac_full_attempt01", "inputs": 16, "contract_sha256": "5db47dc04247483651433d32ed08bb2ae720e9c15bd8e28b8997e06a21f0fd6a"}
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v195/verify_video.py", line 188, in <module>
+    main()
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v195/verify_video.py", line 46, in main
+    frames = json.loads((OUT / 'frames.json').read_text())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/vla_stop_audit_20261012/video_v195/runs/full01/frames.json'
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v195/run_mac.py", line 55, in <module>
+    main()
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v195/run_mac.py", line 41, in main
+    subprocess.run([sys.executable, str(HERE / 'verify_video.py')], env=env, check=True, timeout=180)
+  File "/opt/homebrew/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv/bin/python', '/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v195/verify_video.py']' returned non-zero exit status 1.

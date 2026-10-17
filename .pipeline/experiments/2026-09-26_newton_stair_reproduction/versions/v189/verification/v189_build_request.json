@@ -1,0 +1,27 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/arm64",
+    "--network=none",
+    "--cpus=4",
+    "--memory=4g",
+    "-e",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "-e",
+    "OPENBLAS_NUM_THREADS=1",
+    "-e",
+    "OMP_NUM_THREADS=1",
+    "-v",
+    "/private/tmp/vla_stop_audit_20261012:/task:rw",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla:/repo:ro",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:a6326521265b857c85799c5d24eb8d9a78cbb19a25d2b1e5e1d01943cea3524e"
+  ],
+  "script": "set -eo pipefail\nsource /opt/ros/foxy/setup.bash\nsource /task/recovery_v176/install/setup.bash\npython3 - <<'VERIFY_PARENT'\nfrom pathlib import Path\nimport hashlib,json\nr=json.loads(Path('/task/evidence/v176_native_receipt.json').read_text())\nassert r['passed'] and r['native_version']=='v176' and r['platform']=='linux/arm64'\nfor name,digest in r['files'].items():\n assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==digest,name\nprint('V176_MAC_UNDERLAY_IDENTITY_PASS')\nVERIFY_PARENT\nexport MAKEFLAGS=-j2\ncd /task/recovery_v189\ncolcon build --base-paths src --packages-select scan_nav2_controller lite3_nav2_bridge --executor sequential --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON\ncolcon test --packages-select scan_nav2_controller --executor sequential --event-handlers console_direct+\ncolcon test-result --verbose\nsource install/setup.bash\npython3 /repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v189/test_profile_frames.py\ncmake -S /repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v189 -B terminal_build\ncmake --build terminal_build -j2\nterminal_build/terminal_capture_probe /repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v189/terminal_fixture.txt\n",
+  "host": "macOS-26.5.2-arm64-arm-64bit"
+}

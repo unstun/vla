@@ -1,0 +1,1641 @@
+diff -ruN parent-v201/src/plan_manage/include/plan_manage/scan_replan_fsm.h v202/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+--- parent-v201/src/plan_manage/include/plan_manage/scan_replan_fsm.h	2026-10-14 11:27:53
++++ v202/src/plan_manage/include/plan_manage/scan_replan_fsm.h	2026-10-15 00:53:18
+@@ -10,6 +10,7 @@
+ #include <rclcpp/rclcpp.hpp>
+ #include <std_msgs/msg/bool.hpp>
+ #include <vector>
++#include <functional>
+ #include <visualization_msgs/msg/marker.hpp>
+ 
+ #include <bspline_opt/bspline_optimizer.h>
+@@ -27,7 +28,15 @@
+   class SCANReplanFSM
+   {
+ 
++  public:
++    struct DirectIO {
++      std::function<void()> before_work;
++      std::function<void(const scan_planner_msgs::msg::Bspline &)> spline;
++    };
++
+   private:
++    DirectIO direct_io_;
++    void publishSpline(const scan_planner_msgs::msg::Bspline &spline);
+     /* ---------- flag ---------- */
+     enum FSM_EXEC_STATE
+     {
+@@ -187,7 +196,12 @@
+     {
+     }
+ 
+-    void init(rclcpp::Node *node, rclcpp::CallbackGroup::SharedPtr callback_group = nullptr);
++    void init(rclcpp::Node *node, rclcpp::CallbackGroup::SharedPtr callback_group = nullptr,
++              DirectIO direct_io = {});
++    // All direct methods run on the same serialized executor as native planning.
++    void setReferencePath(nav_msgs::msg::Path::ConstSharedPtr path) {pathCallback(path);}
++    void setExecutionFeedback(bool frozen,int64_t trajectory);
++    void cancelReference();
+ 
+     // Called only on this planner's executor. Consumers borrow the same immutable
+     // map snapshot as native collision checks; no second mapper is constructed.
+diff -ruN parent-v201/src/plan_manage/src/scan_replan_fsm.cpp v202/src/plan_manage/src/scan_replan_fsm.cpp
+--- parent-v201/src/plan_manage/src/scan_replan_fsm.cpp	2026-10-14 11:27:53
++++ v202/src/plan_manage/src/scan_replan_fsm.cpp	2026-10-15 00:56:12
+@@ -72,9 +72,10 @@
+ namespace scan_planner
+ {
+ 
+-  void SCANReplanFSM::init(rclcpp::Node *node, rclcpp::CallbackGroup::SharedPtr callback_group)
++  void SCANReplanFSM::init(rclcpp::Node *node, rclcpp::CallbackGroup::SharedPtr callback_group, DirectIO direct_io)
+   {
+     node_ = node;
++    direct_io_ = std::move(direct_io);
+     current_wp_ = 0;
+     exec_state_ = FSM_EXEC_STATE::INIT;
+     trigger_ = false;
+@@ -146,7 +147,7 @@
+     odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+         "body_pose", rclcpp::SensorDataQoS(),
+         std::bind(&SCANReplanFSM::odometryCallback, this, std::placeholders::_1), subscription_options);
+-    go2_execution_frozen_sub_ = node_->create_subscription<std_msgs::msg::Bool>(
++    if (!direct_io_.spline) go2_execution_frozen_sub_ = node_->create_subscription<std_msgs::msg::Bool>(
+         "planning/go2_execution_frozen", 10,
+         std::bind(&SCANReplanFSM::go2ExecutionFrozenCallback, this, std::placeholders::_1), subscription_options);
+ 
+@@ -159,13 +160,13 @@
+       goal_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
+           "move_base_simple/goal", 1,
+           std::bind(&SCANReplanFSM::rvizGoalCallback, this, std::placeholders::_1), subscription_options);
+-    else if (navi_mode_ == NAVI_MODE::REFERENCE_PATH)
++    else if (navi_mode_ == NAVI_MODE::REFERENCE_PATH && !direct_io_.spline)
+       path_sub_ = node_->create_subscription<nav_msgs::msg::Path>(
+           "initial_path", rclcpp::QoS(1).reliable().transient_local(),
+           std::bind(&SCANReplanFSM::pathCallback, this, std::placeholders::_1), subscription_options);
+     else if (navi_mode_ == NAVI_MODE::PRESET_TARGET)
+       RCLCPP_INFO(node_->get_logger(), "Preset waypoint mode will start after the first odometry message");
+-    else
++    else if (!(navi_mode_ == NAVI_MODE::REFERENCE_PATH && direct_io_.spline))
+       throw std::runtime_error("fsm.navi_mode must be 1, 2, or 3");
+   }
+ 
+@@ -624,6 +625,34 @@
+     }
+   }
+ 
++  void SCANReplanFSM::publishSpline(const scan_planner_msgs::msg::Bspline &spline)
++  {
++    // Capture the complete result while the existing map publication lease holds.
++    if (direct_io_.spline) direct_io_.spline(spline);
++    bspline_pub_->publish(spline); // Observation only in direct mode.
++  }
++
++  void SCANReplanFSM::setExecutionFeedback(bool frozen,int64_t trajectory)
++  {
++    go2_execution_frozen_ = trajectory == planner_manager_->local_data_.traj_id_ && frozen;
++  }
++
++  void SCANReplanFSM::cancelReference()
++  {
++    deferred_path_.reset(); active_waypoints_.clear();
++    trigger_=have_target_=have_new_target_=have_requested_goal_pose_=false;
++    go2_execution_frozen_=false; need_hover_stop_=false;
++    feasible_window_.valid=false; steering_prefix_generation_=-1;
++    reference_frontier_time_=-1; reference_neighbor_target_=false;
++    ++route_generation_; replan_fail_count_=0;
++    last_nominal_replan_s_=next_nominal_replan_s_=last_replan_clock_s_=-1;
++    planner_manager_->invalidateWarmStart();
++    planner_manager_->local_data_.duration_=0;
++    planner_manager_->local_data_.start_time_=rclcpp::Time(0,0,node_->get_clock()->get_clock_type());
++    last_freeze_traj_id_=-1; last_freeze_update_time_=node_->now();
++    exec_state_=have_odom_ ? WAIT_TARGET : INIT;
++  }
++
+   void SCANReplanFSM::go2ExecutionFrozenCallback(std_msgs::msg::Bool::ConstSharedPtr msg)
+   {
+     go2_execution_frozen_ = msg->data;
+@@ -787,6 +816,7 @@
+ 
+   void SCANReplanFSM::execFSMCallback()
+   {
++    if (direct_io_.before_work) direct_io_.before_work();
+     // v31: start each planning-timer callback from the newest received inputs,
+     // the FSM's own body_pose included.
+     const int fsm_odometry = takePendingOdometry(
+@@ -1153,6 +1183,7 @@
+ 
+   void SCANReplanFSM::checkCollisionCallback()
+   {
++    if (direct_io_.before_work) direct_io_.before_work();
+     GridMap::RawContributorCacheScope callback_cache(*planner_manager_->grid_map_);
+     // v31: check the executing curve against the newest received inputs, the
+     // FSM's own body_pose included.
+@@ -1396,7 +1427,7 @@
+         bspline.knots.push_back(knots(i));
+       }
+ 
+-      bspline_pub_->publish(bspline);
++      publishSpline(bspline);
+       planner_manager_->publication_lease_.reset();
+ 
+       visualization_->displayOptimalTraj(info->position_traj_, 0);
+@@ -1441,7 +1472,7 @@
+       bspline.knots.push_back(knots(i));
+     }
+ 
+-    bspline_pub_->publish(bspline);
++    publishSpline(bspline);
+ 
+     return true;
+   }
+diff -ruN parent-v201/src/scan_nav2_controller/CMakeLists.txt v202/src/scan_nav2_controller/CMakeLists.txt
+--- parent-v201/src/scan_nav2_controller/CMakeLists.txt	2026-10-14 23:45:14
++++ v202/src/scan_nav2_controller/CMakeLists.txt	2026-10-15 01:00:53
+@@ -11,7 +11,7 @@
+ foreach(dependency ${dependencies})
+   find_package(${dependency} REQUIRED)
+ endforeach()
+-add_library(scan_nav2_controller SHARED src/controller.cpp)
++add_library(scan_nav2_controller SHARED src/controller.cpp src/local_motion.cpp)
+ target_include_directories(scan_nav2_controller PUBLIC
+   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+ ament_target_dependencies(scan_nav2_controller ${dependencies})
+@@ -25,6 +25,9 @@
+ ament_export_dependencies(${dependencies})
+ if(BUILD_TESTING)
+   find_package(ament_cmake_gtest REQUIRED)
++  ament_add_gtest(test_motion_exchange test/test_motion_exchange.cpp TIMEOUT 10)
++  target_link_libraries(test_motion_exchange scan_nav2_controller)
++  ament_target_dependencies(test_motion_exchange ${dependencies})
+   ament_add_gtest(test_terminal_completion test/test_terminal_completion.cpp TIMEOUT 10)
+   target_link_libraries(test_terminal_completion scan_nav2_controller)
+   ament_target_dependencies(test_terminal_completion ${dependencies})
+diff -ruN parent-v201/src/scan_nav2_controller/README.md v202/src/scan_nav2_controller/README.md
+--- parent-v201/src/scan_nav2_controller/README.md	2026-10-14 23:56:08
++++ v202/src/scan_nav2_controller/README.md	2026-10-15 01:06:27
+@@ -1,12 +1,17 @@
+ # SCAN controller plugins for ROS 2 Foxy
+ 
+-The Nav2 controller publishes standard `nav_msgs/msg/Path` routes on `/pct_path`,
+-receives `scan_planner_msgs/msg/Bspline` on `/quad_0/planning/bspline`, and returns
+-`geometry_msgs/msg/TwistStamped` to ControllerServer. Only that server publishes
+-`geometry_msgs/msg/Twist` on `/quad_0/cmd_vel`. The native SCAN worker
+-runs in-process on its own executor; `initial_path` is remapped to the configured
+-route topic. Its route input uses reliable, transient-local QoS.
++`LocalMotion` owns the SCAN worker, Tracker and their bounded snapshot exchange.
++Nav2 calls `setRoute`, `command` and `cancel`. SCAN alone writes planning state;
++the Nav2 control thread alone writes Tracker state. Completed splines cross the
++boundary through a direct callback and one immutable output slot. Route changes
++and cancellation invalidate late outputs; freeze feedback carries trajectory ID.
+ 
++`/pct_path`, `/quad_0/planning/bspline` and execution-freeze topics are observation
++outputs. LocalMotion has no subscriptions to them. External sensors, localization,
++clock and physical execution-state input still use ROS. Standalone SCAN retains
++its ROS inputs when initialized without `DirectIO`. Only ControllerServer
++publishes `geometry_msgs/msg/Twist` on `/quad_0/cmd_vel`.
++
+ `setPlan` validates path coordinates, orientations and frames. A valid cubic
+ B-spline becomes available to the tracker immediately. While waiting for the
+ first curve, the controller returns zero velocity and fails after the default
+@@ -20,7 +25,7 @@
+ The `ExecutionControl` hook only clears execution on cancellation or failure.
+ It does not publish. The server sends the stop command through its own publisher. The standard
+ Foxy two-argument controller API and an explicit GoalChecker overload are both
+-available. `native_worker_enabled=false` allows an external spline producer.
++available. `native_worker_enabled=false` is only for component fixtures; it does not enable a ROS spline input.
+ 
+ The full navigation launch is:
+ 
+@@ -28,13 +33,13 @@
+ ros2 launch lite3_nav2_bridge navigation.launch.py \
+   native_planner_config:=/absolute/native.yaml \
+   backend_config:=/absolute/backend_config.json \
+-  pct_map:=/absolute/map.pickle \
++  pct_map_bundle:=/absolute/map.pct \
+   generated_params:=/absolute/new-profile.yaml \
+   odom_topic:=/quad_0/body_pose
+ ```
+ 
+ The mission bridge serves HTTP goals/cancellation/state, sends Nav2 goals, and
+-plans PCT paths in-process. Tests cover plugin loading, direct route/curve/output
++keeps no planner loop. PCTPlanner calls the native C++ planner directly (v201). Tests cover plugin loading, direct route/curve/output
+ interfaces, goal checking, malformed inputs, lifecycle, route-heading corner
+ cases and 300 samples of tracking parity. These are component tests, not a
+ simulation or hardware navigation trial.
+diff -ruN parent-v201/src/scan_nav2_controller/config/controller.yaml v202/src/scan_nav2_controller/config/controller.yaml
+--- parent-v201/src/scan_nav2_controller/config/controller.yaml	2026-10-14 23:52:25
++++ v202/src/scan_nav2_controller/config/controller.yaml	2026-10-15 01:05:50
+@@ -19,7 +19,6 @@
+       global_frame: world
+       base_frame: base_link
+       route_topic: /pct_path
+-      spline_topic: /quad_0/planning/bspline
+       bspline_timeout: 5.0
+       execution_state_topic: /quad_0/execution_state
+       stand_hold_seconds: 2.0
+diff -ruN parent-v201/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp v202/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp
+--- parent-v201/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp	2026-10-14 23:45:06
++++ v202/src/scan_nav2_controller/include/scan_nav2_controller/controller.hpp	2026-10-15 00:56:12
+@@ -5,12 +5,11 @@
+ #include <nav2_core/controller.hpp>
+ #include <nav2_core/goal_checker.hpp>
+ #include <scan_nav2_controller/execution_control.hpp>
+-#include <scan_nav2_controller/tracking_node.hpp>
++#include <scan_nav2_controller/local_motion.hpp>
+ #include <scan_nav2_controller/terminal_completion.hpp>
+ 
+ namespace scan_nav2_controller
+ {
+-class NativeWorker;
+ 
+ struct State
+ {
+@@ -47,31 +46,19 @@
+   bool terminalPhase() const override;
+ 
+ private:
+-  void onSpline(scan_planner_msgs::msg::Bspline::ConstSharedPtr message);
+   void onExecution(lite3_nav2_interfaces::msg::RobotExecutionState::ConstSharedPtr message);
+   void spinBridge();
+-  void serviceNativeWork();
+   bool withinGoalPosition(const geometry_msgs::msg::Pose &pose) const;
+   bool withinGoalYaw(const geometry_msgs::msg::Pose &pose, bool braking = false) const;
+   geometry_msgs::msg::TwistStamped stampedCommand(const geometry_msgs::msg::Twist &command);
+ 
+   rclcpp_lifecycle::LifecycleNode::SharedPtr parent_;
+   rclcpp::Node::SharedPtr bridge_;
+-  std::shared_ptr<scan_planner::TrackingNode> tracker_;
++  std::unique_ptr<LocalMotion> motion_;
+   std::shared_ptr<State> state_;
+   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
+-  std::unique_ptr<NativeWorker> native_worker_;
+-  std::string name_, global_frame_, base_frame_, route_topic_;
+-  bool native_worker_enabled_{true};
+-  bool has_active_plan_{false}, terminal_timeout_started_{false};
+-  bool waiting_for_spline_{false};
+-  nav_msgs::msg::Path last_published_path_;
+-  bool goal_braking_{false};  // Survives GoalChecker::reset() on same-goal refreshes.
+-  double bspline_timeout_s_{5.0};
+-  rclcpp::Time waiting_for_spline_since_{0, 0, RCL_ROS_TIME};
+-  rclcpp::Time route_sent_at_{0, 0, RCL_ROS_TIME};
+-  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr route_pub_;
+-  rclcpp::Subscription<scan_planner_msgs::msg::Bspline>::SharedPtr spline_sub_;
++  std::string name_,global_frame_,base_frame_;
++  bool goal_braking_{false};
+   rclcpp::Subscription<lite3_nav2_interfaces::msg::RobotExecutionState>::SharedPtr execution_sub_;
+ };
+ 
+diff -ruN parent-v201/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp v202/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp
+--- parent-v201/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp	1969-12-31 16:00:00
++++ v202/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp	2026-10-15 01:08:54
+@@ -0,0 +1,49 @@
++#pragma once
++
++#include <scan_nav2_controller/motion_exchange.hpp>
++#include <geometry_msgs/msg/twist.hpp>
++#include <rclcpp/rclcpp.hpp>
++#include <rclcpp_lifecycle/lifecycle_node.hpp>
++
++namespace scan_planner {class TrackingNode;}
++
++namespace scan_nav2_controller
++{
++class NativeWorker;
++
++// Calls are serialized by the controller. The native worker sees only snapshots,
++// never this object's mutable tracker, route or command state.
++class LocalMotion
++{
++public:
++  struct Tolerances {double xy,z,yaw;};
++  LocalMotion(rclcpp_lifecycle::LifecycleNode::SharedPtr parent,
++              rclcpp::Node::SharedPtr observations,const std::string &name);
++  ~LocalMotion();
++  void activate();
++  void deactivate();
++  bool setRoute(const nav_msgs::msg::Path &path); // Returns true for the same goal.
++  void update();
++  geometry_msgs::msg::Twist command(const geometry_msgs::msg::Pose &pose,
++                                  const geometry_msgs::msg::Twist &velocity);
++  void cancel();
++  bool hasRoute() const {return has_active_plan_;}
++  Tolerances tolerances() const {return tolerances_;}
++private:
++  void acceptSpline(const MotionExchange::Output &output);
++  rclcpp_lifecycle::LifecycleNode::SharedPtr parent_;
++  rclcpp::Node::SharedPtr observations_;
++  std::string name_,global_frame_,route_topic_;
++  Tolerances tolerances_;
++  std::shared_ptr<scan_planner::TrackingNode> tracker_;
++  std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
++  std::unique_ptr<NativeWorker> native_worker_;
++  std::shared_ptr<MotionExchange> exchange_{std::make_shared<MotionExchange>()};
++  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr route_pub_;
++  bool native_worker_enabled_{true},has_active_plan_{false},waiting_for_spline_{false};
++  uint64_t generation_{0};
++  double bspline_timeout_s_{5.0};
++  rclcpp::Time waiting_for_spline_since_{0,0,RCL_ROS_TIME};
++  nav_msgs::msg::Path reference_path_;
++};
++}  // namespace scan_nav2_controller
+diff -ruN parent-v201/src/scan_nav2_controller/include/scan_nav2_controller/motion_exchange.hpp v202/src/scan_nav2_controller/include/scan_nav2_controller/motion_exchange.hpp
+--- parent-v201/src/scan_nav2_controller/include/scan_nav2_controller/motion_exchange.hpp	1969-12-31 16:00:00
++++ v202/src/scan_nav2_controller/include/scan_nav2_controller/motion_exchange.hpp	2026-10-15 00:53:18
+@@ -0,0 +1,63 @@
++#pragma once
++
++#include <atomic>
++#include <mutex>
++#include <optional>
++#include <nav_msgs/msg/path.hpp>
++#include <scan_planner_msgs/msg/bspline.hpp>
++
++namespace scan_nav2_controller
++{
++// Two bounded slots, not an event queue: immutable input and completed output.
++// Only the native thread consumes Input; only the control thread consumes Output.
++class MotionExchange
++{
++public:
++  struct Feedback { bool frozen{false}; int64_t trajectory{-1}; };
++  struct Input {
++    uint64_t generation{0}, revision{0}, reset{0};
++    nav_msgs::msg::Path::ConstSharedPtr route;
++    Feedback feedback;
++  };
++  struct Output {
++    uint64_t generation;
++    scan_planner_msgs::msg::Bspline::ConstSharedPtr spline;
++  };
++  uint64_t setRoute(const nav_msgs::msg::Path &route,bool new_goal,bool changed) {
++    auto copy=std::make_shared<const nav_msgs::msg::Path>(route);
++    std::lock_guard<std::mutex> lock(mutex_);
++    if (changed) {++input_.generation;output_.reset();input_.feedback={};}
++    if (new_goal) ++input_.reset;
++    ++input_.revision;input_.route=std::move(copy);
++    return input_.generation;
++  }
++  void cancel() {
++    std::lock_guard<std::mutex> lock(mutex_);
++    ++input_.generation;++input_.revision;++input_.reset;
++    input_.route.reset();input_.feedback={};output_.reset();
++  }
++  void feedback(uint64_t generation,bool frozen,int64_t trajectory) {
++    std::lock_guard<std::mutex> lock(mutex_);
++    if (input_.route && generation==input_.generation)
++      input_.feedback={frozen,trajectory};
++  }
++  Input input() const {
++    std::lock_guard<std::mutex> lock(mutex_);return input_;
++  }
++  bool publish(uint64_t generation,const scan_planner_msgs::msg::Bspline &spline) {
++    auto copy=std::make_shared<const scan_planner_msgs::msg::Bspline>(spline);
++    std::lock_guard<std::mutex> lock(mutex_);
++    if (!input_.route || generation!=input_.generation) return false;
++    output_=Output{generation,std::move(copy)};return true;
++  }
++  std::optional<Output> take() {
++    std::lock_guard<std::mutex> lock(mutex_);
++    auto output=std::move(output_);output_.reset();return output;
++  }
++  std::atomic<uint64_t> applied_revision{0}; // Input consumed, not a planning-success claim.
++private:
++  mutable std::mutex mutex_;
++  Input input_;
++  std::optional<Output> output_;
++};
++}  // namespace scan_nav2_controller
+diff -ruN parent-v201/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp v202/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
+--- parent-v201/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp	2026-10-14 11:27:53
++++ v202/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp	2026-10-15 00:53:18
+@@ -192,10 +192,17 @@
+ 
+   void publishExecutionFrozen(bool frozen)
+   {
++    execution_frozen_=frozen;
++    execution_frozen_trajectory_=traj_id_;
+     std_msgs::msg::Bool msg;
+     msg.data = frozen;
+     execution_frozen_pub_->publish(msg);
+   }
++
++  bool executionFrozen() const {return execution_frozen_;}
++  int64_t executionFrozenTrajectory() const {return execution_frozen_trajectory_;}
++  bool execution_frozen_{false};
++  int64_t execution_frozen_trajectory_{-1};
+ 
+   void bsplineCallback(const scan_planner_msgs::msg::Bspline::ConstSharedPtr msg)
+   {
+diff -ruN parent-v201/src/scan_nav2_controller/src/controller.cpp v202/src/scan_nav2_controller/src/controller.cpp
+--- parent-v201/src/scan_nav2_controller/src/controller.cpp	2026-10-14 23:51:18
++++ v202/src/scan_nav2_controller/src/controller.cpp	2026-10-15 01:08:24
+@@ -1,119 +1,12 @@
+ #include <scan_nav2_controller/controller.hpp>
+-#include <scan_nav2_controller/executor_shutdown.hpp>
+-#include <rclcpp/scope_exit.hpp>
++#include <scan_nav2_controller/tracking_node.hpp>
+ 
+-
+ #include <map>
+-#include <filesystem>
+-#include <rclcpp/parameter_map.hpp>
+-#include <rcl_yaml_param_parser/parser.h>
+-#include <plan_manage/scan_replan_fsm.h>
+ #include <nav2_core/exceptions.hpp>
+ #include <pluginlib/class_list_macros.hpp>
+-#include <nav_msgs/msg/occupancy_grid.hpp>
+ 
+ namespace scan_nav2_controller
+ {
+-class NativeWorker
+-{
+-public:
+-  NativeWorker(const std::string &config, bool use_sim_time, const std::string &route_topic,
+-               std::function<void(const std::string &)> fault) {
+-    if (!std::filesystem::is_regular_file(config))
+-      throw nav2_core::PlannerException("Native SCAN parameter file is required");
+-    rclcpp::NodeOptions options;
+-    options.use_global_arguments(false);
+-    options.arguments({"--ros-args", "-r", "sensor_pose:=/quad_0/lidar_pose",
+-                       "-r", "initial_path:=" + route_topic});
+-    std::unique_ptr<rcl_params_t,decltype(&rcl_yaml_node_struct_fini)> parsed(
+-      rcl_yaml_node_struct_init(rcutils_get_default_allocator()),rcl_yaml_node_struct_fini);
+-    if (!parsed || !rcl_parse_yaml_file(config.c_str(),parsed.get()))
+-      throw nav2_core::PlannerException("Cannot parse native SCAN parameters");
+-    const auto map=rclcpp::parameter_map_from(parsed.get());
+-    auto found=map.find("/quad_0/scan_planner_node");
+-    if (found==map.end()) found=map.find("/scan_planner_node");
+-    if (found==map.end()) throw nav2_core::PlannerException("Native SCAN parameter section missing");
+-    auto parameters=found->second;
+-    parameters.erase(std::remove_if(parameters.begin(),parameters.end(),[](const rclcpp::Parameter &p) {
+-      return p.get_name()=="use_sim_time" || p.get_name()=="fsm.navi_mode";
+-    }),parameters.end());
+-    parameters.emplace_back("use_sim_time",use_sim_time);
+-    parameters.emplace_back("fsm.navi_mode",3);
+-    options.parameter_overrides(parameters);
+-    node_=std::make_shared<rclcpp::Node>("scan_planner_node","/quad_0",options);
+-    const bool isolated_clock = use_sim_time && std::any_of(parameters.begin(),parameters.end(),
+-      [](const rclcpp::Parameter &p) { return p.get_name()=="grid_map.sensor_type" &&
+-        p.get_type()==rclcpp::ParameterType::PARAMETER_STRING && p.as_string()=="lidar"; });
+-    if (isolated_clock)
+-      work_group_=node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+-    planner_=std::make_unique<scan_planner::SCANReplanFSM>();
+-    planner_->init(node_.get(),work_group_);
+-    terrain_pub_=node_->create_publisher<nav_msgs::msg::OccupancyGrid>("/nav2_scan/terrain_slice",1);
+-    terrain_timer_=node_->create_wall_timer(std::chrono::milliseconds(100),[this] { publishTerrain(); },work_group_);
+-    // Foxy schedules /clock in the default callback group. Keep native data and
+-    // planning serialized, while its real ROS clock can progress during a solve.
+-    if (isolated_clock)
+-      executor_=std::make_shared<rclcpp::executors::MultiThreadedExecutor>(rclcpp::ExecutorOptions(),2);
+-    else executor_=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+-    executor_->add_node(node_);
+-    worker_=std::thread([this,fault] {
+-      RCLCPP_SCOPE_EXIT(finished_.store(true););
+-      try { executor_->spin(); }
+-      catch (const std::exception &error) { healthy_=false; fault(std::string("native_worker_exception:")+error.what()); }
+-      catch (...) { healthy_=false; fault("native_worker_unknown_exception"); }
+-    });
+-  }
+-  bool healthy() const { return healthy_.load(); }
+-  ~NativeWorker() {
+-    joinStoppedExecutor(executor_,worker_,finished_);
+-    planner_.reset();
+-  }
+-private:
+-  void publishTerrain() {
+-    auto map=planner_->nav2Map();
+-    if (!map || !map->mapperHealthy()) return;
+-    // Acquire a completed immutable revision, then immediately release the
+-    // publication lock before reading any cells. This callback shares the native
+-    // executor, so it cannot race another planner read-state update.
+-    { auto lease=map->beginPublication(); }
+-    const double stamp=map->observationStamp();
+-    if (!std::isfinite(stamp) || stamp<=0 || stamp<=terrain_stamp_) return;
+-    Eigen::Vector3d body;
+-    if (!planner_->nav2BodyPosition(body)) return;
+-    nav_msgs::msg::OccupancyGrid grid;
+-    grid.header.frame_id="world";
+-    grid.header.stamp=rclcpp::Time(static_cast<int64_t>(stamp*1e9));
+-    grid.info.resolution=map->getResolution();
+-    grid.info.width=grid.info.height=static_cast<uint32_t>(std::ceil(6.0/grid.info.resolution));
+-    grid.info.origin.position.x=body.x()-3.0;
+-    grid.info.origin.position.y=body.y()-3.0;
+-    grid.info.origin.position.z=body.z(); // Body-height slice; not a ground-height claim.
+-    grid.info.origin.orientation.w=1.0;
+-    grid.data.resize(grid.info.width*grid.info.height,-1);
+-    for (unsigned y=0;y<grid.info.height;++y) for (unsigned x=0;x<grid.info.width;++x) {
+-      bool known=true,occupied=false;
+-      for (double dz=-0.15;dz<=0.15+1e-6;dz+=grid.info.resolution) {
+-        Eigen::Vector3d point(grid.info.origin.position.x+(x+0.5)*grid.info.resolution,
+-          grid.info.origin.position.y+(y+0.5)*grid.info.resolution,body.z()+dz);
+-        if (!map->isInMap(point) || map->isUnknown(point)) { known=false; continue; }
+-        occupied=occupied || map->getOccupancy(point)>0;
+-      }
+-      grid.data[y*grid.info.width+x]=occupied?100:(known?0:-1);
+-    }
+-    terrain_stamp_=stamp;
+-    terrain_pub_->publish(grid);
+-  }
+-  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr terrain_pub_;
+-  rclcpp::TimerBase::SharedPtr terrain_timer_;
+-  double terrain_stamp_{0.0};
+-  rclcpp::Node::SharedPtr node_;
+-  rclcpp::CallbackGroup::SharedPtr work_group_;
+-  std::unique_ptr<scan_planner::SCANReplanFSM> planner_;
+-  std::shared_ptr<rclcpp::Executor> executor_;
+-  std::thread worker_;
+-  std::atomic<bool> healthy_{true};
+-  std::atomic<bool> finished_{false};
+-};
+ namespace
+ {
+ bool finitePose(const geometry_msgs::msg::Pose &p)
+@@ -130,16 +23,6 @@
+   return finiteTwist(t) && std::hypot(std::hypot(t.linear.x, t.linear.y), t.linear.z) <= 0.03 &&
+     std::hypot(std::hypot(t.angular.x, t.angular.y), t.angular.z) <= 0.05;
+ }
+-bool validSplineLayout(const scan_planner_msgs::msg::Bspline &m)
+-{
+-  if (m.order != 3 || m.start_time.sec < 0 || m.start_time.nanosec >= 1000000000u) return false;
+-  Eigen::MatrixXd points(3, m.pos_pts.size());
+-  Eigen::VectorXd knots(m.knots.size());
+-  for (size_t i=0; i<m.pos_pts.size(); ++i)
+-    points.col(i) << m.pos_pts[i].x, m.pos_pts[i].y, m.pos_pts[i].z;
+-  for (size_t i=0; i<m.knots.size(); ++i) knots(i)=m.knots[i];
+-  return reactive_stair::validSplineLayout(points, knots, 3);
+-}
+ template<class T> T parameter(const rclcpp_lifecycle::LifecycleNode::SharedPtr &node,
+   const std::string &name, const T &fallback)
+ {
+@@ -172,9 +55,6 @@
+   base_frame_=parameter(parent_, name_+".base_frame", std::string("base_link"));
+   if (costmap && (costmap->getGlobalFrameID()!=global_frame_ || costmap->getBaseFrameID()!=base_frame_))
+     throw nav2_core::PlannerException("SCAN and Nav2 frame configuration disagree");
+-  bspline_timeout_s_=parameter(parent_, name_+".bspline_timeout", 5.0);
+-  if (!std::isfinite(bspline_timeout_s_) || bspline_timeout_s_ <= 0.0)
+-    throw nav2_core::PlannerException("Invalid SCAN B-spline timeout");
+   state_->completion.hold_s=parameter(parent_, name_+".stand_hold_seconds", 2.0);
+   state_->completion.timeout_s=parameter(parent_, name_+".stand_timeout_seconds", 10.0);
+   state_->completion.max_gap_s=parameter(parent_, name_+".execution_max_age_seconds", 0.25);
+@@ -182,59 +62,25 @@
+       !std::isfinite(state_->completion.timeout_s) || state_->completion.timeout_s<=state_->completion.hold_s ||
+       !std::isfinite(state_->completion.max_gap_s) || state_->completion.max_gap_s<=0)
+     throw nav2_core::PlannerException("Invalid terminal completion timing");
+-  native_worker_enabled_=parameter(parent_, name_+".native_worker_enabled", true);
+-  const bool use_sim=parameter(parent_, "use_sim_time", false);
+-  rclcpp::NodeOptions options;
+-  options.use_global_arguments(false);
+-  std::vector<rclcpp::Parameter> parameters;
+-  const std::vector<std::pair<std::string, double>> defaults={
+-    {"time_forward",0.8},{"heading_error_threshold",0.8},{"kp_pos",0.8},{"kp_yaw",1.5},
+-    {"max_vx",0.75},{"max_vy",0.35},{"max_vyaw",1.0},{"finish_dist",0.15},
+-    {"goal_xy_tolerance",0.25},{"goal_z_tolerance",0.20},{"goal_yaw_tolerance",0.25},
+-    {"route_lookahead_dist",0.5}};
+-  for (const auto &entry: defaults) {
+-    const double value=parameter(parent_, name_+"."+entry.first, entry.second);
+-    if (!std::isfinite(value) || value<=0) throw nav2_core::PlannerException("Invalid tracking parameter");
+-    parameters.emplace_back(entry.first, value);
+-  }
+-  parameters.emplace_back("use_sim_time", use_sim);
+-  parameters.emplace_back("route_lookahead_heading_enabled",
+-    parameter(parent_, name_+".route_lookahead_heading_enabled", false));
+-  options.parameter_overrides(parameters);
+-  options.arguments({"--ros-args", "-r", "planning/go2_execution_frozen:="+
+-    parameter(parent_, name_+".execution_frozen_topic", std::string("/quad_0/planning/go2_execution_frozen"))});
+-  tracker_=std::make_shared<scan_planner::TrackingNode>(options);
+-  state_->xy_tolerance=tracker_->goal_xy_tolerance_;
+-  state_->z_tolerance=tracker_->goal_z_tolerance_;
+-  state_->yaw_tolerance=tracker_->goal_yaw_tolerance_;
+-  // Enter braking inside the inner band; the goal checker retains the outer band.
+-  tracker_->goal_yaw_tolerance_ *= 0.5;
++  const bool use_sim=parameter(parent_,"use_sim_time",false);
+   rclcpp::NodeOptions bridge_options;
+   bridge_options.use_global_arguments(false);
+   bridge_options.parameter_overrides({rclcpp::Parameter("use_sim_time", use_sim)});
+   bridge_=std::make_shared<rclcpp::Node>("scan_nav2_"+name_, bridge_options);
+-  route_topic_=parameter(parent_, name_+".route_topic", std::string("/pct_path"));
+-  route_pub_=bridge_->create_publisher<nav_msgs::msg::Path>(
+-    route_topic_, rclcpp::QoS(1).reliable().transient_local());
+-  spline_sub_=bridge_->create_subscription<scan_planner_msgs::msg::Bspline>(
+-    parameter(parent_, name_+".spline_topic", std::string("/quad_0/planning/bspline")), 10,
+-    std::bind(&Controller::onSpline, this, std::placeholders::_1));
++  motion_=std::make_unique<LocalMotion>(parent_,bridge_,name_);
++  const auto tolerances=motion_->tolerances();
++  state_->xy_tolerance=tolerances.xy;state_->z_tolerance=tolerances.z;state_->yaw_tolerance=tolerances.yaw;
+   execution_sub_=bridge_->create_subscription<lite3_nav2_interfaces::msg::RobotExecutionState>(
+     parameter(parent_, name_+".execution_state_topic", std::string("/quad_0/execution_state")), 10,
+     std::bind(&Controller::onExecution, this, std::placeholders::_1));
+   executor_=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+   executor_->add_node(bridge_);
+-  executor_->add_node(tracker_);
+ }
+ 
+ void Controller::activate()
+ {
+-  if (!state_) throw nav2_core::PlannerException("SCAN plugin is not configured");
+-  if (native_worker_enabled_ && !native_worker_)
+-    native_worker_=std::make_unique<NativeWorker>(
+-      parameter(parent_, name_+".native_planner_config", std::string("")),
+-      parameter(parent_, "use_sim_time", false), route_topic_,
+-      [this](const std::string &reason) { stop(reason); });
++  if (!state_ || !motion_) throw nav2_core::PlannerException("SCAN plugin is not configured");
++  motion_->activate();
+   std::lock_guard<std::mutex> lock(state_->mutex);
+   state_->active=true;
+ }
+@@ -244,76 +90,26 @@
+   if (!state_) return;
+   stop("nav2_deactivate");
+   { std::lock_guard<std::mutex> lock(state_->mutex); state_->active=false; }
+-  native_worker_.reset();
++  if (motion_) motion_->deactivate();
+ }
+ 
+ void Controller::cleanup()
+ {
+   if (!parent_) return;
+   deactivate();
+-  executor_.reset(); spline_sub_.reset(); execution_sub_.reset(); route_pub_.reset();
+-  tracker_.reset(); bridge_.reset(); parent_.reset(); state_.reset();
++  executor_.reset(); execution_sub_.reset(); motion_.reset();
++  bridge_.reset(); parent_.reset(); state_.reset();
+ }
+ 
+ void Controller::setPlan(const nav_msgs::msg::Path &path)
+ {
+-  if (path.poses.empty()) throw nav2_core::PlannerException("Path is empty");
+-  if (path.header.frame_id != global_frame_) throw nav2_core::PlannerException("Path frame mismatch");
+-  for (const auto &p: path.poses)
+-    if ((!p.header.frame_id.empty() && p.header.frame_id != global_frame_) || !finitePose(p.pose))
+-      throw nav2_core::PlannerException("Path has an invalid pose or frame");
+   std::lock_guard<std::mutex> lock(state_->mutex);
+-  const bool same_goal=has_active_plan_ && state_->has_goal_pose &&
+-    state_->goal_pose == path.poses.back().pose;
+-  if (!same_goal) {
+-    state_->completion.resetGoal();
+-    tracker_->clearTrajectory();
+-    waiting_for_spline_=true;
+-    waiting_for_spline_since_=parent_->now();
+-    route_sent_at_=waiting_for_spline_since_;
+-    state_->goal_reached=false;
+-    goal_braking_=false;
+-    state_->stopped=false;
+-  } else if (!tracker_->haveTrajectory() && !waiting_for_spline_) {
+-    waiting_for_spline_=true;
+-    waiting_for_spline_since_=parent_->now();
+-    route_sent_at_=waiting_for_spline_since_;
++  if (!motion_->setRoute(path)) {
++    state_->completion.resetGoal();state_->goal_reached=false;goal_braking_=false;state_->stopped=false;
+   }
+-  const bool same_geometry = same_goal && path.poses.size() == last_published_path_.poses.size() &&
+-    std::equal(path.poses.begin(), path.poses.end(), last_published_path_.poses.begin(),
+-      [](const auto &a, const auto &b) { return a.pose == b.pose; });
+-  const bool publish_route = !same_geometry || !tracker_->haveTrajectory() || waiting_for_spline_;
+-  tracker_->setReferencePath(path);
+-  has_active_plan_=true;
+-  terminal_timeout_started_=false;
+-  state_->active=true;
+-  state_->has_goal_pose=true; state_->goal_pose=path.poses.back().pose;
+-  if (publish_route) {
+-    route_pub_->publish(path);
+-    last_published_path_ = path;
+-  }
++  state_->active=true;state_->has_goal_pose=true;state_->goal_pose=path.poses.back().pose;
+ }
+ 
+-void Controller::onSpline(scan_planner_msgs::msg::Bspline::ConstSharedPtr message)
+-{
+-  if (!message || message->order != 3 || !validSplineLayout(*message)) return;
+-  std::lock_guard<std::mutex> lock(state_->mutex);
+-  if (!has_active_plan_) return;
+-  if (message->emergency_stop) {
+-    if (tracker_->haveTrajectory() || !waiting_for_spline_) {
+-      waiting_for_spline_=true;
+-      waiting_for_spline_since_=parent_->now();
+-      route_sent_at_=waiting_for_spline_since_;
+-    }
+-    tracker_->clearTrajectory();
+-    terminal_timeout_started_=false;
+-    return;
+-  }
+-  tracker_->bsplineCallback(message);
+-  waiting_for_spline_=false;
+-  terminal_timeout_started_=false;
+-}
+-
+ void Controller::onExecution(lite3_nav2_interfaces::msg::RobotExecutionState::ConstSharedPtr message)
+ {
+   if (!message || message->header.frame_id!=base_frame_ || message->header.stamp.sec<0 ||
+@@ -334,14 +130,6 @@
+ {
+   if (executor_) executor_->spin_some();
+ }
+-void Controller::serviceNativeWork()
+-{
+-  // Native callbacks run on their own serialized executor, including Path intake.
+-  if (native_worker_ && !native_worker_->healthy()) {
+-    stop("native_planner_worker_failed");
+-    throw nav2_core::PlannerException("Native SCAN worker failed");
+-  }
+-}
+ bool Controller::withinGoalPosition(const geometry_msgs::msg::Pose &pose) const
+ {
+   const auto &g=state_->goal_pose.position;
+@@ -352,7 +140,7 @@
+ {
+   return state_->has_goal_pose && std::abs(scan_planner::TrackingNode::normalizeAngle(
+     tf2::getYaw(state_->goal_pose.orientation)-tf2::getYaw(pose.orientation)))<=
+-    (braking ? state_->yaw_tolerance : tracker_->goal_yaw_tolerance_);
++    (braking ? state_->yaw_tolerance : state_->yaw_tolerance*0.5);
+ }
+ geometry_msgs::msg::TwistStamped Controller::stampedCommand(const geometry_msgs::msg::Twist &command)
+ {
+@@ -371,9 +159,12 @@
+   nav2_core::GoalChecker *)
+ {
+   spinBridge();
+-  serviceNativeWork();
+   std::unique_lock<std::mutex> lock(state_->mutex);
+-  if (!has_active_plan_) throw nav2_core::PlannerException("No active plan");
++  try { motion_->update(); }
++  catch (...) {
++    lock.unlock(); stop("native_planner_worker_failed"); throw;
++  }
++  if (!motion_->hasRoute()) throw nav2_core::PlannerException("No active plan");
+   if (pose.header.frame_id != global_frame_ || !finitePose(pose.pose) || !finiteTwist(velocity)) {
+     throw nav2_core::PlannerException("Invalid controller pose, velocity or frame");
+   }
+@@ -388,41 +179,22 @@
+       throw nav2_core::PlannerException("terminal_settle_timeout");
+     return stampedCommand(geometry_msgs::msg::Twist());
+   }
+-  if (!tracker_->haveTrajectory()) {
+-    if (!waiting_for_spline_) {
+-      waiting_for_spline_=true;
+-      waiting_for_spline_since_=parent_->now();
+-      route_sent_at_=waiting_for_spline_since_;
+-    }
+-    if ((parent_->now()-waiting_for_spline_since_).seconds() > bspline_timeout_s_) {
+-      lock.unlock();  // stop() acquires the same state mutex.
+-      stop("scan_bspline_timeout");
+-      throw nav2_core::PlannerException("Native SCAN did not publish a trajectory before timeout");
+-    }
+-    return stampedCommand(geometry_msgs::msg::Twist());
++  try { return stampedCommand(motion_->command(pose.pose,velocity)); }
++  catch (...) {
++    lock.unlock(); stop("scan_command_failed"); throw;
+   }
+-  const auto sample=tracker_->sampleCommand(pose.pose, velocity, true);
+-  if (!sample.valid || !finiteTwist(sample.twist)) {
+-    lock.unlock();
+-    stop("scan_invalid_command");
+-    throw nav2_core::PlannerException("Native SCAN trajectory sample invalid");
+-  }
+-  return stampedCommand(sample.twist);
+ }
+ 
+ void Controller::stop(const std::string &reason)
+ {
+   if (!state_) return;
+   std::lock_guard<std::mutex> lock(state_->mutex);
+-  has_active_plan_=false;
++  if (motion_) motion_->cancel();
+   state_->completion.resetGoal();
+   goal_braking_=false;
+-  waiting_for_spline_=false;
+-  terminal_timeout_started_=false;
+   state_->goal_reached=false;
+   state_->has_goal_pose=false;
+   state_->stopped=false;
+-  if (tracker_) tracker_->clearTrajectory();
+   RCLCPP_DEBUG(parent_->get_logger(), "SCAN stopped: %s", reason.c_str());
+ }
+ 
+diff -ruN parent-v201/src/scan_nav2_controller/src/local_motion.cpp v202/src/scan_nav2_controller/src/local_motion.cpp
+--- parent-v201/src/scan_nav2_controller/src/local_motion.cpp	1969-12-31 16:00:00
++++ v202/src/scan_nav2_controller/src/local_motion.cpp	2026-10-15 01:00:53
+@@ -0,0 +1,271 @@
++#include <scan_nav2_controller/local_motion.hpp>
++#include <scan_nav2_controller/tracking_node.hpp>
++#include <scan_nav2_controller/executor_shutdown.hpp>
++#include <rclcpp/scope_exit.hpp>
++#include <filesystem>
++#include <rclcpp/parameter_map.hpp>
++#include <rcl_yaml_param_parser/parser.h>
++#include <plan_manage/scan_replan_fsm.h>
++#include <nav2_core/exceptions.hpp>
++#include <nav_msgs/msg/occupancy_grid.hpp>
++
++namespace scan_nav2_controller
++{
++class NativeWorker
++{
++public:
++  NativeWorker(const std::string &config, bool use_sim_time, std::shared_ptr<MotionExchange> exchange) {
++    exchange_=std::move(exchange);
++    if (!std::filesystem::is_regular_file(config))
++      throw nav2_core::PlannerException("Native SCAN parameter file is required");
++    rclcpp::NodeOptions options;
++    options.use_global_arguments(false);
++    options.arguments({"--ros-args", "-r", "sensor_pose:=/quad_0/lidar_pose"});
++    std::unique_ptr<rcl_params_t,decltype(&rcl_yaml_node_struct_fini)> parsed(
++      rcl_yaml_node_struct_init(rcutils_get_default_allocator()),rcl_yaml_node_struct_fini);
++    if (!parsed || !rcl_parse_yaml_file(config.c_str(),parsed.get()))
++      throw nav2_core::PlannerException("Cannot parse native SCAN parameters");
++    const auto map=rclcpp::parameter_map_from(parsed.get());
++    auto found=map.find("/quad_0/scan_planner_node");
++    if (found==map.end()) found=map.find("/scan_planner_node");
++    if (found==map.end()) throw nav2_core::PlannerException("Native SCAN parameter section missing");
++    auto parameters=found->second;
++    parameters.erase(std::remove_if(parameters.begin(),parameters.end(),[](const rclcpp::Parameter &p) {
++      return p.get_name()=="use_sim_time" || p.get_name()=="fsm.navi_mode";
++    }),parameters.end());
++    parameters.emplace_back("use_sim_time",use_sim_time);
++    parameters.emplace_back("fsm.navi_mode",3);
++    options.parameter_overrides(parameters);
++    node_=std::make_shared<rclcpp::Node>("scan_planner_node","/quad_0",options);
++    const bool isolated_clock = use_sim_time && std::any_of(parameters.begin(),parameters.end(),
++      [](const rclcpp::Parameter &p) { return p.get_name()=="grid_map.sensor_type" &&
++        p.get_type()==rclcpp::ParameterType::PARAMETER_STRING && p.as_string()=="lidar"; });
++    if (isolated_clock)
++      work_group_=node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
++    planner_=std::make_unique<scan_planner::SCANReplanFSM>();
++    scan_planner::SCANReplanFSM::DirectIO direct;
++    direct.before_work=[this] { consumeInput(); };
++    direct.spline=[this](const scan_planner_msgs::msg::Bspline &spline) {
++      exchange_->publish(current_generation_,spline);
++    };
++    planner_->init(node_.get(),work_group_,std::move(direct));
++    terrain_pub_=node_->create_publisher<nav_msgs::msg::OccupancyGrid>("/nav2_scan/terrain_slice",1);
++    terrain_timer_=node_->create_wall_timer(std::chrono::milliseconds(100),[this] { publishTerrain(); },work_group_);
++    // Foxy schedules /clock in the default callback group. Keep native data and
++    // planning serialized, while its real ROS clock can progress during a solve.
++    if (isolated_clock)
++      executor_=std::make_shared<rclcpp::executors::MultiThreadedExecutor>(rclcpp::ExecutorOptions(),2);
++    else executor_=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
++    executor_->add_node(node_);
++    worker_=std::thread([this] {
++      RCLCPP_SCOPE_EXIT(finished_.store(true););
++      try { executor_->spin(); }
++      catch (const std::exception &error) { healthy_=false; RCLCPP_ERROR(node_->get_logger(),"Native worker: %s",error.what()); }
++      catch (...) { healthy_=false; RCLCPP_ERROR(node_->get_logger(),"Native worker unknown exception"); }
++    });
++  }
++  bool healthy() const { return healthy_.load(); }
++  ~NativeWorker() {
++    joinStoppedExecutor(executor_,worker_,finished_);
++    planner_.reset();
++  }
++private:
++  void consumeInput() {
++    const auto input=exchange_->input();
++    if (input.revision!=input_revision_) {
++      if (input.reset!=reset_revision_) planner_->cancelReference();
++      current_generation_=input.generation;
++      input_revision_=input.revision; reset_revision_=input.reset;
++      if (input.route) planner_->setReferencePath(input.route);
++      exchange_->applied_revision.store(input.revision);
++    }
++    planner_->setExecutionFeedback(input.feedback.frozen,input.feedback.trajectory);
++  }
++  std::shared_ptr<MotionExchange> exchange_;
++  uint64_t current_generation_{0},input_revision_{0},reset_revision_{0};
++  void publishTerrain() {
++    auto map=planner_->nav2Map();
++    if (!map || !map->mapperHealthy()) return;
++    // Acquire a completed immutable revision, then immediately release the
++    // publication lock before reading any cells. This callback shares the native
++    // executor, so it cannot race another planner read-state update.
++    { auto lease=map->beginPublication(); }
++    const double stamp=map->observationStamp();
++    if (!std::isfinite(stamp) || stamp<=0 || stamp<=terrain_stamp_) return;
++    Eigen::Vector3d body;
++    if (!planner_->nav2BodyPosition(body)) return;
++    nav_msgs::msg::OccupancyGrid grid;
++    grid.header.frame_id="world";
++    grid.header.stamp=rclcpp::Time(static_cast<int64_t>(stamp*1e9));
++    grid.info.resolution=map->getResolution();
++    grid.info.width=grid.info.height=static_cast<uint32_t>(std::ceil(6.0/grid.info.resolution));
++    grid.info.origin.position.x=body.x()-3.0;
++    grid.info.origin.position.y=body.y()-3.0;
++    grid.info.origin.position.z=body.z(); // Body-height slice; not a ground-height claim.
++    grid.info.origin.orientation.w=1.0;
++    grid.data.resize(grid.info.width*grid.info.height,-1);
++    for (unsigned y=0;y<grid.info.height;++y) for (unsigned x=0;x<grid.info.width;++x) {
++      bool known=true,occupied=false;
++      for (double dz=-0.15;dz<=0.15+1e-6;dz+=grid.info.resolution) {
++        Eigen::Vector3d point(grid.info.origin.position.x+(x+0.5)*grid.info.resolution,
++          grid.info.origin.position.y+(y+0.5)*grid.info.resolution,body.z()+dz);
++        if (!map->isInMap(point) || map->isUnknown(point)) { known=false; continue; }
++        occupied=occupied || map->getOccupancy(point)>0;
++      }
++      grid.data[y*grid.info.width+x]=occupied?100:(known?0:-1);
++    }
++    terrain_stamp_=stamp;
++    terrain_pub_->publish(grid);
++  }
++  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr terrain_pub_;
++  rclcpp::TimerBase::SharedPtr terrain_timer_;
++  double terrain_stamp_{0.0};
++  rclcpp::Node::SharedPtr node_;
++  rclcpp::CallbackGroup::SharedPtr work_group_;
++  std::unique_ptr<scan_planner::SCANReplanFSM> planner_;
++  std::shared_ptr<rclcpp::Executor> executor_;
++  std::thread worker_;
++  std::atomic<bool> healthy_{true};
++  std::atomic<bool> finished_{false};
++};
++namespace
++{
++bool validSplineLayout(const scan_planner_msgs::msg::Bspline &m)
++{
++  if (m.order != 3 || m.start_time.sec < 0 || m.start_time.nanosec >= 1000000000u) return false;
++  Eigen::MatrixXd points(3, m.pos_pts.size());
++  Eigen::VectorXd knots(m.knots.size());
++  for (size_t i=0; i<m.pos_pts.size(); ++i)
++    points.col(i) << m.pos_pts[i].x, m.pos_pts[i].y, m.pos_pts[i].z;
++  for (size_t i=0; i<m.knots.size(); ++i) knots(i)=m.knots[i];
++  return reactive_stair::validSplineLayout(points, knots, 3);
++}
++template<class T> T parameter(const rclcpp_lifecycle::LifecycleNode::SharedPtr &node,
++  const std::string &name, const T &fallback)
++{
++  if (!node->has_parameter(name)) node->declare_parameter<T>(name, fallback);
++  return node->get_parameter(name).get_value<T>();
++}
++}  // namespace
++
++LocalMotion::LocalMotion(rclcpp_lifecycle::LifecycleNode::SharedPtr parent,
++    rclcpp::Node::SharedPtr observations,const std::string &name)
++  : parent_(std::move(parent)),observations_(std::move(observations)),name_(name)
++{
++  global_frame_=parameter(parent_,name_+".global_frame",std::string("world"));
++  bspline_timeout_s_=parameter(parent_,name_+".bspline_timeout",5.0);
++  if (!std::isfinite(bspline_timeout_s_) || bspline_timeout_s_<=0)
++    throw nav2_core::PlannerException("Invalid SCAN B-spline timeout");
++  native_worker_enabled_=parameter(parent_, name_+".native_worker_enabled", true);
++  const bool use_sim=parameter(parent_, "use_sim_time", false);
++  rclcpp::NodeOptions options;
++  options.use_global_arguments(false);
++  std::vector<rclcpp::Parameter> parameters;
++  const std::vector<std::pair<std::string, double>> defaults={
++    {"time_forward",0.8},{"heading_error_threshold",0.8},{"kp_pos",0.8},{"kp_yaw",1.5},
++    {"max_vx",0.75},{"max_vy",0.35},{"max_vyaw",1.0},{"finish_dist",0.15},
++    {"goal_xy_tolerance",0.25},{"goal_z_tolerance",0.20},{"goal_yaw_tolerance",0.25},
++    {"route_lookahead_dist",0.5}};
++  for (const auto &entry: defaults) {
++    const double value=parameter(parent_, name_+"."+entry.first, entry.second);
++    if (!std::isfinite(value) || value<=0) throw nav2_core::PlannerException("Invalid tracking parameter");
++    parameters.emplace_back(entry.first, value);
++  }
++  parameters.emplace_back("use_sim_time", use_sim);
++  parameters.emplace_back("route_lookahead_heading_enabled",
++    parameter(parent_, name_+".route_lookahead_heading_enabled", false));
++  options.parameter_overrides(parameters);
++  options.arguments({"--ros-args", "-r", "planning/go2_execution_frozen:="+
++    parameter(parent_, name_+".execution_frozen_topic", std::string("/quad_0/planning/go2_execution_frozen"))});
++  tracker_=std::make_shared<scan_planner::TrackingNode>(options);
++  tolerances_={tracker_->goal_xy_tolerance_,tracker_->goal_z_tolerance_,tracker_->goal_yaw_tolerance_};
++  // Enter braking inside the inner band; the goal checker retains the outer band.
++  tracker_->goal_yaw_tolerance_ *= 0.5;
++  route_topic_=parameter(parent_,name_+".route_topic",std::string("/pct_path"));
++  route_pub_=observations_->create_publisher<nav_msgs::msg::Path>(
++    route_topic_,rclcpp::QoS(1).reliable().transient_local());
++  executor_=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
++  executor_->add_node(tracker_);
++}
++LocalMotion::~LocalMotion() {deactivate();}
++void LocalMotion::activate()
++{
++  if (native_worker_enabled_ && !native_worker_)
++    native_worker_=std::make_unique<NativeWorker>(
++      parameter(parent_,name_+".native_planner_config",std::string("")),
++      parameter(parent_,"use_sim_time",false),exchange_);
++}
++void LocalMotion::deactivate() {cancel();native_worker_.reset();}
++void LocalMotion::cancel()
++{
++  exchange_->cancel();has_active_plan_=false;waiting_for_spline_=false;
++  tracker_->clearTrajectory();
++}
++bool LocalMotion::setRoute(const nav_msgs::msg::Path &path)
++{
++  if (path.poses.empty()) throw nav2_core::PlannerException("Path is empty");
++  if (path.header.frame_id!=global_frame_) throw nav2_core::PlannerException("Path frame mismatch");
++  for (const auto &p:path.poses)
++    if ((!p.header.frame_id.empty() && p.header.frame_id!=global_frame_) ||
++        !scan_planner::TrackingNode::validGoalPose(p.pose))
++      throw nav2_core::PlannerException("Path has an invalid pose or frame");
++  const bool same_goal=has_active_plan_ && reference_path_.poses.back().pose==path.poses.back().pose;
++  const bool same_geometry=same_goal && path.poses.size()==reference_path_.poses.size() &&
++    std::equal(path.poses.begin(),path.poses.end(),reference_path_.poses.begin(),
++      [](const auto &a,const auto &b){return a.pose==b.pose;});
++  if (!same_goal) {
++    tracker_->clearTrajectory();waiting_for_spline_=true;waiting_for_spline_since_=parent_->now();
++  } else if (!tracker_->haveTrajectory() && !waiting_for_spline_) {
++    waiting_for_spline_=true;waiting_for_spline_since_=parent_->now();
++  }
++  const bool submit=!same_geometry || !tracker_->haveTrajectory() || waiting_for_spline_;
++  tracker_->setReferencePath(path);reference_path_=path;has_active_plan_=true;
++  if (submit) {
++    generation_=exchange_->setRoute(path,!same_goal,!same_geometry);
++    route_pub_->publish(path); // Observation; SCAN consumes the snapshot above.
++  }
++  return same_goal;
++}
++void LocalMotion::acceptSpline(const MotionExchange::Output &output)
++{
++  const auto &message=output.spline;
++  if (!has_active_plan_ || output.generation!=generation_ || !message || !validSplineLayout(*message)) return;
++  if (message->emergency_stop) {
++    if (tracker_->haveTrajectory() || !waiting_for_spline_) {
++      waiting_for_spline_=true;waiting_for_spline_since_=parent_->now();
++    }
++    tracker_->clearTrajectory();return;
++  }
++  tracker_->bsplineCallback(message);waiting_for_spline_=false;
++}
++void LocalMotion::update()
++{
++  executor_->spin_some(); // Tracker clock, never route/spline/freeze subscriptions.
++  if (native_worker_ && !native_worker_->healthy()) {
++    cancel();throw nav2_core::PlannerException("Native SCAN worker failed");
++  }
++  const auto output=exchange_->take();
++  if (output) acceptSpline(*output);
++}
++geometry_msgs::msg::Twist LocalMotion::command(const geometry_msgs::msg::Pose &pose,
++    const geometry_msgs::msg::Twist &velocity)
++{
++  if (!has_active_plan_) throw nav2_core::PlannerException("No active plan");
++  if (!tracker_->haveTrajectory()) {
++    if (!waiting_for_spline_) {waiting_for_spline_=true;waiting_for_spline_since_=parent_->now();}
++    if ((parent_->now()-waiting_for_spline_since_).seconds()>bspline_timeout_s_) {
++      cancel();throw nav2_core::PlannerException("Native SCAN did not publish a trajectory before timeout");
++    }
++    return geometry_msgs::msg::Twist();
++  }
++  const auto sample=tracker_->sampleCommand(pose,velocity,true);
++  const auto &t=sample.twist;
++  if (!sample.valid || !std::isfinite(t.linear.x) || !std::isfinite(t.linear.y) ||
++      !std::isfinite(t.linear.z) || !std::isfinite(t.angular.x) ||
++      !std::isfinite(t.angular.y) || !std::isfinite(t.angular.z)) {
++    cancel();throw nav2_core::PlannerException("Native SCAN trajectory sample invalid");
++  }
++  exchange_->feedback(generation_,tracker_->executionFrozen(),tracker_->executionFrozenTrajectory());
++  return sample.twist;
++}
++}  // namespace scan_nav2_controller
+diff -ruN parent-v201/src/scan_nav2_controller/test/test_controller.cpp v202/src/scan_nav2_controller/test/test_controller.cpp
+--- parent-v201/src/scan_nav2_controller/test/test_controller.cpp	2026-10-14 23:52:25
++++ v202/src/scan_nav2_controller/test/test_controller.cpp	2026-10-15 01:05:50
+@@ -3,6 +3,7 @@
+ #include <bspline_opt/full_trajectory_collision.h>
+ #include <plan_env/reactive_collision.h>
+ #include <scan_nav2_controller/controller.hpp>
++#include <scan_nav2_controller/tracking_node.hpp>
+ #include <pluginlib/class_loader.hpp>
+ #include <nav2_core/exceptions.hpp>
+ #include <chrono>
+@@ -40,7 +41,7 @@
+       [this](geometry_msgs::msg::Twist::ConstSharedPtr msg) { received.push_back(*msg); });
+     routes=io->create_subscription<nav_msgs::msg::Path>("/pct_path",rclcpp::QoS(1).reliable().transient_local(),
+       [this](nav_msgs::msg::Path::ConstSharedPtr msg) { dispatched.push_back(*msg); });
+-    ASSERT_TRUE(wait([&] { return spline->get_subscription_count()>0; }));
++    ASSERT_TRUE(wait([&] { return actual->motion_->route_pub_->get_subscription_count()>0; }));
+     route.header.frame_id="world"; route.header.stamp=parent->now();
+     route.poses={pose(0),pose(8)};
+   }
+@@ -81,7 +82,7 @@
+   }
+   void moving()
+   {
+-    plan(); spline->publish(curve());
++    plan(); injectSpline(std::make_shared<sm::Bspline>(curve()));
+     ASSERT_TRUE(wait([&] {
+       return plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()).twist.linear.x>0;
+     }));
+@@ -106,9 +107,15 @@
+       if(tick<100) EXPECT_FALSE(goal->isGoalReached(at.pose,at.pose,geometry_msgs::msg::Twist()));
+     }
+   }
++  void injectSpline(sm::Bspline::ConstSharedPtr message)
++  {
++    if (!message) return;
++    actual->motion_->exchange_->publish(actual->motion_->generation_,*message);
++    actual->motion_->update();
++  }
+   void expiredCornerStub(bool reverse=false)
+   {
+-    for (const auto &clock : {parent->get_clock(),actual->tracker_->get_clock()}) {
++    for (const auto &clock : {parent->get_clock(),actual->motion_->tracker_->get_clock()}) {
+       ASSERT_EQ(rcl_enable_ros_time_override(clock->get_clock_handle()),RCL_RET_OK);
+       ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),19000000000LL),RCL_RET_OK);
+     }
+@@ -118,10 +125,10 @@
+     auto stub=std::make_shared<sm::Bspline>(curve());stub->reverse_motion=reverse;
+     for (size_t i=0;i<stub->pos_pts.size();++i)
+       stub->pos_pts[i].x=i<3 ? (reverse ? 0.05 : -0.05) : 0.0;
+-    actual->onSpline(stub);
+-    ASSERT_TRUE(actual->tracker_->haveTrajectory());
+-    actual->tracker_->exec_time_=actual->tracker_->traj_duration_;
+-    EXPECT_LT(actual->tracker_->traj_[1].evaluateDeBoorT(actual->tracker_->exec_time_).head<2>().squaredNorm(),1e-4);
++    injectSpline(stub);
++    ASSERT_TRUE(actual->motion_->tracker_->haveTrajectory());
++    actual->motion_->tracker_->exec_time_=actual->motion_->tracker_->traj_duration_;
++    EXPECT_LT(actual->motion_->tracker_->traj_[1].evaluateDeBoorT(actual->motion_->tracker_->exec_time_).head<2>().squaredNorm(),1e-4);
+   }
+   geometry_msgs::msg::Twist cornerCommand(double yaw)
+   {
+@@ -151,10 +158,10 @@
+   auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
+   ASSERT_NE(actual,nullptr);
+   EXPECT_FALSE(parent->get_parameter("SCAN.route_lookahead_heading_enabled").as_bool());
+-  EXPECT_FALSE(actual->tracker_->route_lookahead_heading_enabled_);
++  EXPECT_FALSE(actual->motion_->tracker_->route_lookahead_heading_enabled_);
+   EXPECT_EQ(cornerCommand(0.0),geometry_msgs::msg::Twist());
+   bool used=true;
+-  EXPECT_DOUBLE_EQ(actual->tracker_->estimateDesiredYaw(actual->tracker_->traj_duration_,
++  EXPECT_DOUBLE_EQ(actual->motion_->tracker_->estimateDesiredYaw(actual->motion_->tracker_->traj_duration_,
+     Eigen::Vector3d(0,0,0.42),&used),0.0);
+   EXPECT_FALSE(used);
+ }
+@@ -180,19 +187,19 @@
+   expiredCornerStub();
+   auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
+   ASSERT_NE(actual,nullptr);
+-  ASSERT_TRUE(actual->tracker_->route_lookahead_heading_enabled_);
+-  EXPECT_DOUBLE_EQ(actual->tracker_->route_lookahead_dist_,0.5);
+-  const double middle=(actual->tracker_->goal_yaw_tolerance_+actual->tracker_->heading_error_threshold_)/2;
++  ASSERT_TRUE(actual->motion_->tracker_->route_lookahead_heading_enabled_);
++  EXPECT_DOUBLE_EQ(actual->motion_->tracker_->route_lookahead_dist_,0.5);
++  const double middle=(actual->motion_->tracker_->goal_yaw_tolerance_+actual->motion_->tracker_->heading_error_threshold_)/2;
+   for (double error : {M_PI/2,middle}) {
+     const auto command=cornerCommand(M_PI/2-error);
+     EXPECT_DOUBLE_EQ(command.linear.x,0.0);EXPECT_DOUBLE_EQ(command.linear.y,0.0);
+     EXPECT_DOUBLE_EQ(command.linear.z,0.0);EXPECT_GT(command.angular.z,0.0);
+     bool used=false;
+-    EXPECT_NEAR(actual->tracker_->estimateDesiredYaw(actual->tracker_->traj_duration_,
++    EXPECT_NEAR(actual->motion_->tracker_->estimateDesiredYaw(actual->motion_->tracker_->traj_duration_,
+       Eigen::Vector3d(0,0,0.42),&used),M_PI/2,1e-9);
+-    EXPECT_TRUE(used);EXPECT_TRUE(actual->has_active_plan_);
++    EXPECT_TRUE(used);EXPECT_TRUE(actual->motion_->has_active_plan_);
+   }
+-  EXPECT_EQ(cornerCommand(M_PI/2-actual->tracker_->goal_yaw_tolerance_/2),geometry_msgs::msg::Twist());
++  EXPECT_EQ(cornerCommand(M_PI/2-actual->motion_->tracker_->goal_yaw_tolerance_/2),geometry_msgs::msg::Twist());
+ }
+ 
+ TEST_F(RouteHeadingTest, SameGoalRefreshChangesHeadingAndPreservesGoalLatch)
+@@ -201,7 +208,7 @@
+   auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
+   ASSERT_NE(actual,nullptr);
+   EXPECT_GT(cornerCommand(0.0).angular.z,0.0);
+-  auto &tracker=*actual->tracker_;
++  auto &tracker=*actual->motion_->tracker_;
+   const Eigen::Vector3d original_goal=tracker.goal_pos_;
+   const double original_yaw=tracker.goal_yaw_;
+   tracker.goal_position_latched_=true;
+@@ -221,9 +228,9 @@
+ {
+   expiredCornerStub(true);
+   auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
+-  ASSERT_NE(actual,nullptr);ASSERT_TRUE(actual->tracker_->reverse_motion_);
++  ASSERT_NE(actual,nullptr);ASSERT_TRUE(actual->motion_->tracker_->reverse_motion_);
+   EXPECT_EQ(cornerCommand(0.0),geometry_msgs::msg::Twist());
+-  double yaw=0.0;EXPECT_FALSE(actual->tracker_->estimateRouteLookaheadYaw(Eigen::Vector3d(0,0,0.42),yaw));
++  double yaw=0.0;EXPECT_FALSE(actual->motion_->tracker_->estimateRouteLookaheadYaw(Eigen::Vector3d(0,0,0.42),yaw));
+ }
+ 
+ TEST_F(RouteHeadingTest, PillarUTurnUsesForwardRouteBeyondExpiredStub)
+@@ -236,7 +243,7 @@
+   const auto command=cornerCommand(0.0);
+   EXPECT_DOUBLE_EQ(command.linear.x,0.0);EXPECT_DOUBLE_EQ(command.linear.y,0.0);
+   EXPECT_GT(command.angular.z,0.0);
+-  double yaw=0.0;ASSERT_TRUE(actual->tracker_->estimateRouteLookaheadYaw(Eigen::Vector3d(0,0,0.42),yaw));
++  double yaw=0.0;ASSERT_TRUE(actual->motion_->tracker_->estimateRouteLookaheadYaw(Eigen::Vector3d(0,0,0.42),yaw));
+   EXPECT_NEAR(std::abs(yaw),M_PI,1e-9);
+ }
+ 
+@@ -244,7 +251,7 @@
+ {
+   expiredCornerStub();
+   auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
+-  ASSERT_NE(actual,nullptr);auto &tracker=*actual->tracker_;
++  ASSERT_NE(actual,nullptr);auto &tracker=*actual->motion_->tracker_;
+   auto body=pose();body.pose.position=route.poses.back().pose.position;
+   body.pose.orientation.z=std::sin(-0.4/2);body.pose.orientation.w=std::cos(-0.4/2);
+   auto odom=std::make_shared<nav_msgs::msg::Odometry>();odom->pose.pose=body.pose;
+@@ -310,7 +317,7 @@
+   EXPECT_THROW(plugin->setPlan(bad),nav2_core::PlannerException);
+   bad=route; bad.poses.front().header.frame_id="other";
+   EXPECT_THROW(plugin->setPlan(bad),nav2_core::PlannerException);
+-  EXPECT_FALSE(actual->has_active_plan_);
++  EXPECT_FALSE(actual->motion_->has_active_plan_);
+ }
+ TEST_F(PluginTest, NoPlanThrowsAndFirstSplineWaitReturnsZero)
+ {
+@@ -318,74 +325,70 @@
+   plan();
+   EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
+   EXPECT_TRUE(received.empty());
+-  EXPECT_DOUBLE_EQ(actual->bspline_timeout_s_,5.0);
+-  EXPECT_TRUE(actual->waiting_for_spline_);
+-  const auto first_wait=actual->waiting_for_spline_since_;
++  EXPECT_DOUBLE_EQ(actual->motion_->bspline_timeout_s_,5.0);
++  EXPECT_TRUE(actual->motion_->waiting_for_spline_);
++  const auto first_wait=actual->motion_->waiting_for_spline_since_;
+   plugin->setPlan(route);
+-  EXPECT_EQ(actual->waiting_for_spline_since_,first_wait);
+-  actual->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(5.1);
+-  actual->route_sent_at_=actual->waiting_for_spline_since_;
++  EXPECT_EQ(actual->motion_->waiting_for_spline_since_,first_wait);
++  actual->motion_->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(5.1);
+   plugin->setPlan(route);
+-  EXPECT_EQ(actual->waiting_for_spline_since_,actual->route_sent_at_);
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
+-  EXPECT_FALSE(actual->has_active_plan_);
+-  EXPECT_FALSE(actual->waiting_for_spline_);
+-  EXPECT_FALSE(actual->terminal_timeout_started_);
++  EXPECT_FALSE(actual->motion_->has_active_plan_);
++  EXPECT_FALSE(actual->motion_->waiting_for_spline_);
++  
+   plan();
+-  actual->waiting_for_spline_=false;
++  actual->motion_->waiting_for_spline_=false;
+   plugin->setPlan(route);
+-  EXPECT_TRUE(actual->waiting_for_spline_);
+-  actual->waiting_for_spline_=false;
++  EXPECT_TRUE(actual->motion_->waiting_for_spline_);
++  actual->motion_->waiting_for_spline_=false;
+   EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
+-  EXPECT_TRUE(actual->waiting_for_spline_);
++  EXPECT_TRUE(actual->motion_->waiting_for_spline_);
+ }
+ TEST_F(PluginTest, FreshSplineImmediatelyReplacesTrajectoryAndResetsTimeout)
+ {
+   moving();
+   auto next=std::make_shared<sm::Bspline>(curve());next->traj_id=2;
+   for(auto &p:next->pos_pts)p.x+=1;
+-  actual->terminal_timeout_started_=true;
+-  actual->onSpline(next);
+-  EXPECT_EQ(actual->tracker_->traj_id_,2);
+-  EXPECT_FALSE(actual->waiting_for_spline_);
+-  EXPECT_FALSE(actual->terminal_timeout_started_);
++  
++  injectSpline(next);
++  EXPECT_EQ(actual->motion_->tracker_->traj_id_,2);
++  EXPECT_FALSE(actual->motion_->waiting_for_spline_);
++  
+   EXPECT_GT(plugin->computeVelocityCommands(pose(),{}).twist.linear.x,0);
+ }
+ TEST_F(PluginTest, EmergencySplineClearsAndReturnsZeroThenAcceptsReplacement)
+ {
+   moving();
+   auto message=std::make_shared<sm::Bspline>(curve());message->emergency_stop=true;
+-  actual->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(60);
+-  actual->route_sent_at_=actual->waiting_for_spline_since_;
+-  actual->tracker_->goal_position_latched_=true;
+-  actual->terminal_timeout_started_=true;
+-  actual->onSpline(message);
+-  EXPECT_TRUE(actual->waiting_for_spline_);
+-  EXPECT_FALSE(actual->tracker_->goal_position_latched_);
+-  EXPECT_FALSE(actual->terminal_timeout_started_);
+-  EXPECT_LT((parent->now()-actual->waiting_for_spline_since_).seconds(),1.0);
++  actual->motion_->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(60);
++  actual->motion_->tracker_->goal_position_latched_=true;
++  
++  injectSpline(message);
++  EXPECT_TRUE(actual->motion_->waiting_for_spline_);
++  EXPECT_FALSE(actual->motion_->tracker_->goal_position_latched_);
++  
++  EXPECT_LT((parent->now()-actual->motion_->waiting_for_spline_since_).seconds(),1.0);
+   EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
+-  const auto waiting=actual->waiting_for_spline_since_;
+-  actual->onSpline(message);
++  const auto waiting=actual->motion_->waiting_for_spline_since_;
++  injectSpline(message);
+   plugin->setPlan(route);
+-  EXPECT_EQ(actual->waiting_for_spline_since_,waiting);
+-  actual->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(5.1);
+-  actual->route_sent_at_=actual->waiting_for_spline_since_;
+-  actual->onSpline(message);
++  EXPECT_EQ(actual->motion_->waiting_for_spline_since_,waiting);
++  actual->motion_->waiting_for_spline_since_=parent->now()-rclcpp::Duration::from_seconds(5.1);
++  injectSpline(message);
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
+-  EXPECT_FALSE(actual->has_active_plan_);
++  EXPECT_FALSE(actual->motion_->has_active_plan_);
+   plan();
+-  EXPECT_FALSE(actual->tracker_->haveTrajectory());
++  EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
+   EXPECT_TRUE(received.empty());
+   message->emergency_stop=false;message->traj_id=2;
+-  actual->onSpline(message);
+-  EXPECT_TRUE(actual->tracker_->haveTrajectory());
+-  EXPECT_FALSE(actual->waiting_for_spline_);
++  injectSpline(message);
++  EXPECT_TRUE(actual->motion_->tracker_->haveTrajectory());
++  EXPECT_FALSE(actual->motion_->waiting_for_spline_);
+ }
+ TEST_F(PluginTest, MalformedSplinesNeverReachEvaluator)
+ {
+   plan();
+-  actual->onSpline(nullptr);
++  injectSpline(nullptr);
+   for(int kind=0;kind<6;++kind) {
+     auto message=std::make_shared<sm::Bspline>(curve());
+     if(kind==0)message->order=2;
+@@ -394,21 +397,21 @@
+     if(kind==3)message->knots[4]=message->knots[1];
+     if(kind==4)message->pos_pts.front().x=std::numeric_limits<double>::infinity();
+     if(kind==5)message->start_time.nanosec=1000000000u;
+-    EXPECT_NO_THROW(actual->onSpline(message));
+-    EXPECT_FALSE(actual->tracker_->haveTrajectory());
++    EXPECT_NO_THROW(injectSpline(message));
++    EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
+   }
+   // A valid trajectory producing nonfinite commands fails immediately, even
+   // within the initial wait budget; it is not treated as an absent spline.
+-  actual->onSpline(std::make_shared<sm::Bspline>(curve()));
+-  actual->tracker_->kp_yaw_=std::numeric_limits<double>::quiet_NaN();
++  injectSpline(std::make_shared<sm::Bspline>(curve()));
++  actual->motion_->tracker_->kp_yaw_=std::numeric_limits<double>::quiet_NaN();
+   try {
+     plugin->computeVelocityCommands(pose(),{});
+     FAIL() << "Invalid sampled command was accepted";
+   } catch (const nav2_core::PlannerException &error) {
+     EXPECT_STREQ(error.what(),"Native SCAN trajectory sample invalid");
+   }
+-  EXPECT_FALSE(actual->has_active_plan_);
+-  EXPECT_FALSE(actual->tracker_->haveTrajectory());
++  EXPECT_FALSE(actual->motion_->has_active_plan_);
++  EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
+ }
+ TEST_F(PluginTest, InvalidPoseAndVelocityThrowForServerToStop)
+ {
+@@ -453,11 +456,11 @@
+ TEST_F(PluginTest, SameGoalRefreshRetainsCurveNewGoalClearsIt)
+ {
+   moving();auto next=route;next.poses.insert(next.poses.begin()+1,pose(2));
+-  plugin->setPlan(next);EXPECT_TRUE(actual->tracker_->haveTrajectory());
++  plugin->setPlan(next);EXPECT_TRUE(actual->motion_->tracker_->haveTrajectory());
+   next.poses.back().pose.position.y+=1;
+-  plugin->setPlan(next);EXPECT_FALSE(actual->tracker_->haveTrajectory());
+-  EXPECT_FALSE(actual->tracker_->goal_position_latched_);
+-  EXPECT_TRUE(actual->waiting_for_spline_);
++  plugin->setPlan(next);EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
++  EXPECT_FALSE(actual->motion_->tracker_->goal_position_latched_);
++  EXPECT_TRUE(actual->motion_->waiting_for_spline_);
+ }
+ TEST_F(PluginTest, TransientPathIsDeliveredToLateSubscriber)
+ {
+@@ -469,24 +472,24 @@
+ }
+ TEST_F(PluginTest, StopAndDeactivateClearTrajectoryAndRequireNewPlan)
+ {
+-  moving();actual->waiting_for_spline_=true;actual->terminal_timeout_started_=true;
++  moving();actual->motion_->waiting_for_spline_=true;
+   actual->stop("action_cancelled");
+-  EXPECT_FALSE(actual->waiting_for_spline_);EXPECT_FALSE(actual->terminal_timeout_started_);
+-  EXPECT_FALSE(actual->has_active_plan_);EXPECT_FALSE(actual->tracker_->haveTrajectory());
+-  actual->onSpline(std::make_shared<sm::Bspline>(curve()));
+-  EXPECT_FALSE(actual->tracker_->haveTrajectory());
++  EXPECT_FALSE(actual->motion_->waiting_for_spline_);
++  EXPECT_FALSE(actual->motion_->has_active_plan_);EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
++  injectSpline(std::make_shared<sm::Bspline>(curve()));
++  EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
+-  plugin->setPlan(route);actual->onSpline(std::make_shared<sm::Bspline>(curve()));
+-  actual->waiting_for_spline_=true;actual->terminal_timeout_started_=true;
++  plugin->setPlan(route);injectSpline(std::make_shared<sm::Bspline>(curve()));
++  actual->motion_->waiting_for_spline_=true;
+   plugin->deactivate();
+-  EXPECT_FALSE(actual->waiting_for_spline_);EXPECT_FALSE(actual->terminal_timeout_started_);
++  EXPECT_FALSE(actual->motion_->waiting_for_spline_);
+   plugin->activate();
+   EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
+ }
+ TEST_F(PluginTest, NoIndependentTrackingCommandTimer)
+ {
+-  moving();EXPECT_EQ(actual->tracker_->cmd_timer_,nullptr);
+-  EXPECT_EQ(actual->tracker_->raw_cmd_pub_,nullptr);
++  moving();EXPECT_EQ(actual->motion_->tracker_->cmd_timer_,nullptr);
++  EXPECT_EQ(actual->motion_->tracker_->raw_cmd_pub_,nullptr);
+ }
+ 
+ TEST_F(PluginTest, TerminalTimeoutFailsWithoutExecutionFeedback)
+@@ -533,31 +536,113 @@
+ }
+ TEST_F(PluginTest, NativeWorkerLifecycleReceivesDirectPath)
+ {
+-  plugin->deactivate();actual->native_worker_enabled_=true;
++  plugin->deactivate();actual->motion_->native_worker_enabled_=true;
+   parent->declare_parameter("SCAN.native_planner_config",std::string(TEST_NATIVE_CONFIG));
++  for (int cycle=0;cycle<3;++cycle) {
+   plugin->activate();
+-  ASSERT_TRUE(wait([&]{return actual->route_pub_->get_subscription_count()>=2;}));
++  ASSERT_TRUE(wait([&]{return actual->motion_->route_pub_->get_subscription_count()==1;}));
+   const auto names=io->get_node_names();
+   EXPECT_NE(std::find(names.begin(),names.end(),"/quad_0/scan_planner_node"),names.end());
+   plan();
++  const auto revision=actual->motion_->exchange_->input().revision;
++  ASSERT_TRUE(wait([&]{return actual->motion_->exchange_->applied_revision.load()==revision;}));
++  EXPECT_EQ(spline->get_subscription_count(),0u);
+   plugin->deactivate();
++  }
+ }
+ 
+ 
++TEST_F(PluginTest, ObservationTopicsCannotInjectControlState)
++{
++  plan();
++  auto fake_route=io->create_publisher<nav_msgs::msg::Path>("/pct_path",rclcpp::QoS(1).reliable().transient_local());
++  auto fake_freeze=io->create_publisher<std_msgs::msg::Bool>("/quad_0/planning/go2_execution_frozen",10);
++  auto foreign=route;foreign.poses.back().pose.position.x=100;
++  const auto revision=actual->motion_->exchange_->input().revision;
++  fake_route->publish(foreign);spline->publish(curve());
++  std_msgs::msg::Bool freeze;freeze.data=true;fake_freeze->publish(freeze);
++  EXPECT_FALSE(wait([&]{return actual->motion_->tracker_->haveTrajectory();},0.1));
++  EXPECT_EQ(spline->get_subscription_count(),0u);
++  EXPECT_EQ(fake_freeze->get_subscription_count(),0u);
++  EXPECT_EQ(actual->motion_->exchange_->input().revision,revision);
++  EXPECT_EQ(actual->motion_->tracker_->reference_path_,route);
++  EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
++  injectSpline(std::make_shared<sm::Bspline>(curve()));
++  EXPECT_GT(plugin->computeVelocityCommands(pose(),{}).twist.linear.x,0);
++}
++
++TEST_F(PluginTest, CancellationAndNewGoalRejectLateNativeSpline)
++{
++  moving();
++  const auto old_generation=actual->motion_->generation_;
++  actual->stop("test_cancel");
++  EXPECT_FALSE(actual->motion_->exchange_->publish(old_generation,curve()));
++  route.poses.back().pose.position.x+=2;plugin->setPlan(route);
++  EXPECT_FALSE(actual->motion_->exchange_->publish(old_generation,curve()));
++  EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
++  injectSpline(std::make_shared<sm::Bspline>(curve()));
++  EXPECT_GT(plugin->computeVelocityCommands(pose(),{}).twist.linear.x,0);
++}
++
++TEST_F(PluginTest, NativeDirectInterfaceFeedsTrackerAndKeepsObservations)
++{
++  plan();
++  rclcpp::NodeOptions options;
++  options.arguments({"--ros-args","--params-file",TEST_NATIVE_CONFIG});
++  auto node=std::make_shared<rclcpp::Node>("scan_planner_node",options);
++  scan_planner::SCANReplanFSM fsm;
++  int boundaries=0;
++  const auto exchange=actual->motion_->exchange_;
++  const auto generation=actual->motion_->generation_;
++  scan_planner::SCANReplanFSM::DirectIO direct;
++  direct.before_work=[&]{++boundaries;};
++  direct.spline=[&](const sm::Bspline &message){EXPECT_TRUE(exchange->publish(generation,message));};
++  fsm.init(node.get(),nullptr,direct);
++  EXPECT_EQ(fsm.path_sub_,nullptr);EXPECT_EQ(fsm.go2_execution_frozen_sub_,nullptr);
++  fsm.setReferencePath(std::make_shared<nav_msgs::msg::Path>(route));
++  ASSERT_NE(fsm.deferred_path_,nullptr); // No sensor/odom fixture: pending, not admitted.
++  fsm.execFSMCallback();fsm.checkCollisionCallback();EXPECT_EQ(boundaries,2);
++  std::vector<sm::Bspline> observed;
++  auto observer=io->create_subscription<sm::Bspline>(fsm.bspline_pub_->get_topic_name(),10,
++    [&](sm::Bspline::ConstSharedPtr message){observed.push_back(*message);});
++  ASSERT_TRUE(wait([&]{return fsm.bspline_pub_->get_subscription_count()>0;}));
++  auto completed=curve();completed.traj_id=42;
++  fsm.publishSpline(completed);actual->motion_->update();
++  ASSERT_TRUE(wait([&]{return !observed.empty();}));
++  EXPECT_EQ(observed.back(),completed);EXPECT_TRUE(actual->motion_->tracker_->haveTrajectory());
++  EXPECT_EQ(actual->motion_->tracker_->traj_id_,42);
++  EXPECT_GT(plugin->computeVelocityCommands(pose(),{}).twist.linear.x,0);
++  auto &native=fsm.planner_manager_->local_data_;
++  native.traj_id_=42;
++  fsm.setExecutionFeedback(true,41);EXPECT_FALSE(fsm.go2_execution_frozen_);
++  fsm.setExecutionFeedback(true,42);EXPECT_TRUE(fsm.go2_execution_frozen_);
++  native.traj_id_=43;
++  fsm.setExecutionFeedback(true,42);EXPECT_FALSE(fsm.go2_execution_frozen_);
++  fsm.cancelReference();
++  EXPECT_EQ(fsm.deferred_path_,nullptr);EXPECT_FALSE(fsm.have_target_);
++  EXPECT_FALSE(fsm.have_requested_goal_pose_);EXPECT_DOUBLE_EQ(native.duration_,0);
++  EXPECT_FALSE(fsm.go2_execution_frozen_);
++  // Emergency uses the same direct output boundary, then clears the tracker.
++  completed.emergency_stop=true;fsm.publishSpline(completed);actual->motion_->update();
++  EXPECT_FALSE(actual->motion_->tracker_->haveTrajectory());
++  EXPECT_EQ(plugin->computeVelocityCommands(pose(),{}).twist,geometry_msgs::msg::Twist());
++}
++
+ TEST_F(PluginTest, IdenticalRefreshUpdatesReferenceWithoutPublishingOrStopping)
+ {
+   moving();
+   const auto count = dispatched.size();
+-  const auto trajectory = actual->tracker_->traj_[0].getControlPoint();
++  const auto trajectory = actual->motion_->tracker_->traj_[0].getControlPoint();
+   for (int i=0; i<3; ++i) {
+     route.header.stamp=parent->now();
+     for (auto &p : route.poses) p.header.stamp=parent->now();
+     plugin->setPlan(route);
+   }
+   EXPECT_FALSE(wait([&] { return dispatched.size()>count; },0.15));
+-  EXPECT_EQ(actual->tracker_->reference_path_,route);
+-  EXPECT_TRUE(actual->tracker_->haveTrajectory());
+-  EXPECT_TRUE(actual->tracker_->traj_[0].getControlPoint().isApprox(trajectory,0.0));
++  EXPECT_EQ(actual->motion_->tracker_->reference_path_,route);
++  EXPECT_TRUE(actual->motion_->tracker_->haveTrajectory());
++  EXPECT_TRUE(actual->motion_->tracker_->traj_[0].getControlPoint().isApprox(trajectory,0.0));
+   EXPECT_GT(plugin->computeVelocityCommands(pose(),geometry_msgs::msg::Twist()).twist.linear.x,0);
+ }
+ 
+@@ -575,8 +660,8 @@
+   ASSERT_TRUE(wait([&] { return dispatched.size()>count; }));
+   count=dispatched.size();
+   auto emergency=std::make_shared<sm::Bspline>(curve()); emergency->emergency_stop=true;
+-  actual->onSpline(emergency);
+-  ASSERT_TRUE(actual->waiting_for_spline_);
++  injectSpline(emergency);
++  ASSERT_TRUE(actual->motion_->waiting_for_spline_);
+   plugin->setPlan(route);
+   ASSERT_TRUE(wait([&] { return dispatched.size()>count; }));
+   EXPECT_EQ(dispatched.back(),route);
+diff -ruN parent-v201/src/scan_nav2_controller/test/test_motion_exchange.cpp v202/src/scan_nav2_controller/test/test_motion_exchange.cpp
+--- parent-v201/src/scan_nav2_controller/test/test_motion_exchange.cpp	1969-12-31 16:00:00
++++ v202/src/scan_nav2_controller/test/test_motion_exchange.cpp	2026-10-15 01:00:53
+@@ -0,0 +1,80 @@
++#include <gtest/gtest.h>
++#include <scan_nav2_controller/motion_exchange.hpp>
++#include <thread>
++
++using scan_nav2_controller::MotionExchange;
++
++static nav_msgs::msg::Path route(double x=1.)
++{
++  nav_msgs::msg::Path p;p.header.frame_id="world";
++  geometry_msgs::msg::PoseStamped pose;pose.pose.position.x=x;pose.pose.orientation.w=1.;
++  p.poses={pose,pose};return p;
++}
++
++TEST(MotionExchange, CopiesInputsAndDeliversEachOutputOnce)
++{
++  MotionExchange exchange;auto input=route();
++  const auto generation=exchange.setRoute(input,true,true);
++  input.poses.back().pose.position.x=99;
++  EXPECT_DOUBLE_EQ(exchange.input().route->poses.back().pose.position.x,1.);
++  scan_planner_msgs::msg::Bspline spline;spline.traj_id=7;
++  ASSERT_TRUE(exchange.publish(generation,spline));spline.traj_id=99;
++  auto output=exchange.take();ASSERT_TRUE(output);EXPECT_EQ(output->spline->traj_id,7);
++  EXPECT_FALSE(exchange.take());
++}
++TEST(MotionExchange, LatestRouteAndResultReplaceRatherThanAccumulate)
++{
++  MotionExchange exchange;uint64_t generation=0;
++  for(int i=0;i<1000;++i) generation=exchange.setRoute(route(i),i==0,true);
++  EXPECT_DOUBLE_EQ(exchange.input().route->poses.back().pose.position.x,999);
++  for(int i=0;i<1000;++i) {
++    scan_planner_msgs::msg::Bspline spline;spline.traj_id=i;
++    EXPECT_TRUE(exchange.publish(generation,spline));
++  }
++  EXPECT_EQ(exchange.take()->spline->traj_id,999);EXPECT_FALSE(exchange.take());
++}
++TEST(MotionExchange, IdenticalRefreshKeepsGenerationButChangesInputRevision)
++{
++  MotionExchange exchange;
++  const auto generation=exchange.setRoute(route(),true,true);
++  const auto first=exchange.input();
++  EXPECT_EQ(exchange.setRoute(route(),false,false),generation);
++  EXPECT_GT(exchange.input().revision,first.revision);
++  EXPECT_EQ(exchange.input().reset,first.reset);
++}
++TEST(MotionExchange, CancelAndNewRouteRejectLateSolverAndFreezeResults)
++{
++  MotionExchange exchange;const auto old=exchange.setRoute(route(),true,true);
++  scan_planner_msgs::msg::Bspline spline;spline.traj_id=5;
++  ASSERT_TRUE(exchange.publish(old,spline));exchange.cancel();
++  EXPECT_FALSE(exchange.take());EXPECT_FALSE(exchange.publish(old,spline));
++  const auto cancel_reset=exchange.input().reset;
++  const auto fresh=exchange.setRoute(route(),true,true);
++  exchange.setRoute(route(),false,false); // Cannot erase a pending cancellation/new-goal reset.
++  EXPECT_GT(exchange.input().reset,cancel_reset);
++  EXPECT_FALSE(exchange.publish(old,spline));
++  exchange.feedback(old,true,5);EXPECT_FALSE(exchange.input().feedback.frozen);
++  exchange.feedback(fresh,true,6);EXPECT_TRUE(exchange.input().feedback.frozen);
++  EXPECT_EQ(exchange.input().feedback.trajectory,6);
++}
++TEST(MotionExchange, ChangedRouteRejectsAnOlderSolveEvenWithSameGoal)
++{
++  MotionExchange exchange;const auto old=exchange.setRoute(route(),true,true);
++  auto next=route();next.poses.front().pose.position.y=.5;
++  const auto generation=exchange.setRoute(next,false,true);
++  EXPECT_NE(old,generation);
++  scan_planner_msgs::msg::Bspline spline;
++  EXPECT_FALSE(exchange.publish(old,spline));EXPECT_TRUE(exchange.publish(generation,spline));
++}
++TEST(MotionExchange, ConcurrentCancelCannotResurrectWorkerOutput)
++{
++  MotionExchange exchange;const auto old=exchange.setRoute(route(),true,true);
++  std::atomic<bool> running{true};
++  std::thread worker([&] {
++    scan_planner_msgs::msg::Bspline spline;
++    while(running.load()) {exchange.publish(old,spline);exchange.input();}
++  });
++  for(int i=0;i<200;++i) {exchange.cancel();exchange.setRoute(route(),true,true);}
++  running=false;worker.join();
++  EXPECT_FALSE(exchange.take());
++}

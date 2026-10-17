@@ -1,0 +1,1782 @@
+--- v191/PLAN.md
++++ v192/PLAN.md
+@@ -1,98 +1,48 @@
+-# v191: Option B direct Nav2 + SCAN
++# v192: shared applied-state harness over the qualified native v191 overlay
+ 
+-Stage: experiment + analysis. Version parent: **v190**. This candidate replaces
+-the P2B route/command gateway with direct ROS interfaces. The archived Mac
+-ARM64 **v176** workspace remains the native binary underlay; that dependency
+-is distinct from the frozen version parent. The local VLA repository is the
+-source of truth. `/private/tmp/vla_stop_audit_20261012/recovery_v191` is its
+-explicitly authorized Mac execution copy.
++Stage: experiment + analysis. Parent: v191. Authorized scope: remove the
++remaining synchronous 100 ms applied-state ZMQ lockstep and execute one full
++Mac Building attempt. The unchanged ROS 2 source and compiled overlay retain
++native_version=v191; the integration harness is v192. No native rebuild.
+ 
+-## Behavior and source boundary
++The episode writes current_command.json atomically through its existing ordered
++asynchronous evidence writer. Both host and Docker read the same trial bind
++mount, with no tmpfs shadow, applied receiver, ACK, or port 24603. The finish
++request is read directly from that shared directory. Driver observation accepts
++snapshots up to 10 seconds old and waits 15 seconds in the navigation loop to
++tolerate transient VirtioFS visibility delays. Command watchdogs, native
++freshness, geometry, policy, startup, route and terminal tolerances are unchanged.
+ 
+-The HTTP mission bridge requests the internal Nav2 `NavigateToPose` action and
+-provides the PCT `PlanRoute` service. Nav2 computes a `nav_msgs/msg/Path`, then
+-`FollowPath` supplies it to the SCAN controller. The controller publishes the
+-path on `/pct_path`; its embedded native SCAN worker publishes the native
+-`scan_planner_msgs/msg/Bspline` trajectory. The controller publishes standard
+-`geometry_msgs/msg/Twist` directly on `/quad_0/cmd_vel`.
++Closed-state verification compares the host and container file hashes after
++the producer and graph stop. Analysis rechecks these against the retained raw
++files. This is a shared-file closure witness, not an ACK/copyback claim or proof
++of per-step delivery. Failure or missing state remains a recorded failure.
+ 
+-The v191 source physically removes the six `P2B*.msg` files, their identity
+-fields from `Bspline.msg`, `BindRoute.srv`, the BindRoute BT implementation,
+-`gateway.py`, `control_gate.py`, the legacy HTTP adapter, the gateway executable,
+-and inherited backend/service packages. There is no gateway velocity gate,
+-P2B transport or `current_command.json` polling in the candidate source. The
+-historical underlay receipts and frozen source ancestry still reference earlier
+-P2B implementations; those records are provenance, not active v191 interfaces.
++Qualification order: host tests; real Docker overlay/lifecycle graph preflight;
++protected-path hash comparison; qualify_mac.py; freeze_host.py freeze and verify.
++Protected paths are v189/v190/v191 and recovery_v176/recovery_v189/recovery_v191.
++The sole authorized v191 edit removes its trailing forward reference to a
++nonexistent v192 display package; its original bytes are saved in evidence.
++All v192 src bytes must equal v191 and the existing native source inventory.
+ 
+-The native inventory contains **272 source files**, **37 changed/new files**
+-and **33 deleted source paths** relative to the recorded v176 source inventory.
+-`native_sources.json`, `prepare_native.py`, and `test_source_inventory.py` bind
+-the local package snapshots to a clean reconstructable execution tree.
++Run run_mac_full.py --task-root /private/tmp/vla_stop_audit_20261012 --attempt 1,
++then close_mac_trial.py for v192_mac_full_attempt01. Report route completion,
++simulation/wall time, RTF, path, final pose/hold, command stops and measured
++low-speed intervals. Compare with v189's 20 replacement stops / 34.225422 seconds
++of cancel-to-proof waiting, without equating removed P2B proofs to physical
++stillness or claiming reliability from one attempt. Preserve failed captures.
+ 
+-The 0.5 m global-route heading lookahead and 0.02 m local endpoint capture remain
+-enabled. The direct BT has six finite retries and a 0.1 s built-in Wait action.
+-This Wait is only a delay: the removed P2B measured-stop/owner-admission protocol
+-is not claimed to survive Option B. Full-route, stop-handoff and physical safety
+-acceptance require separate tests of the new architecture.
++Only a full recorded route (route_arrived=true and FINISHED) permits the v193
++display package, following v190's complete causal recorded-state replay with
++zero physics steps. Deliver the regular MP4 at
++v193/delivered/v192_mac_full_attempt01.mp4, verify full decode, frame causality
++and representative visual frames, freeze v193, then archive to
++gpu5070ti:/data/sun/vla_mppi_20261009/mac_archive_v192_20261014/.
++Temporary Mac raw captures stay under the authorized /private/tmp task root;
++the local repository retains source, compact evidence, reports and the review
++video (expected below 100 MB). Heavy raw/render evidence is archived remotely
++with member and archive SHA-256 verification before any cleanup.
+ 
+-## Graph qualification repairs
+-
+-The resumed preflight exposed two prepared-harness defects. The BT's Wait node
+-had no launched action server and used a relative endpoint inside the internal
+-Nav2 namespace. The launch now starts a wait-only Foxy `recoveries_server`,
+-manages its lifecycle, and binds the tree to `/wait`. The existing profile test
+-checks that endpoint. No spin or backup recovery is enabled.
+-
+-The process inspection previously required a standalone `scan_planner_node`.
+-The actual controller starts `NativeWorker` in-process on activation. The check
+-now verifies both the v191 controller and `libscan_native_core.so` in the actual
+-ControllerServer memory map, the embedded `/quad_0/scan_planner_node`, direct
+-Path/Bspline/Twist topic types, absence of P2B topic types and gateway node, and
+-all four managed lifecycle nodes in the active state. Exact mission-bridge
+-executable matching prevents the inspector's own command text being mistaken
+-for a bridge process. The bridge must load the pinned v174 PCT library.
+-
+-A synthetic static identity `world -> base` TF fixture lets costmaps activate
+-without a simulator. There are **no physics steps, navigation goals or synthetic
+-odometry/clock ticks**. This checks graph readiness, not navigation behavior.
+-The preflight has a bounded activation deadline, refuses to overwrite an earlier
+-trial directory, removes stale pass receipts before a retry, and removes its
+-own container on exit. Earlier interrupted/failed logs remain preserved.
+-
+-## Qualification and freeze procedure
+-
+-Use the existing Newton Mac virtual environment with
+-`PYTHONDONTWRITEBYTECODE=1` and Docker context `desktop-linux`.
+-
+-1. After the graph launch repair, synchronize the four changed bridge files to
+-   `recovery_v191`, update both source inventories, rebuild the eleven overlay
+-   packages, and regenerate the native receipt. Verify all native tests, two
+-   profile tests, `V176_TERMINAL_CAPTURE_PASS` and `V191_CORNER_LOOKAHEAD_PASS`.
+-2. Run the host suite and `test_overlay_runtime.py --task-root
+-   /private/tmp/vla_stop_audit_20261012`. Save stdout/stderr to
+-   `evidence/v191_graph_preflight.log`; require both overlay and graph receipts.
+-3. Run `qualify_mac.py --task-root /private/tmp/vla_stop_audit_20261012`. It writes
+-   `quality.json` and copies compact native/host/graph evidence to `verification/`,
+-   with SHA-256 bindings. Graph launch logs, generated profiles, process maps,
+-   source identity, and the earlier failure evidence are retained locally.
+-4. Run `freeze_host.py freeze`, then `freeze_host.py verify`. The immutable
+-   manifest pins v190, the quality receipt, and inherited/new source snapshots.
+-   Set `versions/current.json` to v191 only after verification succeeds.
+-5. Compare every file hash and symlink in v189, v190, `recovery_v176`, and
+-   `recovery_v189` with the pre-existing protected baseline. Keep the comparison
+-   report with v191 verification evidence; no protected path may change.
+-
+-## Acceptance boundary
+-
+-The required component result is 45 colcon test entries with zero failures,
+-errors or skips: 20 controller GTests, one tracking-parity GTest, one executor
+-shutdown GTest, eight plugin GTests and nine bridge pytest cases; colcon's total
+-also includes CTest wrappers. Two generated-profile tests and 25 Mac host tests
+-are separate. The final machine-readable outcomes are in `quality.json` and
+-`verification/`; a version freeze alone is not acceptance.
+-
+-This task qualifies components and the live Mac ARM64 graph only.
+-`full_navigation_accepted` remains **false**. v189's failed held-yaw result and
+-v190's display-only result are unchanged. No new physical route, repeated-run
+-reliability, sustained 30 Hz result, remote training, or real-robot actuation is
+-part of this qualification.
++No changes to frozen predecessors, native overlays, upstream projects, training,
++or real-robot actuation. A failed frozen v192 run is not edited or retried under
++the same attempt. Component/graph qualification is distinct from route results.
+--- v191/analyze_remote.py
++++ v192/analyze_remote.py
+@@ -86,7 +86,7 @@
+         'target_connector_rejections':text.count('reason=target_connector'),
+         'controller':{topic:{'samples':len(ts),'wall_hz':core.rate(ts)} for topic,ts in commands.items()},
+         'fallen':result.get('fallen',False),'minimum_base_up_z':min(r['base_up_z'] for r in telemetry),
+-        'terminal':result.get('finish_request'),'backend_gate':result.get('last_backend',{}).get('gate',{}).get('closed_reason'),'stop_flow':result.get('last_backend',{}).get('stop_flow'),'state_copyback_verified':capture.json('state_copyback.json')['verified'],
++        'terminal':result.get('finish_request'),'backend_gate':result.get('last_backend',{}).get('gate',{}).get('closed_reason'),'stop_flow':result.get('last_backend',{}).get('stop_flow'),'shared_state_verified':__import__('shared_state').verify_capture(capture),
+         'clock_mapping':{'source':'Original converged clock_samples.jsonl; filtered local-minus-remote',
+             'samples':len(sync),'median_host_minus_container_s':float(np.median(offset)),
+             'maximum_rtt_ms':max(r['rtt_ns'] for r in sync)/1e6},
+--- v191/applied_channel.py
++++ v192/applied_channel.py
+@@ -1,135 +0,0 @@
+-"""PyZMQ REQ/REP transfers unchanged applied-state JSON into Linux storage.
+-
+-Reference: pyzmq26.4.0 howto/serialization; no pickle and no custom framing.
+-The original snapshot parser and reader remain authoritative. Source times are
+-preserved; receipt never replaces a measurement timestamp.
+-"""
+-import argparse
+-import hashlib
+-import json
+-from pathlib import Path
+-import sys
+-import time
+-
+-BASE = Path(__file__).resolve().parents[2]
+-if sys.platform == "darwin":
+-    sys.path.insert(0, str(BASE / "runtime/zmq_macos"))
+-import zmq
+-
+-
+-class AppliedClient:
+-    def __init__(self, port=24603):
+-        self.context = zmq.Context()
+-        self.port = port
+-        self.socket = None
+-        self._connect()
+-
+-    def _connect(self):
+-        if self.socket is not None:
+-            self.socket.close(linger=0)
+-        self.socket = self.context.socket(zmq.REQ)
+-        self.socket.setsockopt(zmq.LINGER, 0)
+-        self.socket.setsockopt(zmq.SNDTIMEO, 100)
+-        self.socket.setsockopt(zmq.RCVTIMEO, 100)
+-        self.socket.connect(f"tcp://127.0.0.1:{self.port}")
+-
+-    def publish(self, payload):
+-        raw = json.dumps(payload, separators=(",", ":"), allow_nan=False).encode()
+-        digest = hashlib.sha256(raw).hexdigest()
+-        self.last_attempt = {"sha256": digest, "sequence": payload["state_epoch"]["state_sequence"],
+-                             "timeout_ms": 100, "attempts": []}
+-        # No physics step runs while this synchronous call is pending. An ACK
+-        # timeout is ambiguous: resend the same bytes, never a new source time.
+-        for attempt in range(3):
+-            timing = {"send_started_monotonic_ns": time.monotonic_ns()}
+-            self.last_attempt["attempts"].append(timing)
+-            try:
+-                self.socket.send(raw)
+-                timing["send_completed_monotonic_ns"] = time.monotonic_ns()
+-                reply = self.socket.recv_json()
+-                timing["reply_received_monotonic_ns"] = time.monotonic_ns()
+-            except zmq.Again:
+-                timing["timed_out_monotonic_ns"] = time.monotonic_ns()
+-                if attempt == 2:
+-                    raise
+-                self._connect()
+-                continue
+-            if not reply.get("ok") or reply.get("sha256") != digest or reply.get("sequence") != payload["state_epoch"]["state_sequence"]:
+-                raise RuntimeError(f"Applied evidence not acknowledged: {reply}")
+-            self.last_attempt.update(timing)
+-            return reply
+-
+-    def close(self):
+-        self.socket.close()
+-        self.context.term()
+-
+-
+-class AppliedStore:
+-    """One atomic writer; duplicate requests can only read back its exact head."""
+-    def __init__(self, out):
+-        self.out = out
+-        self.request = json.loads((out / "episode_request.json").read_text())
+-        self.external = out / "artifacts/external_episode"
+-        self.external.mkdir(parents=True, exist_ok=True)
+-        self.last_sequence = -1
+-        self.last_digest = None
+-
+-    def accept(self, raw):
+-        from backend_adapter.applied_evidence import AppliedCommandSnapshot, AppliedEvidenceReader
+-        snapshot = AppliedCommandSnapshot.from_mapping(json.loads(raw))
+-        age = (time.monotonic_ns() - snapshot.wall_monotonic_ns) / 1e9
+-        if snapshot.run_id != self.out.name or snapshot.run_epoch_ns != self.request["run_epoch_ns"]:
+-            raise ValueError("Applied state run identity mismatch")
+-        if not 0 <= age <= snapshot.max_reader_age_s:
+-            raise ValueError("Applied state stale or future")
+-        digest = hashlib.sha256(raw).hexdigest()
+-        duplicate = snapshot.state_sequence == self.last_sequence
+-        if snapshot.state_sequence < self.last_sequence or (duplicate and digest != self.last_digest):
+-            raise ValueError("Applied state reordered or altered duplicate")
+-        current = self.external / "current_command.json"
+-        if not duplicate:
+-            temporary = self.external / "current_command.json.tmp"
+-            temporary.write_bytes(raw)
+-            temporary.replace(current)
+-            self.last_sequence, self.last_digest = snapshot.state_sequence, digest
+-        elif not current.is_file() or hashlib.sha256(current.read_bytes()).hexdigest() != digest:
+-            raise ValueError("Applied state read-back differs from committed bytes")
+-        checked = AppliedEvidenceReader(current).read()
+-        if checked.state_sequence != snapshot.state_sequence:
+-            raise ValueError("Applied state reader sequence mismatch")
+-        reply = {"ok": True, "sequence": snapshot.state_sequence, "sha256": digest,
+-                 "receive_age_s": age, "linux_receive_ns": time.monotonic_ns(),
+-                 "original_reader_sequence": checked.state_sequence, "duplicate": duplicate}
+-        finish = self.external / "finish_request.json"
+-        if finish.exists():
+-            reply["finish_request"] = json.loads(finish.read_text())
+-        return reply
+-
+-
+-def serve(out):
+-    sys.path.insert(0, str(BASE / "runtime_sources/backend_adapter"))
+-    store = AppliedStore(out)
+-    external = store.external
+-    # Keep per-control-step I/O inside Linux tmpfs. The existing verified
+-    # exec/tar copyback returns this audit after the episode, before teardown.
+-    with zmq.Context() as context, context.socket(zmq.REP) as socket, (external / "applied_channel.jsonl").open("w") as log:
+-        socket.setsockopt(zmq.LINGER, 0)
+-        socket.bind("tcp://0.0.0.0:24603")
+-        while True:
+-            raw = socket.recv()
+-            received_ns = time.monotonic_ns()
+-            try:
+-                reply = store.accept(raw)
+-            except Exception as error:
+-                reply = {"ok": False, "error": str(error)}
+-            reply["server_received_monotonic_ns"] = received_ns
+-            reply["server_prepared_monotonic_ns"] = time.monotonic_ns()
+-            log.write(json.dumps(reply) + "\n")
+-            log.flush()
+-            socket.send_json(reply)
+-
+-
+-if __name__ == "__main__":
+-    parser = argparse.ArgumentParser()
+-    parser.add_argument("--output", type=Path, required=True)
+-    serve(parser.parse_args().output)
+--- v191/build_remote.py
++++ v192/build_remote.py
+@@ -1,4 +1,4 @@
+-"""Prepare an unqualified Linux v191 Option B overlay over verified v177 binaries."""
++"""Prepare an unqualified Linux v192 Option B overlay over verified v177 binaries."""
+ from pathlib import Path
+ import hashlib
+ import json
+@@ -31,8 +31,8 @@
+         shutil.copyfile(HERE/name, workspace/name); source[name] = sha(workspace/name)
+         if name.endswith('scripts/mission_bridge'):
+             (workspace/name).chmod(0o755)
+-    assert source == origins['expected_files'], 'Must match the v191 native source inventory'
+-    identity = {'version':'v191', 'native_parent':'v177', 'linux_binary_underlay':'v177',
++    assert source == origins['expected_files'], 'Must match the v192 native source inventory'
++    identity = {'version':'v192', 'native_parent':'v177', 'linux_binary_underlay':'v177',
+                 'parent_source_identity_sha256':sha(parent/'source_identity.json'),
+                 'inventory_scope':'src/', 'deleted':origins['deleted_files'],
+                 'changes':origins['changed_files'], 'files':source}
+@@ -52,10 +52,10 @@
+ colcon test --packages-select scan_nav2_controller lite3_nav2_plugins lite3_nav2_bridge --executor sequential --event-handlers console_direct+
+ colcon test-result --verbose
+ source install/setup.bash
+-python3 /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v191/test_profile_frames.py
+-cmake -S /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v191 -B terminal_build
++python3 /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v192/test_profile_frames.py
++cmake -S /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v192 -B terminal_build
+ cmake --build terminal_build -j2
+-terminal_build/terminal_capture_probe /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v191/terminal_fixture.txt
++terminal_build/terminal_capture_probe /task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v192/terminal_fixture.txt
+ python3 - <<'VERIFY'
+ from ament_index_python.packages import get_package_prefix
+ assert get_package_prefix('lite3_nav2_bridge')=='/task/recovery_v191/install/lite3_nav2_bridge'
+@@ -65,7 +65,7 @@
+                 'scan_nav2_controller','lite3_nav2_bridge','scan_reactive_tracker']:
+  assert get_package_prefix(package)=='/task/recovery_v191/install/'+package
+ assert get_package_prefix('pct_planner')=='/task/recovery_v175/install/pct_planner'
+-print('V191_UNDERLAY_IDENTITY_PASS')
++print('V192_UNDERLAY_IDENTITY_PASS')
+ VERIFY
+ '''
+     (output/'build.sh').write_text(script)
+@@ -78,7 +78,7 @@
+     with (output/'build.log').open('w') as stream:
+         subprocess.run(command,stdout=stream,stderr=subprocess.STDOUT,check=True,timeout=600)
+     log = (output/'build.log').read_text()
+-    assert '11 packages finished' in log and 'V176_TERMINAL_CAPTURE_PASS' in log and 'V191_CORNER_LOOKAHEAD_PASS' in log and 'V191_UNDERLAY_IDENTITY_PASS' in log
++    assert '11 packages finished' in log and 'V176_TERMINAL_CAPTURE_PASS' in log and 'V191_CORNER_LOOKAHEAD_PASS' in log and 'V192_UNDERLAY_IDENTITY_PASS' in log
+     assert 'Summary: 45 tests, 0 errors, 0 failures, 0 skipped' in log
+     files = dict(original['files'])
+     for directory in ('src','install'):
+--- v191/close_trial.py
++++ v192/close_trial.py
+@@ -7,8 +7,8 @@
+ sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+ def main():
+  p=argparse.ArgumentParser();p.add_argument('--attempt',type=int,required=True);a=p.parse_args()
+- tag=f'v191_full_candidate_attempt{a.attempt:02d}'
+- trial=TASK/'trials'/tag;r=trial/'runs'/tag;out=TASK/'results/v191_full_repeats'/tag;out.mkdir(parents=True,exist_ok=False)
++ tag=f'v192_full_candidate_attempt{a.attempt:02d}'
++ trial=TASK/'trials'/tag;r=trial/'runs'/tag;out=TASK/'results/v192_full_repeats'/tag;out.mkdir(parents=True,exist_ok=False)
+  execution=json.loads((trial/'evidence/execution.json').read_text())
+  (out/'execution.json').write_text(json.dumps(execution,indent=2)+'\n')
+  try:
+--- v191/freeze_host.py
++++ v192/freeze_host.py
+@@ -1,4 +1,4 @@
+-"""Freeze the v191 Option B direct Nav2+SCAN candidate with v190 as its version parent."""
++"""Freeze the v192 Option B direct Nav2+SCAN candidate with v191 as its version parent."""
+ from pathlib import Path
+ import argparse
+ import hashlib
+@@ -27,7 +27,7 @@
+             raise ValueError('Source/snapshot changed: '+name)
+     if sha(HERE/'quality.json') != manifest['quality_sha256']:
+         raise ValueError('Quality identity changed')
+-    if sha(HERE.parent/'v190/manifest.json') != manifest['parent_manifest_sha256']:
++    if sha(HERE.parent/'v191/manifest.json') != manifest['parent_manifest_sha256']:
+         raise ValueError('Parent identity changed')
+     inputs = json.loads((HERE/'runtime_sync_manifest.json').read_text())
+     for name, expected in inputs['files'].items():
+@@ -41,13 +41,13 @@
+     if (HERE/'manifest.json').exists():
+         raise ValueError('Never overwrite a frozen version')
+     verify_quality()
+-    previous = json.loads((HERE.parent/'v190/manifest.json').read_text())
++    previous = json.loads((HERE.parent/'v191/manifest.json').read_text())
+     files, locations = dict(previous['source_files']), dict(previous['snapshot_locations'])
+     selected = [p for p in HERE.iterdir() if p.is_file() and
+                 (p.suffix in ('.py', '.sh', '.yaml', '.cpp') or p.name in (
+                     'CMakeLists.txt', 'Dockerfile', 'Dockerfile.dependencies', 'docker', 'lsof', 'corner_scenario.json',
+                     'navigation_contract.json', 'mission_bridge_input.json', 'physical_floor_input.json', 'runtime_sync_manifest.json',
+-                    'goal_failure_input.json', 'native_sources.json', 'source_audit.json', 'support_coverage_input.json', 'global_map_input.json', 'full_route_input.json', 'terminal_fixture.json', 'terminal_fixture.txt', 'PLAN.md', 'query_mask.cpp'))]
++                    'goal_failure_input.json', 'native_sources.json', 'source_audit.json', 'support_coverage_input.json', 'global_map_input.json', 'full_route_input.json', 'terminal_fixture.json', 'terminal_fixture.txt', 'PLAN.md', 'changes.patch', 'query_mask.cpp'))]
+     selected.append(HERE.parent / 'v156/probe.cpp')
+     selected.extend(p for p in (HERE/'src').rglob('*') if p.is_file() and '__pycache__' not in p.parts)
+     selected.extend(p for p in (HERE/'contract').rglob('*') if p.is_file() and '__pycache__' not in p.parts)
+@@ -64,9 +64,9 @@
+         snapshot.parent.mkdir(parents=True, exist_ok=True)
+         shutil.copyfile(path, snapshot)
+         files[name], locations[name] = digest, str(snapshot.relative_to(ROOT))
+-    manifest = {'version': 'v191', 'parent': 'v190',
+-                'parent_manifest_sha256': sha(HERE.parent/'v190/manifest.json'),
+-                'status': 'frozen_option_b_direct_nav2_scan_candidate',
++    manifest = {'version': 'v192', 'parent': 'v191',
++                'parent_manifest_sha256': sha(HERE.parent/'v191/manifest.json'),
++                'status': 'frozen_shared_state_harness_candidate',
+                 'platform': 'Mac ARM64 / Ubuntu 20.04 ROS 2 Foxy ARM64 container / CPU Newton',
+                 'native_binary_underlay': 'v176',
+                 'native_variants': {'candidate': 'v191'},
+--- v191/long_route_driver.py
++++ v192/long_route_driver.py
+@@ -1,6 +1,7 @@
+ """Request one native long PCT route and require arrival plus PD standing."""
+ import argparse
+ import importlib.util
++from functools import partial
+ from pathlib import Path
+ import time
+ 
+@@ -8,6 +9,9 @@
+ spec = importlib.util.spec_from_file_location("verified_geometry_driver", source)
+ driver = importlib.util.module_from_spec(spec)
+ spec.loader.exec_module(driver)
++# Mac VirtioFS may expose an older atomic replacement briefly. This applies
++# only to driver observation; command watchdogs and native freshness stay fixed.
++driver.snapshot_ok = partial(driver.snapshot_ok, max_age_s=10.0)
+ 
+ 
+ def fixed_stand(snapshot):
+@@ -37,7 +41,7 @@
+         driver.wait_http_ready(base, journal, snapshots, run_id, epoch)
+         deadline, stable_since = time.monotonic() + 90., None
+         while time.monotonic() < deadline:
+-            snap = driver.wait_snapshot(snapshots, run_id, timeout_s=2.)
++            snap = driver.wait_snapshot(snapshots, run_id, timeout_s=15.0)
+             stable = (fixed_stand(snap) and driver.snapshot_ready_to_walk(snap)
+                       and driver.health_ready(health, run_id, epoch))
+             stable_since = (snap["sim_time_s"] if stable_since is None else stable_since) if stable else None
+@@ -57,7 +61,7 @@
+         deadline = time.monotonic() + scenario["max_wall_seconds"]
+         arrived, hold_since, unhealthy_since = None, None, None
+         while time.monotonic() < deadline:
+-            snap = driver.wait_snapshot(snapshots, run_id, timeout_s=2.)
++            snap = driver.wait_snapshot(snapshots, run_id, timeout_s=15.0)
+             state = driver.get_json(base, "/state")
+             healthy = driver.health_ready(health, run_id, epoch)
+             unhealthy_since = None if healthy else (unhealthy_since or time.monotonic())
+--- v191/mac_managed.py
++++ v192/mac_managed.py
+@@ -14,6 +14,6 @@
+ namespace['verify_prepared_mount']=verify_prepared_mount
+ exec(compile(text.replace(old,'verify_prepared_mount(run)'),str(source),'exec'),namespace)
+ managed_run.main=namespace['main']
+-managed_run.a.BASE=Path(os.environ['V191_TEMP_ROOT'])
++managed_run.a.BASE=Path(os.environ['V192_TEMP_ROOT'])
+ managed_run.a.AUDIT=managed_run.a.BASE/'artifact_audit'
+ raise SystemExit(managed_run.main())
+--- v191/mac_supervisor.py
++++ v192/mac_supervisor.py
+@@ -15,13 +15,13 @@
+     text=source.read_text();old='out.mkdir(parents=True, exist_ok=False)'
+     assert text.count(old)==1
+     index=sys.argv.index('--run-id');run_id=sys.argv[index+1]
+-    root=Path(os.environ['V191_TEMP_ROOT'])
++    root=Path(os.environ['V192_TEMP_ROOT'])
+     if platform.system() == 'Darwin':
+-        assert root.parent == Path('/private/tmp/vla_stop_audit_20261012') and root.name.startswith('v191_')
++        assert root.parent == Path('/private/tmp/vla_stop_audit_20261012') and root.name.startswith('v192_')
+     else:
+-        assert root.parent==Path('/data/sun/vla_mppi_20261009/trials') and root.name.startswith('v191_')
++        assert root.parent==Path('/data/sun/vla_mppi_20261009/trials') and root.name.startswith('v192_')
+     verify_prepared_mount(root/'runs'/run_id)
+-    spec=importlib.util.spec_from_file_location('v191_original_supervisor',source)
++    spec=importlib.util.spec_from_file_location('v192_original_supervisor',source)
+     module=importlib.util.module_from_spec(spec)
+     text=text.replace(old,'out.mkdir(parents=True, exist_ok=True)')
+     rss='resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss'
+--- v191/mission_bridge_input.json
++++ v192/mission_bridge_input.json
+@@ -1,5 +1,5 @@
+ {
+-  "schema": "v191_direct_nav2_mission",
++  "schema": "v192_direct_nav2_mission",
+   "http": {"host": "127.0.0.1", "port": 8785},
+   "map": {
+     "epoch": "stair_reactive_coverage_v135",
+--- v191/native_gate.py
++++ v192/native_gate.py
+@@ -1,4 +1,4 @@
+-"""Require qualified v191 Option B Mac ARM64 source/install and preflight evidence."""
++"""Require native v191 ARM64 source/install and v192 harness preflight evidence."""
+ from pathlib import Path
+ import hashlib
+ import json
+@@ -35,10 +35,10 @@
+ def verify(build, manifest):
+     if build.resolve() != HERE or sha(HERE/'quality.json') != manifest['quality_sha256']:
+         raise ValueError('Wrong source or component quality identity')
+-    variant = os.environ['V191_VARIANT']
++    variant = os.environ['V192_VARIANT']
+     if variant != 'candidate':
+         raise ValueError('Only the tested Mac candidate is qualified')
+-    path = Path(os.environ['V191_BUILD_EVIDENCE'])/'build_receipt.json'
++    path = Path(os.environ['V192_BUILD_EVIDENCE'])/'build_receipt.json'
+     quality = json.loads((HERE/'quality.json').read_text())
+     validate_quality(quality)
+     receipt = json.loads(path.read_text())
+@@ -50,7 +50,7 @@
+             or receipt['variant'] != variant or receipt['native_version'] != 'v191'
+             or receipt['native_packages_available'] != 14):
+         raise ValueError('Wrong execution platform/variant')
+-    container = os.environ['V191_NATIVE_CONTAINER']
++    container = os.environ['V192_NATIVE_CONTAINER']
+     image = subprocess.check_output(['docker', 'inspect', '--format', '{{.Image}}', container], text=True).strip()
+     if image != receipt['image_id']:
+         raise ValueError('Image differs from tested image')
+--- v191/native_graph.py
++++ v192/native_graph.py
+@@ -20,12 +20,14 @@
+     args = parser.parse_args()
+     out = args.output
+     request = json.loads((out / "episode_request.json").read_text())
+-    if request.get("integration_version") != "v191":
+-        raise ValueError("v191 graph requires the frozen v191 integration identity")
++    if request.get("integration_version") != "v192":
++        raise ValueError("v192 graph requires the frozen v192 integration identity")
++    if request.get("applied_transport") != "shared":
++        raise ValueError("v192 requires shared applied-state storage")
+     contract = json.loads((VERSION / "navigation_contract.json").read_text())
+     variant = request["native_variant"]
+     if variant != "candidate":
+-        raise ValueError("v191 requires the Option B candidate")
++        raise ValueError("v192 requires the Option B candidate")
+     epoch = request["run_epoch_ns"]
+     sources = BASE / "runtime_sources"
+     cfg = BASE / "config_archived"
+@@ -50,8 +52,6 @@
+     try:
+         launch("frequency_observer", [py, str(VERSION / "frequency_observer.py"), "--output", str(out)])
+         launch("clock_responder", [py, str(BASE / "scripts/clock_sync.py"), "--port", "24602"])
+-        if request["applied_transport"] == "zmq":
+-            launch("applied_receiver", [py, str(VERSION / "applied_channel.py"), "--output", str(out)])
+         flat = request.get("scene") in ("flat_static", "flat_box", "flat_empty_long")
+         long_route = request.get("scene") == "flat_empty_long"
+         map_path = (BASE / "repairs/2026-09-26_generic_occupancy/flat_inputs_v2/flat_floor.pickle"
+--- v191/newton_episode.py
++++ v192/newton_episode.py
+@@ -104,8 +104,6 @@
+     last_snapshot = None
+     started = time.monotonic()
+     failed_driver_at = None
+-    applied_client = None
+-    applied_log = (out / "applied_sent.jsonl").open("w")
+     asynchronous = request.get("async_sensor_evidence", False)
+     if asynchronous and (human is not None or request.get("scene") not in ("flat_empty_long", "building_full")):
+         raise ValueError("Captured-state sensing requires a static scene without an animated actor")
+@@ -138,17 +136,6 @@
+         telemetry.start()
+         if request.get("body_publish_substeps", 20) < 20:
+             robot.physics_observer = physical_body_observer
+-        if request["applied_transport"] == "zmq":
+-            # Scene imports alter sys.path; bind the version-owned client
+-            # explicitly instead of silently resolving the older scripts copy.
+-            import importlib.util
+-            channel_path = Path(__file__).resolve().parent / "applied_channel.py"
+-            channel_spec = importlib.util.spec_from_file_location("version_applied_channel", channel_path)
+-            channel_module = importlib.util.module_from_spec(channel_spec)
+-            channel_spec.loader.exec_module(channel_module)
+-            applied_client = channel_module.AppliedClient()
+-            atomic_json(out / "applied_client_source.json", {"path": str(channel_path),
+-                "sha256": hashlib.sha256(channel_path.read_bytes()).hexdigest()})
+         (out / "initial_clock.json").write_text(json.dumps(asdict(estimate), indent=2) + "\n")
+         atomic_json(out / "startup_pacing.json", pacer.snapshot(robot.physics_time()))
+         # The 1:1 navigation video starts from the measured initialized state.
+@@ -256,19 +243,10 @@
+                     # The v1 applied-state schema requires a real policy-observation
+                     # error. During PD-only startup no such observation exists;
+                     # keep readiness missing rather than publish a fabricated zero.
+-                    if robot.policy_calls > 0 and (applied_client is None or not asynchronous):
+-                        atomic_json(external / "current_command.json", applied)
+-                    if applied_client is not None and robot.policy_calls > 0:
+-                        try:
+-                            ack = applied_client.publish(applied)
+-                        except Exception:
+-                            atomic_json(out / "applied_client_failure.json", applied_client.last_attempt)
+-                            raise
+-                        ack["client_timing"] = dict(applied_client.last_attempt)
+-                        record(save_line, applied_log, {"sha256": ack["sha256"], "snapshot": applied, "ack": ack})
+-                        finish = ack.get("finish_request")
+-                        if finish is not None:
+-                            atomic_json(external / "finish_request.json", finish)
++                    if robot.policy_calls > 0:
++                        # The existing ordered writer keeps VirtioFS writes out
++                        # of the 20 ms physics/control interval.
++                        record(atomic_json, external / "current_command.json", applied)
+                 except ClockUnavailable:
+                     row["applied_snapshot_not_refreshed"] = "clock_unsynchronized"
+                 if pending_scan is not None and pending_scan[0].done():
+@@ -319,7 +297,7 @@
+                          "base": pose["position"], "backend_error": last_http_error,
+                          "goal_sent": goal_sent}), flush=True)
+                 finish_path = external / "finish_request.json"
+-                if applied_client is None and finish_path.exists():
++                if finish_path.exists():
+                     finish = json.loads(finish_path.read_text())
+                 if not request["probe"] and finish is not None:
+                     if finish.get("run_id") != out.name or finish.get("observed_run_epoch_ns") != epoch:
+@@ -366,26 +344,6 @@
+             results["probe_passed"] = bool(last_backend and last_backend["readiness"]["body_pose_ready"]
+                 and last_backend["readiness"]["applied_snapshot"].get("ready") and commands.stats().frames_received > 10
+                 and telemetry.stats().frames_sent > 100 and sensor_ready)
+-            if applied_client is not None:
+-                import copy
+-                refused = []
+-                for kind in ("stale", "future", "foreign", "duplicate"):
+-                    bad = copy.deepcopy(applied)
+-                    if kind != "duplicate":
+-                        bad["state_epoch"]["state_sequence"] += 1
+-                    if kind == "stale":
+-                        bad["wall_monotonic_ns"] = 0
+-                    elif kind == "future":
+-                        bad["wall_monotonic_ns"] += 10_000_000_000
+-                    elif kind == "foreign":
+-                        bad["run_id"] = "foreign-run"
+-                    try:
+-                        applied_client.publish(bad)
+-                    except RuntimeError:
+-                        refused.append(kind)
+-                    else:
+-                        raise AssertionError("Invalid applied state accepted: " + kind)
+-                results["applied_channel_negative_controls"] = refused
+         (out / "result.json").write_text(json.dumps(results, indent=2) + "\n")
+         print(json.dumps({k: v for k, v in results.items() if k != "last_backend"}, indent=2), flush=True)
+         if request["probe"] and not results["probe_passed"]:
+@@ -404,9 +362,6 @@
+         commands.stop()
+         telemetry.stop()
+         clock.stop()
+-        applied_log.close()
+-        if applied_client is not None:
+-            applied_client.close()
+ 
+ 
+ if __name__ == "__main__":
+--- v191/physical_floor_publisher.py
++++ v192/physical_floor_publisher.py
+@@ -16,7 +16,7 @@
+         super().__init__('pct_physical_floor_publisher')
+         info=json.loads((HERE/'physical_floor_input.json').read_text())
+         assert info['role']=='physical_floor_presence_only' and not info['traversal_authority'] and not info['terrain_return_classification_authority']
+-        data=Path(os.environ['V191_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
++        data=Path(os.environ['V192_PHYSICAL_FLOOR']).read_bytes();assert hashlib.sha256(data).hexdigest()==info['files']['physical_floor.f32']['sha256']
+         self.points=np.frombuffer(data,dtype='<f4').reshape(-1,4)
+         assert len(self.points)==info['files']['physical_floor.f32']['points'] and np.isfinite(self.points).all()
+         self.gate=SimClockGate();qos=QoSProfile(depth=1,reliability=QoSReliabilityPolicy.RELIABLE,durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+--- v191/qualify_mac.py
++++ v192/qualify_mac.py
+@@ -1,4 +1,4 @@
+-"""Write complete pre-freeze Mac v191 Option B quality from actual build, host and graph evidence."""
++"""Write complete pre-freeze Mac v192 Option B quality from actual build, host and graph evidence."""
+ from pathlib import Path
+ import argparse
+ import json
+@@ -14,16 +14,18 @@
+     task = validate_task(args.task_root)
+     evidence = task / 'evidence'
+     receipt = json.loads((evidence / 'v191_native_receipt.json').read_text())
+-    host = json.loads((evidence / 'v191_host_tests.json').read_text())
+-    graph = json.loads((evidence / 'v191_native_graph_preflight.json').read_text())
+-    loaded = json.loads((evidence / 'v191_overlay_loaded.json').read_text())
+-    protected = json.loads((evidence / 'v191_protected_comparison.json').read_text())
++    host = json.loads((evidence / 'v192_host_tests.json').read_text())
++    graph = json.loads((evidence / 'v192_native_graph_preflight.json').read_text())
++    loaded = json.loads((evidence / 'v192_overlay_loaded.json').read_text())
++    protected = json.loads((evidence / 'v192_protected_comparison.json').read_text())
+     assert protected['passed'] and all(row['passed'] for row in protected['paths'].values())
+-    assert protected['baseline_sha256'] == sha(evidence / 'v191_protected_before.json')
++    assert protected['baseline_sha256'] == sha(evidence / 'v192_protected_before.json')
+     assert receipt['passed'] and receipt['native_version'] == 'v191'
+     assert host['passed'] and host['host'] == 'Darwin/arm64'
+     assert host['errors'] == host['failures'] == host['skipped'] == 0
+     assert graph['passed'] and not graph['physics_advanced'] and loaded['passed']
++    assert graph['applied_transport'] == 'shared' and graph['shared_mount_bidirectional_verified']
++    assert protected['native_source_unchanged']
+     assert graph['generated_finish_dist_m'] == 0.02
+     assert graph['route_lookahead_heading_enabled'] is True and graph['route_lookahead_dist'] == 0.5
+     assert graph['navigation_goal_sent'] is False
+@@ -37,7 +39,7 @@
+     assert all(row['native_libraries'] == ['/task/recovery_v191/install/scan_planner/lib/libscan_native_core.so']
+                for row in loaded['processes'])
+     tests = receipt['tests']
+-    quality = dict(passed=True, native_version='v191', execution_platform=receipt['platform'],
++    quality = dict(passed=True, integration_version='v192', native_build_reused=True, native_version='v191', execution_platform=receipt['platform'],
+         native_packages_available=receipt['native_packages_available'], rebuilt_packages=11,
+         native_colcon_summary=tests['colcon_summary'],
+         unique_controller_gtest_cases=tests['unique_gtest_cases'],
+@@ -46,11 +48,11 @@
+         native_terminal_regressions=tests['terminal_markers'] == ['V176_TERMINAL_CAPTURE_PASS', 'V191_CORNER_LOOKAHEAD_PASS'],
+         generated_profile_cases=tests['generated_profile_cases'], host_tests=host['tests'],
+         runtime_receipts={'candidate': sha(evidence / 'v191_native_receipt.json')},
+-        actual_graph_verified=True, native_graph_preflight_sha256=sha(evidence / 'v191_native_graph_preflight.json'),
++        actual_graph_verified=True, native_graph_preflight_sha256=sha(evidence / 'v192_native_graph_preflight.json'),
+         graph_lifecycle_states=expected_states, graph_synthetic_fixture=graph['synthetic_fixture'],
+         physics_advanced=False, navigation_goal_sent=False, scan_execution=graph['scan_execution'],
+-        overlay_loaded_sha256=sha(evidence / 'v191_overlay_loaded.json'),
+-        host_test_results_sha256=sha(evidence / 'v191_host_tests.json'),
++        overlay_loaded_sha256=sha(evidence / 'v192_overlay_loaded.json'),
++        host_test_results_sha256=sha(evidence / 'v192_host_tests.json'),
+         full_navigation_accepted=False,
+         claim='Component and live graph qualification for Mac ARM64 Option B direct Nav2+SCAN; full-route results are appended separately.')
+     validate_quality(quality)
+@@ -60,10 +62,11 @@
+     output.mkdir(exist_ok=False)
+     paths = [evidence / name for name in [
+         'v191_native_receipt.json', 'v191_native_build.log', 'v191_build_request.json',
+-        'v191_native_graph_preflight.json', 'v191_overlay_loaded.json',
+-        'v191_graph_preflight.log', 'before_graph_repair_v191_graph_preflight.log',
+-        'v191_host_tests.json', 'v191_host_tests.log',
+-        'v191_protected_before.json', 'v191_protected_comparison.json']]
++        'v192_native_graph_preflight.json', 'v192_overlay_loaded.json',
++        'v192_graph_preflight.log',
++        'v192_host_tests.json', 'v192_host_tests.log',
++        'v192_protected_before.json', 'v192_protected_comparison.json',
++        'v191_RESULTS_before_v192.md']]
+     paths += sorted((task / 'recovery_v191/build/scan_nav2_controller/test_results/scan_nav2_controller').glob('*.gtest.xml'))
+     for path in paths:
+         shutil.copyfile(path, output / path.name)
+@@ -72,8 +75,6 @@
+                  'selected_route_map.json', 'backend_config.json', 'backend_latest.json',
+                  'inspect_overlay.py', 'preflight_tf.log'):
+         shutil.copyfile(graph_root / name, output / ('graph_' + name))
+-    previous_graph = task / 'v191_overlay_preflight_interrupted_before_resume/runs/v191_overlay_graph_probe'
+-    shutil.copyfile(previous_graph / 'nav2.log', output / 'before_graph_repair_nav2.log')
+     shutil.copyfile(task / 'restore_archives/local_manifest.json', output / 'environment_archives.json')
+     shutil.copyfile(task / 'restore_archives/remote_sha256.txt', output / 'environment_remote_sha256.txt')
+     shutil.copyfile(task / 'recovery_v191/source_identity.json', output / 'native_source_identity.json')
+--- v191/resource_gate.py
++++ v192/resource_gate.py
+@@ -6,7 +6,7 @@
+  available=int(m['MemAvailable'].split()[0])*1024
+  gpu=subprocess.check_output(['nvidia-smi','--query-compute-apps=pid,process_name,used_memory','--format=csv,noheader'],text=True).strip()
+  low,high=map(int,Path('/proc/sys/net/ipv4/ip_local_port_range').read_text().split())
+- if any(low<=port<=high for port in (24600,24601,24602,24603,24651)):raise RuntimeError('Service ports overlap ephemeral range')
++ if any(low<=port<=high for port in (24600,24601,24602,24651)):raise RuntimeError('Service ports overlap ephemeral range')
+  free=shutil.disk_usage('/data/sun/vla_mppi_20261009').free
+  record={'utc_epoch_s':time.time(),'available_bytes':available,'gpu_compute':gpu,'free_disk_bytes':free,'minimum_available_bytes':20*1024**3}
+  if available<20*1024**3 or gpu or free<10*1024**3:raise RuntimeError('Resource admission held: '+json.dumps(record))
+@@ -18,7 +18,7 @@
+  begin=time.monotonic()
+  while True:
+   occupied=[]
+-  for port in (24600,24601,24602,24603,24651,8785):
++  for port in (24600,24601,24602,24651,8785):
+    try:
+     with socket.socket() as probe:probe.bind(('0.0.0.0',port))
+    except OSError:occupied.append(port)
+--- v191/run_cohort.py
++++ v192/run_cohort.py
+@@ -4,13 +4,13 @@
+ HERE=Path(__file__).resolve().parent
+ TASK=Path('/data/sun/vla_mppi_20261009')
+ def main():
+- out=TASK/'results/v191_full_repeats';out.mkdir(exist_ok=False)
++ out=TASK/'results/v192_full_repeats';out.mkdir(exist_ok=False)
+  for attempt in range(1,6):
+   with (out/f'attempt{attempt:02d}.log').open('w') as log:
+    r=subprocess.run([sys.executable,str(HERE/'run_remote_full.py'),'--variant','candidate','--attempt',str(attempt)],stdout=log,stderr=subprocess.STDOUT)
+-   if not (TASK/f'trials/v191_full_candidate_attempt{attempt:02d}/evidence/execution.json').exists():raise RuntimeError('Admission failed; do not proceed: '+str(attempt))
++   if not (TASK/f'trials/v192_full_candidate_attempt{attempt:02d}/evidence/execution.json').exists():raise RuntimeError('Admission failed; do not proceed: '+str(attempt))
+    c=subprocess.run([sys.executable,str(HERE/'close_trial.py'),'--attempt',str(attempt)],stdout=log,stderr=subprocess.STDOUT)
+   if c.returncode:raise RuntimeError('Closeout failed; preserve before next trial')
+-  summary=json.loads((out/f'v191_full_candidate_attempt{attempt:02d}/outcome.json').read_text());print(json.dumps(summary),flush=True)
++  summary=json.loads((out/f'v192_full_candidate_attempt{attempt:02d}/outcome.json').read_text());print(json.dumps(summary),flush=True)
+   if r.returncode or 'analysis_error' in summary:raise RuntimeError('Infrastructure failure; diagnose before next trial')
+ if __name__=='__main__':main()
+--- v191/run_host_tests.py
++++ v192/run_host_tests.py
+@@ -6,7 +6,7 @@
+ import unittest
+ from run_mac_full import validate_task
+ 
+-MODULES = ['test_applied_transport', 'test_initial_frame', 'test_full_route',
++MODULES = ['test_shared_state', 'test_snapshot_reader', 'test_initial_frame', 'test_full_route',
+            'test_native_gate', 'test_mac_supervisor', 'test_source_inventory']
+ 
+ 
+@@ -17,12 +17,12 @@
+     task = validate_task(args.task_root)
+     assert (platform.system(), platform.machine()) == ('Darwin', 'arm64')
+     suite = unittest.defaultTestLoader.loadTestsFromNames(MODULES)
+-    with (task / 'evidence/v191_host_tests.log').open('w') as stream:
++    with (task / 'evidence/v192_host_tests.log').open('w') as stream:
+         result = unittest.TextTestRunner(stream=stream, verbosity=2).run(suite)
+     summary = dict(passed=result.wasSuccessful() and not result.skipped,
+                    host='Darwin/arm64', modules=MODULES, tests=result.testsRun,
+                    failures=len(result.failures), errors=len(result.errors), skipped=len(result.skipped))
+-    (task / 'evidence/v191_host_tests.json').write_text(json.dumps(summary, indent=2) + '\n')
++    (task / 'evidence/v192_host_tests.json').write_text(json.dumps(summary, indent=2) + '\n')
+     print(json.dumps(summary))
+     if not summary['passed']:
+         raise SystemExit(1)
+--- v191/run_local_episode.py
++++ v192/run_local_episode.py
+@@ -1,4 +1,4 @@
+-"""Own one local native-ROS container and one bounded Newton episode (v191 Option B)."""
++"""Own one local native-ROS container and one bounded Newton episode (v192 Option B)."""
+ import argparse
+ import hashlib
+ import json
+@@ -9,60 +9,13 @@
+ import shutil
+ import subprocess
+ import sys
+-import tarfile
+ import time
+ 
+ VERSION = Path(__file__).resolve().parent
+ BASE = VERSION.parents[1]
+ PROJECT = BASE.parents[2]
+ BUILD = VERSION
+-IMAGE = os.environ.get("V191_EXECUTION_IMAGE")
+-
+-
+-def return_linux_state(name, out):
+-    """Read the mounted tmpfs, using Docker's documented exec/tar method."""
+-    returned = out / "returned_external_episode"
+-    returned.mkdir(exist_ok=True)
+-    archive = out / "linux_external_episode.tar"
+-    receipt = {"method": "docker exec tar", "verified": False,
+-        "reference": "https://docs.docker.com/reference/cli/docker/container/cp/#corner-cases"}
+-    try:
+-        with archive.open("wb") as stream:
+-            copied = subprocess.run(["docker", "exec", name, "tar", "-C",
+-                str(out / "artifacts/external_episode"), "-cf", "-", "."],
+-                stdout=stream, stderr=subprocess.PIPE, timeout=15)
+-        receipt.update(exit_code=copied.returncode, stderr=copied.stderr.decode(errors="replace"))
+-        copied.check_returncode()
+-        with tarfile.open(archive) as bundle:
+-            for member in bundle:
+-                if member.isdir():
+-                    continue
+-                target = returned / member.name
+-                if (not member.isfile() or member.size > 8 * 1024**2
+-                        or not target.resolve().is_relative_to(returned.resolve())):
+-                    raise ValueError("Unexpected state archive member: " + member.name)
+-                target.parent.mkdir(parents=True, exist_ok=True)
+-                with bundle.extractfile(member) as source:
+-                    target.write_bytes(source.read())
+-        hashes = {str(p.relative_to(returned)): hashlib.sha256(p.read_bytes()).hexdigest()
+-                  for p in returned.rglob("*") if p.is_file()}
+-        audit = returned / "applied_channel.jsonl"
+-        if not audit.is_file():
+-            raise ValueError("Missing returned Linux applied-state audit")
+-        shutil.copyfile(audit, out / "applied_channel.jsonl")
+-        last_ack = None
+-        with (out / "applied_sent.jsonl").open() as sent:
+-            for line in sent:
+-                last_ack = json.loads(line)["ack"]
+-        receipt.update(files_sha256=hashes, last_ack=last_ack,
+-                       archive_sha256=hashlib.sha256(archive.read_bytes()).hexdigest())
+-        if last_ack is None or hashes.get("current_command.json") != last_ack["sha256"]:
+-            raise ValueError("Returned Linux state does not match the last acknowledged bytes")
+-        receipt["verified"] = True
+-    except Exception as error:
+-        receipt["error"] = repr(error)
+-    (out / "state_copyback.json").write_text(json.dumps(receipt, indent=2) + "\n")
+-    return receipt["verified"]
++IMAGE = os.environ.get("V192_EXECUTION_IMAGE")
+ 
+ 
+ def verify_integration_version(out, version=None):
+@@ -120,7 +73,7 @@
+     parser = argparse.ArgumentParser()
+     parser.add_argument("--probe", action="store_true")
+     parser.add_argument("--backend-executor", choices=("multi", "single"), default="multi")
+-    parser.add_argument("--applied-transport", choices=("shared", "zmq"), default="shared")
++    parser.add_argument("--applied-transport", choices=("shared",), default="shared")
+     parser.add_argument("--native-build", type=Path, default=BUILD)
+     parser.add_argument("--geometry-obstacles", action="store_true")
+     parser.add_argument("--static-human", action="store_true")
+@@ -136,7 +89,7 @@
+     parser.add_argument("--recording-sim-seconds", type=float, default=90.)
+     args = parser.parse_args()
+     if args.scene != "building_full" or args.real_time_factor != 1. or args.physics_backend != "warp":
+-        parser.error("v191 records the complete Building with the qualified CPU graph at target RTF 1")
++        parser.error("v192 records the complete Building with the qualified CPU graph at target RTF 1")
+     if not 20. <= args.recording_sim_seconds <= 600.:
+         parser.error("recording-sim-seconds must be within [20,600]")
+     long_route = args.scene == "flat_empty_long"
+@@ -174,8 +127,8 @@
+     if shutil.disk_usage(BASE).free < 10 * 1024**3:
+         raise RuntimeError("Less than10GiB free")
+     integration_version = verify_integration_version(out, args.integration_version)
+-    if integration_version != "v191":
+-        raise ValueError("This entry point requires frozen integration version v191")
++    if integration_version != "v192":
++        raise ValueError("This entry point requires frozen integration version v192")
+     frozen = json.loads((VERSION / "manifest.json").read_text())
+     verify_native_build(build, frozen)
+     if args.geometry_obstacles:
+@@ -198,7 +151,7 @@
+     planner_config = args.planner_config or (VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml"))
+     expected_config = VERSION / ("flat_planner.yaml" if args.scene.startswith("flat_") else "building_planner.yaml")
+     if planner_config.resolve() != expected_config.resolve():
+-        raise ValueError("Planner configuration must be the selected frozen v191 configuration")
++        raise ValueError("Planner configuration must be the selected frozen v192 configuration")
+     shutil.copyfile(planner_config, out / "planner.yaml")
+     if args.geometry_obstacles:
+         driver = BASE / "repairs/2026-09-26_generic_occupancy/geometry_driver.py"
+@@ -234,7 +187,7 @@
+         "scene": args.scene,
+         "building_route_profile": args.building_route if full_building else None,
+         "integration_version": integration_version,
+-        "native_variant": os.environ["V191_VARIANT"],
++        "native_variant": os.environ["V192_VARIANT"],
+         "execution_host": platform.node(),
+         "execution_host_platform": platform.system() + "/" + platform.machine(),
+         "native_platform": qualification['execution_platform'],
+@@ -260,7 +213,7 @@
+         shutil.copyfile(path, out / ("executed_" + path.name))
+     shutil.copyfile(VERSION / "long_route_driver.py", out / "executed_long_route_driver.py")
+     for name in ("run_local_episode.py", "native_graph.py", "navigation_contract.json", "newton_episode.py", "realtime_pacer.py", "frequency_observer.py", "native_observer.py", "nav2_recorder.py", "initial_frame_v142.py"):
+-        shutil.copyfile(VERSION / name, out / ("executed_v191_" + name))
++        shutil.copyfile(VERSION / name, out / ("executed_v192_" + name))
+     shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/lite3_newton.py", out / "executed_lite3_newton.py")
+     if args.stance_hold:
+         shutil.copyfile(BASE.parent / "2026-09-26_newton_macos_policy/scripts/newton_stance.py", out / "executed_newton_stance.py")
+@@ -283,8 +236,8 @@
+         "export PYTHONPATH=" + shlex.quote(pythonpath) + ':"${PYTHONPATH:-}"',
+         "exec python3 " + shlex.quote(str(VERSION / "native_graph.py")) + " --output " + shlex.quote(str(out)), ""])
+     (out / "native_inside.sh").write_text(script)
+-    name = os.environ["V191_NATIVE_CONTAINER"]
+-    command = ["docker", "exec", "-e", "V191_PHYSICAL_FLOOR=" + os.environ["V191_PHYSICAL_FLOOR"],
++    name = os.environ["V192_NATIVE_CONTAINER"]
++    command = ["docker", "exec", "-e", "V192_PHYSICAL_FLOOR=" + os.environ["V192_PHYSICAL_FLOOR"],
+         name, "/bin/bash", str(out / "native_inside.sh")]
+     (out / "container_command.json").write_text(json.dumps(command, indent=2) + "\n")
+     with (out / "native_graph.log").open("w") as log:
+@@ -293,19 +246,18 @@
+             worker = subprocess.run([sys.executable, str(VERSION / "newton_episode.py")], timeout=1700 if extended_route else 500)
+             worker.check_returncode()
+         finally:
+-            copyback_ok = True
+-            if args.applied_transport == "zmq":
+-                copyback_ok = return_linux_state(name, out)
+             subprocess.run(["docker", "exec", name, "pkill", "-TERM", "-f", str(VERSION / "native_graph.py")],
+                            capture_output=True, text=True, timeout=10)
+             try:
+                 process.wait(timeout=10)
+             except subprocess.TimeoutExpired:
+                 process.terminate(); process.wait(timeout=5)
++            from shared_state import verify_shared_state
++            shared_ok = verify_shared_state(name, out)
+             subprocess.run(["docker", "stop", "--time", "5", name],capture_output=True,text=True,timeout=15)
+             subprocess.run(["docker", "rm", "-f", name],capture_output=True,text=True,timeout=15)
+-            if not copyback_ok:
+-                raise RuntimeError("Linux state copyback failed verification; see state_copyback.json")
++            if not shared_ok:
++                raise RuntimeError("Shared-state verification failed; see shared_state.json")
+ 
+ 
+ if __name__ == "__main__":
+--- v191/run_mac_full.py
++++ v192/run_mac_full.py
+@@ -1,4 +1,4 @@
+-"""Bounded original-spatial-start Mac trial with the qualified v191 Option B ARM64 overlay."""
++"""Bounded original-spatial-start Mac trial using the qualified native v191 Option B ARM64 overlay."""
+ from pathlib import Path
+ import argparse
+ import hashlib
+@@ -19,7 +19,7 @@
+ def validate_task(path):
+     path = path.resolve()
+     if path != Path('/private/tmp/vla_stop_audit_20261012'):
+-        raise ValueError('Expected the explicitly owned v191 Mac temporary root')
++        raise ValueError('Expected the explicitly owned v192 Mac temporary root')
+     return path
+ 
+ 
+@@ -31,10 +31,9 @@
+             '-e', 'ROS_HOME=' + str(evidence / 'ros_home'),
+             '-e', 'PYTHONDONTWRITEBYTECODE=1', '-e', 'OPENBLAS_NUM_THREADS=1',
+             '-e', 'OMP_NUM_THREADS=1',
+-            '-p', '127.0.0.1:24602:24602', '-p', '127.0.0.1:24603:24603',
++            '-p', '127.0.0.1:24602:24602',
+             '-v', f'{ROOT}:{ROOT}:ro', '-v', f'{ROOT}:/repo:ro',
+             '-v', f'{task}:/task:ro', '-v', f'{trial}:{trial}:rw',
+-            '--tmpfs', str(trial / 'runs' / run / 'artifacts/external_episode') + ':rw,size=8m',
+             '--entrypoint', '/bin/bash', image, '-c', 'exec sleep infinity']
+ 
+ 
+@@ -48,10 +47,10 @@
+     assert args.attempt > 0
+     subprocess.run([str(PYTHON), str(HERE / 'freeze_host.py'), 'verify'], check=True)
+     assert shutil.disk_usage(task).free >= 10 * 1024**3
+-    for port in (24600, 24601, 24602, 24603, 8785):
++    for port in (24600, 24601, 24602, 8785):
+         with socket.socket() as probe:
+             probe.bind(('127.0.0.1', port))
+-    run = f'v191_mac_full_attempt{args.attempt:02d}'
++    run = f'v192_mac_full_attempt{args.attempt:02d}'
+     trial = task / run
+     trial.mkdir(exist_ok=False)
+     (trial / 'scripts').mkdir()
+@@ -67,13 +66,13 @@
+     container = run.replace('_', '-')
+     env = os.environ.copy()
+     env.update(DOCKER_CONTEXT='desktop-linux', PYTHONDONTWRITEBYTECODE='1', PYTHONUNBUFFERED='1',
+-               V191_EXECUTION_IMAGE=image, V191_VARIANT='candidate', V191_TEMP_ROOT=str(trial),
+-               V191_NATIVE_CONTAINER=container, V191_BUILD_EVIDENCE=str(evidence),
+-               V191_PHYSICAL_FLOOR=str(trial / 'physical_floor.f32'),
++               V192_EXECUTION_IMAGE=image, V192_VARIANT='candidate', V192_TEMP_ROOT=str(trial),
++               V192_NATIVE_CONTAINER=container, V192_BUILD_EVIDENCE=str(evidence),
++               V192_PHYSICAL_FLOOR=str(trial / 'physical_floor.f32'),
+                PYTHONPATH=str(task / 'host_python') + ':' + str(BASE / 'runtime_sources/bridge'))
+     command = container_command(task, trial, evidence, container, image, run)
+     (evidence / 'request.json').write_text(json.dumps({
+-        'integration_version': 'v191', 'native_version': 'v191', 'host': 'Mac ARM64',
++        'integration_version': 'v192', 'native_version': 'v191', 'host': 'Mac ARM64',
+         'physics_device': 'cpu', 'scene': 'original Building historical_full',
+         'command': command, 'task_root': str(task),
+         'manifest_sha256': hashlib.sha256((HERE / 'manifest.json').read_bytes()).hexdigest(),
+@@ -90,13 +89,13 @@
+                                                  cwd=HERE, env=env, text=True, timeout=100))
+         (evidence / 'native_gate.json').write_text(json.dumps(gate, indent=2) + '\n')
+         subprocess.run([str(PYTHON), str(HERE / 'derive_mac_floor.py'), '--output',
+-                        env['V191_PHYSICAL_FLOOR']], env=env, check=True, timeout=30)
++                        env['V192_PHYSICAL_FLOOR']], env=env, check=True, timeout=30)
+         episode = [str(PYTHON), str(HERE / 'mac_managed.py'), '--run-id', run,
+                    '--deadline', '900', '--retention', 'archive', '--',
+                    str(PYTHON), str(HERE / 'run_local_episode.py'), '--backend-executor', 'single',
+-                   '--applied-transport', 'zmq', '--geometry-obstacles', '--scene', 'building_full',
++                   '--applied-transport', 'shared', '--geometry-obstacles', '--scene', 'building_full',
+                    '--building-route', 'historical_full', '--goal-wall-budget', '1500',
+-                   '--startup-mode', 'factory_pd', '--stance-hold', '--integration-version', 'v191',
++                   '--startup-mode', 'factory_pd', '--stance-hold', '--integration-version', 'v192',
+                    '--real-time-factor', '1', '--recording-sim-seconds', '600']
+         with (evidence / 'execution.log').open('w') as stream:
+             child = subprocess.run(episode, env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=940)
+--- v191/run_remote_full.py
++++ v192/run_remote_full.py
+@@ -28,18 +28,18 @@
+         raise ValueError('Attempt must be positive')
+     quality = json.loads((HERE/'quality.json').read_text())
+     if quality.get('execution_platform') != 'linux/amd64':
+-        raise ValueError('v191 Mac qualification does not authorize Linux execution')
++        raise ValueError('v192 Mac qualification does not authorize Linux execution')
+     from resource_gate import admit
+     from resource_gate import wait_for_ports
+     port_wait=wait_for_ports()
+     admission=admit()
+     admission["port_wait_seconds"]=port_wait
+-    tag = f'v191_full_{args.variant}_attempt{args.attempt:02d}'
++    tag = f'v192_full_{args.variant}_attempt{args.attempt:02d}'
+     temporary = TASK/'trials'/tag
+     temporary.mkdir(parents=True, exist_ok=False)
+     (temporary/'scripts').mkdir()
+     (temporary/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+-    # Linux Docker creates missing bind/tmpfs parents as root; create owned empty
++    # Linux Docker creates missing bind-mount parents as root; create owned empty
+     # directories before the mount so the host supervisor can write its evidence.
+     (temporary/'runs'/tag/'artifacts/external_episode').mkdir(parents=True)
+     evidence = temporary/'evidence'
+@@ -51,11 +51,11 @@
+     container = tag.replace('_', '-')
+     env = os.environ.copy()
+     env.update(PATH=str(HERE)+':'+env['PATH'], PYTHONDONTWRITEBYTECODE='1', PYTHONUNBUFFERED='1',
+-               V191_EXECUTION_IMAGE=receipt['image_id'], V191_VARIANT=args.variant,
+-               V191_TEMP_ROOT=str(temporary), V191_NATIVE_CONTAINER=container,
+-               V191_BUILD_EVIDENCE=str(evidence), V191_PHYSICAL_FLOOR=str(temporary/'physical_floor.f32'),
++               V192_EXECUTION_IMAGE=receipt['image_id'], V192_VARIANT=args.variant,
++               V192_TEMP_ROOT=str(temporary), V192_NATIVE_CONTAINER=container,
++               V192_BUILD_EVIDENCE=str(evidence), V192_PHYSICAL_FLOOR=str(temporary/'physical_floor.f32'),
+                PYTHONPATH=str(TASK/'host_python')+':'+str(BASE/'runtime_sources/bridge')+':'+env.get('PYTHONPATH', ''))
+-    for port in (24600, 24601, 24602, 24603, 24651, 8785):
++    for port in (24600, 24601, 24602, 24651, 8785):
+         with socket.socket() as probe:
+             probe.bind(('127.0.0.1', port))
+     command = ['docker', 'run', '-d', '--rm', '--pull=never', '--platform=linux/amd64',
+@@ -67,9 +67,8 @@
+                '-e', 'OPENBLAS_NUM_THREADS=1', '-e', 'OMP_NUM_THREADS=1',
+                '-v', f'{ROOT}:{ROOT}:ro', '-v', f'{ROOT}:/repo:ro', '-v', f'{TASK}:/task:ro',
+                '-v', f'{temporary}:{temporary}:rw',
+-               '--tmpfs', str(temporary/'runs'/tag/'artifacts/external_episode')+f':rw,size=8m,uid={os.getuid()},gid={os.getgid()},mode=0700',
+                '--entrypoint', '/bin/bash', receipt['image_id'], '-c', 'exec sleep infinity']
+-    request = {'version': 'v191', 'native_version': 'v191',
++    request = {'version': 'v192', 'native_version': 'v191',
+                'variant': args.variant, 'host': 'gpu5070ti', 'physics_device': 'cpu',
+                'scene': 'original Building historical_full', 'seconds': 600,
+                'manifest_sha256': hashlib.sha256((HERE/'manifest.json').read_bytes()).hexdigest(),
+@@ -82,14 +81,14 @@
+     try:
+         subprocess.run(command, env=env, check=True, capture_output=True, text=True, timeout=30)
+         created = True
+-        subprocess.run([sys.executable, str(HERE/'derive_mac_floor.py'), '--output', env['V191_PHYSICAL_FLOOR']],
++        subprocess.run([sys.executable, str(HERE/'derive_mac_floor.py'), '--output', env['V192_PHYSICAL_FLOOR']],
+                        env=env, check=True, timeout=30)
+         episode = [sys.executable, str(HERE/'mac_managed.py'), '--run-id', tag,
+                    '--deadline', '900', '--retention', 'archive', '--', sys.executable,
+                    str(HERE/'run_local_episode.py'), '--backend-executor', 'single',
+-                   '--applied-transport', 'zmq', '--geometry-obstacles', '--scene', 'building_full',
++                   '--applied-transport', 'shared', '--geometry-obstacles', '--scene', 'building_full',
+                    '--building-route', 'historical_full', '--goal-wall-budget', '1500',
+-                   '--startup-mode', 'factory_pd', '--stance-hold', '--integration-version', 'v191',
++                   '--startup-mode', 'factory_pd', '--stance-hold', '--integration-version', 'v192',
+                    '--real-time-factor', '1', '--recording-sim-seconds', '600']
+         with (evidence/'execution.log').open('w') as stream:
+             process = subprocess.run(episode, env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=940)
+--- v191/shared_state.py
++++ v192/shared_state.py
+@@ -0,0 +1,72 @@
++"""Verify closed bind-mounted state without an applied-state ACK or copyback."""
++import hashlib
++import json
++from pathlib import Path
++import subprocess
++
++FILES = ('current_command.json', 'finish_request.json')
++
++
++def validate_identity(values, request, run_id):
++    current, finish = (values[name] for name in FILES)
++    if current['run_id'] != run_id or finish['run_id'] != run_id:
++        raise ValueError('Foreign shared-state run')
++    if (current['run_epoch_ns'] != request['run_epoch_ns'] or
++            finish['observed_run_epoch_ns'] != request['run_epoch_ns']):
++        raise ValueError('Foreign shared-state epoch')
++    if request['applied_transport'] != 'shared':
++        raise ValueError('Expected shared applied-state transport')
++    if finish['backend_terminal_status'] not in ('FINISHED', 'FAILED'):
++        raise ValueError('Missing terminal status')
++
++
++def verify_shared_state(container, out):
++    """Compare host and container bytes after the producer and graph stop."""
++    out = Path(out)
++    external = out / 'artifacts/external_episode'
++    report = {'verified': False, 'method': 'shared_bind_mount_after_graph_stop',
++              'copyback_required': False, 'per_step_ack_required': False}
++    try:
++        values, files = {}, {}
++        for name in FILES:
++            data = (external / name).read_bytes()
++            values[name] = json.loads(data)
++            files[name] = {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
++        validate_identity(values, json.loads((out / 'episode_request.json').read_text()), out.name)
++        code = '''import hashlib,json,sys
++from pathlib import Path
++root=Path(sys.argv[1])
++files={}
++for name in sys.argv[2:]:
++ data=(root/name).read_bytes()
++ files[name]={'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
++print(json.dumps(files))
++'''
++        remote = json.loads(subprocess.check_output(
++            ['docker', 'exec', container, 'python3', '-c', code, str(external), *FILES],
++            text=True, timeout=15))
++        report.update(host_files=files, container_files=remote,
++                      terminal_status=values['finish_request.json']['backend_terminal_status'])
++        if files != remote:
++            raise ValueError('Host/container shared-state bytes differ')
++        report['verified'] = True
++    except Exception as error:
++        report['error'] = repr(error)
++    (out / 'shared_state.json').write_text(json.dumps(report, indent=2) + '\n')
++    return report['verified']
++
++
++def verify_capture(capture):
++    """Bind the closed-state witness to the actual retained capture bytes."""
++    report = capture.json('shared_state.json')
++    assert report['verified'] and report['method'] == 'shared_bind_mount_after_graph_stop'
++    assert report['copyback_required'] is False and report['per_step_ack_required'] is False
++    assert report['host_files'] == report['container_files']
++    values = {}
++    for name in FILES:
++        data = capture.read('artifacts/external_episode/' + name).encode()
++        assert report['host_files'][name] == {
++            'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
++        values[name] = json.loads(data)
++    validate_identity(values, capture.json('episode_request.json'), capture.root.name)
++    return True
+--- v191/test_applied_transport.py
++++ v192/test_applied_transport.py
+@@ -1,93 +0,0 @@
+-"""Real-socket timeout/replay regressions; synthetic data are not stop evidence."""
+-import importlib.util,json,socket,sys,tempfile,threading,time,unittest
+-from pathlib import Path
+-from applied_channel import AppliedClient,AppliedStore,BASE,zmq
+-sys.path.insert(0,str(BASE/'runtime_sources/backend_adapter'))
+-from backend_adapter.applied_evidence import AppliedCommandSnapshot,StopEvidenceWindow
+-
+-
+-def payload(run,seq=1):
+-    zero={'vx':0.,'vy':0.,'wz':0.}
+-    return {'schema_version':1,'run_id':run,'run_epoch_ns':123,'sim_step':1,'sim_time_s':1.,
+-        'wall_monotonic_ns':time.monotonic_ns(),'command_source_timestamp_ns':1,
+-        'freshness':{'max_reader_age_s':2.},'applied_command':zero,'admitted_command':zero,
+-        'raw_command':zero,'command_sequence':1,'command_stale':False,'command_reason':'active',
+-        'measured':{'horizontal_speed_mps':0.,'yaw_rate_radps':0.,'base_xyz':[0.,0.,1.],
+-            'base_quat_wxyz':[1.,0.,0.,0.],'command_obs_error':0.},
+-        'state_epoch':{'state_sequence':seq,'telemetry_sequence':1}}
+-
+-def raw(p):return json.dumps(p,separators=(',',':'),allow_nan=False).encode()
+-
+-class Tests(unittest.TestCase):
+-    def setUp(self):
+-        self.tmp=tempfile.TemporaryDirectory();self.out=Path(self.tmp.name)/'synthetic_transport';self.out.mkdir()
+-        (self.out/'episode_request.json').write_text('{"run_epoch_ns":123}')
+-        self.store=AppliedStore(self.out)
+-    def tearDown(self):self.tmp.cleanup()
+-    def roundtrip(self,client_type,delay,requests):
+-        ready=threading.Event();data={};errors=[];replies=[];received=[]
+-        def server():
+-            try:
+-                with zmq.Context() as ctx,ctx.socket(zmq.REP) as rep:
+-                    rep.setsockopt(zmq.LINGER,0);rep.setsockopt(zmq.RCVTIMEO,1000)
+-                    data['port']=rep.bind_to_random_port('tcp://127.0.0.1');ready.set()
+-                    for i in range(requests):
+-                        message=rep.recv();received.append(message);reply=self.store.accept(message)
+-                        replies.append(reply)
+-                        if i==0:time.sleep(delay)
+-                        rep.send_json(reply)
+-            except BaseException as e:errors.append(e);ready.set()
+-        worker=threading.Thread(target=server);worker.start();self.assertTrue(ready.wait(2))
+-        client=client_type(data['port']);p=payload(self.out.name)
+-        try:
+-            response=client.publish(p)
+-            self.assertEqual(response['sha256'],replies[-1]['sha256'])
+-            return response,client.last_attempt,replies,received
+-        finally:
+-            client.close();worker.join(2);self.assertFalse(worker.is_alive());self.assertFalse(errors,errors)
+-    def test_clean_real_socket(self):
+-        r,t,rs,wire=self.roundtrip(AppliedClient,0,1)
+-        self.assertFalse(r['duplicate']);self.assertEqual(len(t['attempts']),1)
+-    def test_delayed_commit_reply_recovers_exact_bytes(self):
+-        r,t,rs,wire=self.roundtrip(AppliedClient,.14,2)
+-        self.assertEqual([x['duplicate'] for x in rs],[False,True])
+-        self.assertEqual(wire[0],wire[1]);self.assertEqual(len(t['attempts']),2)
+-        self.assertEqual((self.store.external/'current_command.json').read_bytes(),wire[0])
+-    def test_original_client_fails_same_delayed_reply(self):
+-        path=Path(__file__).resolve().parent.parent/'v151/applied_channel.py'
+-        spec=importlib.util.spec_from_file_location('original_applied_transport',path)
+-        old=importlib.util.module_from_spec(spec);spec.loader.exec_module(old)
+-        with self.assertRaises(zmq.Again):self.roundtrip(old.AppliedClient,.14,1)
+-    def test_exact_duplicate_does_not_rewrite_or_prove_dwell(self):
+-        p=payload(self.out.name);blob=raw(p);self.store.accept(blob)
+-        f=self.store.external/'current_command.json';before=f.stat().st_mtime_ns
+-        self.assertTrue(self.store.accept(blob)['duplicate']);self.assertEqual(before,f.stat().st_mtime_ns)
+-        window=StopEvidenceWindow();snapshot=AppliedCommandSnapshot.from_mapping(p)
+-        for _ in range(100):self.assertFalse(window.observe(snapshot,self.out.name,123))
+-    def test_altered_old_and_foreign_requests_reject(self):
+-        p=payload(self.out.name,2);self.store.accept(raw(p));p['sim_time_s']=2.
+-        with self.assertRaises(ValueError):self.store.accept(raw(p))
+-        for p in [payload(self.out.name,1),payload('foreign',3)]:
+-            with self.assertRaises(ValueError):self.store.accept(raw(p))
+-        p=payload(self.out.name,3);p['run_epoch_ns']=124
+-        with self.assertRaises(ValueError):self.store.accept(raw(p))
+-    def test_duplicate_rechecks_original_freshness(self):
+-        p=payload(self.out.name);p['freshness']['max_reader_age_s']=.02;blob=raw(p)
+-        self.store.accept(blob);time.sleep(.03)
+-        with self.assertRaises(ValueError):self.store.accept(blob)
+-        p=payload(self.out.name,2);p['wall_monotonic_ns']+=5_000_000_000
+-        with self.assertRaises(ValueError):self.store.accept(raw(p))
+-    def test_tampered_readback_rejects(self):
+-        blob=raw(payload(self.out.name));self.store.accept(blob)
+-        (self.store.external/'current_command.json').write_bytes(b'{}')
+-        with self.assertRaises(ValueError):self.store.accept(blob)
+-    def test_absent_server_remains_bounded_failure(self):
+-        with socket.socket() as s:s.bind(('127.0.0.1',0));port=s.getsockname()[1]
+-        client=AppliedClient(port);start=time.monotonic()
+-        try:
+-            with self.assertRaises(zmq.Again):client.publish(payload(self.out.name))
+-            self.assertEqual(len(client.last_attempt['attempts']),3)
+-            self.assertTrue(all('timed_out_monotonic_ns' in x for x in client.last_attempt['attempts']))
+-            self.assertLess(time.monotonic()-start,1.)
+-        finally:client.close()
+-if __name__=='__main__':unittest.main()
+--- v191/test_full_route.py
++++ v192/test_full_route.py
+@@ -40,7 +40,7 @@
+         self.assertEqual(values[values.index('--building-route') + 1], 'historical_full')
+         self.assertEqual(values[values.index('--recording-sim-seconds') + 1], '600')
+         self.assertEqual(values[values.index('--goal-wall-budget') + 1], '1500')
+-        self.assertEqual(values[values.index('--integration-version') + 1], 'v191')
++        self.assertEqual(values[values.index('--integration-version') + 1], 'v192')
+ 
+ 
+ if __name__ == '__main__':
+--- v191/test_linux_supervisor.py
++++ v192/test_linux_supervisor.py
+@@ -5,18 +5,18 @@
+ @unittest.skipUnless(platform.system()=='Linux','Linux execution-root integration')
+ class LinuxSupervisorTests(unittest.TestCase):
+  def invoke(self,root,run,code):
+-  env=dict(os.environ,V191_TEMP_ROOT=str(root))
++  env=dict(os.environ,V192_TEMP_ROOT=str(root))
+   return subprocess.run([sys.executable,str(HERE/'mac_supervisor.py'),'--run-id',run,'--deadline','2','--',sys.executable,'-c',code],env=env,capture_output=True,text=True)
+  def test_actual_entry_and_duplicate_rejection(self):
+-  root=Path(tempfile.mkdtemp(prefix='v191_probe_',dir='/data/sun/vla_mppi_20261009/trials'));run='entry'
++  root=Path(tempfile.mkdtemp(prefix='v192_probe_',dir='/data/sun/vla_mppi_20261009/trials'));run='entry'
+   (root/'runs'/run/'artifacts/external_episode').mkdir(parents=True)
+   r=self.invoke(root,run,'print("owned child executed")');self.assertEqual(r.returncode,0,r.stderr)
+   record=json.loads((root/'runs'/run/'process.json').read_text());self.assertEqual(record['exit_code'],0);self.assertFalse(record['timed_out']);self.assertGreater(record['child_peak_rss_bytes'],1024*1024)
+   self.assertIn('owned child executed',(root/'runs'/run/'run.log').read_text())
+   before=(root/'runs'/run/'process.json').read_bytes();r=self.invoke(root,run,'raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertEqual((root/'runs'/run/'process.json').read_bytes(),before)
+  def test_nonowned_root_rejected(self):
+-  r=self.invoke(Path('/private/tmp/v191_nonowned'),'bad','raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertIn('AssertionError',r.stderr)
++  r=self.invoke(Path('/private/tmp/v192_nonowned'),'bad','raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertIn('AssertionError',r.stderr)
+  def test_child_failure_propagates(self):
+-  root=Path(tempfile.mkdtemp(prefix='v191_probe_',dir='/data/sun/vla_mppi_20261009/trials'))
++  root=Path(tempfile.mkdtemp(prefix='v192_probe_',dir='/data/sun/vla_mppi_20261009/trials'))
+   r=self.invoke(root,'child_failure','import sys;sys.exit(7)');self.assertEqual(r.returncode,7,r.stderr)
+ if __name__=='__main__':unittest.main()
+--- v191/test_mac_supervisor.py
++++ v192/test_mac_supervisor.py
+@@ -5,28 +5,28 @@
+ @unittest.skipUnless(platform.system()=='Darwin','Mac execution-root integration')
+ class MacSupervisorTests(unittest.TestCase):
+  def invoke(self,root,run,code):
+-  env=dict(os.environ,V191_TEMP_ROOT=str(root))
++  env=dict(os.environ,V192_TEMP_ROOT=str(root))
+   return subprocess.run([sys.executable,str(HERE/'mac_supervisor.py'),'--run-id',run,'--deadline','2','--',sys.executable,'-c',code],env=env,capture_output=True,text=True)
+  def test_actual_entry_and_duplicate_rejection(self):
+-  root=Path(tempfile.mkdtemp(prefix='v191_probe_',dir='/private/tmp/vla_stop_audit_20261012'));run='entry'
++  root=Path(tempfile.mkdtemp(prefix='v192_probe_',dir='/private/tmp/vla_stop_audit_20261012'));run='entry'
+   (root/'runs'/run/'artifacts/external_episode').mkdir(parents=True)
+   r=self.invoke(root,run,'print("owned child executed")');self.assertEqual(r.returncode,0,r.stderr)
+   record=json.loads((root/'runs'/run/'process.json').read_text());self.assertEqual(record['exit_code'],0);self.assertFalse(record['timed_out']);self.assertGreater(record['child_peak_rss_bytes'],1024*1024)
+   self.assertIn('owned child executed',(root/'runs'/run/'run.log').read_text())
+   before=(root/'runs'/run/'process.json').read_bytes();r=self.invoke(root,run,'raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertEqual((root/'runs'/run/'process.json').read_bytes(),before)
+  def test_nonowned_root_rejected(self):
+-  r=self.invoke(Path('/private/tmp/v191_nonowned'),'bad','raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertIn('AssertionError',r.stderr)
++  r=self.invoke(Path('/private/tmp/v192_nonowned'),'bad','raise RuntimeError("must not run")');self.assertNotEqual(r.returncode,0);self.assertIn('AssertionError',r.stderr)
+  def test_child_failure_propagates(self):
+-  root=Path(tempfile.mkdtemp(prefix='v191_probe_',dir='/private/tmp/vla_stop_audit_20261012'))
++  root=Path(tempfile.mkdtemp(prefix='v192_probe_',dir='/private/tmp/vla_stop_audit_20261012'))
+   r=self.invoke(root,'child_failure','import sys;sys.exit(7)');self.assertEqual(r.returncode,7,r.stderr)
+  def test_actual_managed_retention_chain_and_episode_storage(self):
+   from run_local_episode import prepare_external_directory
+-  root=Path(tempfile.mkdtemp(prefix='v191_managed_probe_',dir='/private/tmp/vla_stop_audit_20261012'))
++  root=Path(tempfile.mkdtemp(prefix='v192_managed_probe_',dir='/private/tmp/vla_stop_audit_20261012'))
+   run=root/'runs'/'entry';(run/'artifacts/external_episode').mkdir(parents=True)
+   prepare_external_directory(run)
+   (root/'scripts').mkdir();(root/'scripts/run_bounded.py').symlink_to(HERE/'mac_supervisor.py')
+   code='from pathlib import Path; import os; (Path(os.environ["NEWTON_RUN_DIR"])/"result.json").write_text("{}")'
+-  r=subprocess.run([sys.executable,str(HERE/'mac_managed.py'),'--run-id','entry','--deadline','3','--retention','archive','--',sys.executable,'-c',code],env=dict(os.environ,V191_TEMP_ROOT=str(root)),capture_output=True,text=True)
++  r=subprocess.run([sys.executable,str(HERE/'mac_managed.py'),'--run-id','entry','--deadline','3','--retention','archive','--',sys.executable,'-c',code],env=dict(os.environ,V192_TEMP_ROOT=str(root)),capture_output=True,text=True)
+   self.assertEqual(r.returncode,0,r.stdout+r.stderr)
+   self.assertEqual(json.loads((run/'retention_result.json').read_text())['status'],'completed')
+   (run/'artifacts/external_episode/existing').write_text('preserve')
+--- v191/test_native_gate.py
++++ v192/test_native_gate.py
+@@ -31,8 +31,8 @@
+     def invoke(self, quality=None, image='sha256:test'):
+         (self.root / 'quality.json').write_text(json.dumps(quality or self.quality))
+         with patch.object(gate, 'HERE', self.root), patch.dict(os.environ, {
+-            'V191_VARIANT': 'candidate', 'V191_BUILD_EVIDENCE': str(self.root),
+-            'V191_NATIVE_CONTAINER': 'test'}), patch.object(gate.platform, 'system', return_value='Darwin'), \
++            'V192_VARIANT': 'candidate', 'V192_BUILD_EVIDENCE': str(self.root),
++            'V192_NATIVE_CONTAINER': 'test'}), patch.object(gate.platform, 'system', return_value='Darwin'), \
+             patch.object(gate.platform, 'machine', return_value='arm64'), \
+             patch.object(gate.subprocess, 'check_output', return_value=image), \
+             patch.object(gate.subprocess, 'run', return_value=SimpleNamespace(stdout='V191_NATIVE_IDENTITY_PASS')):
+--- v191/test_overlay_runtime.py
++++ v192/test_overlay_runtime.py
+@@ -16,32 +16,47 @@
+     parser.add_argument('--task-root', type=Path, required=True)
+     args = parser.parse_args()
+     task = validate_task(args.task_root)
+-    for filename in ('v191_overlay_loaded.json', 'v191_native_graph_preflight.json'):
++    for filename in ('v192_overlay_loaded.json', 'v192_native_graph_preflight.json'):
+         (task / 'evidence' / filename).unlink(missing_ok=True)
+-    trial = task / 'v191_overlay_preflight'
++    trial = task / 'v192_overlay_preflight'
+     if trial.exists():
+         raise ValueError('Preserve the previous preflight directory before retrying')
+-    run = 'v191_overlay_graph_probe'
++    run = 'v192_overlay_graph_probe'
+     out = trial / 'runs' / run
+     (out / 'artifacts/external_episode').mkdir(parents=True, exist_ok=False)
+     evidence = trial / 'evidence'
+     (evidence / 'ros_logs').mkdir(parents=True)
+     (evidence / 'ros_home').mkdir()
+     (out / 'episode_request.json').write_text(json.dumps({
+-        'integration_version': 'v191', 'native_variant': 'candidate', 'probe': True,
++        'integration_version': 'v192', 'native_variant': 'candidate', 'probe': True,
+         'run_epoch_ns': time.time_ns(), 'scene': 'building_full', 'geometry_obstacles': True,
+-        'applied_transport': 'zmq', 'building_route_profile': 'historical_full',
++        'applied_transport': 'shared', 'building_route_profile': 'historical_full',
+         'goal_wall_budget_s': 1500, 'startup_mode': 'factory_pd'}) + '\n')
+     shutil.copyfile(HERE / 'building_planner.yaml', out / 'planner.yaml')
+     subprocess.run([str(PYTHON), str(HERE / 'derive_mac_floor.py'), '--output',
+                     str(trial / 'physical_floor.f32')], check=True)
+     image = (task / 'evidence/image_id.txt').read_text().strip()
+-    name = 'vla-v191-overlay-preflight'
++    name = 'vla-v192-overlay-preflight'
+     command = container_command(task, trial, evidence, name, image, run)
+     made = False
+     try:
+         subprocess.run(command, check=True, capture_output=True, timeout=30)
+         made = True
++        # Exercise both directions of the real trial bind mount without a
++        # simulated command, navigation goal, or physics step.
++        mount_probe = out / 'shared_mount_probe.json'
++        mount_probe.write_text(json.dumps({'host': 'v192', 'sequence': 1}))
++        mount_code = """import json,sys
++from pathlib import Path
++p=Path(sys.argv[1])
++assert json.loads(p.read_text())=={'host':'v192','sequence':1}
++t=p.with_suffix('.tmp')
++t.write_text(json.dumps({'container':'v192','sequence':2}))
++t.replace(p)
++"""
++        subprocess.run(['docker', 'exec', name, 'python3', '-c', mount_code, str(mount_probe)],
++                       check=True, timeout=15)
++        assert json.loads(mount_probe.read_text()) == {'container': 'v192', 'sequence': 2}
+         script = '\n'.join(['set -e', 'source /opt/ros/foxy/setup.bash',
+                             'source /task/recovery_v176/install/setup.bash',
+                             'source /task/recovery_v191/install/setup.bash',
+@@ -54,7 +69,7 @@
+         (out / 'inside.sh').write_text(script + '\n')
+         with (out / 'graph.log').open('w') as stream:
+             process = subprocess.Popen(['docker', 'exec', '-e',
+-                'V191_PHYSICAL_FLOOR=' + str(trial / 'physical_floor.f32'), name,
++                'V192_PHYSICAL_FLOOR=' + str(trial / 'physical_floor.f32'), name,
+                 '/bin/bash', str(out / 'inside.sh')], stdout=stream, stderr=subprocess.STDOUT)
+             started = time.monotonic()
+             deadline = started + 60
+@@ -105,7 +120,7 @@
+ import rclpy
+ from lifecycle_msgs.srv import GetState
+ rclpy.init()
+-node=rclpy.create_node('v191_preflight_inspector')
++node=rclpy.create_node('v192_preflight_inspector')
+ states={}
+ try:
+  for name in ('/controller_server','/planner_server','/recoveries_server','/nav2_internal/bt_navigator'):
+@@ -140,7 +155,7 @@
+             loaded = subprocess.check_output(['docker','exec',name,'/bin/bash','-c',
+                 'source /opt/ros/foxy/setup.bash && python3 ' + str(inspection)],text=True,timeout=45)
+             overlay = json.loads(loaded)
+-            (task / 'evidence/v191_overlay_loaded.json').write_text(json.dumps(overlay,indent=2)+'\n')
++            (task / 'evidence/v192_overlay_loaded.json').write_text(json.dumps(overlay,indent=2)+'\n')
+             seq_node=ET.parse(out/'nav2_params.bt.xml').getroot().find('.//Sequence')
+             assert seq_node is not None and seq_node.get('name')=='NavigateWithDirectRoute'
+             wait_node = ET.parse(out/'nav2_params.bt.xml').getroot().find('.//Wait')
+@@ -153,6 +168,7 @@
+             assert profile['controller_server']['ros__parameters']['SCAN']['route_lookahead_dist']==0.5
+             assert profile['/nav2_internal/bt_navigator']['ros__parameters']['robot_base_frame']=='base'
+             commands = json.loads((out / 'native_commands.json').read_text())
++            assert 'applied_receiver' not in commands
+             selected = json.loads((out / 'selected_route_map.json').read_text())
+             backend = json.loads((out / 'backend_config.json').read_text())
+             assert selected['sha256'] == json.loads((HERE / 'global_map_input.json').read_text())['map_sha256']
+@@ -160,13 +176,14 @@
+             latest = json.loads((out / 'backend_latest.json').read_text())
+             assert latest['navigation_authority'] == 'Nav2'
+             result = {'passed': True, 'duration_s': time.monotonic() - started,
++                      'applied_transport': 'shared', 'shared_mount_bidirectional_verified': True,
+                       'physics_advanced': False, 'synthetic_fixture': 'static identity world->base TF only',
+                       'navigation_goal_sent': False, 'scan_execution': overlay['scan_execution'],
+                       'lifecycle_states': overlay['lifecycle_states'], 'recovery_body_frame': 'base',
+                       'generated_finish_dist_m': 0.02, 'route_lookahead_heading_enabled': True, 'route_lookahead_dist': 0.5,
+                       'command_topic': '/quad_0/cmd_vel', 'route_topic': '/pct_path',
+                       'graph_root': str(out), 'children': list(commands), 'selected_route_map': selected}
+-            (task / 'evidence/v191_native_graph_preflight.json').write_text(json.dumps(result, indent=2) + '\n')
++            (task / 'evidence/v192_native_graph_preflight.json').write_text(json.dumps(result, indent=2) + '\n')
+             print(json.dumps(result))
+     finally:
+         if made:
+--- v191/test_remote_graph.py
++++ v192/test_remote_graph.py
+@@ -26,7 +26,6 @@
+       '-e','OPENBLAS_NUM_THREADS=1','-e','OMP_NUM_THREADS=1',
+       '-v',f'{ROOT}:{ROOT}:ro','-v',f'{ROOT}:/repo:ro','-v',f'{task}:/task:ro',
+       '-v',f'{trial}:{trial}:rw',
+-      '--tmpfs',str(trial/'runs'/run/'artifacts/external_episode')+f':rw,size=8m,uid={os.getuid()},gid={os.getgid()},mode=0700',
+       '--entrypoint','/bin/bash',image,'-c','exec sleep infinity']
+ 
+ 
+@@ -36,24 +35,24 @@
+     parser.add_argument('--task-root', type=Path, required=True)
+     args = parser.parse_args()
+     task = validate_task(args.task_root)
+-    (task / 'results/host_v191').mkdir(parents=True, exist_ok=True)
+-    trial = task / 'v191_overlay_preflight'
+-    run = 'v191_overlay_graph_probe'
++    (task / 'results/host_v192').mkdir(parents=True, exist_ok=True)
++    trial = task / 'v192_overlay_preflight'
++    run = 'v192_overlay_graph_probe'
+     out = trial / 'runs' / run
+     (out / 'artifacts/external_episode').mkdir(parents=True, exist_ok=False)
+     evidence = trial / 'evidence'
+     (evidence / 'ros_logs').mkdir(parents=True)
+     (evidence / 'ros_home').mkdir()
+     (out / 'episode_request.json').write_text(json.dumps({
+-        'integration_version': 'v191', 'native_variant': 'candidate', 'probe': True,
++        'integration_version': 'v192', 'native_variant': 'candidate', 'probe': True,
+         'run_epoch_ns': time.time_ns(), 'scene': 'building_full', 'geometry_obstacles': True,
+-        'applied_transport': 'zmq', 'building_route_profile': 'historical_full',
++        'applied_transport': 'shared', 'building_route_profile': 'historical_full',
+         'goal_wall_budget_s': 1500, 'startup_mode': 'factory_pd'}) + '\n')
+     shutil.copyfile(HERE / 'building_planner.yaml', out / 'planner.yaml')
+     subprocess.run([str(PYTHON), str(HERE / 'derive_mac_floor.py'), '--output',
+                     str(trial / 'physical_floor.f32')], check=True)
+     image = json.loads((task / 'results/recovery_v191/candidate_receipt.json').read_text())['image_id']
+-    name = 'vla-v191-overlay-preflight'
++    name = 'vla-v192-overlay-preflight'
+     command = container_command(task, trial, evidence, name, image, run)
+     made = False
+     try:
+@@ -67,7 +66,7 @@
+         (out / 'inside.sh').write_text(script + '\n')
+         with (out / 'graph.log').open('w') as stream:
+             process = subprocess.Popen(['docker', 'exec', '-e',
+-                'V191_PHYSICAL_FLOOR=' + str(trial / 'physical_floor.f32'), name,
++                'V192_PHYSICAL_FLOOR=' + str(trial / 'physical_floor.f32'), name,
+                 '/bin/bash', str(out / 'inside.sh')], stdout=stream, stderr=subprocess.STDOUT)
+             deadline = time.monotonic() + 15
+             while time.monotonic() < deadline:
+@@ -110,7 +109,7 @@
+ """
+             loaded = subprocess.check_output(['docker','exec',name,'python3','-c',inspect_code],text=True)
+             overlay = json.loads(loaded)
+-            (task / 'results/host_v191/overlay_loaded.json').write_text(json.dumps(overlay,indent=2)+'\n')
++            (task / 'results/host_v192/overlay_loaded.json').write_text(json.dumps(overlay,indent=2)+'\n')
+             seq_node=ET.parse(out/'nav2_params.bt.xml').getroot().find('.//Sequence')
+             assert seq_node is not None and seq_node.get('name')=='NavigateWithDirectRoute'
+             profile=yaml.safe_load((out/'nav2_params.yaml').read_text())
+@@ -131,7 +130,7 @@
+                       'generated_finish_dist_m': 0.02, 'route_lookahead_heading_enabled': True, 'route_lookahead_dist': 0.5,
+                       'command_topic': '/quad_0/cmd_vel', 'route_topic': '/pct_path',
+                       'graph_root': str(out), 'children': list(commands), 'selected_route_map': selected}
+-            (task / 'results/host_v191/native_graph_preflight.json').write_text(json.dumps(result, indent=2) + '\n')
++            (task / 'results/host_v192/native_graph_preflight.json').write_text(json.dumps(result, indent=2) + '\n')
+             print(json.dumps(result))
+     finally:
+         if made:
+--- v191/test_service_ports.py
++++ v192/test_service_ports.py
+@@ -8,7 +8,7 @@
+ class Tests(unittest.TestCase):
+  def test_service_ports_outside_actual_ephemeral_range(self):
+   low,high=map(int,Path('/proc/sys/net/ipv4/ip_local_port_range').read_text().split())
+-  for p in (24600,24601,24602,24603,24651):self.assertFalse(low<=p<=high)
++  for p in (24600,24601,24602,24651):self.assertFalse(low<=p<=high)
+  def test_old_port_self_connection_blocks_listener(self):
+   with socket.socket() as client:
+    client.settimeout(1);client.bind(('127.0.0.1',46200));client.connect(('127.0.0.1',46200));self.assertEqual(client.getsockname(),client.getpeername())
+--- v191/test_shared_state.py
++++ v192/test_shared_state.py
+@@ -0,0 +1,70 @@
++"""Exercise closed shared-state identity and the actual Docker mount command."""
++import json
++from pathlib import Path
++import tempfile
++import unittest
++from unittest.mock import patch
++
++from run_mac_full import container_command
++import shared_state
++
++
++class SharedStateTests(unittest.TestCase):
++    def setUp(self):
++        self.temp = tempfile.TemporaryDirectory()
++        self.addCleanup(self.temp.cleanup)
++        self.out = Path(self.temp.name) / 'v192_test'
++        self.external = self.out / 'artifacts/external_episode'
++        self.external.mkdir(parents=True)
++        self.values = {
++            'current_command.json': {'run_id': self.out.name, 'run_epoch_ns': 42},
++            'finish_request.json': {'run_id': self.out.name, 'observed_run_epoch_ns': 42,
++                                    'backend_terminal_status': 'FINISHED'}}
++        (self.out / 'episode_request.json').write_text(json.dumps(
++            {'run_epoch_ns': 42, 'applied_transport': 'shared'}))
++        for name, value in self.values.items():
++            (self.external / name).write_text(json.dumps(value) + '\n')
++
++    def docker_read(self, command, **kwargs):
++        files = {}
++        for name in shared_state.FILES:
++            data = (self.external / name).read_bytes()
++            files[name] = {'bytes': len(data), 'sha256': shared_state.hashlib.sha256(data).hexdigest()}
++        return json.dumps(files)
++
++    def test_shared_mount_has_no_shadow_or_applied_service(self):
++        command = container_command(Path('/task'), self.out, self.out / 'evidence', 'test', 'image', 'run')
++        self.assertIn(f'{self.out}:{self.out}:rw', command)
++        self.assertNotIn('--tmpfs', command)
++        self.assertFalse(any('24603' in item for item in command))
++
++    def test_matching_closed_bytes_and_capture_accept(self):
++        with patch.object(shared_state.subprocess, 'check_output', side_effect=self.docker_read):
++            self.assertTrue(shared_state.verify_shared_state('test', self.out))
++        class Capture:
++            root = self.out
++            def read(self, name): return (self.root / name).read_text()
++            def json(self, name): return json.loads(self.read(name))
++        self.assertTrue(shared_state.verify_capture(Capture()))
++        (self.external / 'current_command.json').write_text('{}')
++        with self.assertRaises(AssertionError):
++            shared_state.verify_capture(Capture())
++
++    def test_different_container_bytes_reject(self):
++        with patch.object(shared_state.subprocess, 'check_output', return_value='{}'):
++            self.assertFalse(shared_state.verify_shared_state('test', self.out))
++
++    def test_foreign_epoch_rejects_before_docker(self):
++        value = dict(self.values['current_command.json'], run_epoch_ns=43)
++        (self.external / 'current_command.json').write_text(json.dumps(value))
++        with patch.object(shared_state.subprocess, 'check_output') as docker:
++            self.assertFalse(shared_state.verify_shared_state('test', self.out))
++            docker.assert_not_called()
++
++    def test_missing_finish_preserves_failure(self):
++        (self.external / 'finish_request.json').unlink()
++        self.assertFalse(shared_state.verify_shared_state('test', self.out))
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- v191/test_snapshot_reader.py
++++ v192/test_snapshot_reader.py
+@@ -0,0 +1,44 @@
++"""A delayed shared snapshot is tolerated without accepting foreign or stale state."""
++import importlib.util
++import json
++from pathlib import Path
++import shutil
++import tempfile
++import unittest
++from unittest.mock import patch
++
++HERE = Path(__file__).resolve().parent
++
++
++class SnapshotReaderTests(unittest.TestCase):
++    def setUp(self):
++        self.temp = tempfile.TemporaryDirectory()
++        self.addCleanup(self.temp.cleanup)
++        self.root = Path(self.temp.name)
++        shutil.copyfile(HERE / 'long_route_driver.py', self.root / 'long_route_driver.py')
++        shutil.copyfile(HERE.parents[1] / 'repairs/2026-09-26_generic_occupancy/geometry_driver.py',
++                        self.root / 'executed_geometry_driver.py')
++        spec = importlib.util.spec_from_file_location('test_long_route', self.root / 'long_route_driver.py')
++        self.module = importlib.util.module_from_spec(spec)
++        spec.loader.exec_module(self.module)
++        self.snapshot = {'run_id': 'test', 'sim_time_s': 12., 'wall_monotonic_ns': 95_000_000_000,
++                         'applied_command': {}, 'measured': {'base_xyz': [0, 0, 0],
++                         'base_quat_wxyz': [1, 0, 0, 0], 'horizontal_speed_mps': 0,
++                         'yaw_rate_radps': 0, 'command_obs_error': 0}}
++
++    def test_five_second_cached_snapshot_accepts(self):
++        path = self.root / 'current_command.json'
++        path.write_text(json.dumps(self.snapshot))
++        with patch.object(self.module.driver.time, 'monotonic_ns', return_value=100_000_000_000):
++            self.assertEqual(self.module.driver.wait_snapshot(path, 'test', timeout_s=15.), self.snapshot)
++
++    def test_old_future_and_foreign_reject(self):
++        with patch.object(self.module.driver.time, 'monotonic_ns', return_value=100_000_000_000):
++            for changes in ({'wall_monotonic_ns': 89_000_000_000},
++                            {'wall_monotonic_ns': 101_000_000_000}, {'run_id': 'foreign'}):
++                with self.subTest(changes=changes):
++                    self.assertFalse(self.module.driver.snapshot_ok(dict(self.snapshot, **changes), 'test'))
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- v191/verify_full_route.py
++++ v192/verify_full_route.py
+@@ -24,7 +24,7 @@
+     scenario = capture.json('inputs/stair_scenario.json')
+     for key in ['spawn_ground_xyz_m', 'spawn_yaw_rad', 'goal_ground_xyz_m']:
+         assert scenario[key] == original[key] == identity[key], key
+-    assert request['integration_version'] == 'v191' and request['scene'] == 'building_full'
++    assert request['integration_version'] == 'v192' and request['scene'] == 'building_full'
+     rows = capture.json('video_states.json')
+     proof = capture.json('initial_state.json')
+     assert rows[0] == proof['frame'] and proof['physics_steps'] == 0
+@@ -43,7 +43,8 @@
+     result = capture.json('result.json')
+     assert not result.get('fallen', False)
+     assert result['finish_request']['backend_terminal_status'] == 'FINISHED'
+-    assert capture.json('state_copyback.json')['verified']
++    from shared_state import verify_capture
++    assert verify_capture(capture)
+     driver = capture.json('artifacts/stair_driver_result.json')
+     assert driver['execution_completed'] and driver['route_arrived']
+     goal = next(r for r in driver['journal'] if r['event'] == 'goal_request')
+@@ -70,7 +71,7 @@
+     final_yaw_error = abs(math.atan2(math.sin(final_yaw - goal_yaw), math.cos(final_yaw - goal_yaw)))
+     assert final_yaw_error <= contract['yaw_goal_tolerance_rad'], 'Final held body outside requested yaw tolerance'
+     return {'passed': True, 'profile': 'historical_full', 'run': root.name,
+-            'native_navigation': 'v191 Option B direct Nav2 + SCAN candidate on ' + request['execution_host_platform'],
++            'native_navigation': 'v191 native / v192 shared-state Option B direct Nav2 + SCAN candidate on ' + request['execution_host_platform'],
+             'original_profile_sha256': identity['source_sha256'],
+             'original_spawn_ground_xyz_m': original['spawn_ground_xyz_m'],
+             'actual_initial_body_xyz_m': poses[0].tolist(), 'initial_yaw_error_rad': yaw_error,
+@@ -80,7 +81,7 @@
+             'largest_recorded_position_step_m': float(jumps.max()),
+             'measured_recorded_body_path_m': float(jumps.sum()),
+             'first_physics_time_s': float(times[0]), 'last_physics_time_s': float(times[-1]),
+-            'arrived': True, 'fallen': False, 'final_pd_hold': True, 'state_copyback_verified': True,
++            'arrived': True, 'fallen': False, 'final_pd_hold': True, 'shared_state_verified': True,
+             'source_files': capture.sources,
+             'claim': 'One actual continuous original-start to original-goal episode; no repeated reliability claim.'}
+ 
+--- v191/verify_mac_host.py
++++ v192/verify_mac_host.py
+@@ -12,7 +12,7 @@
+     parser = argparse.ArgumentParser()
+     parser.add_argument('--output', type=Path, required=True)
+     args = parser.parse_args()
+-    modules = ['test_applied_transport', 'test_initial_frame', 'test_full_route',
++    modules = ['test_shared_state', 'test_snapshot_reader', 'test_initial_frame', 'test_full_route',
+                'test_native_gate', 'test_mac_supervisor']
+     suite = unittest.defaultTestLoader.loadTestsFromNames(modules)
+     result = unittest.TextTestRunner(verbosity=2).run(suite)
+--- v191/verify_protected.py
++++ v192/verify_protected.py
+@@ -0,0 +1,66 @@
++"""Compare protected bytes against the pre-v192 inventory and one allowed edit."""
++import hashlib
++import json
++import os
++from pathlib import Path
++
++HERE = Path(__file__).resolve().parent
++TASK = Path('/private/tmp/vla_stop_audit_20261012')
++
++
++def sha(path):
++    digest = hashlib.sha256()
++    with path.open('rb') as stream:
++        for block in iter(lambda: stream.read(4 * 1024**2), b''):
++            digest.update(block)
++    return digest.hexdigest()
++
++
++def inventory(root):
++    values = {}
++    for path in sorted(root.rglob('*')):
++        name = str(path.relative_to(root))
++        if path.is_symlink():
++            values[name] = {'symlink': os.readlink(path)}
++        elif path.is_file():
++            values[name] = {'sha256': sha(path), 'bytes': path.stat().st_size}
++    return values
++
++
++def main():
++    baseline_path = TASK / 'evidence/v192_protected_before.json'
++    baseline = json.loads(baseline_path.read_text())
++    original = TASK / 'evidence/v191_RESULTS_before_v192.md'
++    text = original.read_text()
++    marker = '\nThe v192 display package replays'
++    assert marker in text
++    allowed = (text[:text.index(marker)] + '\n').encode()
++    rows = {}
++    for root_name, before in baseline.items():
++        root = Path(root_name)
++        after = inventory(root)
++        added, removed = sorted(after.keys() - before.keys()), sorted(before.keys() - after.keys())
++        changed = sorted(n for n in before.keys() & after.keys() if before[n] != after[n])
++        permitted = []
++        if root == HERE.parent / 'v191':
++            assert sha(original) == before['RESULTS.md']['sha256']
++            if (root / 'RESULTS.md').read_bytes() == allowed and 'RESULTS.md' in changed:
++                permitted = ['RESULTS.md']
++        rows[root_name] = {'entries': len(after), 'added': added, 'removed': removed,
++                           'changed': changed, 'authorized_changes': permitted,
++                           'passed': not added and not removed and changed == permitted}
++    parent_source = inventory(HERE.parent / 'v191/src')
++    copied_source = inventory(HERE / 'src')
++    result = {'passed': all(row['passed'] for row in rows.values()) and parent_source == copied_source,
++              'baseline_sha256': sha(baseline_path),
++              'comparison': 'Every regular file SHA-256/size and symlink target, including additions/removals',
++              'native_source_unchanged': parent_source == copied_source,
++              'native_source_files': len(parent_source), 'native_build_reused': True, 'paths': rows}
++    (TASK / 'evidence/v192_protected_comparison.json').write_text(json.dumps(result, indent=2) + '\n')
++    print(json.dumps(result))
++    if not result['passed']:
++        raise SystemExit(1)
++
++
++if __name__ == '__main__':
++    main()

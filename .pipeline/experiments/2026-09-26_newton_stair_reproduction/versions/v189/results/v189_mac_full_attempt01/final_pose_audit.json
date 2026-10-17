@@ -1,0 +1,89 @@
+{
+  "run": "v189_mac_full_attempt01",
+  "nav2_reported_arrival": true,
+  "full_route_gate_passed": false,
+  "failed_gate": "final held body yaw outside requested tolerance",
+  "desired_goal_yaw_rad": -1.8613419343178232,
+  "final_held_body_yaw_rad": -2.2388231805473304,
+  "final_yaw_error_rad": 0.3774812462295072,
+  "yaw_tolerance_rad": 0.25,
+  "final_yaw_error_deg": 21.62808225428938,
+  "final_xy_error_m": 0.13823711548308093,
+  "final_body_xyz_m": [
+    2.0367329120635986,
+    -2.875556230545044,
+    4.817920207977295
+  ],
+  "final_pd_mode": "FIXED_STAND",
+  "policy_owns_joints": false,
+  "physics_duration_s": 187.6808624267578,
+  "state_copyback_verified": true,
+  "recorded_states": 8953,
+  "last_frames": [
+    {
+      "physics_time_s": 187.4995880126953,
+      "yaw_rad": -2.2388231902755518
+    },
+    {
+      "physics_time_s": 187.5197296142578,
+      "yaw_rad": -2.2388231893815393
+    },
+    {
+      "physics_time_s": 187.5398712158203,
+      "yaw_rad": -2.238823189912209
+    },
+    {
+      "physics_time_s": 187.5600128173828,
+      "yaw_rad": -2.2388231893697745
+    },
+    {
+      "physics_time_s": 187.5801544189453,
+      "yaw_rad": -2.238823186435566
+    },
+    {
+      "physics_time_s": 187.6002960205078,
+      "yaw_rad": -2.2388229753254136
+    },
+    {
+      "physics_time_s": 187.6204376220703,
+      "yaw_rad": -2.238822973229992
+    },
+    {
+      "physics_time_s": 187.6405792236328,
+      "yaw_rad": -2.238823180181328
+    },
+    {
+      "physics_time_s": 187.6607208251953,
+      "yaw_rad": -2.2388231798222713
+    },
+    {
+      "physics_time_s": 187.6808624267578,
+      "yaw_rad": -2.2388231805473304
+    }
+  ],
+  "sources": {
+    "video_states.json": {
+      "sha256": "ef386e648b6d81a4afecdfb02ea54138d1a53d58606aedfc87da3dd7e9acc310",
+      "bytes": 23644453
+    },
+    "artifacts/reactive_observations.jsonl": {
+      "sha256": "5dc004daf3f9ccdcc782cfb3debdbf879530d4ea9b4df1e59cb793da088a994b",
+      "bytes": 38429986
+    },
+    "artifacts/stair_driver_result.json": {
+      "sha256": "f9b171d57eef78cbbbfd165ca63371254543306d8f52fc5e4cfa811ebf663406",
+      "bytes": 771524
+    },
+    "result.json": {
+      "sha256": "b412503001c5a8bcce58c35223bc3e8322326580a50f3d2d9154f8df55b03f7d",
+      "bytes": 4522
+    },
+    "state_copyback.json": {
+      "sha256": "c88a82f8858f81d35d9fbaa4441dc149eff4234b933838f85891c79ae4d13f62",
+      "bytes": 1838
+    }
+  },
+  "claim": "Observed final-pose gate failure despite Nav2 arrival. No exclusive cause or generalized controller regression established.",
+  "calculation": "yaw(x,y,z,w)=atan2(2*(w*z+x*y),1-2*(y*y+z*z)); desired quaternion from pct_route.goal_pose.orientation, final quaternion from video_states[-1].joint_q[3:7]; error=abs(atan2(sin(final-desired),cos(final-desired)))",
+  "navigation_contract_sha256": "5117b5ee56d353dbdb4d8d9deea8a1bb9ad12c484c4881b72c06e0623b6a126d"
+}

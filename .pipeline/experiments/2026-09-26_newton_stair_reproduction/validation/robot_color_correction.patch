@@ -1,0 +1,104 @@
+--- human_material_renderer.py
+
++++ robot_material_renderer.py
+
+@@ -12,6 +12,7 @@
+
+ from pathlib import Path
+ import shutil
+ import subprocess
++import xml.etree.ElementTree as ET
+ 
+ import numpy as np
+ from PIL import Image, ImageDraw, ImageFont
+@@ -39,8 +40,78 @@
+
+     return np.power(color, 1. / 2.2).tolist()
+ 
+ 
++def prepare_robot_appearance(robot):
++    """Resolve base-link materials from the pinned manufacturer's USD."""
++    from newton._src.utils.mesh import load_meshes_from_file
++    reference = BASE / "references/2026-09-26_lite3_visual_materials"
++    provenance = json.loads((reference / "source.json").read_text())
++    for record in provenance["files"]:
++        if digest(reference / record["path"]) != record["sha256"]:
++            raise ValueError("Manufacturer material reference changed")
++    source = reference / "Lite3/usd/configuration/Lite3_base.usd"
++    stage = Usd.Stage.Open(str(source))
++    base_links = ET.parse(reference / "Lite3/urdf/Lite3.urdf").getroot()
++    rig = BASE / "inputs/sensor_rig"
++    local_links = ET.parse(rig / "lite3_pro_sensor_rig_real_with_interface.urdf").getroot()
++    before = robot.model.shape_color.numpy().copy()
++    colors = before.copy()
++    flags = robot.model.shape_flags.numpy()
++    bodies = robot.model.shape_body.numpy()
++    records = []
++    for source_link in base_links.findall("link"):
++        if not source_link.findall("visual"):
++            continue
++        name = source_link.get("name")
++        local_link = local_links.find("link[@name='" + name + "']")
++        if local_link is None or len(local_link.findall("visual")) != 1:
++            raise ValueError("Expected one original base visual: " + name)
++        visual = local_link.find("visual")
++        mesh = visual.find("geometry/mesh")
++        scale = [float(v) for v in mesh.get("scale", "1 1 1").split()]
++        expected = load_meshes_from_file(str(rig / mesh.get("filename")), scale=scale, maxhullvert=None)
++        if len(expected) != 1:
++            raise ValueError("Expected a single original robot mesh: " + name)
++        matches = [i for i, shape in enumerate(robot.model.shape_source)
++            if bodies[i] >= 0 and robot.model.body_label[bodies[i]].rsplit("/", 1)[-1] == name
++            and flags[i] & int(newton.ShapeFlags.VISIBLE) and isinstance(shape, newton.Mesh)
++            and np.array_equal(shape.vertices, expected[0].vertices)
++            and np.array_equal(shape.indices, expected[0].indices)]
++        if len(matches) != 1:
++            raise ValueError("Ambiguous original robot visual: " + name)
++        prototype = stage.GetPrimAtPath("/visuals/" + name)
++        material_meshes = [p for p in Usd.PrimRange(prototype) if p.IsA(UsdGeom.Mesh)]
++        if len(material_meshes) != 1:
++            raise ValueError("Expected one manufacturer visual material: " + name)
++        material = UsdShade.MaterialBindingAPI(material_meshes[0]).ComputeBoundMaterial()[0]
++        shader = material.ComputeSurfaceSource("mdl")[0]
++        if not shader:
++            raise ValueError("Manufacturer material shader missing: " + name)
++        source_color = list(shader.GetInput("diffuse_color_constant").Get())
++        authored = visual.find("material/color")
++        selected = source_color if authored is None else [float(x) for x in authored.get("rgba").split()[:3]]
++        index = matches[0]
++        colors[index] = viewer_color(selected)
++        records.append({"link": name, "shape": index, "original_color": before[index].tolist(),
++            "selected_linear_color": selected, "viewer_color": colors[index].tolist(),
++            "material_source": "manufacturer USD" if authored is None else "original URDF",
++            "manufacturer_material": str(material.GetPath()),
++            "original_mesh_sha256": digest(rig / mesh.get("filename"))})
++    if len(records) != 13:
++        raise ValueError("Expected torso plus twelve original leg visuals")
++    selected_shapes = {r["shape"] for r in records}
++    untouched = [i for i in range(robot.model.shape_count) if i not in selected_shapes]
++    if not np.array_equal(before[untouched], colors[untouched]):
++        raise AssertionError("Sensor or scene color changed during robot adaptation")
++    robot.model.shape_color.assign(colors)
++    return {"repository": provenance["repository"], "commit": provenance["commit"],
++        "license": "BSD-3-Clause", "source_usd_sha256": digest(source), "base_visuals": records,
++        "sensor_colors_unchanged": True,
++        "scope": "Material-only transfer by original link and exact original mesh; no imported geometry or physics"}
++
++
+ def prepare_appearance(robot, human, out):
+     """Adapt authored USD albedo/visibility only; keep the recorded ray scene."""
++    robot_appearance = prepare_robot_appearance(robot)
+     stage = Usd.Stage.Open(str(BASE / "inputs/building.usda"))
+     shader = UsdShade.Shader(stage.GetPrimAtPath("/Building/Material/Shader"))
+     building_color = list(shader.GetInput("diffuseColor").Get())
+@@ -90,7 +161,8 @@
+
+             "uv": wp.array(uv, dtype=wp.vec2, device="cpu"), "texture": textures[str(texture)],
+             "color": wp.array([record["viewer_tint"]], dtype=wp.vec3, device="cpu"),
+             "material": wp.array([[roughness, 0., 0., 1.]], dtype=wp.vec4, device="cpu")})
+-    report = {"building_linear_color": building_color, "building_viewer_color": viewer_color(building_color),
++    report = {"robot": robot_appearance,
++        "building_linear_color": building_color, "building_viewer_color": viewer_color(building_color),
+         "building_roughness": robot.model.shape_source[robot.building_shape].roughness,
+         "human_parts": records, "visible_meshes": len(parts), "total_meshes": len(records),
+         "color_contract": "Authored linear USD color encoded for Newton's pow2.2 shader; original sRGB atlas untouched",

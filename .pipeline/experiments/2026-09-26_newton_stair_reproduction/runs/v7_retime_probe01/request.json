@@ -1,0 +1,39 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--cpus=2",
+    "--memory=4g",
+    "--name",
+    "vla-v7-retime-probe01",
+    "-e",
+    "ROS_DOMAIN_ID=219",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v7:/version:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_min_cruise/native_flat_inputs:/inputs:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan46_cruise_v7:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runs/v7_retime_probe01:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside.sh"
+  ],
+  "deadline_s": 240,
+  "input_manifest_sha256": "62f6891cf723c84588dc1f9bae67f2abd790dc8a3569ee3612c6ce732aab89f6",
+  "diagnostic_source_files": {
+    "probe_source/CMakeLists.txt": "f875467910dbdb2086deeaffaccbe3541c8c33d2123b1f2325141377c9f3138c",
+    "probe_source/package.xml": "4ebc137341c572ee1e0731e8436d4a032c0a4219ae7fa9b114e67a2fc8947575",
+    "probe_source/PROVENANCE.md": "2642f9068928d26afc9e9b6fd3e1d8eebaf4ad88ce527a2bacf31486804f1702",
+    "probe_source/src/frontier_probe.cpp": "6e68e83a4ac7f88bebda21815cbf88a7b6c5e20158ef4b3f148d45725c27ff8e"
+  },
+  "claim": "Actual native retiming on original flat_3 curve, original v3 measured clouds and original floor prior; independent native boundary/dynamic/full-curve checks"
+}

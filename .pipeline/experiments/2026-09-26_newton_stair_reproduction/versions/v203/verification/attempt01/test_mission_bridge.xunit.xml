@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="2" hostname="4d9fc3466edf" name="pytest" skipped="0" tests="15" time="7.080" timestamp="2026-10-15T08:38:31.064891"><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="79" name="test_odometry_state_and_http_validation" time="0.622"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="108" name="test_task_adapter_has_no_planner_service_or_route_cache" time="0.523"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="121" name="test_http_nav2_action_lifecycle[None-arrived]" time="0.572"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="121" name="test_http_nav2_action_lifecycle[None-cancelled]" time="0.566"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="121" name="test_http_nav2_action_lifecycle[None-failed]" time="0.560"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="121" name="test_http_nav2_action_lifecycle[0.0-arrived]" time="0.563"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="121" name="test_http_nav2_action_lifecycle[0.0-cancelled]" time="0.582"><system-err>The following exception was never retrieved: Tried to use a handle that has been destroyed.
+</system-err></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="121" name="test_http_nav2_action_lifecycle[0.0-failed]" time="0.553"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="121" name="test_http_nav2_action_lifecycle[0.7-arrived]" time="0.551"><system-err>The following exception was never retrieved: Tried to use a handle that has been destroyed.
+</system-err></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="121" name="test_http_nav2_action_lifecycle[0.7-cancelled]" time="0.567"><system-err>The following exception was never retrieved: Tried to use a handle that has been destroyed.
+</system-err></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="121" name="test_http_nav2_action_lifecycle[0.7-failed]" time="0.570"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="170" name="test_pending_cancel_and_request_id_idempotence" time="0.518"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="182" name="test_generated_profile_uses_direct_topics_and_builtin_tree" time="0.008"><failure message="TypeError: write_profile() got an unexpected keyword argument &apos;pct_map_bundle&apos;">tmp_path = PosixPath(&apos;/tmp/pytest-of-root/pytest-0/test_generated_profile_uses_di0&apos;)
+
+    def test_generated_profile_uses_direct_topics_and_builtin_tree(tmp_path):
+        import xml.etree.ElementTree as ET
+        import yaml
+        from ament_index_python.packages import get_package_share_directory
+        from pathlib import Path as FilePath
+        from lite3_nav2_bridge.profile import write_profile
+        native = FilePath(get_package_share_directory(&apos;scan_planner&apos;)) / &apos;config/planner.yaml&apos;
+        output = tmp_path / &apos;navigation.yaml&apos;
+        bundle = tmp_path / &apos;map.pct&apos;
+        bundle.write_bytes(b&apos;profile wiring only&apos;)
+&gt;       write_profile(output, native, False, pct_map_bundle=bundle)
+E       TypeError: write_profile() got an unexpected keyword argument &apos;pct_map_bundle&apos;
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:193: TypeError</failure></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="212" name="test_navigation_launch_assigns_command_topic_to_server" time="0.034"><failure message="launch.substitutions.substitution_failure.SubstitutionFailure: launch configuration &apos;terrain_manifest&apos; does not exist">tmp_path = PosixPath(&apos;/tmp/pytest-of-root/pytest-0/test_navigation_launch_assigns0&apos;)
+
+    def test_navigation_launch_assigns_command_topic_to_server(tmp_path):
+        import importlib.util
+        from pathlib import Path as FilePath
+        from launch import LaunchContext
+        from ament_index_python.packages import get_package_share_directory
+        launch_file = FilePath(get_package_share_directory(&apos;lite3_nav2_bridge&apos;)) / &apos;launch/navigation.launch.py&apos;
+        spec = importlib.util.spec_from_file_location(&apos;navigation_launch&apos;, launch_file)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        pct_map = tmp_path / &apos;map.pct&apos;
+        pct_map.write_bytes(b&apos;launch resolves this path but does not load PCT&apos;)
+        (tmp_path / &apos;backend.json&apos;).write_text(json.dumps({&apos;map&apos;: {&apos;nominal_body_height_m&apos;: .3}}))
+        context = LaunchContext()
+        context.launch_configurations.update({
+            &apos;use_sim_time&apos;: &apos;false&apos;, &apos;base_frame&apos;: &apos;base&apos;, &apos;odom_topic&apos;: &apos;/quad_0/body_pose&apos;,
+            &apos;generated_params&apos;: str(tmp_path / &apos;params.yaml&apos;), &apos;pct_map_bundle&apos;: str(pct_map),
+            &apos;backend_config&apos;: str(tmp_path / &apos;backend.json&apos;),
+            &apos;native_planner_config&apos;: str(FilePath(get_package_share_directory(&apos;scan_planner&apos;)) / &apos;config/planner.yaml&apos;)})
+        with patch.object(module, &apos;Node&apos;, side_effect=lambda **kwargs: kwargs):
+&gt;           launched = module.nodes(context)
+
+/work/src/lite3_nav2_bridge/test/test_mission_bridge.py:232: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/work/install/lite3_nav2_bridge/share/lite3_nav2_bridge/launch/navigation.launch.py:15: in nodes
+    terrain_manifest=get(&apos;terrain_manifest&apos;),
+/work/install/lite3_nav2_bridge/share/lite3_nav2_bridge/launch/navigation.launch.py:11: in &lt;lambda&gt;
+    get = lambda name: LaunchConfiguration(name).perform(context)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;launch.substitutions.launch_configuration.LaunchConfiguration object at 0xffff9824ae80&gt;
+context = &lt;launch.launch_context.LaunchContext object at 0xffff941d2370&gt;
+
+    def perform(self, context: LaunchContext) -&gt; Text:
+        &quot;&quot;&quot;
+        Perform the substitution by retrieving the launch configuration, as a string.
+    
+        If the launch configuration is not found and a default has been set,
+        the default will be returned, as a string.
+        &quot;&quot;&quot;
+        from ..utilities import perform_substitutions
+        expanded_variable_name = perform_substitutions(context, self.__variable_name)
+        if expanded_variable_name not in context.launch_configurations:
+            if self.__default is None:
+&gt;               raise SubstitutionFailure(
+                    &quot;launch configuration &apos;{}&apos; does not exist&quot;.format(expanded_variable_name))
+E               launch.substitutions.substitution_failure.SubstitutionFailure: launch configuration &apos;terrain_manifest&apos; does not exist
+
+/opt/ros/foxy/lib/python3.8/site-packages/launch/substitutions/launch_configuration.py:98: SubstitutionFailure</failure></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_mission_bridge" file="src/lite3_nav2_bridge/test/test_mission_bridge.py" line="236" name="test_replanning_tree_contract" time="0.001"></testcase></testsuite></testsuites>
