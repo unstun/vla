@@ -1,0 +1,6 @@
+{
+  "future = scanner.submit(lidar.scan, scan_index, actor_time, override_pose=pose, captured_state=captured_state)": "future = SCAN_DEADLINE.submit(scanner, lidar.scan, scan_index, actor_time, override_pose=pose, captured_state=captured_state)",
+  "publish_scan(future.result(), index, captured_pose, captured_time)": "publish_scan(SCAN_DEADLINE.result(future), index, captured_pose, captured_time)",
+  "publish_scan(future.result(timeout=2.), index, captured_pose, captured_time)": "publish_scan(SCAN_DEADLINE.result(future), index, captured_pose, captured_time)",
+  "                        if pending_scan is not None:\n                            raise RuntimeError(\"Captured scan did not finish before the next sensor period\")": "                        if pending_scan is not None:\n                            future, index, captured_pose, captured_time = pending_scan\n                            publish_scan(SCAN_DEADLINE.result(future), index, captured_pose, captured_time)\n                            pending_scan = None"
+}

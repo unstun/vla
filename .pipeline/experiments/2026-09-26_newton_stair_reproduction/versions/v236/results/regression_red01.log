@@ -1,0 +1,54 @@
+EFE.FE
+======================================================================
+ERROR: test_capture_arguments_and_payload_are_unchanged (test_scan_deadline.ScanDeadlineTest.test_capture_arguments_and_payload_are_unchanged)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v236/test_scan_deadline.py", line 87, in test_capture_arguments_and_payload_are_unchanged
+    self.assertIs(scheduler.result(future), payload)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v236/scan_deadline.py", line 50, in result
+    raise RuntimeError(ERROR)
+RuntimeError: Captured scan did not finish before the next sensor period
+
+======================================================================
+ERROR: test_native_catchup_does_not_shorten_original_wall_budget (test_scan_deadline.ScanDeadlineTest.test_native_catchup_does_not_shorten_original_wall_budget)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v236/test_scan_deadline.py", line 28, in test_native_catchup_does_not_shorten_original_wall_budget
+    self.assertIs(scheduler.result(future), value)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v236/scan_deadline.py", line 50, in result
+    raise RuntimeError(ERROR)
+RuntimeError: Captured scan did not finish before the next sensor period
+
+======================================================================
+ERROR: test_worker_exception_propagates (test_scan_deadline.ScanDeadlineTest.test_worker_exception_propagates)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v236/test_scan_deadline.py", line 75, in test_worker_exception_propagates
+    scheduler.result(future)
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v236/scan_deadline.py", line 50, in result
+    raise RuntimeError(ERROR)
+RuntimeError: Captured scan did not finish before the next sensor period
+
+======================================================================
+FAIL: test_late_completed_result_cannot_bypass_budget (test_scan_deadline.ScanDeadlineTest.test_late_completed_result_cannot_bypass_budget)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v236/test_scan_deadline.py", line 53, in test_late_completed_result_cannot_bypass_budget
+    with self.assertRaisesRegex(RuntimeError, ERROR):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_true_overrun_is_rejected_at_original_budget (test_scan_deadline.ScanDeadlineTest.test_true_overrun_is_rejected_at_original_budget)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v236/test_scan_deadline.py", line 41, in test_true_overrun_is_rejected_at_original_budget
+    self.assertGreaterEqual(time.monotonic()-begin, .08)
+AssertionError: 2.837499778252095e-05 not greater than or equal to 0.08
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.278s
+
+FAILED (failures=2, errors=3)

@@ -16,3 +16,9 @@ workspace/failed evidence; do not edit or stop the existing IsaacLab job.
 2. Verify source/install/profile, actual graph and full host dependencies.
 3. Execute one original full-route trial only after preflight passes.
 4. Analyze closed capture with original gates, render immutable state and compare with retained v233 video; return verified artifacts locally.
+
+## v236 execution
+1. Zero-physics original Building ray replay and real NativeClockPacer catch-up repro.
+2. Red regression at the future/deadline boundary; minimal fix and unchanged-ray checks.
+3. Resource/profile/actual graph preflight, including sustained scanner timing.
+4. One new original-route trial, independent route/terminal gates, immutable replay videos and local returns.

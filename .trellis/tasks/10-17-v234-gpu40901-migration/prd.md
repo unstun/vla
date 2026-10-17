@@ -40,3 +40,9 @@ original endpoints,0.35m guards and existing IsaacLab tasks. v235 owns this new
 logical execution change; previous no-physics authorization limits apply only
 to the earlier migration checkpoint. Runtime baseline remains v232/v233 until
 a separately reviewed new result. No automatic physical rerun after failure.
+
+## v236 scanner repair and one new route (authorized2026-10-17)
+Dr Sun explicitly authorized diagnosis/fix of LiDAR timeout, with emphasis on
+two-CPU affinity/contention, preserving RL, original endpoints,.35m thresholds
+and.1s capture period. Pass regression/profile/actual graph preflight, then run
+one new full-route physical trial and deliver results/comparison video.

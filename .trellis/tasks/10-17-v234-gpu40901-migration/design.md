@@ -61,3 +61,6 @@ offline preflight remain to be prepared before arranging the next experiment.
 
 ## v235 complete host entry
 Reuse the v233 entry with the v234 source/install gates, Docker image and factory shim. Bind all14 rebuilt packages directly; original underlays are unnecessary. Native resources4 CPUs/6GiB/shares128; host physics2 CPUs/nice19. CPU-only physics, unchanged timers and acceptance. A create-exclusive physical-launch ledger prevents a second invocation. Export compact results and recorded-state video; raw captures stay remote.
+
+## v236 diagnosis boundary
+Measure actual scan queue/start/finish, CPU time/runnable wait and wall time to native-next-scan check. Separate scheduler contention from early native-clock catch-up before choosing the smallest fix. Scope is the host/recorder scheduling boundary; ray geometry, point count, capture stamps, native planning and policy remain unchanged.
