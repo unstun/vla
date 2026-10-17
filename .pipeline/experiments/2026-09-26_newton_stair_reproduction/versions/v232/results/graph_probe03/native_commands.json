@@ -1,0 +1,67 @@
+{
+  "frequency_observer": [
+    "/usr/bin/python3",
+    "/data/sun/vla_mppi_20261009/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/frequency_observer.py",
+    "--output",
+    "/data/sun/vla_mppi_20261009/callback_failure_v232/graph_probe03"
+  ],
+  "clock_responder": [
+    "/usr/bin/python3",
+    "/data/sun/vla_mppi_20261009/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/scripts/clock_sync.py",
+    "--port",
+    "24602"
+  ],
+  "health": [
+    "/usr/bin/python3",
+    "/data/sun/vla_mppi_20261009/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/native_observer.py",
+    "--output",
+    "/data/sun/vla_mppi_20261009/callback_failure_v232/graph_probe03/artifacts/runtime_health.json",
+    "--run-id",
+    "graph_probe03",
+    "--epoch",
+    "1792251072366730342",
+    "--ros-args",
+    "-p",
+    "use_sim_time:=true"
+  ],
+  "body_tf": [
+    "/usr/bin/python3",
+    "/data/sun/vla_mppi_20261009/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/body_tf_bridge.py",
+    "--ros-args",
+    "-p",
+    "use_sim_time:=true"
+  ],
+  "bridge": [
+    "/usr/bin/python3",
+    "-c",
+    "import sys; sys.path.insert(0, sys.argv.pop(1)); from lite3_sim_bridge.foxy_bridge_node import main; main()",
+    "/data/sun/vla_mppi_20261009/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v198/runtime/bridge",
+    "--ros-args",
+    "--params-file",
+    "/data/sun/vla_mppi_20261009/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/config_archived/bridge.yaml",
+    "-p",
+    "telemetry_host:=host.docker.internal",
+    "-p",
+    "telemetry_port:=24600",
+    "-p",
+    "command_host:=host.docker.internal",
+    "-p",
+    "command_port:=24601",
+    "-p",
+    "scan_audit_path:=/data/sun/vla_mppi_20261009/callback_failure_v232/graph_probe03/bridge_scan_audit.jsonl"
+  ],
+  "nav2": [
+    "ros2",
+    "launch",
+    "lite3_nav2_bridge",
+    "navigation.launch.py",
+    "native_planner_config:=/data/sun/vla_mppi_20261009/callback_failure_v232/graph_probe03/planner.yaml",
+    "backend_config:=/data/sun/vla_mppi_20261009/callback_failure_v232/graph_probe03/backend_config.json",
+    "generated_params:=/data/sun/vla_mppi_20261009/callback_failure_v232/graph_probe03/nav2_params.yaml",
+    "terrain_manifest:=/work/fixtures/building/terrain.json",
+    "environmental_manifest:=/work/fixtures/building/environment225.json",
+    "use_sim_time:=true",
+    "base_frame:=base",
+    "odom_topic:=/quad_0/body_pose"
+  ]
+}

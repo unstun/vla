@@ -95,3 +95,39 @@ v229, new logical version v230; no new physics or source promotion.
 
 Dr Sun approved the frozen v229 source/results and corresponding task/index
 updates as a separate commit, followed by the v230 feedback commit.
+
+## v232 authorized callback/process-failure repair
+
+Dr Sun's next instruction specifies all four repairs after the v231 SIGABRT:
+rebound short-circuit, finite soft-heading fallback, callback-level exception
+containment and critical-process failure/finish closure. New overlay v232 uses
+frozen v230 navigation; v231 is only the failure reference. Root implements and
+checks directly; optional agents supplied read-only source research.
+
+The two original parent-code regression failures are retained under
+versions/v232/results/red01. The delayed case injects two58.4ms failed-search
+latency slots, independently advances real ROS time, then exercises the actual
+native heading and shared environment objective on a stationary tail. The
+second case triggers actual native STOP_FOR_ERROR and the formerly unguarded
+objective continuation. Neither is a new physical simulation.
+
+The final gate must include the actual running-Action/paused-ROS-clock SIGABRT
+case, callback tests, exact original-query parity, installed Building admission,
+effective header/library provenance and actual no-physics graph startup/stop.
+Keep this task in progress and v219/v220 as the accepted physical pair. This
+request stops at offline review; no commit or new physical run is authorized
+by the v232 implementation package itself.
+
+
+## v232 final offline receipt
+
+Attempt08 passes9 packages,165 distinct cases/186 colcon records. The two red
+parent-code exceptions become ordinary finite fallback/cancelled failures.
+Real Foxy timer/service/cleanup exceptions stay contained; the running-Action,
+paused-clock, actual child SIGABRT case closes matching FAILED finish without
+reviving the task. All126324+3 hard verdicts/predicates stay unchanged; both
+installed Building route CSVs equal v230 and first check rejects0/3821. Actual
+14-package graph stays alive12s and shuts down without false fault. Verify317
+composed sources,19 owned sources,607 installs and60 effective header locations.
+See versions/v232/RESULTS.md and retained failed attempts. No new physics or
+Git commit; task stays in progress for separate physical acceptance.

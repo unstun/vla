@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="1" hostname="ubuntu" name="pytest" skipped="0" tests="5" time="0.478" timestamp="2026-10-17T15:16:28.958288"><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile" file="src/lite3_nav2_bridge/test/test_terrain_profile.py" line="18" name="test_profile_retains_scan_geometry_and_removes_map_work[base]" time="0.097"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile" file="src/lite3_nav2_bridge/test/test_terrain_profile.py" line="18" name="test_profile_retains_scan_geometry_and_removes_map_work[base_link]" time="0.089"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile" file="src/lite3_nav2_bridge/test/test_terrain_profile.py" line="47" name="test_launch_owns_one_static_publisher_and_wait_recovery_server" time="0.080"><failure message="KeyError: &apos;run_id&apos;">tmp_path = PosixPath(&apos;/tmp/pytest-of-unknown/pytest-2/test_launch_owns_one_static_pu0&apos;)
+
+    def test_launch_owns_one_static_publisher_and_wait_recovery_server(tmp_path):
+        launch_file = Path(get_package_share_directory(&apos;lite3_nav2_bridge&apos;))/&apos;launch/navigation.launch.py&apos;
+        spec = importlib.util.spec_from_file_location(&apos;terrain_launch&apos;,launch_file)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        backend = tmp_path/&apos;backend.json&apos;; backend.write_text(&apos;{}&apos;)
+        context = LaunchContext()
+        context.launch_configurations.update({&apos;terrain_manifest&apos;:str(MANIFEST), &apos;native_planner_config&apos;:str(NATIVE),
+            &apos;generated_params&apos;:str(tmp_path/&apos;profile.yaml&apos;), &apos;backend_config&apos;:str(backend),
+            &apos;use_sim_time&apos;:&apos;false&apos;,&apos;base_frame&apos;:&apos;base&apos;,&apos;odom_topic&apos;:&apos;/quad_0/body_pose&apos;})
+        with patch.object(module, &apos;Node&apos;, side_effect=lambda **kwargs: kwargs):
+&gt;           actions = module.nodes(context)
+
+/work/src/lite3_nav2_bridge/test/test_terrain_profile.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/work/install/lite3_nav2_bridge/share/lite3_nav2_bridge/launch/navigation.launch.py:45: in nodes
+    monitors=[RegisterEventHandler(OnProcessExit(target_action=action,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;zip object at 0x771c842d5200&gt;
+
+    monitors=[RegisterEventHandler(OnProcessExit(target_action=action,
+&gt;       on_exit=critical_exit_handler(failure_path,backend[&apos;run_id&apos;],backend[&apos;run_epoch_ns&apos;],component)))
+        for component,action in zip(components,actions)]
+E   KeyError: &apos;run_id&apos;
+
+/work/install/lite3_nav2_bridge/share/lite3_nav2_bridge/launch/navigation.launch.py:46: KeyError</failure></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile" file="src/lite3_nav2_bridge/test/test_terrain_profile.py" line="62" name="test_shared_environment_profile_binds_same_field_without_relaxing_geometry" time="0.126"></testcase><testcase classname="lite3_nav2_bridge.src.lite3_nav2_bridge.test.test_terrain_profile" file="src/lite3_nav2_bridge/test/test_terrain_profile.py" line="91" name="test_support_lattice_origin_comes_from_sha_bound_pct_header" time="0.037"></testcase></testsuite></testsuites>

@@ -1206,3 +1206,15 @@ but 42/42 successful completed stair rounds end at 46.376 s; later planning is
 absent. This is not full-window 100% success or physical promotion.
 [Results](v231/RESULTS.md). Accepted physical source/display remains v219/v220.
 
+### v232 — native exception containment and critical-process failure closure
+
+On frozen v230, short-circuit stopped rebound objectives, keep soft headings
+finite without changing hard freshness, contain exceptions inside native ROS
+callbacks/complete optimizer entries, and close failed tasks when actual ROS
+children exit or critical nodes stop responding. Nine packages/165 distinct
+cases (186 colcon records) pass, including a running Action with paused ROS
+clock and a real SIGABRT child whose launch parent survives. Original126324+3
+hard verdicts/predicates remain unchanged; installed Building first admission
+has0/3821 rejected and identical v230 route bytes. Actual14-package graph runs
+12s and shuts down cleanly with zero physics. [Results](v232/RESULTS.md).
+Offline gate only; v219/v220 remains the accepted physical source/display pair.

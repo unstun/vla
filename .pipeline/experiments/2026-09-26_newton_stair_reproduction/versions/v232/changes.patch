@@ -1,0 +1,1111 @@
+--- a/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
++++ b/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
+@@ -96,7 +96,7 @@
+       DONT_STOP,
+       STOP_FOR_REBOUND,
+       STOP_FOR_ERROR
+-    } force_stop_type_;
++    } force_stop_type_{DONT_STOP};
+ 
+     // main input
+     // Eigen::MatrixXd control_points_;     // B-spline control points, N x dim
+--- a/src/bspline_opt/include/bspline_opt/environmental_curve_cost.h
++++ b/src/bspline_opt/include/bspline_opt/environmental_curve_cost.h
+@@ -2,16 +2,23 @@
+ #include <Eigen/Dense>
+ #include <algorithm>
+ #include <cmath>
++#include <limits>
++#include <stdexcept>
+ 
+ namespace scan_planner {
+ // Cubic B-spline samples, including tangent/lookahead heading. Gradients flow
+ // through the same pose query into every contributing control point.
+ template<class Cost,class Heading>
+ double environmentalCurveCost(const Eigen::MatrixXd &q,double interval,double lookahead,
+-    Cost score,Heading heading,Eigen::MatrixXd &gradient) {
++    Cost score,Heading heading,Eigen::MatrixXd &gradient,
++    double measured_yaw=std::numeric_limits<double>::quiet_NaN()) {
+   gradient=Eigen::MatrixXd::Zero(3,q.cols());
+-  if(q.cols()<4||interval<=0)return 0.;
++  if(q.rows()!=3 || !q.allFinite() || !std::isfinite(interval) || interval<=0 ||
++      !std::isfinite(lookahead) || lookahead<0)
++    throw std::invalid_argument("Invalid environmental curve geometry");
++  if(q.cols()<4)return 0.;
+   const double duration=(q.cols()-3)*interval;
++  if(!std::isfinite(duration))throw std::invalid_argument("Nonfinite environmental curve duration");
+   struct Basis {int index;Eigen::Vector4d value,derivative;};
+   const auto basis=[&](double time) {
+     const int i=std::min(int(time/interval),int(q.cols())-4);
+@@ -27,6 +34,9 @@
+     // At least ten samples per span; more for long spans or sharp rotation.
+     const auto left=basis(span*interval),right=basis((span+1)*interval);
+     const Eigen::Vector3d lv=q.middleCols(left.index,4)*left.derivative,rv=q.middleCols(right.index,4)*right.derivative;
++    if(!lv.allFinite() || !rv.allFinite() || !std::isfinite(length) ||
++        length/.025>std::numeric_limits<int>::max()-1)
++      throw std::invalid_argument("Nonfinite environmental sample geometry");
+     const double turn=std::abs(std::remainder(std::atan2(rv.y(),rv.x())-std::atan2(lv.y(),lv.x()),2*M_PI));
+     const int samples=std::max({10,int(std::ceil(length/.025)),int(std::ceil(turn/.05))});
+     const double weight=interval/samples;
+@@ -36,18 +46,50 @@
+       const Eigen::Vector3d p=q.middleCols(b.index,4)*b.value;
+       const Eigen::Vector3d v=q.middleCols(b.index,4)*b.derivative;
+       const Eigen::Vector3d ahead=q.middleCols(a.index,4)*a.value;
+-      const double yaw=heading(p,ahead,v);Eigen::Vector4d pose;
++      if(!p.allFinite() || !v.allFinite() || !ahead.allFinite())
++        throw std::invalid_argument("Nonfinite environmental sample pose");
++      double yaw=heading(p,ahead,v);
++      const Eigen::Vector3d delta=ahead-p;
++      enum Direction {Lookahead,Velocity,Neighbor,Measured};
++      Direction selected=delta.head<2>().squaredNorm()>=1e-4 ? Lookahead :
++        (v.head<2>().squaredNorm()>=1e-4 ? Velocity : Measured);
++      int neighbor=-1;
++      Eigen::Vector3d direction=selected==Lookahead ? delta : v;
++      if(!std::isfinite(yaw)) {
++        // Soft preference alone may use smaller geometric tangents. Native
++        // collision headings keep their original freshness and 1e-4 rule.
++        if(delta.head<2>().squaredNorm()>1e-12){direction=delta;selected=Lookahead;}
++        else if(v.head<2>().squaredNorm()>1e-12){direction=v;selected=Velocity;}
++        else {
++          selected=Measured;
++          for(int distance=0;distance<q.cols()-1 && neighbor<0;++distance)
++            for(int index:{b.index-distance,b.index+distance}) {
++              if(index<0 || index>=q.cols()-1)continue;
++              const Eigen::Vector3d candidate=q.col(index+1)-q.col(index);
++              if(candidate.head<2>().squaredNorm()>1e-12) {
++                neighbor=index;direction=candidate;selected=Neighbor;break;
++              }
++            }
++        }
++        yaw=selected==Measured ? measured_yaw : std::atan2(direction.y(),direction.x());
++      }
++      if(!std::isfinite(yaw))throw std::invalid_argument("No finite environmental soft heading");
++      Eigen::Vector4d pose=Eigen::Vector4d::Zero();
+       const double value=score(p,yaw,pose);total+=weight*value;
++      if(!std::isfinite(value) || !pose.allFinite())
++        throw std::runtime_error("Nonfinite environmental score or gradient");
+       if(value==0.)continue;
+       Eigen::Vector3d dp=pose.head<3>(),da=Eigen::Vector3d::Zero(),dv=da;
+       // Exact branches of GridMap::collisionTrajectoryYaw / motionHeading.
+-      const Eigen::Vector3d delta=ahead-p;const bool use_velocity=delta.head<2>().squaredNorm()<1e-4;
+-      const Eigen::Vector3d direction=use_velocity?v:delta;
+       const double norm2=direction.head<2>().squaredNorm();
+-      if(norm2>=1e-4) {
++      if(selected!=Measured && norm2>1e-12) {
+         const Eigen::Vector3d angle_gradient=pose(3)/norm2*Eigen::Vector3d(-direction.y(),direction.x(),0.);
+-        if(use_velocity)dv=angle_gradient;
+-        else {dp-=angle_gradient;da=angle_gradient;}
++        if(selected==Velocity)dv=angle_gradient;
++        else if(selected==Lookahead){dp-=angle_gradient;da=angle_gradient;}
++        else {
++          gradient.col(neighbor)-=weight*angle_gradient;
++          gradient.col(neighbor+1)+=weight*angle_gradient;
++        }
+       }
+       for(int k=0;k<4;++k) {
+         gradient.col(b.index+k)+=weight*(b.value(k)*dp+b.derivative(k)*dv);
+--- a/src/bspline_opt/src/bspline_optimizer.cpp
++++ b/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -2,6 +2,7 @@
+ #include <bspline_opt/rebound_constraint_utils.h>
+ #include <bspline_opt/sampled_curve_rebound.h>
+ #include "bspline_opt/bspline_optimizer.h"
++#include <plan_env/callback_exception.h>
+ #include "bspline_opt/gradient_descent_optimizer.h"
+ #include <algorithm>
+ #include <chrono>
+@@ -416,9 +417,12 @@
+   double BsplineOptimizer::costFunctionRebound(void *func_data, const double *x, double *grad, const int n)
+   {
+     BsplineOptimizer *opt = reinterpret_cast<BsplineOptimizer *>(func_data);
++    if(opt->force_stop_type_!=DONT_STOP){std::fill(grad,grad+n,0.);return 0.;}
+ 
+     double cost;
+-    opt->combineCostRebound(x, grad, cost, n);
++    scan_runtime::callbackBoundary(rclcpp::get_logger("bspline_opt"),"optimizer_callback_rebound",
++      [&]{opt->combineCostRebound(x,grad,cost,n);},
++      [&]{opt->force_stop_type_=STOP_FOR_ERROR;cost=0.;std::fill(grad,grad+n,0.);});
+ 
+     opt->iter_num_ += 1;
+     return cost;
+@@ -427,9 +431,12 @@
+   double BsplineOptimizer::costFunctionRefine(void *func_data, const double *x, double *grad, const int n)
+   {
+     BsplineOptimizer *opt = reinterpret_cast<BsplineOptimizer *>(func_data);
++    if(opt->force_stop_type_!=DONT_STOP){std::fill(grad,grad+n,0.);return 0.;}
+ 
+     double cost;
+-    opt->combineCostRefine(x, grad, cost, n);
++    scan_runtime::callbackBoundary(rclcpp::get_logger("bspline_opt"),"optimizer_callback_refine",
++      [&]{opt->combineCostRefine(x,grad,cost,n);},
++      [&]{opt->force_stop_type_=STOP_FOR_ERROR;cost=0.;std::fill(grad,grad+n,0.);});
+ 
+     opt->iter_num_ += 1;
+     return cost;
+@@ -981,26 +988,25 @@
+ 
+   bool BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double ts)
+   {
+-    setBsplineInterval(ts);
+-
+-    bool flag_success = rebound_optimize();
+-
+-    optimal_points = cps_.points;
+-
+-    return flag_success;
++    bool success=false;
++    scan_runtime::callbackBoundary(rclcpp::get_logger("bspline_opt"),"optimizer_entry_rebound",[&]{
++      setBsplineInterval(ts);
++      success=rebound_optimize();
++      optimal_points=cps_.points;
++    },[&]{force_stop_type_=STOP_FOR_ERROR;success=false;});
++    return success;
+   }
+ 
+   bool BsplineOptimizer::BsplineOptimizeTrajRefine(const Eigen::MatrixXd &init_points, const double ts, Eigen::MatrixXd &optimal_points)
+   {
+-
+-    setControlPoints(init_points);
+-    setBsplineInterval(ts);
+-
+-    bool flag_success = refine_optimize();
+-
+-    optimal_points = cps_.points;
+-
+-    return flag_success;
++    bool success=false;
++    scan_runtime::callbackBoundary(rclcpp::get_logger("bspline_opt"),"optimizer_entry_refine",[&]{
++      setControlPoints(init_points);
++      setBsplineInterval(ts);
++      success=refine_optimize();
++      optimal_points=cps_.points;
++    },[&]{force_stop_type_=STOP_FOR_ERROR;success=false;});
++    return success;
+   }
+ 
+   bool BsplineOptimizer::rebound_optimize()
+@@ -1025,6 +1031,7 @@
+       /* ---------- prepare ---------- */
+       // v31: each rebound round starts from the newest received inputs.
+       grid_map_->refreshSensorInputs("rebound_round");
++      force_stop_type_=DONT_STOP;
+       min_cost_ = std::numeric_limits<double>::max();
+       iter_num_ = 0;
+       flag_force_return = false;
+@@ -1043,6 +1050,7 @@
+       /* ---------- optimize ---------- */
+       t1 = std::chrono::steady_clock::now();
+       int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRebound, NULL, BsplineOptimizer::earlyExit, this, &lbfgs_params);
++      if(force_stop_type_!=DONT_STOP)result=lbfgs::LBFGSERR_CANCELED;
+       t2 = std::chrono::steady_clock::now();
+       double time_ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
+       double total_time_ms = std::chrono::duration<double, std::milli>(t2 - t0).count();
+@@ -1141,6 +1149,7 @@
+ 
+   bool BsplineOptimizer::refine_optimize()
+   {
++    force_stop_type_=DONT_STOP;
+     reactive_stair::PlanningProfile::Scope profile(grid_map_->planning_profile_, reactive_stair::PlanningProfile::Refine);
+     iter_num_ = 0;
+     int start_id = order_;
+@@ -1163,7 +1172,8 @@
+       lbfgs_params.max_iterations = 200;
+       lbfgs_params.g_epsilon = 0.001;
+ 
+-      int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRefine, NULL, NULL, this, &lbfgs_params);
++      int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRefine, NULL, BsplineOptimizer::earlyExit, this, &lbfgs_params);
++      if(force_stop_type_!=DONT_STOP)return false;
+       if (result == lbfgs::LBFGS_CONVERGENCE ||
+           result == lbfgs::LBFGSERR_MAXIMUMITERATION ||
+           result == lbfgs::LBFGS_ALREADY_MINIMIZED ||
+@@ -1218,7 +1228,8 @@
+     if(lambda_environment_==0. || !grid_map_->hasEnvironmentalField())return 0.;
+     const auto score=[this](const Eigen::Vector3d &p,double yaw,Eigen::Vector4d &g){return grid_map_->environmentalCostGradient(p,yaw,g);};
+     const auto heading=[this](const Eigen::Vector3d &p,const Eigen::Vector3d &a,const Eigen::Vector3d &v){return grid_map_->collisionTrajectoryYaw(p,a,v);};
+-    return environmentalCurveCost(q,bspline_interval_,GridMap::collision_heading_lookahead_s,score,heading,gradient);
++    return environmentalCurveCost(q,bspline_interval_,GridMap::collision_heading_lookahead_s,score,heading,gradient,
++      grid_map_->measuredBodyYaw());
+   }
+ 
+   void BsplineOptimizer::combineCostRebound(const double *x, double *grad, double &f_combine, const int n)
+@@ -1235,6 +1246,10 @@
+ 
+     calcSmoothnessCost(cps_.points, f_smoothness, g_smoothness);
+     calcDistanceCostRebound(cps_.points, f_distance, g_distance, iter_num_, f_smoothness);
++    if(force_stop_type_==STOP_FOR_ERROR || force_stop_type_==STOP_FOR_REBOUND) {
++      // The solver must observe cancellation even if this interim gradient is zero.
++      f_combine=0.;std::fill(grad,grad+n,0.);return;
++    }
+     calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);
+ 
+     f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility;
+--- a/src/lite3_nav2_bridge/CMakeLists.txt
++++ b/src/lite3_nav2_bridge/CMakeLists.txt
+@@ -22,7 +22,7 @@
+   target_compile_definitions(test_event_planning PRIVATE NAVIGATION_TREE="${CMAKE_CURRENT_SOURCE_DIR}/config/navigate.xml" LEGACY_TREE="/work/fixtures/v196-navigate.xml")
+   find_package(ament_cmake_pytest REQUIRED)
+   ament_add_pytest_test(test_wait_recovery test/test_wait_recovery.py TIMEOUT 25)
+-  ament_add_pytest_test(test_mission_bridge test/test_mission_bridge.py TIMEOUT 60)
++  ament_add_pytest_test(test_mission_bridge test/test_mission_bridge.py TIMEOUT 90)
+   ament_add_pytest_test(test_static_terrain test/test_static_terrain.py TIMEOUT 30)
+   ament_add_pytest_test(test_terrain_profile test/test_terrain_profile.py TIMEOUT 30)
+ endif()
+--- a/src/lite3_nav2_bridge/launch/navigation.launch.py
++++ b/src/lite3_nav2_bridge/launch/navigation.launch.py
+@@ -1,5 +1,7 @@
+ from launch import LaunchDescription
+-from launch.actions import DeclareLaunchArgument, OpaqueFunction
++from launch.actions import DeclareLaunchArgument, OpaqueFunction, RegisterEventHandler
++from launch.event_handlers import OnProcessExit
++from lite3_nav2_bridge.runtime_failure import critical_exit_handler
+ from launch.substitutions import LaunchConfiguration
+ from launch_ros.actions import Node
+ from lite3_nav2_bridge.profile import write_profile
+@@ -16,12 +18,15 @@
+                             environmental_manifest=LaunchConfiguration('environmental_manifest', default='').perform(context) or None,
+                             reference_height_m=backend.get('map', {}).get('nominal_body_height_m', 0.35),
+                             base_frame=get('base_frame'),odom_topic=get('odom_topic'))
+-    return [
++    failure_path=str(Path(get('generated_params')).parent/'native_process_failure.json')
++    actions = [
+         Node(package='lite3_nav2_bridge', executable='static_terrain', name='static_terrain',
+              parameters=[{'terrain_manifest': get('terrain_manifest'), 'use_sim_time': use_sim}], output='screen'),
+         Node(package='lite3_nav2_bridge', executable='mission_bridge', name='lite3_nav2_mission_bridge',
+              parameters=[{'config_path': get('backend_config'),
+-                          'odom_topic': get('odom_topic'), 'use_sim_time': use_sim}], output='screen'),
++                          'odom_topic': get('odom_topic'), 'use_sim_time': use_sim,
++                          'native_process_failure_path': failure_path,
++                          'critical_liveness_timeout_s': 1.0}], output='screen'),
+         Node(package='nav2_controller', executable='controller_server', name='controller_server',
+              parameters=[profile], remappings=[('cmd_vel', '/quad_0/cmd_vel')], output='screen'),
+         Node(package='nav2_planner', executable='planner_server', name='planner_server',
+@@ -34,6 +39,14 @@
+              parameters=[{'use_sim_time': use_sim, 'autostart': True,
+                           'node_names': ['controller_server', 'planner_server', 'recoveries_server',
+                                          '/nav2_internal/bt_navigator']}], output='screen')]
++    # Attach to actual ROS children; the ros2 launch parent may remain alive.
++    components=('static_terrain','mission_bridge','controller_server','planner_server',
++                'recoveries_server','bt_navigator','lifecycle_manager_navigation')
++    monitors=[RegisterEventHandler(OnProcessExit(target_action=action,
++        on_exit=critical_exit_handler(failure_path,backend.get('run_id',''),backend.get('run_epoch_ns',0),component)))
++        for component,action in zip(components,actions)]
++    return monitors+actions
++
+ 
+ 
+ def generate_launch_description():
+--- a/src/lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py
++++ b/src/lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py
+@@ -14,6 +14,9 @@
+ from rclpy.callback_groups import ReentrantCallbackGroup
+ from rclpy.executors import MultiThreadedExecutor
+ from rclpy.node import Node
++from rclpy.clock import Clock, ClockType
++from lifecycle_msgs.srv import GetState
++from .runtime_failure import read_json, valid_failure, process_failure
+ from rclpy.qos import qos_profile_sensor_data
+ 
+ 
+@@ -35,6 +38,8 @@
+         odom_topic = self.declare_parameter('odom_topic', '/quad_0/body_pose').value
+         with open(config_path, encoding='utf-8') as stream:
+             self.config = json.load(stream)
++        self.config.setdefault('run_id', '')
++        self.config.setdefault('run_epoch_ns', 0)
+         self.frame_id = 'world'
+         self.reference_height_m = float(self.config.get('map', {}).get('nominal_body_height_m', 0.35))
+         if not math.isfinite(self.reference_height_m):
+@@ -48,6 +53,14 @@
+         self._dispatch = []
+         self._session_pending = None
+         self._seq = 0
++        self._native_failure = None
++        self._failure_path = self.declare_parameter('native_process_failure_path', '').value
++        self._critical_timeout = float(self.declare_parameter('critical_liveness_timeout_s', 0.0).value)
++        if (not math.isfinite(self._critical_timeout) or self._critical_timeout<0
++                or (self._critical_timeout>0 and not self._failure_path)):
++            raise ValueError('Invalid critical-process health configuration')
++        self._health_pending, self._health_last = {}, {}
++
+         self._input_group = ReentrantCallbackGroup()
+         self._client = ActionClient(self, NavigateToPose, '/nav2_internal/navigate_to_pose',
+                                     callback_group=self._input_group)
+@@ -58,11 +71,50 @@
+         self._session_client = self.create_client(RouteSession, '/lite3_nav2/route_session',
+                                                   callback_group=self._input_group)
+         self._dispatch_timer = self.create_timer(0.02, self.dispatch_goals)
++        self._liveness_clients = {name:self.create_client(GetState,name+'/get_state',callback_group=self._input_group)
++            for name in ('/controller_server','/planner_server','/recoveries_server','/nav2_internal/bt_navigator')} if self._critical_timeout>0 else {}
++        self._fault_timer = self.create_timer(0.02,self._check_native_health,
++            clock=Clock(clock_type=ClockType.STEADY_TIME))
++
+         http = self.config.get('http', {})
+         self._http = ThreadingHTTPServer((http.get('host', '127.0.0.1'), int(http.get('port', 8785))),
+                                          self._handler_type())
+         self._http_thread = threading.Thread(target=self._http.serve_forever, daemon=True)
+         self._http_thread.start()
++
++    def _check_native_health(self):
++        with self._lock:
++            fault=read_json(self._failure_path) if self._failure_path else None
++            if valid_failure(fault,self.config.get('run_id'),self.config.get('run_epoch_ns')):
++                self._native_failure=fault
++                for rid,job in self.jobs.items():
++                    if job['status'] in ('pending','running'):
++                        handle=self._handles.get(rid)
++                        if handle:
++                            try: handle.cancel_goal_async()
++                            except Exception: pass
++                        self._finish(rid,'failed',fault['cause'],dict(fault))
++                return
++            active=self.current_owner and self.jobs[self.current_owner['request_id']]['status']=='running'
++            if not active:
++                self._health_last.clear()
++                return
++            now=time.monotonic()
++            for name,client in self._liveness_clients.items():
++                self._health_last.setdefault(name,now)
++                pending=self._health_pending.get(name)
++                if pending and pending.done():
++                    try:
++                        if pending.result() is not None:self._health_last[name]=now
++                    except Exception: pass
++                    self._health_pending.pop(name,None)
++                if now-self._health_last[name]>self._critical_timeout:
++                    process_failure(self._failure_path,self.config['run_id'],self.config['run_epoch_ns'],
++                                    name,None,'native_node_unresponsive')
++                    return
++                if name not in self._health_pending and client.service_is_ready():
++                    try:self._health_pending[name]=client.call_async(GetState.Request())
++                    except Exception: pass
+ 
+     def on_odometry(self, message):
+         p, q = message.pose.pose.position, message.pose.pose.orientation
+@@ -96,6 +148,8 @@
+                 if self.jobs[request_id]['data'] != payload:
+                     raise ValueError('request_id already used for a different goal')
+                 return {'ok': True, 'request_id': request_id, 'status': self.jobs[request_id]['status']}
++            if self._native_failure:
++                raise ValueError('Native navigation unavailable: '+self._native_failure['component'])
+             body_xyz = [float(xyz[0]), float(xyz[1]), float(xyz[2]) + self.reference_height_m]
+             self.jobs[request_id] = {'request_id': request_id, 'goal_id': goal_id, 'status': 'pending',
+                 'target_body_xyz': body_xyz, 'cancel_requested': False,
+@@ -204,6 +258,11 @@
+                 if not handle.accepted:
+                     self._finish(request_id, 'failed', 'nav2_goal_rejected', {})
+                     return
++                job=self.jobs[request_id]
++                if (job['status'] not in ('pending','running') or not self.current_owner
++                        or self.current_owner['request_id']!=request_id):
++                    handle.cancel_goal_async()
++                    return
+                 self._handles[request_id] = handle
+                 self.jobs[request_id]['status'] = 'running'
+                 handle.get_result_async().add_done_callback(
+@@ -234,7 +293,10 @@
+         job = self.jobs[request_id]
+         if job['status'] not in ('pending', 'running'):
+             return
+-        self._end_session(job)
++        try:
++            self._end_session(job)
++        except Exception as exc:
++            data=dict(data,session_cleanup_error=str(exc))
+         job['status'], job['cause'] = status, cause
+         self._seq += 1
+         self.terminal_results.append({'seq': self._seq, 'request_id': request_id,
+--- /dev/null
++++ b/src/lite3_nav2_bridge/lite3_nav2_bridge/runtime_failure.py
+@@ -0,0 +1,82 @@
++"""Run-bound critical-process evidence and first-terminal finish publication."""
++import json
++import os
++from pathlib import Path
++import tempfile
++import time
++
++
++def read_json(path):
++    try:
++        return json.loads(Path(path).read_text())
++    except (OSError, ValueError):
++        return None
++
++
++def matches(record, run_id, epoch):
++    return (isinstance(record, dict) and record.get('run_id') == run_id
++            and record.get('run_epoch_ns') == epoch)
++
++
++def valid_failure(record, run_id, epoch):
++    return (matches(record, run_id, epoch)
++            and isinstance(record.get('component'), str) and bool(record['component'])
++            and record.get('cause') in ('native_process_exit', 'native_node_unresponsive')
++            and (type(record.get('exit_code')) is int
++                 or (record['cause'] == 'native_node_unresponsive' and record.get('exit_code') is None)))
++
++
++def write_once(path, payload):
++    """Publish complete bytes atomically; retain the first terminal/failure."""
++    path = Path(path)
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, delete=False) as stream:
++        temporary = Path(stream.name)
++        json.dump(payload, stream, allow_nan=False)
++        stream.write('\n')
++    try:
++        try:
++            os.link(temporary, path)
++        except FileExistsError:
++            pass
++    finally:
++        temporary.unlink()
++    return read_json(path)
++
++
++def process_failure(path, run_id, epoch, component, exit_code,
++                    cause='native_process_exit'):
++    payload = dict(run_id=run_id, run_epoch_ns=epoch, component=component,
++                   exit_code=exit_code, cause=cause, monotonic_ns=time.monotonic_ns())
++    if not valid_failure(payload, run_id, epoch):
++        raise ValueError('Invalid native failure identity')
++    return write_once(path, payload)
++
++
++def critical_exit_handler(path, run_id, epoch, component):
++    def exited(event, context):
++        if not context.is_shutdown:
++            process_failure(path, run_id, epoch, component, event.returncode)
++        return []
++    return exited
++
++
++def finish_failed(root, request, failure, state=None):
++    root = Path(root)
++    run_id, epoch = root.name, request['run_epoch_ns']
++    if not valid_failure(failure, run_id, epoch):
++        return None
++    if not matches(state, run_id, epoch):
++        state = read_json(root / 'backend_latest.json')
++    owner = state.get('service', {}).get('current_owner') if matches(state, run_id, epoch) else None
++    if owner:
++        request_id = owner['request_id']
++    elif matches(state, run_id, epoch) and state.get('terminal_results'):
++        request_id = state['terminal_results'][-1]['request_id']
++    else:
++        request_id = run_id + '-native-failure'
++    note = '%s:%s:exit_code=%s' % (failure['cause'], failure['component'], failure['exit_code'])
++    payload = dict(schema_version=1, run_id=run_id, request_id=request_id,
++                   observed_run_epoch_ns=epoch, requested_at_monotonic_ns=time.monotonic_ns(),
++                   backend_terminal_status='FAILED', note=note, native_failure=failure)
++    return write_once(root / 'artifacts/external_episode/finish_request.json', payload)
+--- a/src/lite3_nav2_bridge/package.xml
++++ b/src/lite3_nav2_bridge/package.xml
+@@ -17,4 +17,5 @@
+  <test_depend>ament_cmake_pytest</test_depend><test_depend>python3-pytest</test_depend>
+  <test_depend>nav2_behavior_tree</test_depend><test_depend>ament_cmake_gtest</test_depend><test_depend>behaviortree_cpp_v3</test_depend>
+  <export><build_type>ament_cmake</build_type></export>
++  <exec_depend>lifecycle_msgs</exec_depend>
+ </package>
+--- a/src/lite3_nav2_bridge/test/test_mission_bridge.py
++++ b/src/lite3_nav2_bridge/test/test_mission_bridge.py
+@@ -236,16 +236,18 @@
+     spec.loader.exec_module(module)
+     import os
+     terrain_manifest = os.environ['TERRAIN_TEST_MANIFEST']
+-    (tmp_path / 'backend.json').write_text(json.dumps({'map': {'nominal_body_height_m': .3}}))
++    (tmp_path / 'backend.json').write_text(json.dumps({'run_id':'unit','run_epoch_ns':42,'map': {'nominal_body_height_m': .3}}))
+     context = LaunchContext()
+     context.launch_configurations.update({
+         'use_sim_time': 'false', 'base_frame': 'base', 'odom_topic': '/quad_0/body_pose',
+         'generated_params': str(tmp_path / 'params.yaml'), 'terrain_manifest': terrain_manifest,
+         'backend_config': str(tmp_path / 'backend.json'),
+         'native_planner_config': str(FilePath(get_package_share_directory('scan_planner')) / 'config/planner.yaml')})
+-    with patch.object(module, 'Node', side_effect=lambda **kwargs: kwargs):
++    with patch.object(module, 'Node', side_effect=lambda **kwargs: kwargs), \
++         patch.object(module, 'OnProcessExit', side_effect=lambda **kwargs: kwargs), \
++         patch.object(module, 'RegisterEventHandler', side_effect=lambda action: {'monitor':action}):
+         launched = module.nodes(context)
+-    server = next(node for node in launched if node['package'] == 'nav2_controller')
++    server = next(node for node in launched if node.get('package') == 'nav2_controller')
+     assert server['remappings'] == [('cmd_vel', '/quad_0/cmd_vel')]
+ 
+ 
+@@ -305,3 +307,125 @@
+                          for req in node._test_sessions))
+     finally:
+         release.set()
++
++
++def test_critical_subprocess_abort_closes_matching_failed_finish_with_live_launch_parent(bridge,tmp_path):
++    import subprocess,sys,signal
++    from lite3_nav2_bridge.runtime_failure import read_json, finish_failed
++    node,io=bridge
++    root=tmp_path/'unit';root.mkdir();fault=root/'native_process_failure.json'
++    node._failure_path=str(fault)
++    release=threading.Event()
++    def executing(handle):
++        while not release.wait(.01):
++            if handle.is_cancel_requested:
++                handle.canceled();return NavigateToPose.Result()
++        if handle.is_active:handle.abort()
++        return NavigateToPose.Result()
++    server=ActionServer(io,NavigateToPose,'/nav2_internal/navigate_to_pose',
++        execute_callback=executing,cancel_callback=lambda _:CancelResponse.ACCEPT,
++        callback_group=ReentrantCallbackGroup())
++    node._test_action_servers.append(server)
++    wait(node._client.server_is_ready)
++    node.submit_goal(goal_payload('aborted-route'))
++    wait(lambda:node.jobs['aborted-route']['status']=='running')
++    from rclpy.parameter import Parameter
++    node.set_parameters([Parameter('use_sim_time',value=True)])
++    assert node.get_clock().now().nanoseconds==0
++    # Process failure must close a running Action even with /clock paused.
++
++    child_code="""
++import resource,sys
++resource.setrlimit(resource.RLIMIT_CORE,(0,0))
++from launch import LaunchService,LaunchDescription
++from launch.actions import ExecuteProcess,RegisterEventHandler
++from launch.event_handlers import OnProcessExit
++from lite3_nav2_bridge.runtime_failure import critical_exit_handler
++crash=ExecuteProcess(cmd=[sys.executable,'-c','import os,time; time.sleep(.1); os.abort()'])
++keeper=ExecuteProcess(cmd=[sys.executable,'-c','import time;time.sleep(30)'])
++monitor=RegisterEventHandler(OnProcessExit(target_action=crash,on_exit=critical_exit_handler(sys.argv[1],'unit',42,'controller_server')))
++service=LaunchService();service.include_launch_description(LaunchDescription([monitor,keeper,crash]));service.run()
++"""
++    log=(tmp_path/'launch_abort.log').open('w')
++    process=subprocess.Popen([sys.executable,'-c',child_code,str(fault)],stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
++    try:
++        wait(lambda: read_json(fault),seconds=8.)
++        assert process.poll() is None # launch parent survives the controller child
++        record=read_json(fault);assert record['exit_code']==-6
++        wait(lambda: node.jobs['aborted-route']['status']=='failed')
++        state=node.get_state();assert state['service']['current_owner'] is None
++        assert len(state['terminal_results'])==1
++        terminal=state['terminal_results'][0]
++        assert terminal['cause']=='native_process_exit'
++        assert terminal['data']['component']=='controller_server'
++        closed=finish_failed(root,{'run_epoch_ns':42},record,state)
++        assert closed['backend_terminal_status']=='FAILED' and closed['observed_run_epoch_ns']==42
++        assert closed['request_id']=='aborted-route' and 'exit_code=-6' in closed['note']
++        assert read_json(root/'artifacts/external_episode/finish_request.json')==closed
++        assert finish_failed(root,{'run_epoch_ns':42},record,state)==closed
++        assert finish_failed(root,{'run_epoch_ns':43},record,state) is None
++        with pytest.raises(ValueError):node.submit_goal(goal_payload('new-after-crash'))
++    finally:
++        release.set()
++        oskill=__import__('os').killpg
++        oskill(process.pid,signal.SIGTERM)
++        process.wait(timeout=5);log.close()
++
++
++def test_old_epoch_failure_ignored_and_late_acceptance_cannot_revive_failed_job(bridge,tmp_path):
++    from concurrent.futures import Future
++    from unittest.mock import Mock
++    from lite3_nav2_bridge.runtime_failure import process_failure
++    node,_=bridge;fault=tmp_path/'failure.json';node._failure_path=str(fault)
++    node.submit_goal(goal_payload('late'))
++    process_failure(fault,'unit',41,'controller_server',-6)
++    node._check_native_health();assert node.jobs['late']['status']=='pending'
++    fault.unlink();process_failure(fault,'unit',42,'controller_server',-6)
++    with patch.object(node,'_end_session',side_effect=RuntimeError('session server dead')):
++        node._check_native_health()
++    assert node.jobs['late']['status']=='failed';assert len(node.terminal_results)==1
++    assert node.terminal_results[0]['data']['session_cleanup_error']=='session server dead'
++    handle=Mock();handle.accepted=True;future=Future();future.set_result(handle)
++    node._accepted('late',future)
++    handle.cancel_goal_async.assert_called_once()
++    assert node.jobs['late']['status']=='failed' and len(node.terminal_results)==1
++    node._check_native_health();assert len(node.terminal_results)==1
++
++
++def test_lost_critical_node_uses_steady_timeout_and_normal_shutdown_is_ignored(bridge,tmp_path):
++    from unittest.mock import Mock
++    from lite3_nav2_bridge.runtime_failure import read_json,critical_exit_handler
++    node,_=bridge;fault=tmp_path/'lost.json';node._failure_path=str(fault)
++    node.submit_goal(goal_payload('lost'));node.jobs['lost']['status']='running'
++    node._critical_timeout=.01
++    client=Mock();client.service_is_ready.return_value=False
++    node._liveness_clients={'/controller_server':client}
++    with node._lock:
++        node._health_last['/controller_server']=time.monotonic()-.02
++        node._check_native_health()
++    wait(lambda:node.jobs['lost']['status']=='failed')
++    assert read_json(fault)['cause']=='native_node_unresponsive'
++    assert node.terminal_results[-1]['cause']=='native_node_unresponsive'
++    normal=tmp_path/'normal.json'
++    critical_exit_handler(normal,'unit',42,'controller_server')(Mock(returncode=0),Mock(is_shutdown=True))
++    assert not normal.exists()
++
++
++def test_real_launch_intentional_shutdown_does_not_create_process_failure(tmp_path):
++    import subprocess,sys
++    fault=tmp_path/'intentional_shutdown.json'
++    code="""
++import sys
++from launch import LaunchService,LaunchDescription
++from launch.actions import ExecuteProcess,RegisterEventHandler,TimerAction,EmitEvent
++from launch.events import Shutdown
++from launch.event_handlers import OnProcessExit
++from lite3_nav2_bridge.runtime_failure import critical_exit_handler
++child=ExecuteProcess(cmd=[sys.executable,'-c','import time;time.sleep(30)'])
++monitor=RegisterEventHandler(OnProcessExit(target_action=child,on_exit=critical_exit_handler(sys.argv[1],'unit',42,'controller_server')))
++stop=TimerAction(period=.2,actions=[EmitEvent(event=Shutdown(reason='intentional unit-test shutdown'))])
++service=LaunchService();service.include_launch_description(LaunchDescription([monitor,child,stop]));service.run()
++"""
++    result=subprocess.run([sys.executable,'-c',code,str(fault)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=8,text=True)
++    assert result.returncode==0,result.stdout
++    assert not fault.exists(),result.stdout
+--- a/src/lite3_nav2_bridge/test/test_terrain_profile.py
++++ b/src/lite3_nav2_bridge/test/test_terrain_profile.py
+@@ -54,9 +54,11 @@
+     context.launch_configurations.update({'terrain_manifest':str(MANIFEST), 'native_planner_config':str(NATIVE),
+         'generated_params':str(tmp_path/'profile.yaml'), 'backend_config':str(backend),
+         'use_sim_time':'false','base_frame':'base','odom_topic':'/quad_0/body_pose'})
+-    with patch.object(module, 'Node', side_effect=lambda **kwargs: kwargs):
++    with patch.object(module, 'Node', side_effect=lambda **kwargs: kwargs), \
++         patch.object(module, 'OnProcessExit', side_effect=lambda **kwargs: kwargs), \
++         patch.object(module, 'RegisterEventHandler', side_effect=lambda action: {'monitor':action}):
+         actions = module.nodes(context)
+-    names = [action['executable'] for action in actions]
++    names = [action['executable'] for action in actions if 'executable' in action]
+     assert names == ['static_terrain','mission_bridge','controller_server','planner_server','recoveries_server','bt_navigator','lifecycle_manager']
+ 
+ 
+--- a/src/lite3_nav2_plugins/test/test_environmental_cost.cpp
++++ b/src/lite3_nav2_plugins/test/test_environmental_cost.cpp
+@@ -11,6 +11,8 @@
+ #include <sstream>
+ #include <iomanip>
+ #include <chrono>
++#include <thread>
++#include <rcl/time.h>
+ #include <lite3_nav2_plugins/support_height.hpp>
+ 
+ namespace {
+@@ -207,3 +209,110 @@
+   Eigen::Vector2d gradient;EXPECT_DOUBLE_EQ(map.GetValueBilinearSafe(0,5.,2.,0.,&gradient),0.);EXPECT_DOUBLE_EQ(gradient(0),0.);
+   EXPECT_NEAR(map.GetValueBilinearSafe(0,1.5-1e-8,2.,0.),map.GetValueBilinearSafe(0,1.5+1e-8,2.,0.),2.1e-6);
+ }
++
++namespace {
++void regressionClock(rclcpp::Node &node,int64_t ns) {
++  auto clock=node.get_clock()->get_clock_handle();
++  ASSERT_EQ(rcl_enable_ros_time_override(clock),RCL_RET_OK);
++  ASSERT_EQ(rcl_set_ros_time_override(clock,ns),RCL_RET_OK);
++}
++void regressionOptimizer(scan_planner::BsplineOptimizer &opt,const GridMap::Ptr &map,rclcpp::Node &node) {
++  map->node_=&node;map->query_clock_=node.get_clock();
++  map->reactive_body_stamp_s_=1.;map->reactive_body_quaternion_=Eigen::Quaterniond::Identity();
++  auto support=std::const_pointer_cast<GridMapSupportState>(map->owned_state_->support_);
++  support->environmental_field_=field();
++  opt.setParam(&node);opt.setEnvironment(map);opt.lambda_environment_=1.;
++  opt.lambda1_=.05;opt.new_lambda2_=opt.lambda3_=0.;opt.max_vel_=opt.max_acc_=10.;
++  opt.order_=3;opt.bspline_interval_=.2;opt.iter_num_=0;opt.cps_.resize(9);opt.cps_.clearance=.1;
++  for(int i=0;i<9;++i)opt.cps_.points.col(i)=Eigen::Vector3d(std::min(i,5)*.2,0.,.35);
++}
++}
++TEST(EnvironmentalRegression, DelayedLocalSearchStationaryTailKeepsFiniteSoftCost) {
++ int argc=0;rclcpp::init(argc,nullptr);
++ {
++  auto node=std::make_shared<rclcpp::Node>("delayed_search_tail");
++  auto map=std::make_shared<GridMap>();scan_planner::BsplineOptimizer opt;
++  regressionOptimizer(opt,map,*node);regressionClock(*node,1000000000LL);
++  Eigen::MatrixXd gradient;EXPECT_NO_THROW(opt.calcEnvironmentalCost(opt.cps_.points,gradient));
++  const auto begin=std::chrono::steady_clock::now();
++  // Inject the elapsed time of two failed search slots; independently advance ROS time.
++  std::thread clock([&]{std::this_thread::sleep_for(std::chrono::milliseconds(110));regressionClock(*node,1116800000LL);});
++  const auto failed_search=[] {std::this_thread::sleep_for(std::chrono::microseconds(58400));return false;};
++  EXPECT_FALSE(failed_search());EXPECT_FALSE(failed_search());clock.join();
++  EXPECT_GT(std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count(),.1);
++  const Eigen::Vector3d end=opt.cps_.points.col(8);
++  EXPECT_FALSE(std::isfinite(map->collisionTrajectoryYaw(end,end,Eigen::Vector3d::Zero())));
++  double score=-1.;EXPECT_NO_THROW(score=opt.calcEnvironmentalCost(opt.cps_.points,gradient));
++  EXPECT_TRUE(std::isfinite(score));EXPECT_GE(score,0.);EXPECT_TRUE(gradient.allFinite());
++  // Hard geometry heading is still stale after soft scoring.
++  EXPECT_FALSE(std::isfinite(map->collisionTrajectoryYaw(end,end,Eigen::Vector3d::Zero())));
++ }
++ rclcpp::shutdown();
++}
++TEST(EnvironmentalRegression, NativeReboundErrorShortCircuitsEnvironmentalAssessment) {
++ int argc=0;rclcpp::init(argc,nullptr);
++ {
++  auto node=std::make_shared<rclcpp::Node>("rebound_stop_short_circuit");
++  auto map=std::make_shared<GridMap>();scan_planner::BsplineOptimizer opt;
++  regressionOptimizer(opt,map,*node);regressionClock(*node,1116800000LL);
++  opt.cps_.points.colwise()=Eigen::Vector3d(0.,0.,.35);opt.iter_num_=4;
++  double x[9],g[9],cost=-1.;std::memcpy(x,opt.cps_.points.data()+9,sizeof(x));
++  EXPECT_NO_THROW(opt.combineCostRebound(x,g,cost,9));
++  EXPECT_EQ(opt.force_stop_type_,scan_planner::BsplineOptimizer::STOP_FOR_ERROR);
++  EXPECT_TRUE(std::isfinite(cost));for(double v:g)EXPECT_TRUE(std::isfinite(v));
++  EXPECT_NE(scan_planner::BsplineOptimizer::earlyExit(&opt,x,g,cost,0.,0.,0.,9,0,0),0);
++ }
++ rclcpp::shutdown();
++}
++
++TEST(EnvironmentalRegression, MeasuredYawFallbackAndNonfiniteGeometryFailAtOptimizerBoundary) {
++ int argc=0;rclcpp::init(argc,nullptr);
++ {
++  auto node=std::make_shared<rclcpp::Node>("environment_finite_guards");auto map=std::make_shared<GridMap>();
++  scan_planner::BsplineOptimizer opt;regressionOptimizer(opt,map,*node);regressionClock(*node,1116800000LL);
++  map->reactive_body_quaternion_=Eigen::AngleAxisd(1.2,Eigen::Vector3d::UnitZ());
++  Eigen::MatrixXd q=Eigen::MatrixXd::Zero(3,9),gradient;q.row(2).setConstant(.35);
++  int assessed=0;
++  EXPECT_NO_THROW(scan_planner::environmentalCurveCost(q,.2,.1,
++    [&](const Eigen::Vector3d &,double yaw,Eigen::Vector4d &g){++assessed;EXPECT_NEAR(yaw,1.2,1e-12);g.setZero();return 1.;},
++    [&](const Eigen::Vector3d &p,const Eigen::Vector3d &a,const Eigen::Vector3d &v){return map->collisionTrajectoryYaw(p,a,v);},gradient,map->measuredBodyYaw()));
++  EXPECT_GT(assessed,0);EXPECT_TRUE(gradient.allFinite());
++  q(0,4)=std::numeric_limits<double>::quiet_NaN();assessed=0;
++  EXPECT_THROW(scan_planner::environmentalCurveCost(q,.2,.1,
++    [&](const Eigen::Vector3d &,double,Eigen::Vector4d &g){++assessed;g.setZero();return 0.;},
++    [](const Eigen::Vector3d &,const Eigen::Vector3d &,const Eigen::Vector3d &){return 0.;},gradient),std::invalid_argument);
++  EXPECT_EQ(assessed,0);
++  opt.cps_.points=q;opt.ref_pts_.assign(9,Eigen::Vector3d::Zero());Eigen::MatrixXd output;
++  EXPECT_FALSE(opt.BsplineOptimizeTrajRebound(output,.2));
++  EXPECT_EQ(opt.force_stop_type_,scan_planner::BsplineOptimizer::STOP_FOR_ERROR);
++  EXPECT_FALSE(opt.BsplineOptimizeTrajRefine(q,.2,output));
++  // A finite stationary curve with no finite measured heading must fail the
++  // real solver, even if its caught objective returns zero/zero to L-BFGS.
++  opt.cps_.points.colwise()=Eigen::Vector3d(0.,0.,.35);
++  map->reactive_body_quaternion_.coeffs().setConstant(std::numeric_limits<double>::quiet_NaN());
++  EXPECT_FALSE(opt.BsplineOptimizeTrajRebound(output,.2));
++  EXPECT_EQ(opt.force_stop_type_,scan_planner::BsplineOptimizer::STOP_FOR_ERROR);
++  EXPECT_FALSE(opt.BsplineOptimizeTrajRefine(opt.cps_.points,.2,output));
++
++  for(auto stop:{scan_planner::BsplineOptimizer::STOP_FOR_ERROR,scan_planner::BsplineOptimizer::STOP_FOR_REBOUND}){
++    opt.force_stop_type_=stop;double x[9]={},g[9];
++    EXPECT_DOUBLE_EQ(scan_planner::BsplineOptimizer::costFunctionRebound(&opt,x,g,9),0.);
++    EXPECT_EQ(opt.force_stop_type_,stop);for(double v:g)EXPECT_DOUBLE_EQ(v,0.);
++  }
++ }
++ rclcpp::shutdown();
++}
++
++TEST(EnvironmentalRegression, NeighborHeadingFallbackRetainsAnalyticGradient) {
++ Eigen::MatrixXd q(3,9),gradient,unused;
++ for(int i=0;i<9;++i){const int j=std::min(i,5);q.col(i)=Eigen::Vector3d(.2*j,.008*j*j,.35);}
++ const auto score=[](const Eigen::Vector3d &,double yaw,Eigen::Vector4d &g){g<<0.,0.,0.,std::cos(yaw);return 2.+std::sin(yaw);};
++ const auto unavailable=[](const Eigen::Vector3d &,const Eigen::Vector3d &,const Eigen::Vector3d &){return std::numeric_limits<double>::quiet_NaN();};
++ EXPECT_TRUE(std::isfinite(scan_planner::environmentalCurveCost(q,.2,.1,score,unavailable,gradient,1.2)));
++ for(int axis=0;axis<2;++axis){
++  auto plus=q,minus=q;plus(axis,4)+=1e-6;minus(axis,4)-=1e-6;
++  const double numerical=(scan_planner::environmentalCurveCost(plus,.2,.1,score,unavailable,unused,1.2)-
++    scan_planner::environmentalCurveCost(minus,.2,.1,score,unavailable,unused,1.2))/2e-6;
++  EXPECT_NEAR(gradient(axis,4),numerical,2e-4);
++ }
++}
+--- /dev/null
++++ b/src/plan_env/include/plan_env/callback_exception.h
+@@ -0,0 +1,25 @@
++#pragma once
++#include <exception>
++#include <rclcpp/rclcpp.hpp>
++
++namespace scan_runtime {
++// Must run inside the ROS callback, before Foxy's executor thread boundary.
++// Failure handlers also stay contained, including a failed log/publication path.
++template<class Work,class Failure>
++bool callbackBoundary(const rclcpp::Logger &logger,const char *site,
++    Work &&work,Failure &&failure) noexcept {
++  const auto report=[&](const char *message) noexcept {
++    try { RCLCPP_ERROR(logger,"native_callback_exception site=%s: %s",site,message); }
++    catch (...) {}
++    try { failure(); }
++    catch (...) {
++      try { RCLCPP_ERROR(logger,"native_callback_cleanup_exception site=%s",site); }
++      catch (...) {}
++    }
++  };
++  try {work();return true;}
++  catch (const std::exception &error) {report(error.what());}
++  catch (...) {report("unknown exception");}
++  return false;
++}
++} // namespace scan_runtime
+--- a/src/plan_env/include/plan_env/grid_map.h
++++ b/src/plan_env/include/plan_env/grid_map.h
+@@ -232,9 +232,18 @@
+   };
+   void startAsyncMapping();
+   void stopAsyncMapping();
+-  bool mapperHealthy() const { return live_body_inputs_.healthy() && (!async_mapping_ || !async_mapping_->failed.load()) &&
++  std::atomic<bool> callback_failed_{false};
++  bool callbacksHealthy() const {return !callback_failed_.load();}
++  bool mapperHealthy() const { return callbacksHealthy() && live_body_inputs_.healthy() && (!async_mapping_ || !async_mapping_->failed.load()) &&
+     (!query_context_ || (!query_context_->failed.load() && !query_context_->stopping.load())); }
+   uint64_t mapRevision() const { return map_revision_; }
++  // Soft-cost fallback only; hard collision queries retain their freshness rule.
++  double measuredBodyYaw() const {
++    if(reactive_body_stamp_s_<=0 || !reactive_body_quaternion_.coeffs().allFinite() || reactive_body_quaternion_.norm()<1e-12)
++      return std::numeric_limits<double>::quiet_NaN();
++    const Eigen::Vector3d direction=reactive_body_quaternion_.normalized()*Eigen::Vector3d::UnitX();
++    return std::atan2(direction.y(),direction.x());
++  }
+   double observationStamp() const { return mapState().reactive_cloud_stamp_s_; }
+   bool planningInputsReady() const;
+   std::unique_ptr<PublicationLease> beginPublication();
+@@ -444,6 +453,7 @@
+   Eigen::Quaterniond reactive_body_quaternion_ = Eigen::Quaterniond::Identity();
+ 
+   // get depth image and sensor pose
++  void guardedDepthPoseCallback(sensor_msgs::msg::Image::ConstSharedPtr image,nav_msgs::msg::Odometry::ConstSharedPtr pose);
+   void depthPoseCallback(sensor_msgs::msg::Image::ConstSharedPtr  img,
+                          nav_msgs::msg::Odometry::ConstSharedPtr  pose);
+   void sensorPoseCallback(nav_msgs::msg::Odometry::ConstSharedPtr  pose);
+--- a/src/plan_env/src/grid_map.cpp
++++ b/src/plan_env/src/grid_map.cpp
+@@ -1,3 +1,4 @@
++#include <plan_env/callback_exception.h>
+ #include "plan_env/grid_map.h"
+ #include <cmath>
+ #include <limits>
+@@ -204,38 +205,38 @@
+     sync_image_pose_.reset(new message_filters::Synchronizer<SyncPolicyImagePose>(
+         SyncPolicyImagePose(100), *depth_sub_, *depth_pose_sub_));
+     sync_image_pose_->registerCallback(
+-        std::bind(&GridMap::depthPoseCallback, this, std::placeholders::_1, std::placeholders::_2));
++        std::bind(&GridMap::guardedDepthPoseCallback, this, std::placeholders::_1, std::placeholders::_2));
+   }
+   else if (mutableMapState().mp_.sensor_type_ == "lidar")
+   {
+     lidar_pose_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+         "sensor_pose", rclcpp::SensorDataQoS(),
+-        std::bind(&GridMap::sensorPoseCallback, this, std::placeholders::_1), subscription_options);
++        [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"sensorPoseCallback",[&]{sensorPoseCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+     cloud_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+         "cloud", rclcpp::SensorDataQoS(),
+-        std::bind(&GridMap::cloudCallback, this, std::placeholders::_1), subscription_options);
++        [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"cloudCallback",[&]{cloudCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+   }
+ 
+   sliding_map_frame_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+       "body_pose", rclcpp::SensorDataQoS(),
+-      std::bind(&GridMap::slidingMapFrameCallback, this, std::placeholders::_1), subscription_options);
++      [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"slidingMapFrameCallback",[&]{slidingMapFrameCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+ 
+   reactive_tomogram_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+       "/pct_tomogram", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
+-      std::bind(&GridMap::reactiveTomogramCallback, this, std::placeholders::_1), subscription_options);
++      [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"reactiveTomogramCallback",[&]{reactiveTomogramCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+   if (!mutableMapState().reactive_surface_ground_topic_.empty())
+     reactive_surface_ground_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+         mutableMapState().reactive_surface_ground_topic_, rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
+-        std::bind(&GridMap::reactiveSurfaceGroundCallback, this, std::placeholders::_1), subscription_options);
++        [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"reactiveSurfaceGroundCallback",[&]{reactiveSurfaceGroundCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+   if (!mutableMapState().reactive_physical_floor_topic_.empty())
+     reactive_physical_floor_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+         mutableMapState().reactive_physical_floor_topic_, rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
+-        std::bind(&GridMap::reactivePhysicalFloorCallback, this, std::placeholders::_1), subscription_options);
++        [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"reactivePhysicalFloorCallback",[&]{reactivePhysicalFloorCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+ 
+   occ_timer_ = node_->create_wall_timer(std::chrono::milliseconds(50),
+-                                        std::bind(&GridMap::updateOccupancyCallback, this), callback_group);
++                                        [this] {scan_runtime::callbackBoundary(node_->get_logger(),"updateOccupancyCallback",[this]{updateOccupancyCallback();},[this]{callback_failed_=true;});}, callback_group);
+   vis_timer_ = node_->create_wall_timer(std::chrono::milliseconds(50),
+-                                        std::bind(&GridMap::visCallback, this), callback_group);
++                                        [this] {scan_runtime::callbackBoundary(node_->get_logger(),"visCallback",[this]{visCallback();},[this]{callback_failed_=true;});}, callback_group);
+ 
+   map_pub_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>("grid_map/occupancy", rclcpp::SensorDataQoS());
+   map_inf_pub_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>("grid_map/occupancy_inflate", rclcpp::SensorDataQoS());
+@@ -1513,3 +1514,9 @@
+ #include "plan_env/scan_reactive_grid_methods.inc"
+ 
+ #include <plan_env/async_mapping_methods.inc>
++
++void GridMap::guardedDepthPoseCallback(sensor_msgs::msg::Image::ConstSharedPtr image,
++    nav_msgs::msg::Odometry::ConstSharedPtr pose) {
++  scan_runtime::callbackBoundary(node_->get_logger(),"depthPoseCallback",
++    [&]{depthPoseCallback(image,pose);},[this]{callback_failed_=true;});
++}
+--- a/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ b/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -2,6 +2,7 @@
+ #define _SCAN_REPLAN_FSM_H_
+ 
+ #include <Eigen/Eigen>
++#include <plan_env/callback_exception.h>
+ #include <algorithm>
+ #include <geometry_msgs/msg/pose_stamped.hpp>
+ #include <iostream>
+@@ -38,6 +39,12 @@
+   private:
+     DirectIO direct_io_;
+     void publishSpline(const scan_planner_msgs::msg::Bspline &spline);
++    void callbackFailed(const char *site) noexcept;
++    template<class Work> void callbackBoundary(const char *site,Work &&work) noexcept {
++      scan_runtime::callbackBoundary(node_->get_logger(),site,std::forward<Work>(work),
++        [this,site]{callbackFailed(site);});
++    }
++
+     /* ---------- flag ---------- */
+     enum FSM_EXEC_STATE
+     {
+--- a/src/plan_manage/src/scan_replan_fsm.cpp
++++ b/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -141,15 +141,15 @@
+     rclcpp::SubscriptionOptions subscription_options;
+     subscription_options.callback_group = callback_group;
+     exec_timer_ = node_->create_wall_timer(std::chrono::milliseconds(10),
+-                                           std::bind(&SCANReplanFSM::execFSMCallback, this), callback_group);
++                                           [this] {callbackBoundary("execFSMCallback",[this]{execFSMCallback();});}, callback_group);
+     safety_timer_ = node_->create_wall_timer(std::chrono::milliseconds(50),
+-                                             std::bind(&SCANReplanFSM::checkCollisionCallback, this), callback_group);
++                                             [this] {callbackBoundary("checkCollisionCallback",[this]{checkCollisionCallback();});}, callback_group);
+     odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+         "body_pose", rclcpp::SensorDataQoS(),
+-        std::bind(&SCANReplanFSM::odometryCallback, this, std::placeholders::_1), subscription_options);
++        [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) {callbackBoundary("odometryCallback",[&]{odometryCallback(msg);});}, subscription_options);
+     if (!direct_io_.spline) go2_execution_frozen_sub_ = node_->create_subscription<std_msgs::msg::Bool>(
+         "planning/go2_execution_frozen", 10,
+-        std::bind(&SCANReplanFSM::go2ExecutionFrozenCallback, this, std::placeholders::_1), subscription_options);
++        [this](std_msgs::msg::Bool::ConstSharedPtr msg) {callbackBoundary("go2ExecutionFrozenCallback",[&]{go2ExecutionFrozenCallback(msg);});}, subscription_options);
+ 
+     bspline_pub_ = node_->create_publisher<scan_planner_msgs::msg::Bspline>("planning/bspline", 10);
+     data_disp_pub_ = node_->create_publisher<scan_planner_msgs::msg::DataDisp>("planning/data_display", 100);
+@@ -159,15 +159,32 @@
+     if (navi_mode_ == NAVI_MODE::MANUAL_TARGET)
+       goal_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
+           "move_base_simple/goal", 1,
+-          std::bind(&SCANReplanFSM::rvizGoalCallback, this, std::placeholders::_1), subscription_options);
++          [this](geometry_msgs::msg::PoseStamped::ConstSharedPtr msg) {callbackBoundary("rvizGoalCallback",[&]{rvizGoalCallback(msg);});}, subscription_options);
+     else if (navi_mode_ == NAVI_MODE::REFERENCE_PATH && !direct_io_.spline)
+       path_sub_ = node_->create_subscription<nav_msgs::msg::Path>(
+           "initial_path", rclcpp::QoS(1).reliable().transient_local(),
+-          std::bind(&SCANReplanFSM::pathCallback, this, std::placeholders::_1), subscription_options);
++          [this](nav_msgs::msg::Path::ConstSharedPtr msg) {callbackBoundary("pathCallback",[&]{pathCallback(msg);});}, subscription_options);
+     else if (navi_mode_ == NAVI_MODE::PRESET_TARGET)
+       RCLCPP_INFO(node_->get_logger(), "Preset waypoint mode will start after the first odometry message");
+     else if (!(navi_mode_ == NAVI_MODE::REFERENCE_PATH && direct_io_.spline))
+       throw std::runtime_error("fsm.navi_mode must be 1, 2, or 3");
++  }
++
++
++  void SCANReplanFSM::callbackFailed(const char *site) noexcept {
++    // Retain the mission/route for ordinary retries, but discard partial work.
++    try {planner_manager_->publication_lease_.reset();}catch (...) {}
++    try {planner_manager_->invalidateWarmStart();}catch (...) {}
++    feasible_window_.valid=false;
++    if(planner_manager_)planner_manager_->local_data_.duration_=0.;
++    if(have_target_)exec_state_=GEN_NEW_TRAJ;
++    else exec_state_=have_odom_ ? WAIT_TARGET : INIT;
++    ++replan_fail_count_;
++    scan_runtime::callbackBoundary(node_->get_logger(),"callback_failure_notification",[&]{
++      if(direct_io_.planning_result)direct_io_.planning_result(false,node_->now().nanoseconds());
++      if(have_odom_ && odom_pos_.allFinite())callEmergencyStop(odom_pos_);
++      RCLCPP_WARN(node_->get_logger(),"native_local_round_failed site=%s",site);
++    },[]{});
+   }
+ 
+   void SCANReplanFSM::planGlobalTrajbyGivenWps()
+--- /dev/null
++++ b/src/scan_nav2_controller/include/scan_nav2_controller/native_query.hpp
+@@ -0,0 +1,13 @@
++#pragma once
++#include <plan_env/callback_exception.h>
++#include <lite3_nav2_interfaces/srv/check_traversability.hpp>
++
++namespace scan_nav2_controller {
++template<class Work>
++void nativeQueryCallback(const rclcpp::Logger &logger,
++    lite3_nav2_interfaces::srv::CheckTraversability::Response &reply,Work &&work) noexcept {
++  scan_runtime::callbackBoundary(logger,"check_traversability",std::forward<Work>(work),[&] {
++    reply.ready=false;reply.verdicts.clear();reply.message="native_query_exception";
++  });
++}
++} // namespace scan_nav2_controller
+--- a/src/scan_nav2_controller/src/local_motion.cpp
++++ b/src/scan_nav2_controller/src/local_motion.cpp
+@@ -1,6 +1,7 @@
+ #include <scan_nav2_controller/local_motion.hpp>
+ #include <scan_nav2_controller/tracking_node.hpp>
+ #include <scan_nav2_controller/executor_shutdown.hpp>
++#include <scan_nav2_controller/native_query.hpp>
+ #include <rclcpp/scope_exit.hpp>
+ #include <filesystem>
+ #include <rclcpp/parameter_map.hpp>
+@@ -59,6 +60,8 @@
+       "/scan/check_traversability",[this](
+         const std::shared_ptr<lite3_nav2_interfaces::srv::CheckTraversability::Request> request,
+         std::shared_ptr<lite3_nav2_interfaces::srv::CheckTraversability::Response> reply) {
++        nativeQueryCallback(node_->get_logger(),*reply,[&] {
++        if(!planner_->nav2Map()->callbacksHealthy()){reply->message="native_writer_unhealthy";return;}
+         using Service=lite3_nav2_interfaces::srv::CheckTraversability;
+         if((request->mode!=Service::Request::STATIC_ONLY && request->mode!=Service::Request::STATIC_AND_LIVE) || request->poses.empty() ||
+             request->poses.size()>10000 || request->header.frame_id!="world") {
+@@ -90,6 +93,7 @@
+           reply->verdicts.push_back(static_cast<uint8_t>(verdict));
+         }
+         reply->ready=view.mapperHealthy();reply->message=reply->ready ? "native_checked" : "native_writer_unhealthy";
++        });
+       },rmw_qos_profile_services_default,query_group_);
+ 
+     // Foxy schedules /clock in the default callback group. Keep native data and
+@@ -105,7 +109,7 @@
+       catch (...) { healthy_=false; RCLCPP_ERROR(node_->get_logger(),"Native worker unknown exception"); }
+     });
+   }
+-  bool healthy() const { return healthy_.load(); }
++  bool healthy() const { return healthy_.load() && planner_->nav2Map()->callbacksHealthy(); }
+   ~NativeWorker() {
+     joinStoppedExecutor(executor_,worker_,finished_);
+     planner_.reset();
+--- a/src/scan_nav2_controller/test/test_shared_support.cpp
++++ b/src/scan_nav2_controller/test/test_shared_support.cpp
+@@ -178,3 +178,56 @@
+   }
+   rclcpp::shutdown();
+ }
++
++#include <plan_manage/scan_replan_fsm.h>
++#include <scan_nav2_controller/native_query.hpp>
++#include <atomic>
++#include <thread>
++#include <future>
++TEST(NativeCallbackBoundary, FoxyTwoThreadsContainTimerServiceAndCleanupExceptions) {
++ int argc=0;rclcpp::init(argc,nullptr);
++ {
++  auto node=std::make_shared<rclcpp::Node>("callback_exception_boundary");
++  scan_planner::SCANReplanFSM fsm;fsm.node_=node.get();fsm.have_target_=true;fsm.have_odom_=false;
++  fsm.replan_fail_count_=0;fsm.planner_manager_=std::make_unique<scan_planner::SCANPlannerManager>();
++  std::atomic<int> failures{0},ticks{0},work_calls{0};
++  fsm.direct_io_.planning_result=[&](bool success,int64_t){EXPECT_FALSE(success);++failures;};
++  fsm.direct_io_.before_work=[&]{if(++work_calls%2)throw std::runtime_error("injected timer failure");throw 7;};
++  auto work=node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
++  auto query=node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
++  auto timer=node->create_wall_timer(std::chrono::milliseconds(2),[&]{
++    fsm.callbackBoundary("execFSMCallback",[&]{fsm.execFSMCallback();});
++  },work);
++  auto heartbeat=node->create_wall_timer(std::chrono::milliseconds(1),[&]{++ticks;});
++  using Service=lite3_nav2_interfaces::srv::CheckTraversability;
++  std::atomic<int> calls{0};
++  auto service=node->create_service<Service>("/callback_boundary_query",[&](
++      const std::shared_ptr<Service::Request>,std::shared_ptr<Service::Response> response){
++    scan_nav2_controller::nativeQueryCallback(node->get_logger(),*response,[&]{
++      response->ready=true;response->verdicts.push_back(0);
++      if(++calls==1)throw std::runtime_error("injected service failure after partial response");
++    });
++  },rmw_qos_profile_services_default,query);
++  auto client=node->create_client<Service>("/callback_boundary_query");
++  rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(),2);
++  executor.add_node(node);std::thread thread([&]{executor.spin();});
++  const bool ready=client->wait_for_service(std::chrono::seconds(3));EXPECT_TRUE(ready);
++  if(ready){
++    auto first=client->async_send_request(std::make_shared<Service::Request>());
++    EXPECT_EQ(first.wait_for(std::chrono::seconds(3)),std::future_status::ready);
++    if(first.wait_for(std::chrono::seconds(0))==std::future_status::ready){
++      EXPECT_FALSE(first.get()->ready);EXPECT_TRUE(first.get()->verdicts.empty());
++      EXPECT_EQ(first.get()->message,"native_query_exception");
++    }
++    auto second=client->async_send_request(std::make_shared<Service::Request>());
++    EXPECT_EQ(second.wait_for(std::chrono::seconds(3)),std::future_status::ready);
++    if(second.wait_for(std::chrono::seconds(0))==std::future_status::ready)EXPECT_TRUE(second.get()->ready);
++  }
++  std::this_thread::sleep_for(std::chrono::milliseconds(30));
++  executor.cancel();thread.join();
++  EXPECT_GT(failures.load(),1);EXPECT_GT(ticks.load(),1);
++  EXPECT_GT(fsm.replan_fail_count_,1);EXPECT_EQ(fsm.exec_state_,scan_planner::SCANReplanFSM::GEN_NEW_TRAJ);
++  EXPECT_FALSE(scan_runtime::callbackBoundary(node->get_logger(),"double_exception",[]{throw 3;},[]{throw 4;}));
++ }
++ rclcpp::shutdown();
++}

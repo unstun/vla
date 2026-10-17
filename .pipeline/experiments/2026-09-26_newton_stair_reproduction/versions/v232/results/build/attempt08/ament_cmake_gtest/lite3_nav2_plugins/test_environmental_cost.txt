@@ -1,0 +1,116 @@
+-- run_test.py: invoking following command in '/work/build/lite3_nav2_plugins':
+ - /work/build/lite3_nav2_plugins/test_environmental_cost --gtest_output=xml:/work/build/lite3_nav2_plugins/test_results/lite3_nav2_plugins/test_environmental_cost.gtest.xml
+
+Running main() from /opt/ros/foxy/src/gtest_vendor/src/gtest_main.cc
+[==========] Running 10 tests from 6 test cases.
+[----------] Global test environment set-up.
+[----------] 2 tests from EnvironmentalField
+[ RUN      ] EnvironmentalField.SaturatesAndKeepsFloorsAndHeadingSeparate
+[       OK ] EnvironmentalField.SaturatesAndKeepsFloorsAndHeadingSeparate (120 ms)
+[ RUN      ] EnvironmentalField.ActualPCTSearchChoosesTheOtherAdmissibleCorridor
+Diagonal heuristic is used
+Astar initialized, max_x: 81, max_y: 81, max_layers: 1, time elapsed: 0.027000 ms
+max layers: 1, max_x: 81, max_y: 81
+start searching
+path found, time elapsed: 0.163000 ms
+Astar initialized, max_x: 81, max_y: 81, max_layers: 1, time elapsed: 0.015000 ms
+max layers: 1, max_x: 81, max_y: 81
+start searching
+path found, time elapsed: 0.470000 ms
+start searching
+path found, time elapsed: 0.454000 ms
+num segs: 3, new interval: 13.000000
+tau: 0.481481
+x0:          41 6.12323e-17           0          21           1           0
+xN:        40 -0.707107         0        60  0.707107         0
+Creating graph...
+Graph created.
+Init values created.
+Matrices resized. N=4
+Processing node 0/4
+Inserted value 0
+Processing node 1/4
+Inserted value 1
+Processing node 2/4
+Inserted value 2
+Processing node 3/4
+Inserted value 3
+Loop finished.
+Adding PriorFactor6...
+Added PriorFactor6.
+Processing factor loop 1
+Added GPPriorFactor 1
+Factor loop finished.
+Adding goal prior...
+Added goal prior.
+Creating optimizer...
+Optimizer created.
+Optimizing...
+Optimization finished.
+shape: 28, 6
+smooth height
+Optimization finished for N = 4 at iteration 88, time elapsed: 12.872000 ms, cost: 29.784745
+[       OK ] EnvironmentalField.ActualPCTSearchChoosesTheOtherAdmissibleCorridor (25 ms)
+[----------] 2 tests from EnvironmentalField (145 ms total)
+
+[----------] 1 test from EnvironmentalHeight
+[ RUN      ] EnvironmentalHeight.TrueSurfaceAndNativeProxyBandsIntersectWithoutLoweringBelowClearance
+[       OK ] EnvironmentalHeight.TrueSurfaceAndNativeProxyBandsIntersectWithoutLoweringBelowClearance (8 ms)
+[----------] 1 test from EnvironmentalHeight (8 ms total)
+
+[----------] 1 test from EnvironmentalFactors
+[ RUN      ] EnvironmentalFactors.BothOrdersAndInterpolantsBypassLegacyDeadZone
+max layers: 1, max_x: 40, max_y: 40
+[       OK ] EnvironmentalFactors.BothOrdersAndInterpolantsBypassLegacyDeadZone (7 ms)
+[----------] 1 test from EnvironmentalFactors (7 ms total)
+
+[----------] 1 test from EnvironmentalSCAN
+[ RUN      ] EnvironmentalSCAN.NativeObjectiveGradientAndLbfgsMoveAwayFromEdge
+[INFO] [1792250977.408605991] [environment_scan_test]: height_optimization=fixed; terrain and final trajectory gates retained
+Diagonal heuristic is used
+Astar initialized, max_x: 81, max_y: 81, max_layers: 1, time elapsed: 0.039000 ms
+max layers: 1, max_x: 81, max_y: 81
+Astar initialized, max_x: 81, max_y: 81, max_layers: 1, time elapsed: 0.017000 ms
+max layers: 1, max_x: 81, max_y: 81
+ENVIRONMENT_SCAN before=0.3 after=0.179309 center_y=0.531398
+[       OK ] EnvironmentalSCAN.NativeObjectiveGradientAndLbfgsMoveAwayFromEdge (86 ms)
+[----------] 1 test from EnvironmentalSCAN (86 ms total)
+
+[----------] 1 test from EnvironmentalPCT
+[ RUN      ] EnvironmentalPCT.IntegerAnchoredLegacyCostIsContinuousInSharedMode
+max layers: 1, max_x: 5, max_y: 5
+[       OK ] EnvironmentalPCT.IntegerAnchoredLegacyCostIsContinuousInSharedMode (0 ms)
+[----------] 1 test from EnvironmentalPCT (0 ms total)
+
+[----------] 4 tests from EnvironmentalRegression
+[ RUN      ] EnvironmentalRegression.DelayedLocalSearchStationaryTailKeepsFiniteSoftCost
+[INFO] [1792250977.485524320] [delayed_search_tail]: height_optimization=fixed; terrain and final trajectory gates retained
+[       OK ] EnvironmentalRegression.DelayedLocalSearchStationaryTailKeepsFiniteSoftCost (128 ms)
+[ RUN      ] EnvironmentalRegression.NativeReboundErrorShortCircuitsEnvironmentalAssessment
+[INFO] [1792250977.613544189] [rebound_stop_short_circuit]: height_optimization=fixed; terrain and final trajectory gates retained
+[ERROR] [1792250977.613570758] [bspline_opt]: The robot is inside an obstacle
+[WARN] [1792250977.613573638] [bspline_opt]: Trajectory terminal point is in an obstacle; skip this plan
+[       OK ] EnvironmentalRegression.NativeReboundErrorShortCircuitsEnvironmentalAssessment (10 ms)
+[ RUN      ] EnvironmentalRegression.MeasuredYawFallbackAndNonfiniteGeometryFailAtOptimizerBoundary
+[INFO] [1792250977.623135741] [environment_finite_guards]: height_optimization=fixed; terrain and final trajectory gates retained
+[INFO] [1792250977.623172160] [environment_finite_guards]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=1.1168->1.1168 body_age=0.1168->0.1168 cloud_ready=0
+[ERROR] [1792250977.623190479] [bspline_opt]: native_callback_exception site=optimizer_callback_rebound: Invalid environmental curve geometry
+iter=1,time(ms)=0.015209,rebound.
+[ERROR] [1792250977.623202139] [bspline_opt]: native_callback_exception site=optimizer_callback_refine: Invalid environmental curve geometry
+[INFO] [1792250977.623205279] [environment_finite_guards]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=1.1168->1.1168 body_age=0.1168->0.1168 cloud_ready=0
+[ERROR] [1792250977.623212699] [bspline_opt]: native_callback_exception site=optimizer_callback_rebound: No finite environmental soft heading
+iter=1,time(ms)=0.00525,rebound.
+[ERROR] [1792250977.623218629] [bspline_opt]: native_callback_exception site=optimizer_callback_refine: No finite environmental soft heading
+[       OK ] EnvironmentalRegression.MeasuredYawFallbackAndNonfiniteGeometryFailAtOptimizerBoundary (9 ms)
+[ RUN      ] EnvironmentalRegression.NeighborHeadingFallbackRetainsAnalyticGradient
+[       OK ] EnvironmentalRegression.NeighborHeadingFallbackRetainsAnalyticGradient (0 ms)
+[----------] 4 tests from EnvironmentalRegression (147 ms total)
+
+[----------] Global test environment tear-down
+[==========] 10 tests from 6 test cases ran. (393 ms total)
+[  PASSED  ] 10 tests.
+
+
+-- run_test.py: return code 0
+-- run_test.py: inject classname prefix into gtest result file '/work/build/lite3_nav2_plugins/test_results/lite3_nav2_plugins/test_environmental_cost.gtest.xml'
+-- run_test.py: verify result file '/work/build/lite3_nav2_plugins/test_results/lite3_nav2_plugins/test_environmental_cost.gtest.xml'
