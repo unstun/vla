@@ -1,0 +1,81 @@
+{
+  "completed": true,
+  "gpu_used": false,
+  "build_result_sha256": "77bce5c0d6119bd7c6611d5ea966c9b2631964420d1ef86490b0ffd9cd5e15de",
+  "install_identity_sha256": "56e28da3f0307bab2d8917197219021e10a44506cb2389a8cf763f560f96df81",
+  "package_sha256": {
+    "replay_stair_inputs.py": "f5f1567152541f3be45ed350ba699841e367aa22379f8196aacab1946e6aa70c",
+    "search_inputs/input_manifest.json": "5711ad432ba9b574d75e39480f01ff48919dbcaf65e066a13526f2b7a2cefb5c",
+    "search_inputs/events.json": "585d57fa258ca543b6642beaca184933f34a460e713c95f9568772114c0f567b",
+    "search_inputs/planner.yaml": "eb4d605301dcaa8f4eff31460ad19da6f3d1133d68ab0f74eba89adb9c30eb51",
+    "search_inputs/points.npz": "ba0a24073fd09530ff8070d7777b562d730abd8cafe05787c90a7ab967637529"
+  },
+  "returned_log_hash_matches": true,
+  "returned_source_hash_matches": true,
+  "commands": [
+    {
+      "label": "mkdir",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "gpu5070ti",
+        "mkdir -p /home/sun/vla_exec/2026-09-26_stair_cause_audit"
+      ],
+      "returncode": 0,
+      "wall_s": 4.250400249991799
+    },
+    {
+      "label": "sync",
+      "command": [
+        "rsync",
+        "-a",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/diagnostics/2026-09-26_root_cause/remote_package/",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_cause_audit/"
+      ],
+      "returncode": 0,
+      "wall_s": 10.921474084010697
+    },
+    {
+      "label": "input_gate",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "gpu5070ti",
+        "python3 -"
+      ],
+      "returncode": 0,
+      "wall_s": 4.748852208998869
+    },
+    {
+      "label": "replay",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "gpu5070ti",
+        "timeout --kill-after=5 90 podman run --rm --pull=never --network=none --name vla-stair-cause-audit -e ROS_DOMAIN_ID=213 -e ROS_LOCALHOST_ONLY=1 -e PYTHONDONTWRITEBYTECODE=1 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan19_audit_trace:/workspace:ro -v /home/sun/vla_exec/2026-09-26_stair_cause_audit:/audit:rw e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'set -e\nsource /opt/ros/foxy/setup.bash\nsource /workspace/install/setup.bash\npython3 /audit/replay_stair_inputs.py --inputs /audit/search_inputs --output /audit/replay_result'"
+      ],
+      "returncode": 0,
+      "wall_s": 23.159556957994937
+    },
+    {
+      "label": "collect",
+      "command": [
+        "rsync",
+        "-a",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_cause_audit/replay_result/",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/diagnostics/2026-09-26_root_cause/replay_result/"
+      ],
+      "returncode": 0,
+      "wall_s": 8.828973124996992
+    }
+  ]
+}

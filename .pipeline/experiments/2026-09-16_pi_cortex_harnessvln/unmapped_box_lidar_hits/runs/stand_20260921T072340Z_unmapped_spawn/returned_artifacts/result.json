@@ -1,0 +1,328 @@
+{
+  "accepted_summary_statuses": [
+    "EXTERNAL_EPISODE_FINISHED"
+  ],
+  "camera_heading_mode": "body",
+  "case": "stand_probe",
+  "claim": "stand-only patched runner plus real Foxy bridge; no navigation",
+  "command_script_sha256": null,
+  "finish_after_sim_seconds": 2.0,
+  "finish_request": {
+    "backend_terminal_status": "FINISHED",
+    "note": "stand-only qualification finish after >=2 sim seconds",
+    "observed_run_epoch_ns": 1789975480401289866,
+    "request_id": "stand-finish-stand_20260921T072340Z_unmapped_spawn",
+    "requested_at_monotonic_ns": 8903323617886,
+    "run_id": "stand_20260921T072340Z_unmapped_spawn",
+    "schema_version": 1
+  },
+  "finish_request_snapshot_sim_time_s": 2.0199999548494816,
+  "foxy_bridge": true,
+  "isaac_run": true,
+  "motion_publisher_started": false,
+  "passed": true,
+  "physical_actuation": false,
+  "runner_exit_code": 0,
+  "scan_started": false,
+  "stance_entry_kd": "xfade1s",
+  "stance_hold": "auto",
+  "summary": {
+    "camera_heading_mode": "body",
+    "case": "stand_probe",
+    "case_failed": false,
+    "max_admitted_command_norm_mps": 0.0,
+    "max_horizontal_speed_mps": 0.11220524836205517,
+    "record_count": 153,
+    "scripted_walk_sha256": null,
+    "sim_seconds": 3.05999993160367,
+    "stance_hold": {
+      "entry_kd": "xfade1s",
+      "failure": null,
+      "fsm": {
+        "constants": {
+          "balance_band": [
+            0.35,
+            0.65
+          ],
+          "balance_shares": [
+            "FL+FR",
+            "FL+HL",
+            "FL+HR"
+          ],
+          "base_kd": 0.5,
+          "base_kp": 20.0,
+          "command_deadband": 0.001,
+          "disturbance_dwell_s": 0.25,
+          "entry_crossfade_blend": "smoothstep",
+          "entry_crossfade_rule": "w = smoothstep((t - t_entry) / T_x); Kp = (1 - w) Kp0 + w HOLD_KP; target = ((1 - w) Kp0 P + w HOLD_KP H) / Kp; Kd = HOLD_KD from the entry step on; P = this step's policy target, H = the torque-matched seed at entry, Kp0 = applied_kp at entry; w = 0 gives P with Kp0; t - t_entry >= T_x gives exactly H with HOLD_KP and HOLD_KD (PRD D6)",
+          "entry_crossfade_s": {
+            "xfade1s": 1.0,
+            "xfade2s": 2.0
+          },
+          "entry_foot_force_n": 10.0,
+          "entry_grace_rule": "automatic arming (RL -> STAND_SETTLING) needs now_s >= entry_grace_s (episode sim time) for the listed variants; before that the mode stays RL with reason entry_grace (PRD D6; precedent MJ FIXED_STAND_BOOT_GRACE_S 1.0 s)",
+          "entry_grace_s": 1.0,
+          "entry_grace_variants": [
+            "xfade1s",
+            "xfade2s"
+          ],
+          "entry_kd_modes": {
+            "precedent": "MJ BOOT_LANDING_KD 2.5 over FIXED_STAND_BOOT_GRACE_S 1.0 s (PRD D5)",
+            "ramp": "Kd follows the Kp ramp (entry_ramp_rule)",
+            "step1": "Kd = HOLD_KD from the entry step on",
+            "step2p5": "Kd = entry_landing_kd from the entry step until entry_ramp_s, then entry_landing_kd + (HOLD_KD - entry_landing_kd) smoothstep((t - t_entry - entry_ramp_s) / (transition_s - entry_ramp_s)); exactly HOLD_KD from FIXED_STAND on",
+            "xfade1s": "crossfade entry over 1.0 s (entry_crossfade_rule); Kd = HOLD_KD from the entry step on",
+            "xfade2s": "crossfade entry over 2.0 s (entry_crossfade_rule); Kd = HOLD_KD from the entry step on"
+          },
+          "entry_landing_kd": 2.5,
+          "entry_ramp_blend": "smoothstep",
+          "entry_ramp_rule": "u = smoothstep((t - t_entry) / entry_ramp_s); Kp = Kp0 + (HOLD_KP - Kp0) u; Kd = Kd0 + (HOLD_KD - Kd0) u; target = q0 + (Kp0 / Kp) (T0 - q0); q0, T0, Kp0, Kd0 = joint_pos, applied_target, applied_kp, applied_kd at entry (PRD D4)",
+          "entry_ramp_s": 0.5,
+          "entry_ramp_variants": [
+            "ramp",
+            "step1",
+            "step2p5"
+          ],
+          "foot_order": [
+            "FL",
+            "FR",
+            "HL",
+            "HR"
+          ],
+          "hold_contact_n": 1.0,
+          "hold_kd": 1.0,
+          "hold_kp": 60.0,
+          "reentry_lockout_s": 0.5,
+          "reference": "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py LocalMotionFSM stand path (commit fd751b8b)",
+          "rejoin_blend": "smoothstep",
+          "rejoin_s": 0.25,
+          "seed": "q + (applied_kp / HOLD_KP) * (applied_target - q)",
+          "settle_angular_speed_max_radps": 0.5,
+          "settle_dwell_s": 0.25,
+          "settle_linear_speed_max_mps": 0.15,
+          "settle_timeout_s": 10.0,
+          "tilt_max_deg": 10.0,
+          "transition_s": 2.0
+        },
+        "counters": {
+          "disturbance_exits": 0,
+          "entries": 1,
+          "entry_ramps_complete": 1,
+          "fixed_stand": 0,
+          "rejoin_complete": 0,
+          "rejoins": 0,
+          "settle_cancels": 0,
+          "settle_starts": 1,
+          "settle_timeouts": 0,
+          "support_balance_blocks": 0,
+          "updates": 153
+        },
+        "entry_kd": "xfade1s",
+        "failure": null,
+        "joint_limits_applied": true,
+        "last_entry": {
+          "applied_target_t0": [
+            0.11460811644792557,
+            -0.02812368795275688,
+            0.22522497177124023,
+            -0.2189233899116516,
+            -0.8246176280081272,
+            -0.9157373607158661,
+            -0.9216787219047546,
+            -1.1336644887924194,
+            1.3209651708602905,
+            1.4821545854210854,
+            1.5793769378215075,
+            1.407525286078453
+          ],
+          "dwell_samples": 14,
+          "entry_kd": "xfade1s",
+          "entry_ramp_complete_t_s": 2.299999948590994,
+          "entry_ramp_s": 1.0,
+          "foot_forces_n": [
+            36.963882446289155,
+            15.659083366394045,
+            21.18915557861334,
+            35.900573730468786
+          ],
+          "kd0_mean": 0.5,
+          "kp0_mean": 20.0,
+          "q0": [
+            0.07164590805768967,
+            -0.007377127651125193,
+            0.016599226742982864,
+            -0.01082101184874773,
+            -0.801113486289978,
+            -0.9069855213165283,
+            -0.9521151185035706,
+            -1.0370467901229858,
+            1.5763741731643677,
+            1.5856717824935913,
+            1.7071837186813354,
+            1.7403457164764404
+          ],
+          "seed_minus_t0_max_abs": 0.22188028693199158,
+          "stiffness_torque_max_abs_nm": 6.656408607959747,
+          "support_shares": [
+            0.47367442451236513,
+            0.50262726541711,
+            0.6218198133390079
+          ],
+          "t0_minus_q0_max_abs": 0.33282043039798737,
+          "t_s": 1.2799999713897705
+        },
+        "mode": "STAND_TRANSITION",
+        "mode_time_s": {
+          "FIXED_STAND": 0.0,
+          "REJOIN": 0.0,
+          "RL": 0.9999999776482582,
+          "STAND_SETTLING": 0.25999999418854713,
+          "STAND_TRANSITION": 1.7799999602138996
+        },
+        "progress": 0.8899999801069498,
+        "reason": "entry_crossfade_complete",
+        "setting": "auto",
+        "transition_counts": {
+          "RL->STAND_SETTLING": 1,
+          "STAND_SETTLING->STAND_TRANSITION": 1
+        },
+        "transitions": [
+          {
+            "from": "RL",
+            "reason": "waiting_for_quiet_four_contact",
+            "t_s": 1.0199999772012234,
+            "to": "STAND_SETTLING"
+          },
+          {
+            "from": "STAND_SETTLING",
+            "reason": "quiet_four_contact_confirmed",
+            "t_s": 1.2799999713897705,
+            "to": "STAND_TRANSITION"
+          }
+        ],
+        "transitions_dropped": 0
+      },
+      "gain_readback_max_abs_error": 1.8212890111612978e-06,
+      "gain_writes": 52,
+      "mode": "auto",
+      "module_sha256": "9a97879a5d5ed2f7c9c3e327c1193b1c42cf079eaaf073a855afad53a7dbc306",
+      "physx_after_first_gain_write": {
+        "data_joint_damping": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "data_joint_stiffness": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "problems": [],
+        "view_dof_dampings": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "view_dof_stiffnesses": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "row_error_count": 0,
+      "row_last_error": null,
+      "setup_record": "stance_hold_setup.json"
+    },
+    "status": "EXTERNAL_EPISODE_FINISHED",
+    "travel_xy_m": 0.06941882274933278,
+    "unmapped_box": {
+      "aabb_pad_m": 0.01,
+      "center_xyz_m": [
+        0.8870694587067134,
+        -4.399310184167528,
+        1.9608844757080077
+      ],
+      "lidar_target": false,
+      "mode": "spawn",
+      "module": {
+        "body_sha256": "f05644394891daf4c4770318428a42e5d6e590077de6ddaa8a65850ab1c1f2d6",
+        "path": ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/unmapped_box.py",
+        "sha256": "5b9a593f0a13f5a58ba25338f17db9f6ec03d31c1763c58b5a8805583776bab1"
+      },
+      "offset_m": 2.5,
+      "prim": "/World/unmapped_box",
+      "robot_overlap": {
+        "box_aabb": {
+          "max_xyz_m": [
+            1.0970694587067134,
+            -4.189310184167528,
+            2.3708844757080074
+          ],
+          "min_xyz_m": [
+            0.6770694587067134,
+            -4.609310184167528,
+            1.5508844757080078
+          ]
+        },
+        "intersects": false,
+        "robot_aabb": {
+          "max_xyz_m": [
+            -1.0600804503901402,
+            -4.154011446940927,
+            2.260884475708008
+          ],
+          "min_xyz_m": [
+            -2.1475571736361947,
+            -4.930969692381513,
+            1.5608844757080078
+          ]
+        }
+      },
+      "schema_version": 1,
+      "size_xyz_m": [
+        0.4,
+        0.4,
+        0.8
+      ],
+      "spawn": true
+    }
+  },
+  "summary_status": "EXTERNAL_EPISODE_FINISHED",
+  "unmapped_box": "spawn"
+}

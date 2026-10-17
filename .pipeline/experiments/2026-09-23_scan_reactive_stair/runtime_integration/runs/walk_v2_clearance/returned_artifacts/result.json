@@ -1,0 +1,147 @@
+{
+  "artifact_finalization": [
+    {
+      "artifact_count": 40,
+      "monotonic_ns": 3913789653812,
+      "ok": true,
+      "phase": "after_process_cleanup"
+    },
+    {
+      "artifact_count": 42,
+      "monotonic_ns": 3923979691381,
+      "ok": true,
+      "phase": "after_container_cleanup"
+    }
+  ],
+  "cancel_displacement_m": 0.4,
+  "claim": "bounded stair observation with actual RTX geometric sweeps and official human; no LLM/Cortex/SLAM/physical robot",
+  "cleanup_errors": [],
+  "container_cleanup": [
+    {
+      "container": "vla-p2b-backend-walk-v2-clearance",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "timeout_s": 20.0
+    },
+    {
+      "container": "vla-p2b-pct-walk-v2-clearance",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "timeout_s": 20.0
+    },
+    {
+      "container": "vla-p2b-bridge-walk-v2-clearance",
+      "ok": true,
+      "returncode": 0,
+      "stderr": "time=\"2026-09-26T00:22:51-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-p2b-bridge-walk-v2-clearance in 10 seconds, resorting to SIGKILL\"\n",
+      "stdout": "vla-p2b-bridge-walk-v2-clearance\n",
+      "timeout_s": 20.0
+    }
+  ],
+  "error": "backend/SCAN container exited early",
+  "error_type": "RuntimeError",
+  "finished_utc": "2026-09-26T04:22:51Z",
+  "gpu_memory": {
+    "error_count": 0,
+    "errors": [],
+    "first_sample": {
+      "elapsed_s": 0.00010465600007592002,
+      "gpus": [
+        {
+          "index": 0,
+          "memory_total_mib": 16303.0,
+          "memory_used_mib": 264.0,
+          "utilization_percent": 0.0
+        }
+      ],
+      "monotonic_ns": 3857744633778,
+      "wall_time_ns": 1790396505088876576
+    },
+    "interval_s": 1.0,
+    "peak_by_gpu": {
+      "0": {
+        "elapsed_s": 13.185038152000288,
+        "memory_total_mib": 16303.0,
+        "memory_used_mib": 7297.0
+      }
+    },
+    "peak_elapsed_s": 13.185038152000288,
+    "peak_memory_used_mib": 7297.0,
+    "sample_count": 66,
+    "sampled_wall_s": 66.2107515710004,
+    "samples_path": "gpu_samples.jsonl",
+    "scope": "device-wide nvidia-smi memory.used; includes any process on the GPU, not only this run",
+    "started": true,
+    "stopped": true
+  },
+  "last_result_write_phase": "final",
+  "passed": false,
+  "post_cleanup_ports": {
+    "command": {
+      "free": true,
+      "port": 46261
+    },
+    "http": {
+      "free": true,
+      "port": 8785
+    },
+    "pct": {
+      "free": true,
+      "port": 47651
+    },
+    "telemetry": {
+      "free": true,
+      "port": 46260
+    }
+  },
+  "process_cleanup": [
+    {
+      "action": "none",
+      "name": "backend",
+      "ok": true,
+      "pid": 31911,
+      "reason": "already_exited",
+      "returncode": 250
+    },
+    {
+      "action": "sigterm",
+      "name": "pct_worker",
+      "ok": true,
+      "pid": 31755,
+      "returncode": 143
+    },
+    {
+      "action": "sigkill",
+      "name": "runner",
+      "ok": true,
+      "pid": 31393,
+      "returncode": -9
+    },
+    {
+      "action": "sigkill",
+      "name": "bridge",
+      "ok": true,
+      "pid": 31282,
+      "returncode": -9
+    }
+  ],
+  "remote_scan_workspace": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_11",
+  "remote_wall_seconds": 66.24761491599975,
+  "remote_wall_seconds_scope": "remote_worker.py main() start to cleanup end, before the last result writes",
+  "run_epoch_ns": 1790396515712806068,
+  "scan_workspace_gate": {
+    "errors": [],
+    "passed": true,
+    "record": "scan_workspace_gate.json"
+  },
+  "scan_workspace_gate_after": {
+    "errors": [],
+    "passed": true,
+    "record": "scan_workspace_gate_after.json"
+  },
+  "started_utc": "2026-09-26T04:21:45Z"
+}

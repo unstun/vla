@@ -1,0 +1,13 @@
+{
+  "base": "scan_17",
+  "base_manifest_sha256": "0c3f0767f376d20be8d563b0206bea8bded3e4c87f95defd81aa0ed5267290a4",
+  "changed_sha256": {
+    "src/plan_env/include/plan_env/grid_map.h": "af6284114b0914093ef248782839983bd1821fc0b9c653d721d70842080ee904",
+    "src/plan_env/include/plan_env/scan_reactive_grid_methods.inc": "e97b738dbe65fcd4f59520dddad08f6ce2dbbb7fa9bf4ae6d87b8ec81aab8f0f",
+    "src/bspline_opt/src/bspline_optimizer.cpp": "caef312dbc77071481edfb48d2e1cbb71281614ab0966c5041c4afa5f796c452",
+    "src/plan_manage/src/scan_replan_fsm.cpp": "660ee78988ce2058ba8a87a14f59ff2527b7eebd0503e72c4041d10a0967acd6"
+  },
+  "problem": "tiny check-step chords disagree with the controller's 0.8 s heading lookahead; using current yaw for all distant small chords is also incorrect",
+  "change": "Spline optimization and live safety use the exact controller direction order: 0.8 s lookahead, velocity, then current measured yaw",
+  "preserved": "collision sample spacing, heading controller, occupancy rules, limits, time caps; fresh body fallback still required"
+}

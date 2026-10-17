@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "exit_code": 0,
+  "driver": {
+    "passed": true,
+    "terrain_points": 86775,
+    "snapshot_count": 12,
+    "complete_track_count": 5,
+    "track_ids": [
+      "cluster-1"
+    ],
+    "current_centers_x": [
+      -0.88,
+      -0.76,
+      -0.64,
+      -0.52,
+      -0.4
+    ],
+    "source_ids": [
+      "sensor_lidar_moving_cluster_candidate_v1"
+    ]
+  },
+  "sidecar_command": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "podman run --rm --pull=never --network=host --ipc=host --name vla-scan09-synthetic-pct-20260923 -e ROS_DOMAIN_ID=192 -e ROS_LOCALHOST_ONLY=1 -e PYTHONDONTWRITEBYTECODE=1 -e OPENBLAS_NUM_THREADS=1 -v /home/sun/vla_exec/2026-09-23_scan_reactive_stair/pct_sidecar_probe:/sidecar:ro -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/qualification/pct_20260916T145741Z:/map:ro 40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555 bash -lc 'source /opt/ros/humble/setup.bash && export PYTHONPATH=/sidecar:${PYTHONPATH:-} && timeout -s INT 40 python3 /sidecar/pct_sim_clock_publisher.py --ros-args -p map_path:=/map/inputs/new_building.pickle -p use_sim_time:=true'"
+  ],
+  "foxy_command": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "podman run --rm --pull=never --network=host --ipc=host --name vla-scan09-synthetic-track-20260923 -e ROS_DOMAIN_ID=192 -e ROS_LOCALHOST_ONLY=1 -e PYTHONDONTWRITEBYTECODE=1 -v /home/sun/vla_exec/2026-09-23_scan_reactive_stair/pct_sidecar_probe:/probe:ro -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_09:/workspace:ro e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'source /opt/ros/foxy/setup.bash\nsource /workspace/install/setup.bash\nros2 run scan_reactive_tracker moving_cluster_tracker --ros-args -p use_sim_time:=true >/tmp/vla_scan09_tracker.log 2>&1 &\ntracker_pid=$!\ntrap '\"'\"'kill $tracker_pid 2>/dev/null || true'\"'\"' EXIT\ntimeout -s INT 28 python3 /probe/synthetic_track_ros_probe_driver.py\ndriver_status=$?\ncat /tmp/vla_scan09_tracker.log\nexit $driver_status'"
+  ],
+  "remote_source_hashes": {
+    "pct_sim_clock_core.py": "f1e900cc0623ed6a7912602955af8104030b4a4f4311933cd9308652d879bb71",
+    "pct_sim_clock_publisher.py": "5a24b22eb11fe5ccd5598fecd8355c15d565c2bcf1fbbbeb869d05e984d6c0f3",
+    "synthetic_track_ros_probe_driver.py": "09b5cda690120d2af47500982a85f2eeb187215dde35cffa03e5cca6144be742"
+  },
+  "claim": "Cross-container ROS transport of synthetic moving cluster only; no human identity, SCAN collision query, Isaac episode, or robot motion"
+}

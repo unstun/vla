@@ -1,0 +1,699 @@
+{
+  "accepted_summary_statuses": [
+    "EXTERNAL_EPISODE_FINISHED"
+  ],
+  "camera_heading_mode": "body",
+  "case": "stand_probe",
+  "claim": "stand-only patched runner plus real Foxy bridge; no navigation",
+  "command_script_sha256": null,
+  "finish_after_sim_seconds": 16.0,
+  "finish_request": {
+    "backend_terminal_status": "FINISHED",
+    "note": "stand-only qualification finish after >=16 sim seconds",
+    "observed_run_epoch_ns": 1789984373880447361,
+    "request_id": "stand-finish-stand_20260921T095218Z_livox_rviz_gpu",
+    "requested_at_monotonic_ns": 17831565236720,
+    "run_id": "stand_20260921T095218Z_livox_rviz_gpu",
+    "schema_version": 1
+  },
+  "finish_request_snapshot_sim_time_s": 16.019999641925097,
+  "foxy_bridge": true,
+  "isaac_run": true,
+  "lidar_pattern_mode": "livox_mid360",
+  "motion_publisher_started": false,
+  "observer": {
+    "capture_exit_code": 255,
+    "capture_resolution": [
+      1228,
+      826
+    ],
+    "capture_started_monotonic_ns": 17794197462836,
+    "capture_stopped_monotonic_ns": 17836249138945,
+    "capture_wall_fps": 10,
+    "commands": [
+      [
+        "/usr/bin/python3",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260921T095218Z_livox_rviz_gpu/observer/resource_monitor.py",
+        "--output",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260921T095218Z_livox_rviz_gpu/artifacts/pointcloud_observer/resource_samples.jsonl",
+        "--pids",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260921T095218Z_livox_rviz_gpu/artifacts/pointcloud_observer/pids.json",
+        "--snapshot",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260921T095218Z_livox_rviz_gpu/artifacts/external_episode/current_command.json"
+      ],
+      [
+        "xwininfo",
+        "-root",
+        "-tree"
+      ],
+      [
+        "podman",
+        "container",
+        "exists",
+        "vla-pointcloud-stand-20260921t095218z-livox-rviz-gpu"
+      ],
+      [
+        "podman",
+        "run",
+        "-d",
+        "--pull=never",
+        "--network=host",
+        "--ipc=host",
+        "--cpus=2",
+        "--memory=2g",
+        "--name",
+        "vla-pointcloud-stand-20260921t095218z-livox-rviz-gpu",
+        "-e",
+        "DISPLAY=:0",
+        "-e",
+        "XAUTHORITY=/tmp/.Xauthority",
+        "-e",
+        "QT_X11_NO_MITSHM=1",
+        "-e",
+        "ROS_LOG_DIR=/observer-out/ros_logs",
+        "-e",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "-v",
+        "/tmp/.X11-unix:/tmp/.X11-unix:ro",
+        "-v",
+        "/run/user/1000/gdm/Xauthority:/tmp/.Xauthority:ro",
+        "-v",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260921T095218Z_livox_rviz_gpu/observer:/observer:ro",
+        "-v",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260921T095218Z_livox_rviz_gpu/artifacts/pointcloud_observer:/observer-out:rw",
+        "-v",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260921T095218Z_livox_rviz_gpu/artifacts:/run-artifacts:ro",
+        "--device",
+        "/dev/nvidia0",
+        "--device",
+        "/dev/nvidiactl",
+        "--device",
+        "/dev/nvidia-modeset",
+        "--device",
+        "/dev/nvidia-uvm",
+        "--device",
+        "/dev/dri/renderD128",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.580.126.09:/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.580.126.09:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.580.126.09:/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.0:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libEGL_nvidia.so.580.126.09:/usr/lib/x86_64-linux-gnu/libEGL_nvidia.so.580.126.09:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libEGL_nvidia.so.580.126.09:/usr/lib/x86_64-linux-gnu/libEGL_nvidia.so.0:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-glsi.so.580.126.09:/usr/lib/x86_64-linux-gnu/libnvidia-glsi.so.580.126.09:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-tls.so.580.126.09:/usr/lib/x86_64-linux-gnu/libnvidia-tls.so.580.126.09:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.126.09:/usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.126.09:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-eglcore.so.580.126.09:/usr/lib/x86_64-linux-gnu/libnvidia-eglcore.so.580.126.09:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.126.09:/usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.126.09:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-glvkspirv.so.580.126.09:/usr/lib/x86_64-linux-gnu/libnvidia-glvkspirv.so.580.126.09:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.580.126.09:/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.580.126.09:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.580.126.09:/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.1:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libnvidia-rtcore.so.580.126.09:/usr/lib/x86_64-linux-gnu/libnvidia-rtcore.so.580.126.09:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libcuda.so.580.126.09:/usr/lib/x86_64-linux-gnu/libcuda.so.580.126.09:ro",
+        "-v",
+        "/usr/lib/x86_64-linux-gnu/libcuda.so.580.126.09:/usr/lib/x86_64-linux-gnu/libcuda.so.1:ro",
+        "-v",
+        "/usr/share/glvnd/egl_vendor.d/10_nvidia.json:/usr/share/glvnd/egl_vendor.d/10_nvidia.json:ro",
+        "-e",
+        "__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json",
+        "-e",
+        "__GLX_VENDOR_LIBRARY_NAME=nvidia",
+        "980cec478c0659eaecc87b5bb79685bc3399135a2ce4033d5e815defe4478ed2",
+        "bash",
+        "-lc",
+        "set -e\nsource /opt/ros/foxy/setup.bash\nexport ROS_DOMAIN_ID=94\nexport ROS_LOCALHOST_ONLY=1\ncd /observer-out\npython3 /observer/cloud_audit.py --output /observer-out/cloud_receipts.jsonl &\npython3 /observer/aabb_hit_marker.py --output /observer-out/aabb_hits.jsonl --setup /run-artifacts/runner_output/unmapped_box_setup.json &\nexec rviz2 --ogre-log -d /observer/pointcloud_stand_20260921T095218Z_livox_rviz_gpu.rviz --ros-args -p use_sim_time:=true\n"
+      ],
+      [
+        "xwininfo",
+        "-root",
+        "-tree"
+      ],
+      [
+        "xwininfo",
+        "-root",
+        "-tree"
+      ],
+      [
+        "xwininfo",
+        "-root",
+        "-tree"
+      ],
+      [
+        "xwininfo",
+        "-root",
+        "-tree"
+      ],
+      [
+        "xwininfo",
+        "-root",
+        "-tree"
+      ],
+      [
+        "podman",
+        "inspect",
+        "--format",
+        "{{.State.Pid}}",
+        "vla-pointcloud-stand-20260921t095218z-livox-rviz-gpu"
+      ],
+      [
+        "xwininfo",
+        "-id",
+        "0x60000d"
+      ],
+      [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "info",
+        "-f",
+        "x11grab",
+        "-draw_mouse",
+        "0",
+        "-framerate",
+        "10",
+        "-window_id",
+        "6291469",
+        "-video_size",
+        "1228x826",
+        "-i",
+        ":0.0",
+        "-an",
+        "-c:v",
+        "h264_nvenc",
+        "-gpu",
+        "0",
+        "-preset",
+        "p4",
+        "-tune",
+        "hq",
+        "-rc",
+        "vbr",
+        "-cq",
+        "24",
+        "-b:v",
+        "0",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart",
+        "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/runner_qualification/stand_20260921T095218Z_livox_rviz_gpu/artifacts/pointcloud_observer/rviz_live_wall_time.mp4"
+      ],
+      [
+        "podman",
+        "logs",
+        "vla-pointcloud-stand-20260921t095218z-livox-rviz-gpu"
+      ],
+      [
+        "podman",
+        "rm",
+        "-f",
+        "-t",
+        "2",
+        "vla-pointcloud-stand-20260921t095218z-livox-rviz-gpu"
+      ]
+    ],
+    "config": {
+      "aabb_hit_topic": "/review/unmapped_box_hits",
+      "capture_encoder": "h264_nvenc",
+      "capture_in_display_condition_only": true,
+      "capture_scope": "own RViz window only",
+      "capture_time_basis": "wall time",
+      "decay_seconds": 0,
+      "display": ":0",
+      "draw_rate_hz": 10,
+      "gpu_display": true,
+      "mode": "rviz-gpu",
+      "nvidia_runtime": {
+        "devices": [
+          "/dev/nvidia0",
+          "/dev/nvidiactl",
+          "/dev/nvidia-modeset",
+          "/dev/nvidia-uvm",
+          "/dev/dri/renderD128"
+        ],
+        "driver_version": "580.126.09",
+        "environment": {
+          "__EGL_VENDOR_LIBRARY_FILENAMES": "/usr/share/glvnd/egl_vendor.d/10_nvidia.json",
+          "__GLX_VENDOR_LIBRARY_NAME": "nvidia"
+        },
+        "gpu_identity": "NVIDIA GeForce RTX 5070 Ti, 580.126.09, GPU-9a0eb7bb-2f95-29e1-488a-6ef5fca4abb7",
+        "gpu_load": "0, 203, 0",
+        "host": "gpu5070ti",
+        "mounts": [
+          {
+            "bytes": 1211968,
+            "destination": "/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.580.126.09",
+            "sha256": "cd8952e9205253353b1b9d852a12a7bb1c1f2f62d3f75cf954bba6f09d0b30e2",
+            "source": "/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.580.126.09"
+          },
+          {
+            "bytes": 1211968,
+            "destination": "/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.0",
+            "sha256": "cd8952e9205253353b1b9d852a12a7bb1c1f2f62d3f75cf954bba6f09d0b30e2",
+            "source": "/usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.580.126.09"
+          },
+          {
+            "bytes": 1296640,
+            "destination": "/usr/lib/x86_64-linux-gnu/libEGL_nvidia.so.580.126.09",
+            "sha256": "040da8ad05728b5b5afab709bb84a9062879690a4682fbd429573d58043810f9",
+            "source": "/usr/lib/x86_64-linux-gnu/libEGL_nvidia.so.580.126.09"
+          },
+          {
+            "bytes": 1296640,
+            "destination": "/usr/lib/x86_64-linux-gnu/libEGL_nvidia.so.0",
+            "sha256": "040da8ad05728b5b5afab709bb84a9062879690a4682fbd429573d58043810f9",
+            "source": "/usr/lib/x86_64-linux-gnu/libEGL_nvidia.so.580.126.09"
+          },
+          {
+            "bytes": 603352,
+            "destination": "/usr/lib/x86_64-linux-gnu/libnvidia-glsi.so.580.126.09",
+            "sha256": "7826db39034c54a655e4130f06a9a2bd2aeb6545f40f6be8ba359c4e1f738262",
+            "source": "/usr/lib/x86_64-linux-gnu/libnvidia-glsi.so.580.126.09"
+          },
+          {
+            "bytes": 18632,
+            "destination": "/usr/lib/x86_64-linux-gnu/libnvidia-tls.so.580.126.09",
+            "sha256": "2f5e71030bceb180a40c63be9391cb46afe5b8f738f3a1ae3fb4fa7007d452d8",
+            "source": "/usr/lib/x86_64-linux-gnu/libnvidia-tls.so.580.126.09"
+          },
+          {
+            "bytes": 37045864,
+            "destination": "/usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.126.09",
+            "sha256": "b1e0a00148b9bae731d691b0b9611150a0d057c13c6e1f7e3716aceba95e4d77",
+            "source": "/usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.126.09"
+          },
+          {
+            "bytes": 35072432,
+            "destination": "/usr/lib/x86_64-linux-gnu/libnvidia-eglcore.so.580.126.09",
+            "sha256": "f72ecaaad80acc613ee7034e775c997df438a778a46171b11f84e161c097e662",
+            "source": "/usr/lib/x86_64-linux-gnu/libnvidia-eglcore.so.580.126.09"
+          },
+          {
+            "bytes": 72261240,
+            "destination": "/usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.126.09",
+            "sha256": "c067735912bc2eff6bd3405c7b43284be79af8dfd7e5bfee4aa3c61130839db3",
+            "source": "/usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.126.09"
+          },
+          {
+            "bytes": 9553072,
+            "destination": "/usr/lib/x86_64-linux-gnu/libnvidia-glvkspirv.so.580.126.09",
+            "sha256": "1523f03be36703cd89ea0623fa7c0eaf60696ce798104feb5cdac40aa187b568",
+            "source": "/usr/lib/x86_64-linux-gnu/libnvidia-glvkspirv.so.580.126.09"
+          },
+          {
+            "bytes": 164936,
+            "destination": "/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.580.126.09",
+            "sha256": "e3ef38c86a4f5d43532f5b9c7cd6fe79c1c68a7baa303c15fcf00634c6b6da5a",
+            "source": "/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.580.126.09"
+          },
+          {
+            "bytes": 164936,
+            "destination": "/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.1",
+            "sha256": "e3ef38c86a4f5d43532f5b9c7cd6fe79c1c68a7baa303c15fcf00634c6b6da5a",
+            "source": "/usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.580.126.09"
+          },
+          {
+            "bytes": 105522272,
+            "destination": "/usr/lib/x86_64-linux-gnu/libnvidia-rtcore.so.580.126.09",
+            "sha256": "73338e239cb1af802d2cfe32126bb0cd444b321c9e70730a5aed6d06264253ba",
+            "source": "/usr/lib/x86_64-linux-gnu/libnvidia-rtcore.so.580.126.09"
+          },
+          {
+            "bytes": 96284520,
+            "destination": "/usr/lib/x86_64-linux-gnu/libcuda.so.580.126.09",
+            "sha256": "e8e541166449da5a1278f40b27a28d072174b31f2941b101a9609b6d1d3aed32",
+            "source": "/usr/lib/x86_64-linux-gnu/libcuda.so.580.126.09"
+          },
+          {
+            "bytes": 96284520,
+            "destination": "/usr/lib/x86_64-linux-gnu/libcuda.so.1",
+            "sha256": "e8e541166449da5a1278f40b27a28d072174b31f2941b101a9609b6d1d3aed32",
+            "source": "/usr/lib/x86_64-linux-gnu/libcuda.so.580.126.09"
+          },
+          {
+            "bytes": 107,
+            "destination": "/usr/share/glvnd/egl_vendor.d/10_nvidia.json",
+            "sha256": "9e6f14afaa7523370ad96e6675d3357441ee3985e60405cb3e0ced30b2ddaf76",
+            "source": "/usr/share/glvnd/egl_vendor.d/10_nvidia.json"
+          }
+        ],
+        "preflight_ports_free": {
+          "46240": true,
+          "46241": true,
+          "47631": true,
+          "8765": true
+        },
+        "schema": "pointcloud_nvidia_runtime_v1"
+      },
+      "pointcloud_qos": "BEST_EFFORT KEEP_LAST depth 1",
+      "pointcloud_topic": "/quad_0/cloud_raw",
+      "renderer_requested": "NVIDIA hardware OpenGL; require NVIDIA RTX 5070 Ti in Ogre.log",
+      "run_id": "stand_20260921T095218Z_livox_rviz_gpu",
+      "rviz_config_file": "pointcloud_stand_20260921T095218Z_livox_rviz_gpu.rviz",
+      "rviz_image_id": "980cec478c0659eaecc87b5bb79685bc3399135a2ce4033d5e815defe4478ed2",
+      "viewer_cpu_limit_cores": 2,
+      "viewer_memory_limit_bytes": 2147483648,
+      "xauthority": "/run/user/1000/gdm/Xauthority"
+    },
+    "container_removal": {
+      "returncode": 0,
+      "stderr": "time=\"2026-09-21T05:53:39-04:00\" level=warning msg=\"StopSignal SIGTERM failed to stop container vla-pointcloud-stand-20260921t095218z-livox-rviz-gpu in 2 seconds, resorting to SIGKILL\"\n"
+    },
+    "errors": [],
+    "mode": "rviz-gpu",
+    "monitor_exit_code": 0,
+    "nvidia_provider_hashes_verified": true,
+    "nvidia_renderer_verified": true,
+    "renderer_log_lines": [
+      "09:52:43: GL_VENDOR = NVIDIA Corporation",
+      "09:52:43: GL_RENDERER = NVIDIA GeForce RTX 5070 Ti/PCIe/SSE2"
+    ],
+    "window": "0x60000d \"/observer/pointcloud_stand_20260921T095218Z_livox_rviz_gpu.rviz - RViz\": (\"mutter-x11-frames\" \"mutter-x11-frames\")  1228x826+52+28  +52+28",
+    "window_geometry": "\nxwininfo: Window id: 0x60000d \"/observer/pointcloud_stand_20260921T095218Z_livox_rviz_gpu.rviz - RViz\"\n\n  Absolute upper-left X:  52\n  Absolute upper-left Y:  28\n  Relative upper-left X:  52\n  Relative upper-left Y:  28\n  Width: 1228\n  Height: 826\n  Depth: 32\n  Visual: 0x82\n  Visual Class: TrueColor\n  Border width: 0\n  Class: InputOutput\n  Colormap: 0x600001 (not installed)\n  Bit Gravity State: NorthWestGravity\n  Window Gravity State: NorthWestGravity\n  Backing Store State: NotUseful\n  Save Under State: no\n  Map State: IsViewable\n  Override Redirect State: no\n  Corners:  +52+28  -1280+28  -1280-586  +52-586\n  -geometry 1228x826+52+28\n\n",
+    "window_matches_run_specific_title": true
+  },
+  "passed": true,
+  "physical_actuation": false,
+  "runner_exit_code": 0,
+  "scan_started": false,
+  "stance_entry_kd": "xfade1s",
+  "stance_hold": "auto",
+  "summary": {
+    "camera_heading_mode": "body",
+    "case": "stand_probe",
+    "case_failed": false,
+    "lidar_pattern_mode": "livox_mid360",
+    "max_admitted_command_norm_mps": 0.0,
+    "max_horizontal_speed_mps": 0.11336894625518383,
+    "record_count": 853,
+    "scripted_walk_sha256": null,
+    "sim_seconds": 17.059999618679285,
+    "stance_hold": {
+      "entry_kd": "xfade1s",
+      "failure": null,
+      "fsm": {
+        "constants": {
+          "balance_band": [
+            0.35,
+            0.65
+          ],
+          "balance_shares": [
+            "FL+FR",
+            "FL+HL",
+            "FL+HR"
+          ],
+          "base_kd": 0.5,
+          "base_kp": 20.0,
+          "command_deadband": 0.001,
+          "disturbance_dwell_s": 0.25,
+          "entry_crossfade_blend": "smoothstep",
+          "entry_crossfade_rule": "w = smoothstep((t - t_entry) / T_x); Kp = (1 - w) Kp0 + w HOLD_KP; target = ((1 - w) Kp0 P + w HOLD_KP H) / Kp; Kd = HOLD_KD from the entry step on; P = this step's policy target, H = the torque-matched seed at entry, Kp0 = applied_kp at entry; w = 0 gives P with Kp0; t - t_entry >= T_x gives exactly H with HOLD_KP and HOLD_KD (PRD D6)",
+          "entry_crossfade_s": {
+            "xfade1s": 1.0,
+            "xfade2s": 2.0
+          },
+          "entry_foot_force_n": 10.0,
+          "entry_grace_rule": "automatic arming (RL -> STAND_SETTLING) needs now_s >= entry_grace_s (episode sim time) for the listed variants; before that the mode stays RL with reason entry_grace (PRD D6; precedent MJ FIXED_STAND_BOOT_GRACE_S 1.0 s)",
+          "entry_grace_s": 1.0,
+          "entry_grace_variants": [
+            "xfade1s",
+            "xfade2s"
+          ],
+          "entry_kd_modes": {
+            "precedent": "MJ BOOT_LANDING_KD 2.5 over FIXED_STAND_BOOT_GRACE_S 1.0 s (PRD D5)",
+            "ramp": "Kd follows the Kp ramp (entry_ramp_rule)",
+            "step1": "Kd = HOLD_KD from the entry step on",
+            "step2p5": "Kd = entry_landing_kd from the entry step until entry_ramp_s, then entry_landing_kd + (HOLD_KD - entry_landing_kd) smoothstep((t - t_entry - entry_ramp_s) / (transition_s - entry_ramp_s)); exactly HOLD_KD from FIXED_STAND on",
+            "xfade1s": "crossfade entry over 1.0 s (entry_crossfade_rule); Kd = HOLD_KD from the entry step on",
+            "xfade2s": "crossfade entry over 2.0 s (entry_crossfade_rule); Kd = HOLD_KD from the entry step on"
+          },
+          "entry_landing_kd": 2.5,
+          "entry_ramp_blend": "smoothstep",
+          "entry_ramp_rule": "u = smoothstep((t - t_entry) / entry_ramp_s); Kp = Kp0 + (HOLD_KP - Kp0) u; Kd = Kd0 + (HOLD_KD - Kd0) u; target = q0 + (Kp0 / Kp) (T0 - q0); q0, T0, Kp0, Kd0 = joint_pos, applied_target, applied_kp, applied_kd at entry (PRD D4)",
+          "entry_ramp_s": 0.5,
+          "entry_ramp_variants": [
+            "ramp",
+            "step1",
+            "step2p5"
+          ],
+          "foot_order": [
+            "FL",
+            "FR",
+            "HL",
+            "HR"
+          ],
+          "hold_contact_n": 1.0,
+          "hold_kd": 1.0,
+          "hold_kp": 60.0,
+          "reentry_lockout_s": 0.5,
+          "reference": "machine-dog 0_trials/2026-08-22/v17a28_mujoco_wasd/run_v17a28_mujoco_wasd.py LocalMotionFSM stand path (commit fd751b8b)",
+          "rejoin_blend": "smoothstep",
+          "rejoin_s": 0.25,
+          "seed": "q + (applied_kp / HOLD_KP) * (applied_target - q)",
+          "settle_angular_speed_max_radps": 0.5,
+          "settle_dwell_s": 0.25,
+          "settle_linear_speed_max_mps": 0.15,
+          "settle_timeout_s": 10.0,
+          "tilt_max_deg": 10.0,
+          "transition_s": 2.0
+        },
+        "counters": {
+          "disturbance_exits": 0,
+          "entries": 1,
+          "entry_ramps_complete": 1,
+          "fixed_stand": 1,
+          "rejoin_complete": 0,
+          "rejoins": 0,
+          "settle_cancels": 0,
+          "settle_starts": 1,
+          "settle_timeouts": 0,
+          "support_balance_blocks": 0,
+          "updates": 853
+        },
+        "entry_kd": "xfade1s",
+        "failure": null,
+        "joint_limits_applied": true,
+        "last_entry": {
+          "applied_target_t0": [
+            0.10685819387435913,
+            -0.024271272122859955,
+            0.21481409668922424,
+            -0.20399810373783112,
+            -0.8217848129570484,
+            -0.9210444986820221,
+            -0.9074821025133133,
+            -1.085362434387207,
+            1.3357900977134705,
+            1.4782441481947899,
+            1.5727420691400766,
+            1.3905878961086273
+          ],
+          "dwell_samples": 14,
+          "entry_kd": "xfade1s",
+          "entry_ramp_complete_t_s": 2.299999948590994,
+          "entry_ramp_s": 1.0,
+          "foot_forces_n": [
+            38.61361312866221,
+            22.807018280029304,
+            25.54459190368682,
+            44.849399566650405
+          ],
+          "kd0_mean": 0.5,
+          "kp0_mean": 20.0,
+          "q0": [
+            0.06550554186105728,
+            -0.018203584477305412,
+            0.029350992292165756,
+            -0.002162704709917307,
+            -0.8190235495567322,
+            -0.9075465798377991,
+            -0.9474978446960449,
+            -1.0098763704299927,
+            1.6076560020446777,
+            1.6399325132369995,
+            1.72850501537323,
+            1.7658072710037231
+          ],
+          "seed_minus_t0_max_abs": 0.25014624993006396,
+          "stiffness_torque_max_abs_nm": 7.5043874979019165,
+          "support_shares": [
+            0.48117236409739367,
+            0.4928779620019489,
+            0.6127323596869347
+          ],
+          "t0_minus_q0_max_abs": 0.3752193748950958,
+          "t_s": 1.2799999713897705
+        },
+        "mode": "FIXED_STAND",
+        "mode_time_s": {
+          "FIXED_STAND": 13.759999692440033,
+          "REJOIN": 0.0,
+          "RL": 0.9999999776482582,
+          "STAND_SETTLING": 0.25999999418854713,
+          "STAND_TRANSITION": 2.0199999548494816
+        },
+        "progress": 1.0,
+        "reason": "fixed_stand_active",
+        "setting": "auto",
+        "transition_counts": {
+          "RL->STAND_SETTLING": 1,
+          "STAND_SETTLING->STAND_TRANSITION": 1,
+          "STAND_TRANSITION->FIXED_STAND": 1
+        },
+        "transitions": [
+          {
+            "from": "RL",
+            "reason": "waiting_for_quiet_four_contact",
+            "t_s": 1.0199999772012234,
+            "to": "STAND_SETTLING"
+          },
+          {
+            "from": "STAND_SETTLING",
+            "reason": "quiet_four_contact_confirmed",
+            "t_s": 1.2799999713897705,
+            "to": "STAND_TRANSITION"
+          },
+          {
+            "from": "STAND_TRANSITION",
+            "reason": "fixed_stand_active",
+            "t_s": 3.299999926239252,
+            "to": "FIXED_STAND"
+          }
+        ],
+        "transitions_dropped": 0
+      },
+      "gain_readback_max_abs_error": 1.8212890111612978e-06,
+      "gain_writes": 52,
+      "mode": "auto",
+      "module_sha256": "9a97879a5d5ed2f7c9c3e327c1193b1c42cf079eaaf073a855afad53a7dbc306",
+      "physx_after_first_gain_write": {
+        "data_joint_damping": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "data_joint_stiffness": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "problems": [],
+        "view_dof_dampings": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "view_dof_stiffnesses": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "row_error_count": 0,
+      "row_last_error": null,
+      "setup_record": "stance_hold_setup.json"
+    },
+    "status": "EXTERNAL_EPISODE_FINISHED",
+    "travel_xy_m": 0.0737638049831245,
+    "unmapped_box": {
+      "aabb_pad_m": 0.01,
+      "center_xyz_m": [
+        0.8870694587067134,
+        -4.399310184167528,
+        1.9608844757080077
+      ],
+      "lidar_target": true,
+      "mode": "lidar",
+      "module": {
+        "body_sha256": "f05644394891daf4c4770318428a42e5d6e590077de6ddaa8a65850ab1c1f2d6",
+        "path": ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/unmapped_box.py",
+        "sha256": "5b9a593f0a13f5a58ba25338f17db9f6ec03d31c1763c58b5a8805583776bab1"
+      },
+      "offset_m": 2.5,
+      "prim": "/World/unmapped_box",
+      "robot_overlap": {
+        "box_aabb": {
+          "max_xyz_m": [
+            1.0970694587067134,
+            -4.189310184167528,
+            2.3708844757080074
+          ],
+          "min_xyz_m": [
+            0.6770694587067134,
+            -4.609310184167528,
+            1.5508844757080078
+          ]
+        },
+        "intersects": false,
+        "robot_aabb": {
+          "max_xyz_m": [
+            -1.0600804503901402,
+            -4.154011446940927,
+            2.260884475708008
+          ],
+          "min_xyz_m": [
+            -2.1475571736361947,
+            -4.930969692381513,
+            1.5608844757080078
+          ]
+        }
+      },
+      "schema_version": 1,
+      "size_xyz_m": [
+        0.4,
+        0.4,
+        0.8
+      ],
+      "spawn": true
+    }
+  },
+  "summary_status": "EXTERNAL_EPISODE_FINISHED",
+  "unmapped_box": "lidar"
+}

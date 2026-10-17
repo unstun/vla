@@ -480,22 +480,40 @@ class StanceHoldPatchTests(unittest.TestCase):
 
     def test_stance_anchors_are_the_only_other_differences(self):
         source = self.data["source_text"]
-        external = materializer.apply_patch_text(source, include_stance_hold=False, include_scripted_walk=False)
+        external = materializer.apply_patch_text(
+            source, include_stance_hold=False, include_scripted_walk=False, include_unmapped_box=False)
         module = materializer.load_stance_hold_module()
         script_module = materializer.load_command_script_module()
+        unmapped_module = materializer.load_unmapped_box_module()
         removed = self.data["patched_text"]
-        # Undo the scripted-walk group first (it anchors on stance-hold output), then the stance group.
-        groups = (materializer._scripted_walk_replacements(script_module),
-                  materializer._stance_hold_replacements(module))
+        # Undo later groups first: livox-mid360, then unmapped-box, then scripted-walk, then stance-hold.
+        groups = (
+            materializer._livox_mid360_replacements(),
+            materializer._unmapped_box_replacements(unmapped_module),
+            materializer._scripted_walk_replacements(script_module),
+            materializer._stance_hold_replacements(module),
+        )
         for group in groups:
             for item in reversed(group):
                 self.assertEqual(removed.count(item["new"]), 1, item["name"])
                 removed = removed.replace(item["new"], item["old"], 1)
             if group is groups[0]:
-                self.assertEqual(removed, materializer.apply_patch_text(source, include_scripted_walk=False))
+                self.assertEqual(
+                    removed,
+                    materializer.apply_patch_text(source, include_livox_mid360=False),
+                )
+            if group is groups[1]:
+                self.assertEqual(removed, materializer.apply_patch_text(source, include_unmapped_box=False))
+            if group is groups[2]:
+                self.assertEqual(
+                    removed,
+                    materializer.apply_patch_text(source, include_scripted_walk=False, include_unmapped_box=False),
+                )
         self.assertEqual(removed, external)
         with self.assertRaises(ValueError):
             materializer.apply_patch_text(source, include_stance_hold=False)
+        with self.assertRaises(ValueError):
+            materializer.apply_patch_text(source, include_scripted_walk=False)
 
     def test_off_branch_is_todays_statement_right_after_the_policy(self):
         text = self.data["patched_text"]
@@ -943,8 +961,21 @@ class StanceHoldPatchTests(unittest.TestCase):
                           payload["command_script_default"]), ("ramp", "body", None))
         self.assertEqual(payload["command_script_module"]["sha256"],
                          materializer.sha256_file(materializer.COMMAND_SCRIPT_MODULE))
+        self.assertIn("unmapped_box_scene", payload["anchor_groups"]["unmapped_box"])
+        self.assertEqual(payload["unmapped_box_default"], "off")
+        self.assertEqual(payload["three_group_patched_sha256"], materializer.THREE_GROUP_PATCHED_SHA256)
+        self.assertEqual(payload["four_group_patched_sha256"], materializer.FOUR_GROUP_PATCHED_SHA256)
+        self.assertEqual(payload["lidar_pattern_mode_default"], "uniform")
+        self.assertIn("helper_args_livox", payload["anchor_groups"]["livox_mid360"])
+        self.assertEqual(payload["unmapped_box_module"]["sha256"],
+                         materializer.sha256_file(materializer.UNMAPPED_BOX_MODULE))
         for key in ("scripted_walk_command_branch_present", "default_camera_heading_body",
-                    "default_stance_entry_kd_ramp", "default_command_script_none"):
+                    "default_stance_entry_kd_ramp", "default_command_script_none",
+                    "default_unmapped_box_off", "unmapped_box_scene_branch_present",
+                    "three_group_matches_previous_patched_runner",
+                    "four_group_matches_previous_patched_runner",
+                    "default_lidar_pattern_uniform", "livox_scan_window_branch_present",
+                    "livox_no_rtx_emitter", "livox_no_gazebo_gpu_lidar"):
             self.assertTrue(payload["verification"][key], key)
 
 
@@ -1213,6 +1244,150 @@ class ScriptedWalkPatchTests(unittest.TestCase):
         side = np.frombuffer(initial[0][1])
         heading = np.frombuffer(initial[0][0])
         self.assertAlmostEqual(float(np.cross(heading, -1.25 * side)[2]), -1.25)
+
+
+class UnmappedBoxPatchTests(unittest.TestCase):
+    def setUp(self):
+        self.data = materializer.load_and_patch(materializer.REPO_ROOT / materializer.SOURCE_REL)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        runner = self.tmp / "run_pct_scan_building.py"
+        runner.write_text(self.data["patched_text"], encoding="utf-8")
+        spec = importlib.util.spec_from_file_location("patched_runner_unmapped", str(runner))
+        self.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.module)
+
+    def test_three_group_path_is_unchanged_and_has_no_unmapped_prim(self):
+        self.assertEqual(self.data["source_sha256"], materializer.EXPECTED_SOURCE_SHA256)
+        self.assertEqual(self.data["external_only_sha256"], materializer.EXTERNAL_ONLY_PATCHED_SHA256)
+        self.assertEqual(self.data["three_group_sha256"], materializer.THREE_GROUP_PATCHED_SHA256)
+        three = materializer.apply_patch_text(
+            self.data["source_text"], include_unmapped_box=False)
+        self.assertEqual(materializer.sha256_text(three), materializer.THREE_GROUP_PATCHED_SHA256)
+        self.assertNotIn("/World/unmapped_box", three)
+        self.assertNotIn("--unmapped-box", three)
+        self.assertNotIn("UNMAPPED_BOX_PRIM", three)
+
+    def test_lidar_and_spawn_branches_use_sibling_cuboid_string_target(self):
+        text = self.data["patched_text"]
+        self.assertIn(materializer.UNMAPPED_BOX_SCENE_BRANCH, text)
+        self.assertIn("prim_path=UNMAPPED_BOX_PRIM", text)
+        self.assertIn("size=UNMAPPED_BOX_SIZE_XYZ_M", text)
+        self.assertIn("sim_utils.CuboidCfg(", text)
+        self.assertIn("sim_utils.CollisionPropertiesCfg()", text)
+        self.assertIn("mesh_prim_paths.append(UNMAPPED_BOX_PRIM)", text)
+        self.assertNotIn("/World/ground/unmapped_box", text)
+        self.assertNotIn("/World/ground/scan_obstacle", text)
+        self.assertNotIn("prim_expr=UNMAPPED_BOX_PRIM", text)
+        self.assertNotIn('prim_expr="/World/unmapped_box"', text)
+        self.assertIn('RaycastTargetCfg(\n            prim_expr=f"{GROUND_MESH_PRIM}/terrain"', text)
+        self.assertIn('choices=UNMAPPED_BOX_MODES, default="off"', text)
+        self.assertIn('if unmapped_box["spawn"]:', text)
+        self.assertIn('if unmapped_box["lidar_target"]:', text)
+        self.assertIn('"unmapped_box": unmapped_box,', text)
+
+    def test_runner_defaults_and_setup_identity(self):
+        self.assertEqual(self.module.build_parser().get_default("unmapped_box"), "off")
+        self.assertEqual(self.module.UNMAPPED_BOX_MODES, ("off", "spawn", "lidar"))
+        self.assertEqual(self.module.UNMAPPED_BOX_PRIM, "/World/unmapped_box")
+        identity = self.module._unmapped_box_setup("off", [0.0, 0.0, 1.0], 0.0, 0.35, self.tmp)
+        self.assertEqual(identity["mode"], "off")
+        self.assertFalse(identity["spawn"])
+        self.assertFalse(identity["lidar_target"])
+        self.assertFalse(identity["robot_overlap"]["intersects"])
+        self.assertTrue((self.tmp / "unmapped_box_setup.json").is_file())
+        spawn = self.module._unmapped_box_setup("spawn", [0.0, 0.0, 1.0], 0.0, 0.35, self.tmp)
+        self.assertTrue(spawn["spawn"])
+        self.assertFalse(spawn["lidar_target"])
+        lidar = self.module._unmapped_box_setup("lidar", [0.0, 0.0, 1.0], 0.0, 0.35, self.tmp)
+        self.assertTrue(lidar["spawn"])
+        self.assertTrue(lidar["lidar_target"])
+        self.assertEqual(
+            self.module.lidar_mesh_prim_paths(["/World/ground"], "lidar"),
+            ["/World/ground", "/World/unmapped_box"],
+        )
+        self.assertEqual(self.module.lidar_mesh_prim_paths(["/World/ground"], "spawn"), ["/World/ground"])
+        with self.assertRaises(self.module.AdapterFailure):
+            self.module._unmapped_box_setup("scan", [0.0, 0.0, 1.0], 0.0, 0.35, self.tmp)
+
+        original_intersect = self.module.aabbs_intersect
+        self.module.aabbs_intersect = lambda *args, **kwargs: True
+        try:
+            off = self.module._unmapped_box_setup("off", [0.0, 0.0, 1.0], 0.0, 0.35, self.tmp)
+            self.assertFalse(off["spawn"])
+            self.assertTrue(off["robot_overlap"]["intersects"])
+            with self.assertRaisesRegex(self.module.AdapterFailure, "intersects the robot AABB"):
+                self.module._unmapped_box_setup("spawn", [0.0, 0.0, 1.0], 0.0, 0.35, self.tmp)
+            with self.assertRaisesRegex(self.module.AdapterFailure, "intersects the robot AABB"):
+                self.module._unmapped_box_setup("lidar", [0.0, 0.0, 1.0], 0.0, 0.35, self.tmp)
+        finally:
+            self.module.aabbs_intersect = original_intersect
+
+    def test_check_records_the_unmapped_box_group(self):
+        payload = materializer.write_outputs(Namespace(
+            source=None, output=self.tmp / "runner.py", patch=self.tmp / "p.patch",
+            hashes=self.tmp / "h.json", allow_source_sha=False, check=True))
+        self.assertTrue(payload["verification"]["three_group_matches_previous_patched_runner"])
+        self.assertTrue(payload["verification"]["default_unmapped_box_off"])
+        self.assertEqual(payload["anchor_groups"]["unmapped_box"], [
+            "unmapped_box_module", "cli_unmapped_box", "unmapped_box_scene", "unmapped_box_summary",
+        ])
+        self.assertTrue(payload["verification"]["four_group_matches_previous_patched_runner"])
+        self.assertEqual(self.data["four_group_sha256"], materializer.FOUR_GROUP_PATCHED_SHA256)
+
+
+class LivoxMid360PatchTests(unittest.TestCase):
+    def setUp(self):
+        self.data = materializer.load_and_patch(materializer.REPO_ROOT / materializer.SOURCE_REL)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        runner = self.tmp / "run_pct_scan_building.py"
+        runner.write_text(self.data["patched_text"], encoding="utf-8")
+        spec = importlib.util.spec_from_file_location("patched_runner_livox", str(runner))
+        self.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.module)
+
+    def test_four_group_path_is_unchanged_and_stays_uniform(self):
+        four = materializer.apply_patch_text(
+            self.data["source_text"], include_livox_mid360=False)
+        self.assertEqual(materializer.sha256_text(four), materializer.FOUR_GROUP_PATCHED_SHA256)
+        self.assertNotIn("--lidar-pattern-mode", four)
+        self.assertNotIn("_set_mid360_scan_window", four)
+        self.assertNotIn("emitterStateArrays", four)
+        self.assertNotIn("gpu_lidar", four)
+
+    def test_livox_reuses_fallback_scan_window_and_refuses_invented_lidar(self):
+        text = self.data["patched_text"]
+        self.assertIn(materializer.LIVOX_MID360_LOOP_UPDATE_NEW, text)
+        self.assertIn("v12._set_mid360_scan_window", text)
+        self.assertIn("v12.load_mid360_pattern", text)
+        self.assertIn('choices=("uniform", "livox_mid360"), default="uniform"', text)
+        self.assertIn("Livox MID-360 source-backed geometric snapshot", text)
+        self.assertNotIn("emitterStateArrays", text)
+        self.assertNotIn("gpu_lidar", text)
+        self.assertNotIn("OS1", text)
+        self.assertEqual(self.module.build_parser().get_default("lidar_pattern_mode"), "uniform")
+        self.assertEqual(self.module.build_parser().get_default("lidar_pattern_csv"), None)
+        self.assertEqual(
+            self.module.PINNED_SENSOR_RIG_ISAAC_SHA256,
+            "803d552703bcc4f72ce15f38b95bc3f62e3e4ada0b42bf3ecf71b32b6590bb9d",
+        )
+        self.module._livox_mid360_validate_args(Namespace(
+            lidar_pattern_mode="uniform", lidar_pattern_csv=None, robot_asset=None,
+            canonical_robot_asset=None, sensor_period=0.1, lidar_min_range=0.1,
+            lidar_max_range=12.0))
+        with self.assertRaisesRegex(ValueError, "valid only with --lidar-pattern-mode livox_mid360"):
+            self.module._livox_mid360_validate_args(Namespace(
+                lidar_pattern_mode="uniform", lidar_pattern_csv=Path("/tmp/x.csv"),
+                robot_asset=None, canonical_robot_asset=None, sensor_period=0.1,
+                lidar_min_range=0.1, lidar_max_range=12.0))
+        with self.assertRaisesRegex(ValueError, "requires --lidar-pattern-csv"):
+            self.module._livox_mid360_validate_args(Namespace(
+                lidar_pattern_mode="livox_mid360", lidar_pattern_csv=None,
+                robot_asset=None, canonical_robot_asset=None, sensor_period=0.1,
+                lidar_min_range=0.1, lidar_max_range=40.0))
 
 
 def torch_all_equal(tensor, value):

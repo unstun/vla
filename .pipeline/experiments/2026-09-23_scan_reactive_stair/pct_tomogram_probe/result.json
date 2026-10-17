@@ -1,0 +1,19 @@
+{
+  "started_utc": "2026-09-24T05:30:55.538627+00:00",
+  "finished_utc": "2026-09-24T05:31:20.370786+00:00",
+  "command": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "podman run --rm --pull=never --network=host --name vla-pct-tomogram-probe-20260923 -e ROS_DOMAIN_ID=188 -e ROS_LOCALHOST_ONLY=1 -e PYTHONDONTWRITEBYTECODE=1 -e OPENBLAS_NUM_THREADS=1 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/qualification/pct_20260916T145741Z:/probe:ro 40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555 bash -lc 'set -e\nsource /opt/ros/humble/setup.bash\nexport PYTHONPATH=/probe/pct_runtime/python:${PYTHONPATH:-}\nexport LD_LIBRARY_PATH=/probe/pct_runtime/lib:${LD_LIBRARY_PATH:-}\ntimeout -s INT 20 python3 -m pct_planner.planner_node --ros-args -p rsg_root:=/probe/inputs -p scene_name:=custom -p tomogram_path:=/probe/inputs/new_building.pickle -p enable_interactive_markers:=false -p plan_on_startup:=false'"
+  ],
+  "exit_code": 124,
+  "map_sha256": "ab5499ff100fe233f6cfabb59ce7592290cddd042c92ead5e37e9e2b593d24da",
+  "image_id": "40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555",
+  "published_cells": 86775,
+  "passed": true,
+  "claim": "PCT ROS publisher startup only; no SCAN subscriber, tracker, motion or Isaac"
+}

@@ -1,0 +1,33 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--platform=linux/amd64",
+    "--network=none",
+    "--cpus=3",
+    "--memory=4g",
+    "--name",
+    "vla-v15-local-neighborhood02",
+    "-e",
+    "ROS_DOMAIN_ID=225",
+    "-e",
+    "ROS_LOCALHOST_ONLY=1",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/runtime/scan52_riser_ground_v15:/workspace:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v15:/version:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_v15_moving_frontier:/recorded:ro",
+    "-v",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_v15_local_neighborhood02:/attempt:rw",
+    "--entrypoint",
+    "/bin/bash",
+    "sha256:f7363cc3deadc2419f3527a7b9ec7bdabaa3031fd8e1b9c6cc46666ae1301bbb",
+    "/attempt/inside.sh"
+  ],
+  "deadline_s": 180,
+  "claim": "Unchanged v15 native map/manager; reuse existing strict goal-neighborhood search for blocked local endpoints",
+  "previous_diagnostic_error": "Native UniformBspline evaluator requires a mutable local copy; no production edit"
+}

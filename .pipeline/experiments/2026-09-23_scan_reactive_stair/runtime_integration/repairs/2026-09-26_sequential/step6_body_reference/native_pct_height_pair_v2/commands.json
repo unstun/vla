@@ -1,0 +1,63 @@
+[
+  {
+    "label": "mkdir",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "mkdir /home/sun/vla_exec/2026-09-26_stair_repairs/native_pct_height_pair_v2"
+    ],
+    "returncode": 0
+  },
+  {
+    "label": "sync",
+    "command": [
+      "rsync",
+      "-a",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step6_body_reference/native_pct_height_pair_v2/package/",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_repairs/native_pct_height_pair_v2/"
+    ],
+    "returncode": 0
+  },
+  {
+    "label": "native_pct",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "timeout --kill-after=5 90 podman run --rm --pull=never --network=none --name vla-native_pct_height_pair_v2 -e PYTHONDONTWRITEBYTECODE=1 -v /home/sun/vla_exec/2026-09-26_stair_repairs/native_pct_height_pair_v2:/audit 40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555 bash -lc 'set -e\nsource /opt/ros/humble/setup.bash\nexport PYTHONPATH=/audit/backend_adapter:/audit/pct_runtime/python:${PYTHONPATH:-}\nexport LD_LIBRARY_PATH=/audit/pct_runtime/lib:${LD_LIBRARY_PATH:-}\npython3 /audit/worker.py --worker'"
+    ],
+    "returncode": 0
+  },
+  {
+    "label": "collect",
+    "command": [
+      "rsync",
+      "-a",
+      "--include=/result.json",
+      "--exclude=*",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_repairs/native_pct_height_pair_v2/",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step6_body_reference/native_pct_height_pair_v2/"
+    ],
+    "returncode": 0
+  },
+  {
+    "label": "returned_hash",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "sha256sum /home/sun/vla_exec/2026-09-26_stair_repairs/native_pct_height_pair_v2/result.json"
+    ],
+    "returncode": 0
+  }
+]

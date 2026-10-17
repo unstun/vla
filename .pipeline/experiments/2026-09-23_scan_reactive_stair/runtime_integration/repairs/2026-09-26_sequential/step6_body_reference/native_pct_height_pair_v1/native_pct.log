@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/audit/worker.py", line 138, in <module>
+    worker() if args.worker else host()
+  File "/audit/worker.py", line 29, in worker
+    from backend_adapter.contracts import PlannerRequest
+  File "/audit/backend_adapter/backend_adapter/__init__.py", line 11, in <module>
+    from .adapter_core import P2BBackendAdapter
+  File "/audit/backend_adapter/backend_adapter/adapter_core.py", line 29, in <module>
+    class P2BBackendAdapter(load_p2a_core().NavigationBackendPort):  # type: ignore[misc]
+  File "/audit/backend_adapter/backend_adapter/p2a_bridge.py", line 22, in load_p2a_core
+    raise RuntimeError("p2a_core_missing:%s" % core_path)
+RuntimeError: p2a_core_missing:/audit/navigation_service/core.py

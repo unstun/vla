@@ -1,0 +1,16 @@
+{
+  "exit_code": 0,
+  "stdout": "{\"passed\": true, \"source_id\": \"sensor_lidar_moving_cluster_candidate_v2\", \"rows\": [{\"frame\": 0, \"tracks\": []}, {\"frame\": 1, \"tracks\": []}, {\"frame\": 2, \"tracks\": []}, {\"frame\": 3, \"tracks\": [{\"id\": \"cluster-1\", \"x\": 1.0899999999999999, \"stamp\": 1300000000}]}, {\"frame\": 4, \"tracks\": [{\"id\": \"cluster-1\", \"x\": 1.1200000000000003, \"stamp\": 1400000000}]}, {\"frame\": 5, \"tracks\": [{\"id\": \"cluster-1\", \"x\": 1.15, \"stamp\": 1500000000}]}, {\"frame\": 6, \"tracks\": [{\"id\": \"cluster-1\", \"x\": 1.1799999999999995, \"stamp\": 1600000000}]}, {\"frame\": 7, \"tracks\": [{\"id\": \"cluster-1\", \"x\": 1.21, \"stamp\": 1700000000}]}, {\"frame\": 8, \"tracks\": [{\"id\": \"cluster-1\", \"x\": 1.2399999999999998, \"stamp\": 1800000000}]}, {\"frame\": 9, \"tracks\": [{\"id\": \"cluster-1\", \"x\": 1.2700000000000005, \"stamp\": 1900000000}]}, {\"frame\": 10, \"tracks\": [{\"id\": \"cluster-1\", \"x\": 1.3, \"stamp\": 2000000000}]}]}\n",
+  "stderr": "",
+  "command": [
+    "ssh",
+    "-T",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "gpu5070ti",
+    "podman run --rm --pull=never --network=none --name vla-scan10-slow-review -e PYTHONDONTWRITEBYTECODE=1 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_10:/workspace:ro e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'source /opt/ros/foxy/setup.bash && source /workspace/install/setup.bash && python3 -c '\"'\"'import json\nfrom scan_reactive_tracker.core import CloudFrame,PoseObservation,TerrainSupport,MovingClusterTracker\ntracker=MovingClusterTracker()\nground=TerrainSupport(\"world\",10**9,\"flat_review_fixture\",.1,0.,0.,{(i,j):(0.,) for i in range(51) for j in range(51)})\nrows=[]\nfor k in range(11):\n s=10**9+k*10**8;x=1.+.03*k\n points=[(x+dx,1.+dy,z) for dx in (-.1,0.,.1) for dy in (-.08,.08) for z in (.45,.8,1.2,1.55)]\n r=tracker.process(CloudFrame(s,\"lidar\",points),PoseObservation(s,\"world\",\"lidar\",(0.,0.,0.),(0.,0.,0.,1.)),ground,s)\n rows.append({\"frame\":k,\"tracks\":[{\"id\":t.id,\"x\":t.center[0],\"stamp\":t.stamp_ns} for t in r.tracks]})\npassed=all(len(rows[k][\"tracks\"])==1 and rows[k][\"tracks\"][0][\"id\"]==\"cluster-1\" and abs(rows[k][\"tracks\"][0][\"x\"]-(1.+.03*k))<1e-6 and rows[k][\"tracks\"][0][\"stamp\"]==10**9+k*10**8 for k in range(3,11))\nprint(json.dumps({\"passed\":passed,\"source_id\":tracker.SOURCE_ID,\"rows\":rows}))\nraise SystemExit(0 if passed else 1)\n'\"'\"''"
+  ],
+  "claim": "Installed Foxy tracker core only; synthetic observations, no ROS transport or Isaac"
+}

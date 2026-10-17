@@ -1,0 +1,13 @@
+{
+  "base": "scan_25",
+  "base_manifest_sha256": "5462f02e8170b8b5f0884ea63b49882a561b4e054c365d2a3435fc4ca0fcbbd7",
+  "changed_sha256": {
+    "src/plan_manage/include/plan_manage/seed_polyline_sampling.h": "dfe12c0130ab48f02475b166b1ad61d8ac29cc990d55014f37a7eb8be4d2206f",
+    "src/plan_manage/src/planner_manager.cpp": "c8a9cc3f579509bf1c03df941e6b52d589fe1506d7a6bea8d5d7e94a99775dd8"
+  },
+  "generator_sha256": "9881f9c286c1b161e07ed660ed29d41797fb9f7aa1156029a6bf37909b1f092e",
+  "helper_sha256": "dfe12c0130ab48f02475b166b1ad61d8ac29cc990d55014f37a7eb8be4d2206f",
+  "change": "Preserve every nonzero seed edge/vertex, bound point spacing by half voxel, recheck all generated edges under actual unchanged yaw/collision rules; retain total initialization duration with bounded lower-quota quintic vertex-time approximation.",
+  "budget": "At most512 output points. Insufficient geometric budget fails closed; only temporal fidelity may be capped, with measured vertex-time error. Exact duplicates may collapse, nonzero short edges may not.",
+  "preserved": "Original soft fitted PVA terms, optimizer objectives and dynamics, search, height/terrain/person/Unknown rules and full final spline gate. Smaller interval/more controls changes the discrete optimization problem; runtime cost and feasibility remain to be measured."
+}

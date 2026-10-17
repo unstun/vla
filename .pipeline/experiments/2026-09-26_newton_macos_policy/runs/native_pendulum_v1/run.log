@@ -1,0 +1,41 @@
+ ArchWarn: ARCH_CACHE_LINE_SIZE != Arch_ObtainCacheLineSize()
+ Function: Arch_ValidateAssumptions
+     File: /Users/runner/work/OpenUSD/OpenUSD/pxr/base/arch/assumptions.cpp
+     Line: 140
+Warp 1.17.0 initialized:
+   CUDA not enabled in this build
+   Devices:
+     "cpu"      : "arm"
+   Kernel cache:
+     /Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/warp-cache/1.17.0
+Module validate_and_correct_inertia_kernel_1ff2ac62 6ad45b8 load on device 'cpu' took 713.87 ms  (compiled)
+Module newton._src.geometry.bvh 4a1c07f load on device 'cpu' took 197.30 ms  (compiled)
+Module newton._src.solvers.solver 5e8bff5 load on device 'cpu' took 229.35 ms  (compiled)
+Module newton._src.sim.articulation 2e73608 load on device 'cpu' took 1917.45 ms  (compiled)
+Module newton._src.viewer.kernels 902c7e8 load on device 'cpu' took 992.90 ms  (compiled)
+Module newton._src.sim.collide 65832b3 load on device 'cpu' took 220.30 ms  (compiled)
+Module newton._src.geometry.broad_phase_nxn 9e176b0 load on device 'cpu' took 98.54 ms  (compiled)
+Module narrow_phase_primitive_write_contact_False_False_False b8baf6c load on device 'cpu' took 375.45 ms  (compiled)
+Module newton._src.geometry.narrow_phase 81632d4 load on device 'cpu' took 303.38 ms  (compiled)
+Module newton._src.solvers.xpbd.kernels 065171b load on device 'cpu' took 3266.10 ms  (compiled)
+Module test_body_state__locals__test_fn_kernel_66e7403e 1d2643d load on device 'cpu' took 42.49 ms  (compiled)
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/scripts/run_upstream.py", line 7, in <module>
+    runpy.run_module("newton.examples", run_name="__main__")
+  File "<frozen runpy>", line 229, in run_module
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv/lib/python3.12/site-packages/newton/examples/__main__.py", line 9, in <module>
+    main()
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv/lib/python3.12/site-packages/newton/examples/__init__.py", line 1004, in main
+    runpy.run_module(target_module, run_name="__main__")
+  File "<frozen runpy>", line 229, in run_module
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv/lib/python3.12/site-packages/newton/examples/basic/example_basic_pendulum.py", line 151, in <module>
+    newton.examples.run(Example(viewer, args), args)
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv/lib/python3.12/site-packages/newton/examples/__init__.py", line 574, in run
+    example.test_final()
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv/lib/python3.12/site-packages/newton/examples/basic/example_basic_pendulum.py", line 116, in test_final
+    newton.examples.test_body_state(
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/.venv/lib/python3.12/site-packages/newton/examples/__init__.py", line 143, in test_body_state
+    raise ValueError(f'Test "{test_name}" failed for the following bodies: [{", ".join(failed_details)}]')
+ValueError: Test "pendulum links in correct area" failed for the following bodies: [body_1]

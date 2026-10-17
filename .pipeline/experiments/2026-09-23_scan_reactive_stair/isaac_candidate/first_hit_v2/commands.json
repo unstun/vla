@@ -1,0 +1,148 @@
+[
+  {
+    "label": "preflight",
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 4.213151999996626
+  },
+  {
+    "label": "mkdir",
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "test ! -e /home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2 && mkdir -p /home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/bridge /home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/candidate /home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/assets/textures /home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/cache /home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/logs /home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/results"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 4.143619583002874
+  },
+  {
+    "label": "sync_bridge",
+    "command": [
+      "rsync",
+      "-a",
+      "--exclude=__pycache__",
+      "--exclude=*.pyc",
+      "/Users/sun/tongbu/study/phdproject/vla/references/upstream/2026-09-16_lite3_isaac_harness_backend/source/machine-dog-nav/integration/lite3_sim_bridge/",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/bridge/"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 8.67398066700116
+  },
+  {
+    "label": "sync_candidate",
+    "command": [
+      "rsync",
+      "-a",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/isaac_candidate/official_building_human.py",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/isaac_candidate/smoke_official_mesh_two_poses.py",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/isaac_candidate/first_hit_sha256.txt",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/candidate/"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 7.324059665999812
+  },
+  {
+    "label": "sync_usd",
+    "command": [
+      "rsync",
+      "-a",
+      "/Users/sun/tongbu/study/phdproject/vla/references/upstream/2026-09-24_isaac_official_police_human/male_adult_police_04.usd",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/assets/"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 8.119052709000243
+  },
+  {
+    "label": "sync_textures",
+    "command": [
+      "rsync",
+      "-a",
+      "/Users/sun/tongbu/study/phdproject/vla/references/upstream/2026-09-24_isaac_official_police_human/textures/",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/assets/textures/"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 15.951140834000398
+  },
+  {
+    "label": "sync_cache",
+    "command": [
+      "rsync",
+      "-a",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/official_human_cache/official_human_retarget_cache.npz",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/official_human_cache/official_human_retarget_cache.json",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/cache/"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 7.728190792000532
+  },
+  {
+    "label": "source_gate_before",
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "python3 -"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 4.59739329200238
+  },
+  {
+    "label": "smoke",
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "source /home/sun/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && export PYTHONPATH=/home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/bridge:/home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/candidate && export PYTHONDONTWRITEBYTECODE=1 && timeout --kill-after=15 300 python /home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/candidate/smoke_official_mesh_two_poses.py --asset-root /home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/assets --cache-dir /home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/cache --output /home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/results/first_hit_v2"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 282.35346033300084
+  },
+  {
+    "label": "source_gate_after",
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=20",
+      "gpu5070ti",
+      "python3 -"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 4.716889499999525
+  },
+  {
+    "label": "sync_result",
+    "command": [
+      "rsync",
+      "-a",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v2/results/first_hit_v2/",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/isaac_candidate/first_hit_v2/"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 7.898233332998643
+  }
+]

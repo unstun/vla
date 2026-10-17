@@ -1,0 +1,63 @@
+{
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-I/test/stubs",
+    "-I/test/native/path_searching/include",
+    "-I/test/native/plan_env/include",
+    "-I/usr/include/eigen3",
+    "/test/native/path_searching/src/dyn_a_star.cpp",
+    "/test/test.cpp",
+    "-o",
+    "/test/native_tests"
+  ],
+  "compile_exit": 0,
+  "inputs_match": true,
+  "cases": {
+    "blocked_first": {
+      "exit_code": 1,
+      "stdout": "status=2 rejected_gateway=1 accepted_gateway=1\n",
+      "stderr": "FAIL: reachable gateway was lost\n",
+      "wall_s": 0.001301923000937677
+    },
+    "queue_order": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "FAIL: mutable pointer score did not repair heap order\n",
+      "wall_s": 0.0010318269996787421
+    },
+    "round_reuse": {
+      "exit_code": 1,
+      "stdout": "status=2 rejected_gateway=1 accepted_gateway=0\n",
+      "stderr": "FAIL: reachable gateway was lost\n",
+      "wall_s": 0.0008166520001395838
+    },
+    "no_path": {
+      "exit_code": 0,
+      "stdout": "no_path: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0007436159994540503
+    },
+    "vertical_route": {
+      "exit_code": 0,
+      "stdout": "vertical_route: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0007253210005728761
+    }
+  },
+  "source_sha256": {
+    "worker.py": "d83a32e304f6b1d6ad2960bfdb9d0e9a9d7483ae4569556650d0bdf077d08abf",
+    "test.cpp": "e0e9ee5e0fd5d60dd85d20d717e3c1b00ce56ab2ed54d03ee6a592ae708309fd",
+    "stubs/rclcpp/rclcpp.hpp": "7588cee4bb5005adeea26e1b5f15c758fd73d5182eb475e287ec18834dd707c2",
+    "stubs/plan_env/grid_map.h": "f759a3d6231925d900524219e4b885ec545861d7008227f743af28c995063744",
+    "native/path_searching/src/dyn_a_star.cpp": "6b10a01c6f862811e3a209d722d961e0a4725ab1468e4ed40cb344cf0dfe163b",
+    "native/path_searching/include/path_searching/dyn_a_star.h": "c3c48195e8487091d7cfd61510a421a3981a45b541466aff98f9676d77f0c5f3",
+    "native/plan_env/include/plan_env/astar_grid_coordinates.h": "9fd307fec25f57db57d32a5ced8d093baf60dd5a52f817445ffd4f9626d2ef41"
+  },
+  "claim": "Actual native search implementation; only collision and ROS logger are test doubles",
+  "all_passed": false
+}

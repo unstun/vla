@@ -158,7 +158,8 @@ class StandHoldSettingsTests(unittest.TestCase):
                     self.assertEqual(scope["resource_ceiling"]["simulation_seconds"], 8.0)
                     request = json.loads((local_run / "run_request.json").read_text())
                     self.assertEqual((request["stance_hold"], request["stance_entry_kd"], request["duration_seconds"],
-                                      request["finish_after_sim_seconds"]), expected + (8.0, 2.0))
+                                      request["finish_after_sim_seconds"], request["unmapped_box"]),
+                                     expected + (8.0, 2.0, "off"))
                     self.assertEqual(commands["run"][-1].split()[-2:], ["--finish-after-sim-seconds", "2.0"])
                     runner_text = (local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py").read_text()
                     self.assertIn("def _stance_hold_setup(", runner_text)
@@ -236,7 +237,7 @@ class StandHoldSettingsTests(unittest.TestCase):
                 self.assertEqual(qualify.check_prepared_request(args, run),
                                  {"stance_hold": "off", "duration_seconds": 8.0, "finish_after_sim_seconds": 2.0,
                                   "case": "stand_probe", "stance_entry_kd": "ramp", "camera_preset": "rear",
-                                  "command_script": None})
+                                  "command_script": None, "unmapped_box": "off", "lidar_pattern_mode": "uniform"})
             for flags in ([], ["--stance-hold", "auto"]):
                 args = qualify.build_parser().parse_args(flags)
                 with self.subTest(flags=flags), self.assertRaisesRegex(
@@ -284,12 +285,15 @@ class ScriptedWalkPackageTests(unittest.TestCase):
         position = legacy.index("--stance-hold") + 2
         args = qualify.build_parser().parse_args(["--stance-hold", "off"])
         argv = qualify.build_runner_argv(args, "/r/run", "run")
-        self.assertEqual(argv, legacy[:position] + ["--stance-entry-kd", "ramp"] + legacy[position:])
+        extra = ["--stance-entry-kd", "ramp", "--unmapped-box", "off",
+                 "--lidar-pattern-mode", "uniform"]
+        self.assertEqual(argv, legacy[:position] + extra + legacy[position:])
         self.assertNotIn("--command-script", argv)
         self.assertNotIn("--camera-heading-mode", argv)
         # PRD D8 defaults: only the two stance values differ from the hold-off stand.
         default = qualify.build_runner_argv(qualify.build_parser().parse_args([]), "/r/run", "run")
-        expected = legacy[:position - 1] + ["auto", "--stance-entry-kd", "xfade1s"] + legacy[position:]
+        expected = legacy[:position - 1] + ["auto", "--stance-entry-kd", "xfade1s", "--unmapped-box", "off",
+                                            "--lidar-pattern-mode", "uniform"] + legacy[position:]
         self.assertEqual(default, expected)
 
     def test_scripted_walk_package_binds_script_limits_camera_and_variant(self):
@@ -490,7 +494,8 @@ class ScriptedWalkPackageTests(unittest.TestCase):
             args = qualify.build_parser().parse_args(["--stance-hold", "auto", "--stance-entry-kd", "ramp"])
             self.assertEqual(qualify.check_prepared_request(args, run), {
                 "case": "stand_probe", "stance_hold": "auto", "stance_entry_kd": "ramp", "duration_seconds": 8.0,
-                "finish_after_sim_seconds": 2.0, "camera_preset": "rear", "command_script": None})
+                "finish_after_sim_seconds": 2.0, "camera_preset": "rear", "command_script": None,
+                "unmapped_box": "off", "lidar_pattern_mode": "uniform"})
             # A package without stance_entry_kd ran ramp, so the PRD D8 default entry (xfade1s) is refused.
             for flags, name in (([], "stance-entry-kd 'xfade1s' differs from the prepared package .*'ramp'"),
                                 (["--stance-entry-kd", "step1"], "stance-entry-kd"),
@@ -505,8 +510,189 @@ class ScriptedWalkPackageTests(unittest.TestCase):
         self.assertEqual(qualify.RUNNER_STANCE_ENTRY_KD, stance_hold.STANCE_ENTRY_KD_DEFAULT)
         self.assertEqual((qualify.DEFAULT_STANCE_HOLD, qualify.DEFAULT_STANCE_ENTRY_KD_AUTO), ("auto", "xfade1s"))
         self.assertEqual((qualify.LEGACY_PACKAGE_STANCE_HOLD, qualify.LEGACY_PACKAGE_STANCE_ENTRY_KD), ("off", "ramp"))
+        self.assertEqual((qualify.DEFAULT_UNMAPPED_BOX, qualify.LEGACY_PACKAGE_UNMAPPED_BOX), ("off", "off"))
+        self.assertEqual(qualify.UNMAPPED_BOX_CHOICES, ("off", "spawn", "lidar"))
         self.assertEqual(qualify.native_command_limits(), {
             "max_vx": 1.0, "max_vy": 0.35, "max_wz": 1.0, "max_horizontal_norm": 1.0, "speed_profile": "speed_1p0"})
+
+
+class UnmappedBoxPackageTests(unittest.TestCase):
+    def prepare(self, tmp, run_id, *extra):
+        args = qualify.build_parser().parse_args([
+            "--run-id", run_id,
+            "--local-runs-root", str(Path(tmp) / "runs"),
+            "--remote-root", "/remote/root",
+            *extra,
+        ])
+        return args, qualify.prepare(args)
+
+    def test_default_package_stays_unmapped_box_off(self):
+        parsed = qualify.build_parser().parse_args([])
+        self.assertEqual(parsed.unmapped_box, "off")
+        self.assertEqual(qualify.unmapped_box_setting(parsed), "off")
+        with tempfile.TemporaryDirectory() as tmp:
+            args, (local_run, commands) = self.prepare(tmp, "stand_unmapped_off")
+            argv = qualify.build_runner_argv(args, "/remote/root/stand_unmapped_off", "stand_unmapped_off")
+            self.assertEqual(argv[argv.index("--unmapped-box") + 1], "off")
+            request = json.loads((local_run / "run_request.json").read_text())
+            self.assertEqual(request["unmapped_box"], "off")
+            runner = qualify.import_runner(local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py")
+            parsed_runner = runner.build_parser().parse_args(argv)
+            self.assertEqual(parsed_runner.unmapped_box, "off")
+            self.assertEqual(runner.build_parser().get_default("unmapped_box"), "off")
+            worker = (local_run / "remote_worker.py").read_text()
+            self.assertIn("runner summary unmapped_box mode differs", worker)
+
+    def test_spawn_and_lidar_packages_pass_the_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for mode in ("spawn", "lidar"):
+                with self.subTest(mode=mode):
+                    args, (local_run, commands) = self.prepare(
+                        tmp, "stand_unmapped_" + mode, "--unmapped-box", mode)
+                    argv = runner_argv_from(commands)
+                    self.assertEqual(argv[argv.index("--unmapped-box") + 1], mode)
+                    request = json.loads((local_run / "run_request.json").read_text())
+                    self.assertEqual(request["unmapped_box"], mode)
+                    runner = qualify.import_runner(local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py")
+                    parsed = runner.build_parser().parse_args(argv)
+                    self.assertEqual(parsed.unmapped_box, mode)
+                    self.assertEqual(runner.execution_configuration(parsed)["unmapped_box"], mode)
+                    scope = json.loads((local_run / "inputs/stand_scope.json").read_text())
+                    self.assertEqual(scope["execution_configuration"]["unmapped_box"], mode)
+                    text = (local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py").read_text()
+                    self.assertIn("prim_path=UNMAPPED_BOX_PRIM", text)
+                    self.assertIn("mesh_prim_paths.append(UNMAPPED_BOX_PRIM)", text)
+
+    def test_execute_refuses_unmapped_box_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.prepare(tmp, "stand_spawn_pkg", "--unmapped-box", "spawn")
+            runs = str(Path(tmp) / "runs")
+            base = ["--run-id", "stand_spawn_pkg", "--local-runs-root", runs, "--execute"]
+            with mock.patch.object(qualify, "execute") as execute, contextlib.redirect_stdout(io.StringIO()):
+                qualify.main(base + ["--unmapped-box", "spawn"])
+                execute.assert_called_once()
+            for extra, flag in (([], "unmapped-box"),
+                                (["--unmapped-box", "lidar"], "unmapped-box"),
+                                (["--unmapped-box", "off"], "unmapped-box")):
+                with self.subTest(extra=extra), mock.patch.object(qualify, "execute") as execute:
+                    with self.assertRaisesRegex(RuntimeError, "--%s .* differs from the prepared package" % flag):
+                        qualify.main(base + extra)
+                    execute.assert_not_called()
+
+    def test_legacy_package_without_the_field_means_off(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            (run / "run_request.json").write_text(json.dumps({"duration_seconds": 8.0}))
+            args = qualify.build_parser().parse_args(["--stance-hold", "off"])
+            prepared = qualify.check_prepared_request(args, run)
+            self.assertEqual(prepared["unmapped_box"], "off")
+            with self.assertRaisesRegex(RuntimeError, "--unmapped-box 'spawn' differs from the prepared package"):
+                qualify.check_prepared_request(
+                    qualify.build_parser().parse_args(["--stance-hold", "off", "--unmapped-box", "spawn"]), run)
+
+
+class LivoxMid360PackageTests(unittest.TestCase):
+    def prepare(self, tmp, run_id, *extra):
+        args = qualify.build_parser().parse_args([
+            "--run-id", run_id,
+            "--local-runs-root", str(Path(tmp) / "runs"),
+            "--remote-root", "/remote/root",
+            *extra,
+        ])
+        return args, qualify.prepare(args)
+
+    def test_default_package_stays_uniform_and_does_not_need_the_csv(self):
+        parsed = qualify.build_parser().parse_args([])
+        self.assertEqual(parsed.lidar_pattern_mode, "uniform")
+        self.assertEqual(qualify.lidar_pattern_setting(parsed), "uniform")
+        with tempfile.TemporaryDirectory() as tmp:
+            args, (local_run, commands) = self.prepare(tmp, "stand_uniform")
+            argv = runner_argv_from(commands)
+            self.assertEqual(argv[argv.index("--lidar-pattern-mode") + 1], "uniform")
+            self.assertNotIn("--lidar-pattern-csv", argv)
+            self.assertNotIn("--robot-asset", argv)
+            request = json.loads((local_run / "run_request.json").read_text())
+            self.assertEqual(request["lidar_pattern_mode"], "uniform")
+            self.assertIsNone(request["livox_assets"])
+            self.assertFalse((local_run / qualify.MID360_CSV_PACKAGE_REL).exists())
+            runner = qualify.import_runner(local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py")
+            self.assertEqual(runner.build_parser().get_default("lidar_pattern_mode"), "uniform")
+            parsed_runner = runner.build_parser().parse_args(argv)
+            self.assertEqual(parsed_runner.lidar_pattern_mode, "uniform")
+            self.assertEqual(parsed_runner.lidar_max_range, 12.0)
+            worker = (local_run / "remote_worker.py").read_text()
+            self.assertIn("runner summary lidar_pattern_mode differs", worker)
+
+    def test_livox_package_pins_csv_sensor_rig_and_40m(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args, (local_run, commands) = self.prepare(
+                tmp, "stand_livox", "--lidar-pattern-mode", "livox_mid360",
+                "--unmapped-box", "lidar")
+            argv = runner_argv_from(commands)
+            self.assertEqual(argv[argv.index("--lidar-pattern-mode") + 1], "livox_mid360")
+            self.assertEqual(argv[argv.index("--lidar-max-range") + 1], "40.0")
+            remote = "/remote/root/stand_livox"
+            self.assertEqual(
+                argv[argv.index("--lidar-pattern-csv") + 1],
+                remote + "/" + qualify.MID360_CSV_PACKAGE_REL,
+            )
+            self.assertEqual(
+                argv[argv.index("--robot-asset") + 1],
+                remote + "/" + qualify.ISAAC_URDF_PACKAGE_REL,
+            )
+            self.assertEqual(qualify.sha256(local_run / qualify.MID360_CSV_PACKAGE_REL),
+                             qualify.OFFICIAL_MID360_PATTERN_SHA256)
+            self.assertEqual(qualify.sha256(local_run / qualify.ISAAC_URDF_PACKAGE_REL),
+                             qualify.PINNED_SENSOR_RIG_ISAAC_SHA256)
+            self.assertEqual(qualify.sha256(local_run / qualify.CANONICAL_URDF_PACKAGE_REL),
+                             qualify.PINNED_SENSOR_RIG_CANONICAL_SHA256)
+            self.assertTrue((local_run / "inputs/sensor_rig/meshes/torso.STL").is_file())
+            request = json.loads((local_run / "run_request.json").read_text())
+            self.assertEqual(request["lidar_pattern_mode"], "livox_mid360")
+            self.assertEqual(request["livox_assets"]["csv"], qualify.OFFICIAL_MID360_PATTERN_SHA256)
+            runner = qualify.import_runner(local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py")
+            parsed = runner.build_parser().parse_args(argv)
+            self.assertEqual(parsed.lidar_pattern_mode, "livox_mid360")
+            self.assertEqual(parsed.lidar_max_range, 40.0)
+            self.assertEqual(runner.execution_configuration(parsed)["lidar_pattern_mode"], "livox_mid360")
+            text = (local_run / "bridge/lite3_sim_bridge/run_pct_scan_building.py").read_text()
+            self.assertIn("v12._set_mid360_scan_window", text)
+            self.assertNotIn("emitterStateArrays", text)
+
+    def test_execute_refuses_livox_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.prepare(tmp, "stand_livox_pkg", "--lidar-pattern-mode", "livox_mid360")
+            runs = str(Path(tmp) / "runs")
+            base = ["--run-id", "stand_livox_pkg", "--local-runs-root", runs, "--execute"]
+            with mock.patch.object(qualify, "execute") as execute, contextlib.redirect_stdout(io.StringIO()):
+                qualify.main(base + ["--lidar-pattern-mode", "livox_mid360"])
+                execute.assert_called_once()
+            with mock.patch.object(qualify, "execute") as execute:
+                with self.assertRaisesRegex(RuntimeError, "--lidar-pattern-mode .* differs from the prepared package"):
+                    qualify.main(base)
+                execute.assert_not_called()
+
+    def test_legacy_package_without_the_field_means_uniform(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            (run / "run_request.json").write_text(json.dumps({"duration_seconds": 8.0}))
+            args = qualify.build_parser().parse_args(["--stance-hold", "off"])
+            prepared = qualify.check_prepared_request(args, run)
+            self.assertEqual(prepared["lidar_pattern_mode"], "uniform")
+            with self.assertRaisesRegex(RuntimeError, "--lidar-pattern-mode 'livox_mid360' differs"):
+                qualify.check_prepared_request(
+                    qualify.build_parser().parse_args(
+                        ["--stance-hold", "off", "--lidar-pattern-mode", "livox_mid360"]),
+                    run)
+
+    def test_pins_match_the_packaged_fallback(self):
+        fallback = qualify.BRIDGE_REF / "lite3_sim_bridge/run_isaac_v12_fallback.py"
+        pattern = qualify.BRIDGE_REF / "lite3_sim_bridge/mid360_pattern.py"
+        fallback_text = fallback.read_text(encoding="utf-8")
+        pattern_text = pattern.read_text(encoding="utf-8")
+        self.assertIn(qualify.PINNED_SENSOR_RIG_ISAAC_SHA256, fallback_text)
+        self.assertIn(qualify.PINNED_SENSOR_RIG_CANONICAL_SHA256, fallback_text)
+        self.assertIn(qualify.OFFICIAL_MID360_PATTERN_SHA256, pattern_text)
 
 
 if __name__ == "__main__":

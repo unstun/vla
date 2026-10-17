@@ -1,0 +1,179 @@
+--- scan_26/src/bspline_opt/src/bspline_optimizer.cpp
++++ scan_27/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -1,3 +1,4 @@
++#include <bspline_opt/rebound_constraint_utils.h>
+ #include "bspline_opt/bspline_optimizer.h"
+ #include "bspline_opt/gradient_descent_optimizer.h"
+ #include <algorithm>
+@@ -232,7 +233,8 @@
+       int got_intersection_id = -1;
+       for (int j = segment_ids[i].first + 1; j < segment_ids[i].second; ++j)
+       {
+-        Eigen::Vector3d ctrl_pts_law(cps_.points.col(j + 1) - cps_.points.col(j - 1)), intersection_point;
++        Eigen::Vector3d ctrl_pts_law(cps_.points.col(j + 1) - cps_.points.col(j - 1)), intersection_point = Eigen::Vector3d::Zero();
++        bool found_intersection = false;
+         int Astar_id = a_star_paths[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
+         double val = (a_star_paths[i][Astar_id] - cps_.points.col(j)).dot(ctrl_pts_law), last_val = val;
+         while (Astar_id >= 0 && Astar_id < (int)a_star_paths[i].size())
+@@ -263,16 +265,15 @@
+ 
+             //cout << "i=" << i << " j=" << j << " Astar_id=" << Astar_id << " last_Astar_id=" << last_Astar_id << " intersection_point = " << intersection_point.transpose() << endl;
+ 
+-            got_intersection_id = j;
++            found_intersection = intersection_point.allFinite();
+             break;
+           }
+         }
+ 
+-        if (got_intersection_id >= 0)
+-        {
+-          cps_.flag_temp[j] = true;
++        if (found_intersection)
++        {
+           double length = (intersection_point - cps_.points.col(j)).norm();
+-          if (length > 1e-5)
++          if (std::isfinite(length) && length > 1e-5)
+           {
+             for (double a = length; a >= 0.0; a -= grid_map_->getResolution())
+             {
+@@ -284,8 +285,11 @@
+               {
+                 if (occ)
+                   a += grid_map_->getResolution();
+-                cps_.base_point[j].push_back((a / length) * intersection_point + (1 - a / length) * cps_.points.col(j));
+-                cps_.direction[j].push_back((intersection_point - cps_.points.col(j)).normalized());
++                if (reactive_stair::appendReboundConstraint(cps_, j,
++                    (a / length) * intersection_point + (1 - a / length) * cps_.points.col(j),
++                    (intersection_point - cps_.points.col(j)).normalized())) {
++                  got_intersection_id = j;
++                }
+                 break;
+               }
+             }
+@@ -328,11 +332,10 @@
+ 
+             if ((intersection_point - middle_point).norm() > 0.01) // 1cm.
+             {
+-              cps_.flag_temp[segment_ids[i].first] = true;
+-              cps_.base_point[segment_ids[i].first].push_back(cps_.points.col(segment_ids[i].first));
+-              cps_.direction[segment_ids[i].first].push_back((intersection_point - middle_point).normalized());
+-
+-              got_intersection_id = segment_ids[i].first;
++              if (reactive_stair::appendReboundConstraint(cps_, segment_ids[i].first,
++                  cps_.points.col(segment_ids[i].first), (intersection_point - middle_point).normalized())) {
++                got_intersection_id = segment_ids[i].first;
++              }
+             }
+             break;
+           }
+@@ -345,15 +348,13 @@
+         for (int j = got_intersection_id + 1; j <= final_segment_ids[i].second; ++j)
+           if (!cps_.flag_temp[j])
+           {
+-            cps_.base_point[j].push_back(cps_.base_point[j - 1].back());
+-            cps_.direction[j].push_back(cps_.direction[j - 1].back());
++            reactive_stair::copyReboundConstraint(cps_, j, j - 1);
+           }
+ 
+         for (int j = got_intersection_id - 1; j >= final_segment_ids[i].first; --j)
+           if (!cps_.flag_temp[j])
+           {
+-            cps_.base_point[j].push_back(cps_.base_point[j + 1].back());
+-            cps_.direction[j].push_back(cps_.direction[j + 1].back());
++            reactive_stair::copyReboundConstraint(cps_, j, j + 1);
+           }
+       }
+       else
+@@ -788,6 +789,7 @@
+ 
+     if (flag_new_obs_valid)
+     {
++      size_t committed_pairs = 0;
+       vector<vector<Eigen::Vector3d>> a_star_paths;
+       for (size_t i = 0; i < segment_ids.size(); ++i)
+       {
+@@ -841,7 +843,8 @@
+         int got_intersection_id = -1;
+         for (int j = segment_ids[i].first + 1; j < segment_ids[i].second; ++j)
+         {
+-          Eigen::Vector3d ctrl_pts_law(cps_.points.col(j + 1) - cps_.points.col(j - 1)), intersection_point;
++          Eigen::Vector3d ctrl_pts_law(cps_.points.col(j + 1) - cps_.points.col(j - 1)), intersection_point = Eigen::Vector3d::Zero();
++          bool found_intersection = false;
+           int Astar_id = a_star_paths[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
+           double val = (a_star_paths[i][Astar_id] - cps_.points.col(j)).dot(ctrl_pts_law), last_val = val;
+           while (Astar_id >= 0 && Astar_id < (int)a_star_paths[i].size())
+@@ -872,16 +875,15 @@
+                    (ctrl_pts_law.dot(cps_.points.col(j) - a_star_paths[i][Astar_id]) / denom) // = t
+                   );
+ 
+-              got_intersection_id = j;
++              found_intersection = intersection_point.allFinite();
+               break;
+             }
+           }
+ 
+-          if (got_intersection_id >= 0)
+-          {
+-            cps_.flag_temp[j] = true;
++          if (found_intersection)
++          {
+             double length = (intersection_point - cps_.points.col(j)).norm();
+-            if (length > 1e-5)
++            if (std::isfinite(length) && length > 1e-5)
+             {
+               for (double a = length; a >= 0.0; a -= grid_map_->getResolution())
+               {
+@@ -893,16 +895,16 @@
+                 {
+                   if (occ)
+                     a += grid_map_->getResolution();
+-                  cps_.base_point[j].push_back((a / length) * intersection_point + (1 - a / length) * cps_.points.col(j));
+-                  cps_.direction[j].push_back((intersection_point - cps_.points.col(j)).normalized());
++                  if (reactive_stair::appendReboundConstraint(cps_, j,
++                      (a / length) * intersection_point + (1 - a / length) * cps_.points.col(j),
++                      (intersection_point - cps_.points.col(j)).normalized())) {
++                    got_intersection_id = j;
++                    ++committed_pairs;
++                  }
+                   break;
+                 }
+               }
+             }
+-            else
+-            {
+-              got_intersection_id = -1;
+-            }
+           }
+         }
+ 
+@@ -912,21 +914,26 @@
+           for (int j = got_intersection_id + 1; j <= segment_ids[i].second; ++j)
+             if (!cps_.flag_temp[j])
+             {
+-              cps_.base_point[j].push_back(cps_.base_point[j - 1].back());
+-              cps_.direction[j].push_back(cps_.direction[j - 1].back());
++              if (reactive_stair::copyReboundConstraint(cps_, j, j - 1)) ++committed_pairs;
+             }
+ 
+           for (int j = got_intersection_id - 1; j >= segment_ids[i].first; --j)
+             if (!cps_.flag_temp[j])
+             {
+-              cps_.base_point[j].push_back(cps_.base_point[j + 1].back());
+-              cps_.direction[j].push_back(cps_.direction[j + 1].back());
++              if (reactive_stair::copyReboundConstraint(cps_, j, j + 1)) ++committed_pairs;
+             }
+         }
+         else
+           RCLCPP_WARN(rclcpp::get_logger("bspline_opt"), "Failed to generate rebound direction");
+       }
+ 
++      if (committed_pairs == 0) {
++        // The caller ignores this bool and earlyExit reads force_stop_type_.
++        // A failed repair must terminate this solve, never request an empty rebound.
++        force_stop_type_ = STOP_FOR_ERROR;
++        RCLCPP_WARN(rclcpp::get_logger("bspline_opt"), "rebound_no_valid_new_constraints; aborting this optimization");
++        return false;
++      }
+       force_stop_type_ = STOP_FOR_REBOUND;
+       return true;
+     }

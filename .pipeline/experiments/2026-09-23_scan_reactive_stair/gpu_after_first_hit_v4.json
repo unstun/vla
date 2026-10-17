@@ -1,0 +1,18 @@
+{
+  "command": [
+    "ssh",
+    "-T",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=15",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "gpu5070ti",
+    "nvidia-smi --query-gpu=name,memory.used,utilization.gpu --format=csv,noheader; nvidia-smi --query-compute-apps=pid,process_name,used_gpu_memory --format=csv,noheader"
+  ],
+  "exit_code": 0,
+  "stdout": "NVIDIA GeForce RTX 5070 Ti, 241 MiB, 1 %\n",
+  "stderr": "",
+  "scope": "GPU process check after official mesh first_hit_v4 cleanup"
+}

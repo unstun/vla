@@ -1,0 +1,61 @@
+{
+  "accepted_scan_build_required": true,
+  "collect": [
+    "rsync",
+    "-a",
+    "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/artifacts/",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/stand_v1/returned_artifacts/"
+  ],
+  "mkdir": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "python3 - <<'PY'\nfrom pathlib import Path\np=Path('/home/sun/vla_exec/2026-09-26_stair_video/stand_v1')\nassert not p.exists(), p\np.mkdir(parents=True)\nPY"
+  ],
+  "remote_run": "/home/sun/vla_exec/2026-09-26_stair_video/stand_v1",
+  "requires_lead_authorized_execute": true,
+  "run": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "python3 /home/sun/vla_exec/2026-09-26_stair_video/stand_v1/remote_worker.py --run-root /home/sun/vla_exec/2026-09-26_stair_video/stand_v1 --foxy-image-id e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 --pct-image-id 40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555 --remote-v12-runtime /home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/v12 --remote-checkpoint /home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/checkpoint/model_149999.pt --remote-scan-workspace /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_10 --runner-argv-json '[\"--scene\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/inputs/building.usda\",\"--runtime\",\"/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/v12\",\"--checkpoint\",\"/home/sun/machine-dog-nav-runs/2026-09-08_new_building_lite3_dynamics/source/checkpoint/model_149999.pt\",\"--route-artifact\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/inputs/two_goal_route_artifact.json\",\"--scope\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/inputs/two_goal_scope.json\",\"--execution-manifest\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/inputs/execution_manifest.json\",\"--output\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/artifacts/runner_output\",\"--case\",\"flat_nominal\",\"--duration-seconds\",\"35.0\",\"--telemetry-host\",\"127.0.0.1\",\"--telemetry-port\",\"46260\",\"--command-host\",\"127.0.0.1\",\"--command-port\",\"46261\",\"--max-vx\",\"1.0\",\"--max-vy\",\"0.35\",\"--max-wz\",\"1.0\",\"--max-horizontal-norm\",\"1.0\",\"--speed-profile\",\"speed_1p0\",\"--contact-policy\",\"native_v12\",\"--unfiltered-planner-cloud\",\"--goal-tolerance-m\",\"0.25\",\"--terminal-window-seconds\",\"2.0\",\"--terminal-command-norm\",\"0.01\",\"--terminal-speed-mps\",\"0.1\",\"--terminal-yaw-rate-radps\",\"0.15\",\"--connection-ready-timeout-seconds\",\"120.0\",\"--max-wall-seconds\",\"900.0\",\"--video-fps\",\"12.5\",\"--camera-capture-stride\",\"4\",\"--complete-body-state\",\"--priority-telemetry\",\"--async-recording\",\"--freeze-gc\",\"--external-goal-mode\",\"--external-run-id\",\"stand_v1\",\"--external-control-dir\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/artifacts/external_episode\",\"--external-finish-stillness-seconds\",\"1.0\",\"--external-status-freshness-seconds\",\"2.0\",\"--stance-hold\",\"auto\",\"--stance-entry-kd\",\"xfade1s\",\"--seed\",\"42\",\"--device\",\"cuda:0\",\"--lidar-pattern-mode\",\"livox_mid360\",\"--lidar-pattern-csv\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/inputs/livox_mid360/mid360.csv\",\"--robot-asset\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/inputs/sensor_rig/lite3_pro_sensor_rig_real_with_interface_isaac.urdf\",\"--canonical-robot-asset\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/inputs/sensor_rig/lite3_pro_sensor_rig_real_with_interface.urdf\",\"--lidar-max-range\",\"40.0\",\"--official-human-asset-root\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/inputs/official_human\",\"--official-human-cache-dir\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/inputs/official_human/cache\",\"--official-human-route\",\"/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/inputs/actor_route.json\",\"--camera-heading-mode\",\"initial\",\"--camera-height-m\",\"1.3\",\"--camera-lateral-m\",\"0.0\",\"--camera-look-ahead-m\",\"1.5\",\"--camera-look-down-m\",\"-0.4\",\"--camera-trail-m\",\"1.4\"]' --ros-domain-id 196 --telemetry-port 46260 --command-port 46261 --http-port 8785 --pct-port 47651 --cancel-displacement-m 0.4"
+  ],
+  "sync": [
+    "rsync",
+    "-a",
+    "--delete",
+    "--include=/bridge/***",
+    "--include=/backend_adapter/***",
+    "--include=/backend_ros/***",
+    "--include=/navigation_service/***",
+    "--include=/pct_runtime/***",
+    "--include=/inputs/***",
+    "--include=/config/***",
+    "--include=/pilot_driver.py",
+    "--include=/remote_worker.py",
+    "--include=/source_env_hashes.json",
+    "--include=/RUNBOOK.md",
+    "--exclude=*",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/runs/stand_v1/",
+    "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_video/stand_v1/"
+  ],
+  "sync_whitelist": [
+    "bridge/",
+    "backend_adapter/",
+    "backend_ros/",
+    "navigation_service/",
+    "pct_runtime/",
+    "inputs/",
+    "config/",
+    "pilot_driver.py",
+    "remote_worker.py",
+    "source_env_hashes.json",
+    "RUNBOOK.md"
+  ]
+}

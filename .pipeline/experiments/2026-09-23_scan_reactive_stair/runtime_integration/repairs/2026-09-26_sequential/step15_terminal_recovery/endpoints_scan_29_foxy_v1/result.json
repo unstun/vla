@@ -1,0 +1,111 @@
+{
+  "compile_command": [
+    "g++",
+    "-DSTRICT_ENDPOINT_TEST",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-I/test/stubs",
+    "-I/test/native/path_searching/include",
+    "-I/test/native/plan_env/include",
+    "-I/usr/include/eigen3",
+    "/test/native/path_searching/src/dyn_a_star.cpp",
+    "/test/test.cpp",
+    "-o",
+    "/test/native_tests"
+  ],
+  "compile_exit": 0,
+  "compiler_version": "g++ (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0\nCopyright (C) 2019 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "platform": "Linux-6.17.0-22-generic-x86_64-with-glibc2.29",
+  "source_sha256": {
+    "worker.py": "19d4af1fd106211cfaff41acea9e55aa8134be48b3a69fe03db66b5980dd30ab",
+    "test.cpp": "646f9c0fe91bd9f0f041dce4866a605c37500d20cb77bb68c7461cc8f2789d05",
+    "stubs/rclcpp/rclcpp.hpp": "2b29ba5bab9d812de6e6151298ed507005c8d24c8e20af17007d7e2c1f2c5c47",
+    "stubs/plan_env/grid_map.h": "08daecfeb07134a082049c3e95b0b1333cac86bf96ce0ed40bb566f24b78ecd8",
+    "native/path_searching/src/dyn_a_star.cpp": "18cebad5f360085cf1a0f5bbfa2f63f5722772bac0cd0952b6756def9b9969ed",
+    "native/path_searching/include/path_searching/dyn_a_star.h": "b8cd9ae8d7f429dd0f236c9defe459ade26c08b0b0ac17a9def46c52580d40e6",
+    "native/plan_env/include/plan_env/astar_grid_coordinates.h": "9fd307fec25f57db57d32a5ced8d093baf60dd5a52f817445ffd4f9626d2ef41",
+    "native/plan_env/include/plan_env/collision_segment.h": "816847e9e484a98b075119cac2d1368d28f4f622d7f3b769367936c1ae6a9a5c"
+  },
+  "eigen_identity_sha256": "d73ca14d8c17a6fdbdacc5e18a1d66b2217f5dfe16b5d4bdb16500496f58e777",
+  "cases": {
+    "changed_heading": {
+      "exit_code": 0,
+      "stdout": "changed_heading: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0020143049987382255
+    },
+    "unknown_midpoint": {
+      "exit_code": 0,
+      "stdout": "unknown_midpoint: PASS\n",
+      "stderr": "",
+      "wall_s": 0.000982301000476582
+    },
+    "blocked_endpoint": {
+      "exit_code": 0,
+      "stdout": "blocked_endpoint: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0010165259991481435
+    },
+    "reuse_modes": {
+      "exit_code": 0,
+      "stdout": "reuse_modes: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0009184810005535837
+    },
+    "lattice_and_short_goal": {
+      "exit_code": 0,
+      "stdout": "lattice_and_short_goal: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0009169280019705184
+    },
+    "invalid_input": {
+      "exit_code": 0,
+      "stdout": "invalid_input: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0007477819999621715
+    },
+    "connector_budget": {
+      "exit_code": 0,
+      "stdout": "connector_budget: PASS\n",
+      "stderr": "Failed in A-star path search: 0.2 second time limit exceeded during exact endpoint check",
+      "wall_s": 0.21108049299800768
+    },
+    "connector_radius": {
+      "exit_code": 0,
+      "stdout": "connector_radius: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0014685829992231447
+    },
+    "long_connector": {
+      "exit_code": 0,
+      "stdout": "long_connector: PASS\n",
+      "stderr": "A-star exact endpoint recovered connector_m=3.206243908376 cost_m=3.206243908376 tried=1 candidates=2",
+      "wall_s": 0.0008535699998901691
+    },
+    "long_unknown": {
+      "exit_code": 0,
+      "stdout": "long_unknown: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0010604179988149554
+    },
+    "long_budget": {
+      "exit_code": 0,
+      "stdout": "long_budget: PASS\n",
+      "stderr": "Failed in A-star path search: 0.2 second time limit exceeded during terminal recovery",
+      "wall_s": 0.21129946400105837
+    },
+    "recovery_reuse": {
+      "exit_code": 0,
+      "stdout": "recovery_reuse: PASS\n",
+      "stderr": "A-star exact endpoint recovered connector_m=3.206243908376 cost_m=3.206243908376 tried=1 candidates=2A-star exact endpoint recovered connector_m=3.206243908376 cost_m=3.206243908376 tried=1 candidates=2",
+      "wall_s": 0.001579911000590073
+    }
+  },
+  "strict": true,
+  "recovery": true,
+  "claim": "Actual captured AStar source; collision/ROS logger test doubles. No ROS/simulator claim.",
+  "all_passed": true
+}

@@ -1,0 +1,157 @@
+{
+  "compile_command": [
+    "clang++",
+    "-DROUTE_PROJECTION_FALLBACK",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-DEIGEN_INITIALIZE_MATRICES_BY_NAN",
+    "-I/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step21_route_projection/constraints_scan_32_local_v1/package",
+    "-I/Users/sun/tongbu/study/phdproject/machine-dog-nav/.pipeline/experiments/2026-09-04_pct_scan_lite3_stairs/local_macos/runtime/dependencies/source/gtsam-4.2/gtsam/3rdparty/Eigen",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step21_route_projection/constraints_scan_32_local_v1/package/test.cpp",
+    "-o",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step21_route_projection/constraints_scan_32_local_v1/package/native_tests"
+  ],
+  "compile_exit": 0,
+  "inputs_sha256": {
+    "worker.py": "c83064e40452f5d6c51ef6184626b59a2bad5c81bea30846f4d84ca61ed2eaa0",
+    "native_blocks.inc": "93aa5263d8b96b383d9fc799404431f6f2ab63ff24127d25b3bd9d23c44a6377",
+    "recorded_provenance.json": "4ee7a5be5c04c22a54961df9b1945227428f091b55be3d639346dace2b58fd07",
+    "source_optimizer.h": "ddd2c2e812b2dd59bb32f383c093246ebe12a9a667ae93d448ef5d1e4b9ef926",
+    "rebound_constraint_utils.h": "c32f9163a98fe0d954ce480ad8492362e9462bebac09c4917e6fed6e5645172a",
+    "test.cpp": "3ebee6a309b5f894553f50030a85ef5cea13d0216087798391f6d6510d318390",
+    "native_init.inc": "45ce7d4f4ff7da2600bc8fab09ee837bd3769995b971a3ddeefe54eb95eed134",
+    "native_control_points.inc": "6bbb33e4ce4a39acce54aef7beb9338b1d32d54da3dd3eafc3a35711dacb0b88",
+    "recorded_projection.txt": "f8266c3e469ee5b75e8ddd052356d14a4507d10dc10fc910d25f7ddfa12bf273",
+    "source_optimizer.cpp": "6b7d4ae630a3f9c1c06b07773059278e7f89a2a840f41c76a58a224e260cc521",
+    "extraction.json": "35eafb288e3316c9167cd0d95e419e440c1e0eeb81b7b325b5c9f9c359d78ec9",
+    "rclcpp/rclcpp.hpp": "2b29ba5bab9d812de6e6151298ed507005c8d24c8e20af17007d7e2c1f2c5c47"
+  },
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "cases": {
+    "empty_route": {
+      "returncode": 0,
+      "stdout": "PASS empty_route\n",
+      "stderr": "A-star path has fewer than 2 points; drop collision segmentrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.6164196669997182
+    },
+    "no_intersection": {
+      "returncode": 0,
+      "stdout": "PASS no_intersection\n",
+      "stderr": "rebound_route_projection begin=1 end=4 clear_targets=0 committed_pairs=0Failed to generate rebound directionrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.006030040996847674
+    },
+    "stale_intersection": {
+      "returncode": 0,
+      "stdout": "PASS stale_intersection\n",
+      "stderr": "",
+      "wall_s": 0.004940041995723732
+    },
+    "zero_direction": {
+      "returncode": 0,
+      "stdout": "PASS zero_direction\n",
+      "stderr": "",
+      "wall_s": 0.005371082996134646
+    },
+    "rebound_stale_intersection": {
+      "returncode": 0,
+      "stdout": "PASS rebound_stale_intersection\n",
+      "stderr": "",
+      "wall_s": 0.004042333996039815
+    },
+    "rebound_zero_direction": {
+      "returncode": 0,
+      "stdout": "PASS rebound_zero_direction\n",
+      "stderr": "Failed to generate rebound directionrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.0034403339959681034
+    },
+    "valid_then_zero": {
+      "returncode": 0,
+      "stdout": "PASS valid_then_zero\n",
+      "stderr": "",
+      "wall_s": 0.003329750004922971
+    },
+    "valid_constraints": {
+      "returncode": 0,
+      "stdout": "PASS valid_constraints\n",
+      "stderr": "",
+      "wall_s": 0.002802582996082492
+    },
+    "no_collision": {
+      "returncode": 0,
+      "stdout": "PASS no_collision\n",
+      "stderr": "",
+      "wall_s": 0.0029882089875172824
+    },
+    "short_segment": {
+      "returncode": 0,
+      "stdout": "PASS short_segment\n",
+      "stderr": "",
+      "wall_s": 0.002522708004107699
+    },
+    "initial_mode": {
+      "returncode": 0,
+      "stdout": "PASS initial_mode\n",
+      "stderr": "",
+      "wall_s": 0.0027954170072916895
+    },
+    "retry_mode": {
+      "returncode": 0,
+      "stdout": "PASS retry_mode\n",
+      "stderr": "",
+      "wall_s": 0.002579542007879354
+    },
+    "callback_mode": {
+      "returncode": 0,
+      "stdout": "PASS callback_mode\n",
+      "stderr": "",
+      "wall_s": 0.002282375004142523
+    },
+    "merge_mode": {
+      "returncode": 0,
+      "stdout": "PASS merge_mode\n",
+      "stderr": "A-star failed on a collision segment; merge it with the next segment",
+      "wall_s": 0.0024970830127131194
+    },
+    "failure_modes": {
+      "returncode": 0,
+      "stdout": "PASS failure_modes\n",
+      "stderr": "A-star failed; aborting optimizationA-star errorrebound_no_valid_new_constraints; aborting this optimizationA-star path has fewer than 2 pointsA-star path has fewer than 2 points; drop collision segmentrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.0026070000021718442
+    },
+    "reuse_modes": {
+      "returncode": 0,
+      "stdout": "PASS reuse_modes\n",
+      "stderr": "",
+      "wall_s": 0.002199333001044579
+    },
+    "recorded_projection": {
+      "returncode": 0,
+      "stdout": "PASS recorded_projection\n",
+      "stderr": "rebound_route_projection begin=249 end=257 clear_targets=7 committed_pairs=7",
+      "wall_s": 0.0029617079999297857
+    },
+    "blocked_projection_heading": {
+      "returncode": 0,
+      "stdout": "PASS blocked_projection_heading\n",
+      "stderr": "rebound_route_projection begin=249 end=257 clear_targets=0 committed_pairs=0Failed to generate rebound directionrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.0025301669957116246
+    },
+    "mismatched_projection_route": {
+      "returncode": 0,
+      "stdout": "PASS mismatched_projection_route\n",
+      "stderr": "rebound_route_projection begin=249 end=257 clear_targets=0 committed_pairs=0Failed to generate rebound directionrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.002371333001065068
+    },
+    "projection_math": {
+      "returncode": 0,
+      "stdout": "PASS projection_math\n",
+      "stderr": "",
+      "wall_s": 0.002275582999573089
+    }
+  },
+  "claim": "Actual full native initControlPoints and check_collision_and_rebound methods plus assignment block and ControlPoints. Map/search/logger are doubles. Search spy verifies exact-endpoint mode and unchanged control-column endpoints; actual route and curve acceptance require runtime replay.",
+  "all_passed": true
+}

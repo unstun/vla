@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "exit_code": 124,
+  "command": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "podman run --rm --pull=never --network=host --ipc=host --name vla-scan07-startup-probe-20260923 -e ROS_DOMAIN_ID=189 -e ROS_LOCALHOST_ONLY=1 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_07:/workspace:ro e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'source /opt/ros/foxy/setup.bash && source /workspace/install/setup.bash && timeout -s INT 10 ros2 run scan_planner scan_planner_node --ros-args --params-file /workspace/src/plan_manage/config/planner.yaml'"
+  ],
+  "image_id": "e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8",
+  "local_install_identity_sha256": "19a71f283e101844f2af8dd130c2bf2ff4f0a395f5d207e57991b6fbc912f358",
+  "claim": "ROS process startup only; no PCT, LiDAR, tracks, planner route, or motion"
+}

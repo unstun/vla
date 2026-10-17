@@ -1,0 +1,23 @@
+--- scan_30/src/bspline_opt/src/bspline_optimizer.cpp
++++ scan_31/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -134,7 +134,9 @@
+     {
+       //cout << "in=" << in.transpose() << " out=" << out.transpose() << endl;
+       Eigen::Vector3d in(init_points.col(segment_ids[i].first)), out(init_points.col(segment_ids[i].second));
+-      ASTAR_RET ret = a_star_->AstarSearch(grid_map_->getResolution(), in, out);
++      // Actual collision retries keep the original control-polygon endpoints.
++      // Initial proxy guidance retains its existing behavior in this repair.
++      ASTAR_RET ret = a_star_->AstarSearch(grid_map_->getResolution(), in, out, !flag_first_init);
+       if (ret == ASTAR_RET::SUCCESS)
+       {
+         vector<Eigen::Vector3d> path = a_star_->getPath();
+@@ -796,7 +798,8 @@
+       {
+         /*** a star search ***/
+         Eigen::Vector3d in(cps_.points.col(segment_ids[i].first)), out(cps_.points.col(segment_ids[i].second));
+-        ASTAR_RET ret = a_star_->AstarSearch(grid_map_->getResolution(), in, out);
++        // Rebound and merged-segment repairs use checked exact terminal edges.
++        ASTAR_RET ret = a_star_->AstarSearch(grid_map_->getResolution(), in, out, true);
+         if (ret == ASTAR_RET::SUCCESS)
+         {
+           vector<Eigen::Vector3d> path = a_star_->getPath();

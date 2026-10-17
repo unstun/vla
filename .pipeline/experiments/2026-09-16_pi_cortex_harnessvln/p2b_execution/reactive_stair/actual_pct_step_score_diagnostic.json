@@ -1,0 +1,19 @@
+{
+  "schema": "scan07_actual_pct_step_score_diagnostic_v1",
+  "source": "p2b_execution/inputs/new_building.pickle",
+  "source_sha256": "ab5499ff100fe233f6cfabb59ce7592290cddd042c92ead5e37e9e2b593d24da",
+  "selection": "planner_node.py:publish_tomogram with default endpoint_mask disabled, duplicate-layer removal, cost <= 20",
+  "input_selected_cells": 86775,
+  "unique_xy_cells": 27278,
+  "supported_flat": 64543,
+  "supported_stair_edge": 5958,
+  "supported_total": 70501,
+  "unsupported": 14282,
+  "unknown": 1992,
+  "step_like_adjacent_definition": "An input surface with at least one four-connected selected XY neighbor whose nearest elevation differs by >= 0.04 and < 0.26 m",
+  "step_like_adjacent_input": 3105,
+  "step_like_adjacent_supported": 2508,
+  "local_precompute_ms": 76.261,
+  "command": "g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -I builds/scan_07/src/plan_env/include reactive_stair/diagnose_actual_pct_step_score.cpp -o /private/tmp/diagnose_actual_pct_step_score && python3 reactive_stair/emit_pct_selected_ground.py | /private/tmp/diagnose_actual_pct_step_score",
+  "claim": "Offline selected-map support coverage only; no ROS, SCAN runtime, or Isaac route result"
+}

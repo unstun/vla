@@ -536,9 +536,10 @@ class ScanGateCancelAndResourceTests(unittest.TestCase):
                     "config/p2b_backend_ros.two_goal.json", "config/foxy_bridge_two_goal.yaml", "config/planner.yaml", "config/controller.yaml"]:
             self.assertEqual((local_run / rel).read_bytes(), (ACTUAL4 / rel).read_bytes(), rel)
         # The scope and execution manifest differ only by the stance-hold runner bytes and configuration keys:
-        # --stance-hold (stance-hold task) and the PRD D5 parser defaults --camera-heading-mode body and
-        # --stance-entry-kd ramp, which keep the previous camera and control path. --command-script is a
-        # path and stays out of the execution configuration.
+        # --stance-hold (stance-hold task), the PRD D5 parser defaults --camera-heading-mode body and
+        # --stance-entry-kd ramp, and the unmapped-box dead CLI default --unmapped-box off, which keep
+        # the previous camera, control and LiDAR path. --command-script is a path and stays out of the
+        # execution configuration.
         new_runner_sha = digest(local_run / "bridge" / RUNNER_REL)
         self.assertNotEqual(new_runner_sha, ACTUAL4_RUNNER_SHA256)
         old_manifest = json.loads((ACTUAL4 / "inputs/execution_manifest.json").read_text(encoding="utf-8"))
@@ -554,6 +555,7 @@ class ScanGateCancelAndResourceTests(unittest.TestCase):
         self.assertEqual(new_scope["execution_configuration"].pop("stance_hold"), "off")
         self.assertEqual(new_scope["execution_configuration"].pop("camera_heading_mode"), "body")
         self.assertEqual(new_scope["execution_configuration"].pop("stance_entry_kd"), "ramp")
+        self.assertEqual(new_scope["execution_configuration"].pop("unmapped_box"), "off")
         self.assertNotIn("command_script", new_scope["execution_configuration"])
         self.assertEqual(old_scope.pop("execution_source_sha256"), ACTUAL4_RUNNER_SHA256)
         self.assertEqual(new_scope.pop("execution_source_sha256"), new_runner_sha)

@@ -1,0 +1,81 @@
+{
+  "completed": true,
+  "gpu_used": false,
+  "build_result_sha256": "bbae076b3ce32e0a4f73939a10d3cc83b3159c51e6fd1a94f5fb39f5f00e7413",
+  "install_identity_sha256": "cf72039c31843a39953eedf2bb84ae705779ba76a5cea8521511314afb3f3dd6",
+  "package_sha256": {
+    "replay_stair_inputs.py": "f5f1567152541f3be45ed350ba699841e367aa22379f8196aacab1946e6aa70c",
+    "search_inputs/input_manifest.json": "13e27eb55dc408f5cf2782dee525e24d23fd125a4d4e291ee9d06341821d280a",
+    "search_inputs/events.json": "37135720037dc8ee7295b0259fe209acf555e9b7aa595a9fa79e3b316f9766f2",
+    "search_inputs/planner.yaml": "eb4d605301dcaa8f4eff31460ad19da6f3d1133d68ab0f74eba89adb9c30eb51",
+    "search_inputs/points.npz": "ba0a24073fd09530ff8070d7777b562d730abd8cafe05787c90a7ab967637529"
+  },
+  "returned_log_hash_matches": true,
+  "returned_source_hash_matches": true,
+  "commands": [
+    {
+      "label": "mkdir",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "gpu5070ti",
+        "mkdir -p /home/sun/vla_exec/2026-09-26_stair_repairs/scan24_height035_nativepct"
+      ],
+      "returncode": 0,
+      "wall_s": 4.2634640829928685
+    },
+    {
+      "label": "sync",
+      "command": [
+        "rsync",
+        "-a",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step6_body_reference/scan24_height035_nativepct/remote_package/",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_repairs/scan24_height035_nativepct/"
+      ],
+      "returncode": 0,
+      "wall_s": 10.391106416995171
+    },
+    {
+      "label": "input_gate",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "gpu5070ti",
+        "python3 -"
+      ],
+      "returncode": 0,
+      "wall_s": 4.755241834005574
+    },
+    {
+      "label": "replay",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "gpu5070ti",
+        "timeout --kill-after=5 90 podman run --rm --pull=never --network=none --name vla-stair-repair-scan24_height035_nativepct -e ROS_DOMAIN_ID=213 -e ROS_LOCALHOST_ONLY=1 -e PYTHONDONTWRITEBYTECODE=1 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_24:/workspace:ro -v /home/sun/vla_exec/2026-09-26_stair_repairs/scan24_height035_nativepct:/audit:rw e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'set -e\nsource /opt/ros/foxy/setup.bash\nsource /workspace/install/setup.bash\npython3 /audit/replay_stair_inputs.py --inputs /audit/search_inputs --output /audit/replay_result'"
+      ],
+      "returncode": 0,
+      "wall_s": 23.11752025000169
+    },
+    {
+      "label": "collect",
+      "command": [
+        "rsync",
+        "-a",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_repairs/scan24_height035_nativepct/replay_result/",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step6_body_reference/scan24_height035_nativepct/replay_result/"
+      ],
+      "returncode": 0,
+      "wall_s": 8.761950041996897
+    }
+  ]
+}

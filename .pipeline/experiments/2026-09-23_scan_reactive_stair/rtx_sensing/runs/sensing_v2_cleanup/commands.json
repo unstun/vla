@@ -1,0 +1,129 @@
+[
+  {
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits"
+    ],
+    "exit_code": 0,
+    "label": "preflight",
+    "wall_seconds": 4.282047999993665
+  },
+  {
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "test ! -e /home/sun/vla_exec/2026-09-26_rtx_stair_video/sensing_v2_cleanup && mkdir -p /home/sun/vla_exec/2026-09-26_rtx_stair_video/sensing_v2_cleanup/outputs"
+    ],
+    "exit_code": 0,
+    "label": "mkdir",
+    "wall_seconds": 4.278463875001762
+  },
+  {
+    "command": [
+      "rsync",
+      "-a",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/rtx_sensing/runs/sensing_v2_cleanup/source/",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-26_rtx_stair_video/sensing_v2_cleanup/source/"
+    ],
+    "exit_code": 0,
+    "label": "sync_source",
+    "wall_seconds": 26.73526408401085
+  },
+  {
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "python3 -"
+    ],
+    "exit_code": 0,
+    "label": "source_gate_before",
+    "wall_seconds": 4.866522500000428
+  },
+  {
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "source /home/sun/miniconda3/etc/profile.d/conda.sh && conda activate isaaclab && export PYTHONPATH=/home/sun/vla_exec/2026-09-26_rtx_stair_video/sensing_v2_cleanup/source/bridge:/home/sun/vla_exec/2026-09-26_rtx_stair_video/sensing_v2_cleanup/source/candidate && export PYTHONDONTWRITEBYTECODE=1 && timeout --signal=TERM --kill-after=15 450 python -u /home/sun/vla_exec/2026-09-26_rtx_stair_video/sensing_v2_cleanup/source/probe/probe_animated_human.py --asset-root /home/sun/vla_exec/2026-09-26_rtx_stair_video/sensing_v2_cleanup/source/assets --cache-dir /home/sun/vla_exec/2026-09-26_rtx_stair_video/sensing_v2_cleanup/source/cache --output /home/sun/vla_exec/2026-09-26_rtx_stair_video/sensing_v2_cleanup/outputs"
+    ],
+    "exit_code": 255,
+    "label": "probe",
+    "wall_seconds": 176.451585917006
+  },
+  {
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "python3 -"
+    ],
+    "exit_code": 0,
+    "label": "source_gate_after",
+    "wall_seconds": 4.800127583992435
+  },
+  {
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "python3 -"
+    ],
+    "exit_code": 0,
+    "label": "remote_artifact_hashes",
+    "wall_seconds": 4.7999085420015035
+  },
+  {
+    "command": [
+      "rsync",
+      "-a",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-26_rtx_stair_video/sensing_v2_cleanup/outputs/",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/rtx_sensing/runs/sensing_v2_cleanup/outputs/"
+    ],
+    "exit_code": 0,
+    "label": "sync_outputs",
+    "wall_seconds": 10.045419624992064
+  },
+  {
+    "command": [
+      "ssh",
+      "-T",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv,noheader"
+    ],
+    "exit_code": 0,
+    "label": "gpu_after",
+    "wall_seconds": 4.262385708003421
+  }
+]

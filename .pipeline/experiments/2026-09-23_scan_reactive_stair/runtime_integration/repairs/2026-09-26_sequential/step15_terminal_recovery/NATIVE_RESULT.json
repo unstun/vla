@@ -1,0 +1,75 @@
+{
+  "results": {
+    "endpoints_scan_28_local_v1": {
+      "result_sha256": "7c98947ccbc36ba96c400604ecbda0ef6937ad540b2de59d16c1da58ab3d2443",
+      "compile_exit": 0,
+      "passed": [
+        "changed_heading",
+        "unknown_midpoint",
+        "blocked_endpoint",
+        "reuse_modes",
+        "lattice_and_short_goal",
+        "invalid_input",
+        "connector_budget",
+        "connector_radius",
+        "long_unknown"
+      ],
+      "failed": [
+        "long_connector",
+        "long_budget",
+        "recovery_reuse"
+      ]
+    },
+    "endpoints_scan_29_local_v1": {
+      "result_sha256": "e2e7997df64c88000cea2e88c4f30e91246d512040bc79e747a97e845051e974",
+      "compile_exit": 1,
+      "passed": [],
+      "failed": []
+    },
+    "endpoints_scan_29_local_v2": {
+      "result_sha256": "d57f0d25f30d9007a23c485af3ef510b6ec86656160ebc2a6bfdae045e7b3441",
+      "compile_exit": 0,
+      "passed": [
+        "changed_heading",
+        "unknown_midpoint",
+        "blocked_endpoint",
+        "reuse_modes",
+        "lattice_and_short_goal",
+        "invalid_input",
+        "connector_budget",
+        "connector_radius",
+        "long_connector",
+        "long_unknown",
+        "long_budget",
+        "recovery_reuse"
+      ],
+      "failed": []
+    },
+    "endpoints_scan_29_foxy_v1": {
+      "result_sha256": "857566a69d3a073bc81a43fcc53b80453fb7341a1f54722317b750ace11245a6",
+      "compile_exit": 0,
+      "passed": [
+        "changed_heading",
+        "unknown_midpoint",
+        "blocked_endpoint",
+        "reuse_modes",
+        "lattice_and_short_goal",
+        "invalid_input",
+        "connector_budget",
+        "connector_radius",
+        "long_connector",
+        "long_unknown",
+        "long_budget",
+        "recovery_reuse"
+      ],
+      "failed": []
+    }
+  },
+  "changed_source_files": [
+    "path_searching/src/dyn_a_star.cpp",
+    "path_searching/include/path_searching/dyn_a_star.h"
+  ],
+  "independent_review": "stair_planner_cause_review: no blocking issue in final actual source/manifest/tests. Existing parent chains, total budget, state reuse and default mode reviewed.",
+  "retained_attempt_note": "scan29 local v1 failed to compile only because logger test double lacked RCLCPP_INFO; v2 adds logger macro. Production bytes unchanged.",
+  "claim": "Native AStar source regression with a collision boundary double; no full ROS, spline, live control or motion acceptance."
+}

@@ -1,0 +1,306 @@
+{
+  "claim": "Cross-container Foxy CPU DDS smoke only; no PCT worker, Isaac, GPU, control publishing, accepted C++ motion or robot claim.",
+  "image": "e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8",
+  "local_dir": "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_ros/qualification/cross_container_20260916T161849Z",
+  "ok": true,
+  "positive_scenario": "host_ipc",
+  "preflight": {
+    "command": [
+      "ssh",
+      "gpu5070ti",
+      "mkdir -p /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z"
+    ],
+    "elapsed_s": 4.3640790000026755,
+    "returncode": 0,
+    "stderr": "",
+    "stdout": ""
+  },
+  "pull": {
+    "command": [
+      "rsync",
+      "-a",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_ros/qualification/cross_container_20260916T161849Z/"
+    ],
+    "elapsed_s": 8.42826366600275,
+    "returncode": 0,
+    "stderr": "",
+    "stdout": ""
+  },
+  "pull_default": {
+    "command": [
+      "rsync",
+      "-a",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_ros/qualification/cross_container_20260916T161849Z/"
+    ],
+    "elapsed_s": 8.997870583003532,
+    "returncode": 0,
+    "stderr": "",
+    "stdout": ""
+  },
+  "remote_dir": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z",
+  "ros_domain_id": "94",
+  "ros_localhost_only": "1",
+  "run_id": "cross_container_20260916T161849Z",
+  "scan02_mount": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_02",
+  "scenario_results": [
+    {
+      "commands": {
+        "prepare": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "mkdir -p /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/default_ipc && podman rm -f p2b-cross-receiver-default-ipc p2b-cross-publisher-default-ipc >/dev/null 2>&1 || true"
+          ],
+          "elapsed_s": 4.391055915999459,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "publisher_logs": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "podman logs p2b-cross-publisher-default-ipc > /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/default_ipc/publisher.podman.log 2> /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/default_ipc/publisher.podman.stderr.log || true"
+          ],
+          "elapsed_s": 4.3726056670020625,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "publisher_run": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "podman run --rm --pull=never --network=host --name p2b-cross-publisher-default-ipc -e ROS_DOMAIN_ID=94 -e ROS_LOCALHOST_ONLY=1 -e P2B_SCENARIO=default_ipc -e P2B_HTTP_PORT=18765 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z:/qualification -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_02:/workspace:ro e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'source /opt/ros/foxy/setup.bash && source /workspace/install/setup.bash && python3 /qualification/source/publisher_odom.py'"
+          ],
+          "elapsed_s": 15.004259458000888,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "receiver_logs": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "podman logs p2b-cross-receiver-default-ipc > /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/default_ipc/receiver.podman.log 2> /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/default_ipc/receiver.podman.stderr.log || true"
+          ],
+          "elapsed_s": 4.460839916002442,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "receiver_rm": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "podman rm -f p2b-cross-receiver-default-ipc >/dev/null 2>&1 || true"
+          ],
+          "elapsed_s": 4.405473749997327,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "receiver_start": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "podman run -d --pull=never --network=host --name p2b-cross-receiver-default-ipc -e ROS_DOMAIN_ID=94 -e ROS_LOCALHOST_ONLY=1 -e P2B_SCENARIO=default_ipc -e P2B_HTTP_PORT=18765 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z:/qualification -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_02:/workspace:ro e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'source /opt/ros/foxy/setup.bash && source /workspace/install/setup.bash && python3 /qualification/source/receiver_node.py'"
+          ],
+          "elapsed_s": 4.35853595899971,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "3aa7788b207f1a19f22e9b928351fd5526336cea131112dc90a425fed08ecfb3\n"
+        },
+        "summary_probe": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "cat /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/default_ipc/receiver_summary.json 2>/dev/null || true; echo; cat /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/default_ipc/publisher_summary.json 2>/dev/null || true"
+          ],
+          "elapsed_s": 4.3283760830017854,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "{\n  \"checks\": [\n    \"http_ready\"\n  ],\n  \"error\": \"body_pose_not_observed_cross_container\",\n  \"node_command\": [\n    \"/usr/bin/python3\",\n    \"-m\",\n    \"p2b_backend_ros.node\",\n    \"--config\",\n    \"/qualification/runtime_config.json\",\n    \"--run-id\",\n    \"ros-cross-qual\",\n    \"--run-epoch-ns\",\n    \"246813579\",\n    \"--applied-snapshot\",\n    \"/qualification/missing_current_command.json\",\n    \"--http-port\",\n    \"18765\",\n    \"--pct-port\",\n    \"47631\",\n    \"--ros-args\",\n    \"-r\",\n    \"__node:=p2b_backend_ros_cross_default_ipc\"\n  ],\n  \"node_returncode\": -2,\n  \"ok\": false\n}\n\n{\n  \"checks\": [\n    \"best_effort_odom_published\"\n  ],\n  \"ok\": true,\n  \"published\": 198\n}\n"
+        }
+      },
+      "ipc_arg": "",
+      "port": "18765",
+      "scenario": "default_ipc"
+    },
+    {
+      "commands": {
+        "prepare": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "mkdir -p /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/host_ipc && podman rm -f p2b-cross-receiver-host-ipc p2b-cross-publisher-host-ipc >/dev/null 2>&1 || true"
+          ],
+          "elapsed_s": 4.419848833000287,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "publisher_logs": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "podman logs p2b-cross-publisher-host-ipc > /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/host_ipc/publisher.podman.log 2> /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/host_ipc/publisher.podman.stderr.log || true"
+          ],
+          "elapsed_s": 4.422024916999362,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "publisher_run": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "podman run --rm --pull=never --network=host --ipc=host --name p2b-cross-publisher-host-ipc -e ROS_DOMAIN_ID=94 -e ROS_LOCALHOST_ONLY=1 -e P2B_SCENARIO=host_ipc -e P2B_HTTP_PORT=18766 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z:/qualification -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_02:/workspace:ro e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'source /opt/ros/foxy/setup.bash && source /workspace/install/setup.bash && python3 /qualification/source/publisher_odom.py'"
+          ],
+          "elapsed_s": 14.736164666999684,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "receiver_logs": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "podman logs p2b-cross-receiver-host-ipc > /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/host_ipc/receiver.podman.log 2> /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/host_ipc/receiver.podman.stderr.log || true"
+          ],
+          "elapsed_s": 4.421787499999482,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "receiver_rm": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "podman rm -f p2b-cross-receiver-host-ipc >/dev/null 2>&1 || true"
+          ],
+          "elapsed_s": 4.396045583001978,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "receiver_start": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "podman run -d --pull=never --network=host --ipc=host --name p2b-cross-receiver-host-ipc -e ROS_DOMAIN_ID=94 -e ROS_LOCALHOST_ONLY=1 -e P2B_SCENARIO=host_ipc -e P2B_HTTP_PORT=18766 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z:/qualification -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_02:/workspace:ro e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'source /opt/ros/foxy/setup.bash && source /workspace/install/setup.bash && python3 /qualification/source/receiver_node.py'"
+          ],
+          "elapsed_s": 4.377466707999702,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "53ce1eb4882b9269a5cdd0dabbf06ae8cc7abf51a2dd37cf6ff151d35d878d90\n"
+        },
+        "summary_probe": {
+          "command": [
+            "ssh",
+            "gpu5070ti",
+            "cat /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/host_ipc/receiver_summary.json 2>/dev/null || true; echo; cat /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/result/host_ipc/publisher_summary.json 2>/dev/null || true"
+          ],
+          "elapsed_s": 4.657772874998045,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "{\n  \"checks\": [\n    \"http_ready\",\n    \"best_effort_odom_cross_container_observed\"\n  ],\n  \"node_command\": [\n    \"/usr/bin/python3\",\n    \"-m\",\n    \"p2b_backend_ros.node\",\n    \"--config\",\n    \"/qualification/runtime_config.json\",\n    \"--run-id\",\n    \"ros-cross-qual\",\n    \"--run-epoch-ns\",\n    \"246813579\",\n    \"--applied-snapshot\",\n    \"/qualification/missing_current_command.json\",\n    \"--http-port\",\n    \"18766\",\n    \"--pct-port\",\n    \"47631\",\n    \"--ros-args\",\n    \"-r\",\n    \"__node:=p2b_backend_ros_cross_host_ipc\"\n  ],\n  \"node_returncode\": -2,\n  \"ok\": true\n}\n\n{\n  \"checks\": [\n    \"best_effort_odom_published\"\n  ],\n  \"ok\": true,\n  \"published\": 197\n}\n"
+        }
+      },
+      "ipc_arg": "--ipc=host",
+      "port": "18766",
+      "scenario": "host_ipc"
+    }
+  ],
+  "scenario_summaries": {
+    "default_ipc": {
+      "publisher": {
+        "checks": [
+          "best_effort_odom_published"
+        ],
+        "ok": true,
+        "published": 198
+      },
+      "receiver": {
+        "checks": [
+          "http_ready"
+        ],
+        "error": "body_pose_not_observed_cross_container",
+        "node_command": [
+          "/usr/bin/python3",
+          "-m",
+          "p2b_backend_ros.node",
+          "--config",
+          "/qualification/runtime_config.json",
+          "--run-id",
+          "ros-cross-qual",
+          "--run-epoch-ns",
+          "246813579",
+          "--applied-snapshot",
+          "/qualification/missing_current_command.json",
+          "--http-port",
+          "18765",
+          "--pct-port",
+          "47631",
+          "--ros-args",
+          "-r",
+          "__node:=p2b_backend_ros_cross_default_ipc"
+        ],
+        "node_returncode": -2,
+        "ok": false
+      }
+    },
+    "host_ipc": {
+      "publisher": {
+        "checks": [
+          "best_effort_odom_published"
+        ],
+        "ok": true,
+        "published": 197
+      },
+      "receiver": {
+        "checks": [
+          "http_ready",
+          "best_effort_odom_cross_container_observed"
+        ],
+        "node_command": [
+          "/usr/bin/python3",
+          "-m",
+          "p2b_backend_ros.node",
+          "--config",
+          "/qualification/runtime_config.json",
+          "--run-id",
+          "ros-cross-qual",
+          "--run-epoch-ns",
+          "246813579",
+          "--applied-snapshot",
+          "/qualification/missing_current_command.json",
+          "--http-port",
+          "18766",
+          "--pct-port",
+          "47631",
+          "--ros-args",
+          "-r",
+          "__node:=p2b_backend_ros_cross_host_ipc"
+        ],
+        "node_returncode": -2,
+        "ok": true
+      }
+    }
+  },
+  "schema": "p2b_backend_ros_cross_container_dds_v1",
+  "sync": {
+    "command": [
+      "rsync",
+      "-a",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/backend_ros/qualification/cross_container_20260916T161849Z/",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/ros_binding_cross_container/cross_container_20260916T161849Z/"
+    ],
+    "elapsed_s": 8.498937333999493,
+    "returncode": 0,
+    "stderr": "",
+    "stdout": ""
+  }
+}

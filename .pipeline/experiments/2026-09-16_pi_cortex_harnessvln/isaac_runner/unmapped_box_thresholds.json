@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "task": ".trellis/tasks/09-20-isaac-lidar-unmapped-box-hits",
+  "source": "prd.md Acceptance Criteria AC1 and AC2, frozen before any Isaac run",
+  "prim": "/World/unmapped_box",
+  "size_xyz_m": [0.4, 0.4, 0.8],
+  "offset_m": 2.5,
+  "aabb_pad_m": 0.01,
+  "settle_s": 1.0,
+  "cloud_field": "raw_points_sensor_frame",
+  "cloud_field_note": "World points are raw_points_sensor_frame rotated by sensor_quaternion_wxyz then translated by sensor_position. planner_points_sensor_frame and the fallback floor filter are not used.",
+  "ac1_spawn": {
+    "mode": "spawn",
+    "after_settle_every_scan_aabb_count": 0
+  },
+  "ac2_lidar": {
+    "mode": "lidar",
+    "after_settle_every_scan_min_aabb_count": 1,
+    "after_settle_median_min_aabb_count": 10
+  },
+  "claim_boundary": "LiDAR hit-confirmation only. Not SCAN, not navigation success, not harness validated."
+}

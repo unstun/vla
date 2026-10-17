@@ -1,0 +1,73 @@
+{
+  "passed": true,
+  "image_id": "e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8",
+  "source_matches_before_after": true,
+  "remote_workspace": "/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_14",
+  "source_manifest": "source_sha256.json",
+  "claim": "Actual C++/ROS message build only; no controller or motion execution.",
+  "commands": [
+    {
+      "label": "mkdir",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=20",
+        "gpu5070ti",
+        "mkdir -p /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_14"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "sync",
+      "command": [
+        "rsync",
+        "-a",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/p2b_execution/builds/scan_14/src/",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_14/src/"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "source_gate",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=20",
+        "gpu5070ti",
+        "python3 -"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "build",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=20",
+        "gpu5070ti",
+        "timeout --kill-after=15 600 podman run --rm --pull=never --network=none --name vla-p2b-build-scan_14 -e CMAKE_BUILD_PARALLEL_LEVEL=3 -e MAKEFLAGS=-j3 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_14:/workspace e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'set -e\nsource /opt/ros/foxy/setup.bash\ncd /workspace\ncolcon build --base-paths src --executor sequential --event-handlers console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF'"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "source_gate_after",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=20",
+        "gpu5070ti",
+        "python3 -"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "elapsed_wall_s": 83.77726454200456
+}

@@ -1,0 +1,52 @@
+{
+  "scan28_old_frontier_v1": {
+    "summary": "STF_SUMMARY,success,78,1921,8681,0,0.001736575",
+    "input": "STF_INPUT,-5.42049980164,5.99809122086,0.354542136192,-5.37913155413,2.29421862344,0.976234957719",
+    "review": {
+      "build": "scan28_live_frontier_trace",
+      "input_manifest_sha256": "1a5e87dc39c8d0a2558590eb637b1ba2ef86467dda2641f6ffc084aeadce4652",
+      "native_completed": true,
+      "seed_search_failures": 0,
+      "seed_endpoint_mismatch": 0,
+      "seed_edge_blocked": 0,
+      "checked_seed_count": 1,
+      "successful_plan_count": 1,
+      "moving_spline_count": 1,
+      "search_time_cap_hit": false,
+      "log_sha256": "37fcc16209cbf41ead2c2f364bd7c98d896c0855d7b716a74521de5323db6c3b",
+      "claim": "Native CPU recorded-input result only; does not establish live timing, locomotion or avoidance."
+    }
+  },
+  "scan28_live_frontier_v1": {
+    "summary": "STF_SUMMARY,exhausted,1315,22801,100395,0,0.015261106",
+    "input": "STF_INPUT,-5.42055416107,5.99785995483,0.35458496213,-5.39090255181,2.77904069058,0.897730459639",
+    "review": {
+      "build": "scan28_live_frontier_trace",
+      "input_manifest_sha256": "d2bfe404137565a51dbf4aceb0fcf56dfe2d5d5bb2b3fe435e92971534ddb86a",
+      "native_completed": true,
+      "seed_search_failures": 165,
+      "seed_endpoint_mismatch": 0,
+      "seed_edge_blocked": 0,
+      "checked_seed_count": 0,
+      "successful_plan_count": 0,
+      "moving_spline_count": 0,
+      "search_time_cap_hit": false,
+      "log_sha256": "5879de1ebc4124b1f4a7cec42bb316d27f4beb2c8f53dc02583ed29192768c3a",
+      "claim": "Native CPU recorded-input result only; does not establish live timing, locomotion or avoidance."
+    }
+  },
+  "claim": "Old input reaches exact goal; fresh replay exhausts1315nodes despite reaching beyond target inY. Only two exact terminal connectors are tried, both rejectUnknownSupport. The live sensor-originUnknown is known in this full-history replay, so it is an additional distinct live gap, not the full cause of fresh CPU failure.",
+  "raw_input_comparison": {
+    "ground_records": 86775,
+    "ground_arrays_identical": true,
+    "route_vertices": 37,
+    "route_geometry_identical": true,
+    "first_cloud_pose_identical": true,
+    "first_cloud_points_within_4m_identical": true,
+    "first_cloud_old_points": 10904,
+    "first_cloud_new_points": 10926,
+    "first_cloud_symmetric_difference_old": 136,
+    "first_cloud_symmetric_difference_new": 158,
+    "boundary": "Only sampled cloud indices0,1,2,5,10,20,40 had pose equality checked; full-range point sets differ. This does not isolate all later sensing/history changes."
+  }
+}

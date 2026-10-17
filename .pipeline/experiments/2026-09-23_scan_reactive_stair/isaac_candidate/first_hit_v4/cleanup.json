@@ -1,0 +1,18 @@
+{
+  "command": [
+    "ssh",
+    "-T",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=15",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "gpu5070ti",
+    "python3 -"
+  ],
+  "remote_script": "import json,os,signal\nfrom pathlib import Path\nroot=Path(\"/home/sun/vla_exec/2026-09-23_scan_reactive_stair/official_mesh_first_hit_v4\")\nresult=json.loads((root/\"results/first_hit_v4/result.json\").read_text())\nassert result.get(\"passed\") is True\nexpected=str(root/\"candidate/smoke_official_mesh_two_poses.py\").encode()\nfound=[]\nfor p in Path(\"/proc\").glob(\"[0-9]*/cmdline\"):\n try: command=p.read_bytes().split(b\"\\0\")\n except (FileNotFoundError,PermissionError): continue\n if expected in command and command[0].split(b\"/\")[-1].startswith(b\"python\"):\n  pid=int(p.parent.name);os.kill(pid,signal.SIGTERM);found.append(pid)\nprint(json.dumps({\"measurement_passed_before_signal\":True,\"targeted_sigterm_pids\":found,\"reason\":\"Isaac stage close remains blocked after complete scientific result\"}))\n",
+  "exit_code": 0,
+  "stdout": "{\"measurement_passed_before_signal\": true, \"targeted_sigterm_pids\": [42846], \"reason\": \"Isaac stage close remains blocked after complete scientific result\"}\n",
+  "stderr": ""
+}

@@ -1,0 +1,14 @@
+{
+  "base": "scan_16",
+  "base_manifest_sha256": "f60e7d0350a1d251e6a26b30c22ffac0e12d423b5cc1c23c6770383696aa4a66",
+  "changed_sha256": {
+    "src/plan_env/include/plan_env/grid_map.h": "a527d3af951f7b2b13cacb81962b6b5f2a02d090e59a0309eaf94eebbf855c38",
+    "src/plan_env/include/plan_env/scan_reactive_grid_methods.inc": "332af629f434831b6a3286b3131cdc9f6b97887583edadaf343f15349efc5e6d",
+    "src/bspline_opt/src/bspline_optimizer.cpp": "2aef7c189b6ca5d9e4c2b497075e6dbabfde2575b1db071a24fcd92e0241d8ae",
+    "src/plan_manage/src/scan_replan_fsm.cpp": "cda330598725535e02a99d3cf1e6af686ee288a776048f71af825e81939c882a",
+    "src/plan_env/include/plan_env/motion_heading.h": "297c1687a02e4606b9f8c131de809fba66aea9f3493c0f40875fcc06c2b35aff"
+  },
+  "evidence": "scan16_settled: actual yaw -1.525 rad, initial spline collision yaw -0.583 rad, two unknown lateral references",
+  "change": "Optimizer and live safety use fresh measured body yaw below the existing controller's 0.01 m direction threshold",
+  "preserved": "all collision verdict rules, observed person precedence, external unknown rejection; stale direction fallback returns NaN and blocks"
+}

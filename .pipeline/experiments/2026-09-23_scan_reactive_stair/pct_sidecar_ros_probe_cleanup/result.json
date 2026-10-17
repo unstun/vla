@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "exit_code": 0,
+  "driver": {
+    "passed": true,
+    "stamp_ns": 1010000000,
+    "frame": "world",
+    "points": 86775,
+    "point_step": 16,
+    "is_dense": false,
+    "payload_sha256": "71550de5fde87043da3da73de00a8e1c1437c751bc939b87a718059d54949577",
+    "clock_ticks": 16
+  },
+  "remote_source_hashes": {
+    "pct_sim_clock_core.py": "f1e900cc0623ed6a7912602955af8104030b4a4f4311933cd9308652d879bb71",
+    "pct_sim_clock_publisher.py": "e68c762f1db5599933637825a986fd45cb3a937d21b475423703ea2a69725555",
+    "pct_sidecar_ros_probe_driver.py": "2c38217c10adc0b56a7f12692293ec7ecf0e68fa1b964b2ce4e0561e5d405038",
+    "new_building.pickle": "ab5499ff100fe233f6cfabb59ce7592290cddd042c92ead5e37e9e2b593d24da"
+  },
+  "image_id": "40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555",
+  "command": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ConnectTimeout=20",
+    "gpu5070ti",
+    "podman run --rm --pull=never --network=host --ipc=host --name vla-pct-sidecar-ros-probe-20260923 -e ROS_DOMAIN_ID=191 -e ROS_LOCALHOST_ONLY=1 -e PYTHONDONTWRITEBYTECODE=1 -e OPENBLAS_NUM_THREADS=1 -v /home/sun/vla_exec/2026-09-23_scan_reactive_stair/pct_sidecar_probe:/sidecar:ro -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/qualification/pct_20260916T145741Z:/map:ro 40f0fa16091e2b6e24fd82058ceb01dbe76c001276234af0b9a44ac0e3787555 bash -lc 'source /opt/ros/humble/setup.bash\nexport PYTHONPATH=/sidecar:${PYTHONPATH:-}\npython3 /sidecar/pct_sim_clock_publisher.py --ros-args -p map_path:=/map/inputs/new_building.pickle -p use_sim_time:=true >/tmp/vla_pct_sidecar.log 2>&1 &\nsidecar_pid=$!\ntrap '\"'\"'kill $sidecar_pid 2>/dev/null || true'\"'\"' EXIT\ntimeout -s INT 25 python3 /sidecar/pct_sidecar_ros_probe_driver.py\ndriver_status=$?\ncat /tmp/vla_pct_sidecar.log\nexit $driver_status'"
+  ],
+  "claim": "ROS sidecar transport with synthetic clock only; no SCAN subscriber, LiDAR, pedestrian, or robot motion"
+}

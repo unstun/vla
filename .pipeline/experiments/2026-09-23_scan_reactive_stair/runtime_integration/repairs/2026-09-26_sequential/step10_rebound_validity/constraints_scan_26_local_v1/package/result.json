@@ -1,0 +1,74 @@
+{
+  "compile_command": [
+    "clang++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-DEIGEN_INITIALIZE_MATRICES_BY_NAN",
+    "-I/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step10_rebound_validity/constraints_scan_26_local_v1/package",
+    "-I/Users/sun/tongbu/study/phdproject/machine-dog-nav/.pipeline/experiments/2026-09-04_pct_scan_lite3_stairs/local_macos/runtime/dependencies/source/gtsam-4.2/gtsam/3rdparty/Eigen",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step10_rebound_validity/constraints_scan_26_local_v1/package/test.cpp",
+    "-o",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step10_rebound_validity/constraints_scan_26_local_v1/package/native_tests"
+  ],
+  "compile_exit": 0,
+  "inputs_sha256": {
+    "worker.py": "49363f6190566bc7b62bade10718a81c3ecf66106a11b012be6e06261c6ec002",
+    "native_blocks.inc": "35612498fccd3543581f13eb4ae2a9c6839f228ad79596d63e491835e55bff13",
+    "source_optimizer.h": "ddd2c2e812b2dd59bb32f383c093246ebe12a9a667ae93d448ef5d1e4b9ef926",
+    "test.cpp": "04068041264210a0374880f1e3c6d6a50f40da590b9437b3b3b1b3615fcce317",
+    "native_control_points.inc": "6bbb33e4ce4a39acce54aef7beb9338b1d32d54da3dd3eafc3a35711dacb0b88",
+    "source_optimizer.cpp": "caef312dbc77071481edfb48d2e1cbb71281614ab0966c5041c4afa5f796c452",
+    "extraction.json": "9c74149e7539ac257e2b5b13082dbefc7b46be18d30ea7ab355ef242f604d7db",
+    "rclcpp/rclcpp.hpp": "7588cee4bb5005adeea26e1b5f15c758fd73d5182eb475e287ec18834dd707c2"
+  },
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "cases": {
+    "empty_route": {
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "A-star path has fewer than 2 points; drop collision segmentFAIL single-point repair restarted optimizer\n",
+      "wall_s": 0.5937609579996206
+    },
+    "no_intersection": {
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "Failed to generate rebound directionFAIL route without any usable intersection restarted optimizer\n",
+      "wall_s": 0.0052721249958267435
+    },
+    "stale_intersection": {
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "FAIL missing intersection falsely marked valid and retained an old pair\n",
+      "wall_s": 0.005191082993405871
+    },
+    "zero_direction": {
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "FAIL zero direction caused propagation\n",
+      "wall_s": 0.004520999995293096
+    },
+    "valid_constraints": {
+      "returncode": 0,
+      "stdout": "PASS valid_constraints\n",
+      "stderr": "",
+      "wall_s": 0.003438875006395392
+    },
+    "no_collision": {
+      "returncode": 0,
+      "stdout": "PASS no_collision\n",
+      "stderr": "",
+      "wall_s": 0.004520959002547897
+    },
+    "short_segment": {
+      "returncode": 0,
+      "stdout": "PASS short_segment\n",
+      "stderr": "",
+      "wall_s": 0.0038345829962054268
+    }
+  },
+  "claim": "Actual optimizer assignment/rebound source blocks and actual ControlPoints declaration; map/search/logger are fixtures. Eigen NaN initialization makes missing-intersection state deterministic; this is not proof that the recorded run read an uninitialized value.",
+  "all_passed": false
+}

@@ -1,0 +1,82 @@
+{
+  "inputs_sha256": {
+    "worker.py": "8034abb38358f4486d9adcbe725713cd8c572226fd94d9bc17ca1788dc309cc8",
+    "source_fsm.h": "ba0d4527c320f8572f953e3034c7cdafe9f7e9606fa471280554091bb0e4e353",
+    "test.cpp": "489cbff67f1e5bfde974c7e6b1badf7f0c53f63953268ae04b144355c51daadd",
+    "source_fsm.cpp": "051920a20346dc8833fd0dfc9aed1fcb50a2e61c321927270b2fe3b4138c1a89",
+    "native_target_methods.inc": "9dab632686eeb928bf6f9b861ce7d12ace10fd0b806da759591feb5fc3ec21f4"
+  },
+  "compile_command": [
+    "clang++",
+    "-DCANDIDATE_REFERENCE_PREFIX",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-I/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step22_reference_prefix/native_scan_33_local_v1/package",
+    "-I/Users/sun/tongbu/study/phdproject/machine-dog-nav/.pipeline/experiments/2026-09-04_pct_scan_lite3_stairs/local_macos/runtime/dependencies/source/gtsam-4.2/gtsam/3rdparty/Eigen",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step22_reference_prefix/native_scan_33_local_v1/package/test.cpp",
+    "-o",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step22_reference_prefix/native_scan_33_local_v1/package/native_tests"
+  ],
+  "compile_exit": 0,
+  "cases": {
+    "global_preserved": {
+      "returncode": 0,
+      "stdout": "global_preserved: PASS\n",
+      "stderr": "reference_frontier time=8.000000000000 full_duration=10.000000000000 xyz=[8.000000000000,0.000000000000,0.000000000000]"
+    },
+    "adjusted_commit": {
+      "returncode": 0,
+      "stdout": "final_plan_success=1\nadjusted_commit: PASS\n",
+      "stderr": "Local target was adjusted to a nearby collision-free pointreference_window_committed time=4.500000000000 full_duration=10.000000000000"
+    },
+    "failed_progress": {
+      "returncode": 0,
+      "stdout": "final_plan_success=0\nfailed_progress: PASS\n",
+      "stderr": "reference_prefix_proposal time=2.500000000000 projected=0.000000000000 remaining=2 xyz=[2.500000000000,0.000000000000,0.000000000000]reference_prefix_proposal time=1.250000000000 projected=0.000000000000 remaining=1 xyz=[1.250000000000,0.000000000000,0.000000000000]reference_prefix_proposal time=0.625000000000 projected=0.000000000000 remaining=0 xyz=[0.625000000000,0.000000000000,0.000000000000]"
+    },
+    "prefix_success": {
+      "returncode": 0,
+      "stdout": "final_plan_success=1\nprefix_success: PASS\n",
+      "stderr": "reference_prefix_proposal time=2.500000000000 projected=0.000000000000 remaining=2 xyz=[2.500000000000,0.000000000000,0.000000000000]reference_window_committed time=2.500000000000 full_duration=10.000000000000Local reference window complete (2.50/10.00s); continuing along the global path"
+    },
+    "shared_budget": {
+      "returncode": 0,
+      "stdout": "final_plan_success=0\nfinal_plan_success=0\nfinal_plan_success=0\nshared_budget: PASS\n",
+      "stderr": "reference_prefix_proposal time=2.500000000000 projected=0.000000000000 remaining=2 xyz=[2.500000000000,0.000000000000,0.000000000000]reference_prefix_proposal time=1.250000000000 projected=0.000000000000 remaining=1 xyz=[1.250000000000,0.000000000000,0.000000000000]reference_prefix_proposal time=0.625000000000 projected=0.000000000000 remaining=0 xyz=[0.625000000000,0.000000000000,0.000000000000]"
+    },
+    "no_frontier": {
+      "returncode": 0,
+      "stdout": "no_frontier: PASS\n",
+      "stderr": "Target is occupied and no collision-free point was found on the global trajectoryTarget is occupied and no collision-free point was found on the global trajectory"
+    },
+    "near_goal": {
+      "returncode": 0,
+      "stdout": "near_goal: PASS\n",
+      "stderr": ""
+    },
+    "frontier_refresh": {
+      "returncode": 0,
+      "stdout": "final_plan_success=1\nfinal_plan_success=1\nfinal_plan_success=1\nfrontier_refresh: PASS\n",
+      "stderr": "reference_frontier time=8.000000000000 full_duration=10.000000000000 xyz=[8.000000000000,0.000000000000,0.000000000000]reference_window_committed time=8.000000000000 full_duration=10.000000000000reference_frontier time=6.000000000000 full_duration=10.000000000000 xyz=[6.000000000000,0.000000000000,0.000000000000]reference_window_committed time=6.000000000000 full_duration=10.000000000000reference_window_committed time=10.000000000000 full_duration=10.000000000000"
+    },
+    "unchanged_positive": {
+      "returncode": 0,
+      "stdout": "final_plan_success=1\nunchanged_positive: PASS\n",
+      "stderr": "reference_window_committed time=5.000000000000 full_duration=10.000000000000Local reference window complete (5.00/10.00s); continuing along the global path"
+    },
+    "legacy_goal_adjustment": {
+      "returncode": 0,
+      "stdout": "legacy_goal_adjustment: PASS\n",
+      "stderr": "Target [10.00, 0.00, 0.00] is occupied; using [8.00, 0.00, 0.00]"
+    },
+    "new_route_reset": {
+      "returncode": 0,
+      "stdout": "final_plan_success=1\nnew_route_reset: PASS\n",
+      "stderr": "reference_window_committed time=4.000000000000 full_duration=4.000000000000"
+    }
+  },
+  "claim": "Actual target selection, replan wrappers and existing expiry block. Route, manager complete-planning verdict and ROS are doubles; no optimizer/map or physical-stop claim."
+}

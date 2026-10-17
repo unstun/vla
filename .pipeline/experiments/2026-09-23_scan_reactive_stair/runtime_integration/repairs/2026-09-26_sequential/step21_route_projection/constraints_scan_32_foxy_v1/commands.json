@@ -1,0 +1,51 @@
+[
+  {
+    "label": "mkdir",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "mkdir /home/sun/vla_exec/2026-09-26_stair_repairs/constraints_scan_32_foxy_v1"
+    ],
+    "returncode": 0
+  },
+  {
+    "label": "sync",
+    "command": [
+      "rsync",
+      "-a",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step21_route_projection/constraints_scan_32_foxy_v1/package/",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_repairs/constraints_scan_32_foxy_v1/"
+    ],
+    "returncode": 0
+  },
+  {
+    "label": "tests",
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=15",
+      "gpu5070ti",
+      "timeout --kill-after=5 100 podman run --rm --pull=never --network=none --name vla-constraints-scan_32 -v /home/sun/vla_exec/2026-09-26_stair_repairs/constraints_scan_32_foxy_v1:/test:rw e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 python3 /test/worker.py --worker"
+    ],
+    "returncode": 0
+  },
+  {
+    "label": "collect",
+    "command": [
+      "rsync",
+      "-a",
+      "--include=/result.json",
+      "--include=/compile.log",
+      "--exclude=*",
+      "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_repairs/constraints_scan_32_foxy_v1/",
+      "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step21_route_projection/constraints_scan_32_foxy_v1/"
+    ],
+    "returncode": 0
+  }
+]

@@ -1,0 +1,150 @@
+{
+  "compile_command": [
+    "clang++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-DEIGEN_INITIALIZE_MATRICES_BY_NAN",
+    "-I/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step21_route_projection/constraints_scan_31_local_v1/package",
+    "-I/Users/sun/tongbu/study/phdproject/machine-dog-nav/.pipeline/experiments/2026-09-04_pct_scan_lite3_stairs/local_macos/runtime/dependencies/source/gtsam-4.2/gtsam/3rdparty/Eigen",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step21_route_projection/constraints_scan_31_local_v1/package/test.cpp",
+    "-o",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step21_route_projection/constraints_scan_31_local_v1/package/native_tests"
+  ],
+  "compile_exit": 0,
+  "inputs_sha256": {
+    "worker.py": "c83064e40452f5d6c51ef6184626b59a2bad5c81bea30846f4d84ca61ed2eaa0",
+    "native_blocks.inc": "07ff673d49338c8f48501a35d9a6333a137e18bc720538e7d79d57e35c1aa55e",
+    "recorded_provenance.json": "4ee7a5be5c04c22a54961df9b1945227428f091b55be3d639346dace2b58fd07",
+    "source_optimizer.h": "ddd2c2e812b2dd59bb32f383c093246ebe12a9a667ae93d448ef5d1e4b9ef926",
+    "rebound_constraint_utils.h": "cc16da1d3974982a771a79f93240053e12bfa7d6bf0dfaf478595fbf986cbaaa",
+    "test.cpp": "0876ae7b2966bd0424922bc40445f01bc0cbfa787cdd74672225c4e6d8676996",
+    "native_init.inc": "45ce7d4f4ff7da2600bc8fab09ee837bd3769995b971a3ddeefe54eb95eed134",
+    "native_control_points.inc": "6bbb33e4ce4a39acce54aef7beb9338b1d32d54da3dd3eafc3a35711dacb0b88",
+    "recorded_projection.txt": "f8266c3e469ee5b75e8ddd052356d14a4507d10dc10fc910d25f7ddfa12bf273",
+    "source_optimizer.cpp": "9d6c02376d7b0ea3b163d25e9c4c937a76025b109ba2412d8ecfb1c17b9fad7f",
+    "extraction.json": "b120a9c975d27e904bec2533a2be0d7fec1b19e1523f16b3c0ed30c551caf779",
+    "rclcpp/rclcpp.hpp": "2b29ba5bab9d812de6e6151298ed507005c8d24c8e20af17007d7e2c1f2c5c47"
+  },
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "cases": {
+    "empty_route": {
+      "returncode": 0,
+      "stdout": "PASS empty_route\n",
+      "stderr": "A-star path has fewer than 2 points; drop collision segmentrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.5951990830071736
+    },
+    "no_intersection": {
+      "returncode": 0,
+      "stdout": "PASS no_intersection\n",
+      "stderr": "Failed to generate rebound directionrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.00769679200311657
+    },
+    "stale_intersection": {
+      "returncode": 0,
+      "stdout": "PASS stale_intersection\n",
+      "stderr": "",
+      "wall_s": 0.0055050420050974935
+    },
+    "zero_direction": {
+      "returncode": 0,
+      "stdout": "PASS zero_direction\n",
+      "stderr": "",
+      "wall_s": 0.0047329999943031
+    },
+    "rebound_stale_intersection": {
+      "returncode": 0,
+      "stdout": "PASS rebound_stale_intersection\n",
+      "stderr": "",
+      "wall_s": 0.004292541998438537
+    },
+    "rebound_zero_direction": {
+      "returncode": 0,
+      "stdout": "PASS rebound_zero_direction\n",
+      "stderr": "Failed to generate rebound directionrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.003287667001131922
+    },
+    "valid_then_zero": {
+      "returncode": 0,
+      "stdout": "PASS valid_then_zero\n",
+      "stderr": "",
+      "wall_s": 0.0027986670029349625
+    },
+    "valid_constraints": {
+      "returncode": 0,
+      "stdout": "PASS valid_constraints\n",
+      "stderr": "",
+      "wall_s": 0.0031479580065933987
+    },
+    "no_collision": {
+      "returncode": 0,
+      "stdout": "PASS no_collision\n",
+      "stderr": "",
+      "wall_s": 0.0027995830023428425
+    },
+    "short_segment": {
+      "returncode": 0,
+      "stdout": "PASS short_segment\n",
+      "stderr": "",
+      "wall_s": 0.0029587909957626835
+    },
+    "initial_mode": {
+      "returncode": 0,
+      "stdout": "PASS initial_mode\n",
+      "stderr": "",
+      "wall_s": 0.0023490000021411106
+    },
+    "retry_mode": {
+      "returncode": 0,
+      "stdout": "PASS retry_mode\n",
+      "stderr": "",
+      "wall_s": 0.002581082997494377
+    },
+    "callback_mode": {
+      "returncode": 0,
+      "stdout": "PASS callback_mode\n",
+      "stderr": "",
+      "wall_s": 0.0024924590106820688
+    },
+    "merge_mode": {
+      "returncode": 0,
+      "stdout": "PASS merge_mode\n",
+      "stderr": "A-star failed on a collision segment; merge it with the next segment",
+      "wall_s": 0.0023087089939508587
+    },
+    "failure_modes": {
+      "returncode": 0,
+      "stdout": "PASS failure_modes\n",
+      "stderr": "A-star failed; aborting optimizationA-star errorrebound_no_valid_new_constraints; aborting this optimizationA-star path has fewer than 2 pointsA-star path has fewer than 2 points; drop collision segmentrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.0025460409960942343
+    },
+    "reuse_modes": {
+      "returncode": 0,
+      "stdout": "PASS reuse_modes\n",
+      "stderr": "",
+      "wall_s": 0.0022865000064484775
+    },
+    "recorded_projection": {
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "Failed to generate rebound directionrebound_no_valid_new_constraints; aborting this optimizationFAIL recorded folded segment did not obtain guidance\n",
+      "wall_s": 0.0027537080022739246
+    },
+    "blocked_projection_heading": {
+      "returncode": 0,
+      "stdout": "PASS blocked_projection_heading\n",
+      "stderr": "Failed to generate rebound directionrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.002954791998490691
+    },
+    "mismatched_projection_route": {
+      "returncode": 0,
+      "stdout": "PASS mismatched_projection_route\n",
+      "stderr": "Failed to generate rebound directionrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.002374792005866766
+    }
+  },
+  "claim": "Actual full native initControlPoints and check_collision_and_rebound methods plus assignment block and ControlPoints. Map/search/logger are doubles. Search spy verifies exact-endpoint mode and unchanged control-column endpoints; actual route and curve acceptance require runtime replay.",
+  "all_passed": false
+}

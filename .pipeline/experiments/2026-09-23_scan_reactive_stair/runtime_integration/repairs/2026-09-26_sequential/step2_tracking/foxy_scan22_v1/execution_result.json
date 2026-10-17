@@ -1,0 +1,110 @@
+{
+  "completed": true,
+  "gpu_used": false,
+  "image": "e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8",
+  "remote": "/home/sun/vla_exec/2026-09-26_stair_repairs/foxy_scan22_v1",
+  "commands": [
+    {
+      "label": "mkdir",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "gpu5070ti",
+        "mkdir /home/sun/vla_exec/2026-09-26_stair_repairs/foxy_scan22_v1"
+      ],
+      "returncode": 0,
+      "wall_s": 4.30395633399894
+    },
+    {
+      "label": "sync",
+      "command": [
+        "rsync",
+        "-a",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step2_tracking/foxy_scan22_v1/remote_package/",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_repairs/foxy_scan22_v1/"
+      ],
+      "returncode": 0,
+      "wall_s": 45.11985145800281
+    },
+    {
+      "label": "input_gate",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "gpu5070ti",
+        "python3 -"
+      ],
+      "returncode": 0,
+      "wall_s": 4.860523166003986
+    },
+    {
+      "label": "replay",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "gpu5070ti",
+        "timeout --kill-after=5 200 podman run --rm --pull=never --network=none --name vla-foreground-foxy_scan22_v1 -e ROS_DOMAIN_ID=215 -e ROS_LOCALHOST_ONLY=1 -e PYTHONDONTWRITEBYTECODE=1 -e OPENBLAS_NUM_THREADS=1 -v /home/sun/vla_exec/2026-09-16_pi_cortex_harnessvln/p2b/builds/scan_22:/workspace:ro -v /home/sun/vla_exec/2026-09-26_stair_repairs/foxy_scan22_v1:/audit:rw e4aa715467b93f20a9d9cdbb6a1dbd0d3c8c1e033e7792f2d889cba03db227d8 bash -lc 'set -e\nsource /opt/ros/foxy/setup.bash\nsource /workspace/install/setup.bash\nmkdir /audit/results\npython3 -c '\"'\"'import numpy; assert numpy.__version__ == \"1.17.4\"; print(numpy.__version__)'\"'\"' > /audit/results/numpy_before.log\npython3 /audit/unpack_foreground_dependency.py --wheel /audit/scipy.whl --manifest /audit/dependency_manifest.json --destination /tmp/foreground_dependencies --receipt /audit/results/dependency_receipt.json\nexport PYTHONPATH=/tmp/foreground_dependencies:$PYTHONPATH\npython3 -m unittest discover -s /audit/unit_source -p '\"'\"'test_*.py'\"'\"' > /audit/results/unit_tests.log 2>&1\npython3 /audit/replay_foreground.py numeric --inputs /audit/inputs --background /audit/building2_9.pcd --output /audit/results/numeric\npython3 /audit/replay_foreground.py ros --inputs /audit/inputs --background /audit/building2_9.pcd --output /audit/results/ros\n'"
+      ],
+      "returncode": 0,
+      "wall_s": 74.7197819580033
+    },
+    {
+      "label": "collect",
+      "command": [
+        "rsync",
+        "-a",
+        "gpu5070ti:/home/sun/vla_exec/2026-09-26_stair_repairs/foxy_scan22_v1/results/",
+        "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step2_tracking/foxy_scan22_v1/results/"
+      ],
+      "returncode": 0,
+      "wall_s": 9.89437758299755
+    },
+    {
+      "label": "returned_hashes",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "gpu5070ti",
+        "python3 -"
+      ],
+      "returncode": 0,
+      "wall_s": 4.713753917007125
+    },
+    {
+      "label": "input_gate_after",
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=15",
+        "gpu5070ti",
+        "python3 -"
+      ],
+      "returncode": 0,
+      "wall_s": 4.825305417005438
+    }
+  ],
+  "returned_sha256": {
+    "unit_tests.log": "51e0afdaa1c0cacbe3c4a33aeaa333561d8cead537dc9b565c9010aff3eac5f0",
+    "numpy_before.log": "ab4b8fa32eb50581817f3e699fbf06b06fbb3be717df1880f733ad22f7064808",
+    "dependency_receipt.json": "69e6a7c2562a24348fbe8c8e2bc43f12eee5b139027014c4ffaf7ed94d1839a7",
+    "ros/result.json": "17a97e99e0471207ecfcd2ad6ccfbb447e0bb7e9092da574e92562c3f71b30ba",
+    "ros/walk_v4_ego.log": "f96b0209a4d70a6d38c0bd983767e325953df409e29f40887d4e6fd887f9014c",
+    "ros/walk_v5_actor_right_v2.log": "fa0a02333509b4bb90cfd44e39eba367849ac4bb4108a80f0348016c97932b60",
+    "numeric/result.json": "6c0bbb3debbf4889840507a5af8a42cb7bfcc02aeaf132d4dba58d63306550a3"
+  },
+  "returned_hashes_match": true
+}

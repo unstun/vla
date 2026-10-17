@@ -1,0 +1,74 @@
+--- scan_31/src/bspline_opt/src/bspline_optimizer.cpp
++++ scan_32/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -845,6 +845,7 @@
+ 
+         // step 2
+         int got_intersection_id = -1;
++        bool segment_has_geometric_intersection = false;
+         for (int j = segment_ids[i].first + 1; j < segment_ids[i].second; ++j)
+         {
+           Eigen::Vector3d ctrl_pts_law(cps_.points.col(j + 1) - cps_.points.col(j - 1)), intersection_point = Eigen::Vector3d::Zero();
+@@ -886,6 +887,7 @@
+ 
+           if (found_intersection)
+           {
++            segment_has_geometric_intersection = true;
+             double length = (intersection_point - cps_.points.col(j)).norm();
+             if (std::isfinite(length) && length > 1e-5)
+             {
+@@ -912,8 +914,45 @@
+           }
+         }
+ 
++        if (!segment_has_geometric_intersection && cps_.points.allFinite()) {
++          size_t projection_clear = 0, projection_added = 0;
++          for (int j = segment_ids[i].first + 1; j < segment_ids[i].second; ++j) {
++            Eigen::Vector3d target;
++            if (!reactive_stair::nearestPointOnMatchingRoute(a_star_paths[i],
++                cps_.points.col(segment_ids[i].first), cps_.points.col(segment_ids[i].second),
++                cps_.points.col(j), target)) continue;
++            const double yaw = estimateControlPointYaw(cps_.points, j);
++            if (!std::isfinite(yaw) || grid_map_->getInflateOccupancy(target, yaw) != 0) continue;
++            ++projection_clear;
++            const double length = (target - cps_.points.col(j)).norm();
++            // Same base-point ray, clearance cost and paired normalized write
++            // as the ordinary intersection branch. No direct control rewrite.
++            for (double a = length; a >= 0.0; a -= grid_map_->getResolution()) {
++              const Eigen::Vector3d sample = (a / length) * target + (1 - a / length) * cps_.points.col(j);
++              const bool occupied = grid_map_->getInflateOccupancy(sample, yaw) != 0;
++              if (occupied || a < grid_map_->getResolution()) {
++                if (occupied) a += grid_map_->getResolution();
++                if (reactive_stair::appendReboundConstraint(cps_, j,
++                    (a / length) * target + (1 - a / length) * cps_.points.col(j),
++                    (target - cps_.points.col(j)).normalized())) {
++                  got_intersection_id = j;
++                  ++committed_pairs;
++                  ++projection_added;
++                }
++                break;
++              }
++            }
++          }
++          RCLCPP_INFO(rclcpp::get_logger("bspline_opt"),
++                      "rebound_route_projection begin=%d end=%d clear_targets=%zu committed_pairs=%zu",
++                      segment_ids[i].first, segment_ids[i].second, projection_clear, projection_added);
++        }
++
++        // Only ordinary plane constraints keep the original propagation.
++        // Projection candidates are checked per control; do not copy one to
++        // another control whose own target/heading was rejected.
+         //step 3
+-        if (got_intersection_id >= 0)
++        if (got_intersection_id >= 0 && segment_has_geometric_intersection)
+         {
+           for (int j = got_intersection_id + 1; j <= segment_ids[i].second; ++j)
+             if (!cps_.flag_temp[j])
+@@ -927,7 +966,7 @@
+               if (reactive_stair::copyReboundConstraint(cps_, j, j + 1)) ++committed_pairs;
+             }
+         }
+-        else
++        else if (got_intersection_id < 0)
+           RCLCPP_WARN(rclcpp::get_logger("bspline_opt"), "Failed to generate rebound direction");
+       }
+ 

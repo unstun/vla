@@ -1,0 +1,70 @@
+{
+  "compile_command": [
+    "g++",
+    "-DFIXED_QUEUE_TEST",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-I/test/stubs",
+    "-I/test/native/path_searching/include",
+    "-I/test/native/plan_env/include",
+    "-I/usr/include/eigen3",
+    "/test/native/path_searching/src/dyn_a_star.cpp",
+    "/test/test.cpp",
+    "-o",
+    "/test/native_tests"
+  ],
+  "compile_exit": 0,
+  "inputs_match": true,
+  "cases": {
+    "blocked_first": {
+      "exit_code": 0,
+      "stdout": "status=0 rejected_gateway=1 accepted_gateway=1\nblocked_first: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0011224760000914102
+    },
+    "queue_order": {
+      "exit_code": 0,
+      "stdout": "queue_order: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0008458270003757207
+    },
+    "round_reuse": {
+      "exit_code": 0,
+      "stdout": "status=0 rejected_gateway=1 accepted_gateway=1\nround_reuse: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0007400979993690271
+    },
+    "no_path": {
+      "exit_code": 0,
+      "stdout": "no_path: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0006958949998079333
+    },
+    "vertical_route": {
+      "exit_code": 0,
+      "stdout": "vertical_route: PASS\n",
+      "stderr": "",
+      "wall_s": 0.0009039959986694157
+    },
+    "improved_cost": {
+      "exit_code": 0,
+      "stdout": "improved_cost: PASS\n",
+      "stderr": "",
+      "wall_s": 0.01812942499964265
+    }
+  },
+  "source_sha256": {
+    "worker.py": "24bbc7446a13c348c536c29424540737974ea5d740b674e71e53693342049b16",
+    "test.cpp": "21082bf30ac4c5b684563af205a26a72c38233ab8a60db7741961163fc1c7363",
+    "stubs/rclcpp/rclcpp.hpp": "7588cee4bb5005adeea26e1b5f15c758fd73d5182eb475e287ec18834dd707c2",
+    "stubs/plan_env/grid_map.h": "f759a3d6231925d900524219e4b885ec545861d7008227f743af28c995063744",
+    "native/path_searching/src/dyn_a_star.cpp": "98ffad6b9c6f7896f061f1b8544dc9a5b729335ddbb0fe9e2e6771f854329e96",
+    "native/path_searching/include/path_searching/dyn_a_star.h": "93cb783b1a2983d1c608036e644c748ce9594b1b1bfb631cb59b384835074421",
+    "native/plan_env/include/plan_env/astar_grid_coordinates.h": "9fd307fec25f57db57d32a5ced8d093baf60dd5a52f817445ffd4f9626d2ef41"
+  },
+  "claim": "Actual native search implementation; only collision and ROS logger are test doubles",
+  "all_passed": true
+}

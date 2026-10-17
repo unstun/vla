@@ -1,0 +1,81 @@
+{
+  "inputs_sha256": {
+    "worker.py": "8034abb38358f4486d9adcbe725713cd8c572226fd94d9bc17ca1788dc309cc8",
+    "source_fsm.h": "0f5e148f5eddaeaec35b23a1a0443b6582d4c5288400a452a5afc984287a97c8",
+    "test.cpp": "d9fa3f83a722176a5262a68c2a6195584947ca4fb16cc531680ebec84dc6bd2b",
+    "source_fsm.cpp": "7e2f5153bd2b612234fd58a89cabd4e7bd80be2fa56948e6913f0462b1163596",
+    "native_target_methods.inc": "97d8dcba6f7f7811606139403660b3677a832f81021f8bfad29ded4dbc450a75"
+  },
+  "compile_command": [
+    "clang++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-I/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step22_reference_prefix/native_scan_32_local_v1/package",
+    "-I/Users/sun/tongbu/study/phdproject/machine-dog-nav/.pipeline/experiments/2026-09-04_pct_scan_lite3_stairs/local_macos/runtime/dependencies/source/gtsam-4.2/gtsam/3rdparty/Eigen",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step22_reference_prefix/native_scan_32_local_v1/package/test.cpp",
+    "-o",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step22_reference_prefix/native_scan_32_local_v1/package/native_tests"
+  ],
+  "compile_exit": 0,
+  "cases": {
+    "global_preserved": {
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "Target [10.00, 0.00, 0.00] is occupied; using [8.00, 0.00, 0.00]FAIL: reference goal or full duration was changed\n"
+    },
+    "adjusted_commit": {
+      "returncode": 1,
+      "stdout": "final_plan_success=1\n",
+      "stderr": "Local target was adjusted to a nearby collision-free pointFAIL: fixture did not adjust original target\n"
+    },
+    "failed_progress": {
+      "returncode": 1,
+      "stdout": "final_plan_success=0\n",
+      "stderr": "FAIL: failed proposal advanced cursor or published\n"
+    },
+    "prefix_success": {
+      "returncode": 1,
+      "stdout": "final_plan_success=0\n",
+      "stderr": "FAIL: short route prefix was not tried\n"
+    },
+    "shared_budget": {
+      "returncode": 1,
+      "stdout": "final_plan_success=0\nfinal_plan_success=0\nfinal_plan_success=0\n",
+      "stderr": "FAIL: outer initialization attempts multiplied or skipped shared prefix budget\n"
+    },
+    "no_frontier": {
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "FAIL: negative/Unknown occupancy counted as free frontier\n"
+    },
+    "near_goal": {
+      "returncode": 1,
+      "stdout": "final_plan_success=0\n",
+      "stderr": "FAIL: too-near proposal reached manager or changed cursor\n"
+    },
+    "frontier_refresh": {
+      "returncode": 1,
+      "stdout": "final_plan_success=1\n",
+      "stderr": "Local target was adjusted to a nearby collision-free pointFAIL: frontier point or terminal stop stale\n"
+    },
+    "unchanged_positive": {
+      "returncode": 0,
+      "stdout": "final_plan_success=1\nunchanged_positive: PASS\n",
+      "stderr": "Local reference window complete (5.00/10.00s); continuing along the global path"
+    },
+    "legacy_goal_adjustment": {
+      "returncode": 0,
+      "stdout": "legacy_goal_adjustment: PASS\n",
+      "stderr": "Target [10.00, 0.00, 0.00] is occupied; using [8.00, 0.00, 0.00]"
+    },
+    "new_route_reset": {
+      "returncode": 0,
+      "stdout": "final_plan_success=1\nnew_route_reset: PASS\n",
+      "stderr": ""
+    }
+  },
+  "claim": "Actual target selection, replan wrappers and existing expiry block. Route, manager complete-planning verdict and ROS are doubles; no optimizer/map or physical-stop claim."
+}

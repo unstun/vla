@@ -19,7 +19,7 @@
  GROUND_MESH_PRIM = "/World/ground"
  TERRAIN_MESH_PRIM = "/World/ground/terrain/Mesh"
  BUILDING_TRIANGLE_COUNT = 16448
-@@ -42,6 +46,1542 @@
+@@ -42,6 +46,1734 @@
  
  def write_json(path: Path, payload) -> None:
      Path(path).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -1559,10 +1559,217 @@
 +            latched_yaw = float(body_yaw)
 +        return latched_yaw, latched_yaw
 +    raise AdapterFailure("unsupported camera heading mode: %r" % (mode,))
++
++
++# ---- unmapped box geometry, inserted verbatim from unmapped_box.py ------
++UNMAPPED_BOX_SOURCE_REL = '.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/unmapped_box.py'
++UNMAPPED_BOX_SOURCE_SHA256 = '5b9a593f0a13f5a58ba25338f17db9f6ec03d31c1763c58b5a8805583776bab1'
++UNMAPPED_BOX_BODY_SHA256 = 'f05644394891daf4c4770318428a42e5d6e590077de6ddaa8a65850ab1c1f2d6'
++import math
++
++UNMAPPED_BOX_MODES = ("off", "spawn", "lidar")
++UNMAPPED_BOX_PRIM = "/World/unmapped_box"
++UNMAPPED_BOX_SIZE_XYZ_M = (0.4, 0.4, 0.8)
++UNMAPPED_BOX_OFFSET_M = 2.5
++UNMAPPED_BOX_HALF_HEIGHT_M = 0.4
++UNMAPPED_BOX_AABB_PAD_M = 0.01
++# Pinned Lite3 URDF torso extents (09-14 survey) plus 0.25 m conservative pad.
++ROBOT_TORSO_MIN_XYZ_M = (-0.269, -0.109, -0.10)
++ROBOT_TORSO_MAX_XYZ_M = (0.279, 0.109, 0.10)
++ROBOT_AABB_EXPAND_M = 0.25
++
++
++class UnmappedBoxError(ValueError):
++    """Invalid mode or a spawn that intersects the robot AABB."""
++
++
++def box_pose_from_stand(start_ground_xyz_m, start_tangent_yaw, offset_m=UNMAPPED_BOX_OFFSET_M):
++    """World cuboid pose from the frozen stand start and D3 offset."""
++    start = tuple(float(value) for value in start_ground_xyz_m)
++    yaw = float(start_tangent_yaw)
++    offset = float(offset_m)
++    if len(start) != 3 or not all(math.isfinite(value) for value in start + (yaw, offset)):
++        raise UnmappedBoxError("stand start pose is not three finite metres plus a finite yaw")
++    center = (
++        start[0] + offset * math.cos(yaw),
++        start[1] + offset * math.sin(yaw),
++        start[2] + UNMAPPED_BOX_HALF_HEIGHT_M,
++    )
++    return {
++        "prim": UNMAPPED_BOX_PRIM,
++        "center_xyz_m": center,
++        "size_xyz_m": UNMAPPED_BOX_SIZE_XYZ_M,
++        "offset_m": offset,
++        "start_ground_xyz_m": start,
++        "start_tangent_yaw": yaw,
++    }
++
++
++def expanded_aabb(center_xyz_m, size_xyz_m, pad_m=UNMAPPED_BOX_AABB_PAD_M):
++    """Axis-aligned box with the fallback 0.01 m pad on every side."""
++    center = tuple(float(value) for value in center_xyz_m)
++    size = tuple(float(value) for value in size_xyz_m)
++    pad = float(pad_m)
++    if len(center) != 3 or len(size) != 3 or any(value <= 0.0 for value in size) or pad < 0.0:
++        raise UnmappedBoxError("AABB centre, size and pad must be finite with positive size")
++    if not all(math.isfinite(value) for value in center + size + (pad,)):
++        raise UnmappedBoxError("AABB centre, size and pad must be finite")
++    half = (size[0] / 2.0, size[1] / 2.0, size[2] / 2.0)
++    return {
++        "min_xyz_m": (center[0] - half[0] - pad, center[1] - half[1] - pad, center[2] - half[2] - pad),
++        "max_xyz_m": (center[0] + half[0] + pad, center[1] + half[1] + pad, center[2] + half[2] + pad),
++        "pad_m": pad,
++    }
++
++
++def point_in_aabb(point_xyz_m, aabb_min_xyz_m, aabb_max_xyz_m):
++    point = tuple(float(value) for value in point_xyz_m)
++    lo = tuple(float(value) for value in aabb_min_xyz_m)
++    hi = tuple(float(value) for value in aabb_max_xyz_m)
++    return all(lo[i] <= point[i] <= hi[i] for i in range(3))
++
++
++def aabbs_intersect(first, second):
++    for axis in range(3):
++        if first["max_xyz_m"][axis] < second["min_xyz_m"][axis]:
++            return False
++        if second["max_xyz_m"][axis] < first["min_xyz_m"][axis]:
++            return False
++    return True
++
++
++def robot_aabb_world(start_ground_xyz_m, start_tangent_yaw, body_height_m,
++                     expand_m=ROBOT_AABB_EXPAND_M):
++    """World AABB of the URDF torso expanded by 0.25 m at the spawn pose."""
++    start = tuple(float(value) for value in start_ground_xyz_m)
++    yaw = float(start_tangent_yaw)
++    height = float(body_height_m)
++    expand = float(expand_m)
++    origin = (start[0], start[1], start[2] + height)
++    mins = [ROBOT_TORSO_MIN_XYZ_M[i] - expand for i in range(3)]
++    maxs = [ROBOT_TORSO_MAX_XYZ_M[i] + expand for i in range(3)]
++    cos_yaw = math.cos(yaw)
++    sin_yaw = math.sin(yaw)
++    xs = []
++    ys = []
++    zs = []
++    for x in (mins[0], maxs[0]):
++        for y in (mins[1], maxs[1]):
++            for z in (mins[2], maxs[2]):
++                xs.append(origin[0] + cos_yaw * x - sin_yaw * y)
++                ys.append(origin[1] + sin_yaw * x + cos_yaw * y)
++                zs.append(origin[2] + z)
++    return {"min_xyz_m": (min(xs), min(ys), min(zs)), "max_xyz_m": (max(xs), max(ys), max(zs))}
++
++
++def require_no_robot_overlap(box_aabb, robot_aabb):
++    if aabbs_intersect(box_aabb, robot_aabb):
++        raise UnmappedBoxError("unmapped box AABB intersects the robot AABB at spawn")
++
++
++def rotate_vector_wxyz(quaternion_wxyz, vector_xyz):
++    w, x, y, z = [float(value) for value in quaternion_wxyz]
++    vx, vy, vz = [float(value) for value in vector_xyz]
++    ux = 2.0 * (y * vz - z * vy)
++    uy = 2.0 * (z * vx - x * vz)
++    uz = 2.0 * (x * vy - y * vx)
++    return (
++        vx + w * ux + (y * uz - z * uy),
++        vy + w * uy + (z * ux - x * uz),
++        vz + w * uz + (x * uy - y * ux),
++    )
++
++
++def sensor_points_to_world(points_sensor_frame, sensor_position, sensor_quaternion_wxyz):
++    """Rotate sensor-frame xyz by wxyz, then add sensor_position."""
++    origin = tuple(float(value) for value in sensor_position)
++    world = []
++    for point in points_sensor_frame:
++        rotated = rotate_vector_wxyz(sensor_quaternion_wxyz, point)
++        world.append((rotated[0] + origin[0], rotated[1] + origin[1], rotated[2] + origin[2]))
++    return world
++
++
++def aabb_hit_count(world_points, aabb):
++    lo = aabb["min_xyz_m"]
++    hi = aabb["max_xyz_m"]
++    return sum(1 for point in world_points if point_in_aabb(point, lo, hi))
++
++
++def lidar_mesh_prim_paths(base_paths, mode):
++    """Append the sibling prim string only in lidar mode. Never wrap RaycastTargetCfg."""
++    if mode not in UNMAPPED_BOX_MODES:
++        raise UnmappedBoxError("unsupported --unmapped-box value: %r" % (mode,))
++    paths = list(base_paths)
++    if mode == "lidar":
++        paths.append(UNMAPPED_BOX_PRIM)
++    return paths
++
++
++def unmapped_box_identity(mode, start_ground_xyz_m, start_tangent_yaw, body_height_m,
++                          offset_m=UNMAPPED_BOX_OFFSET_M):
++    if mode not in UNMAPPED_BOX_MODES:
++        raise UnmappedBoxError("unsupported --unmapped-box value: %r" % (mode,))
++    pose = box_pose_from_stand(start_ground_xyz_m, start_tangent_yaw, offset_m=offset_m)
++    box_aabb = expanded_aabb(pose["center_xyz_m"], pose["size_xyz_m"])
++    robot_aabb = robot_aabb_world(start_ground_xyz_m, start_tangent_yaw, body_height_m)
++    intersects = aabbs_intersect(box_aabb, robot_aabb)
++    return {
++        "schema_version": 1,
++        "mode": mode,
++        "prim": UNMAPPED_BOX_PRIM,
++        "center_xyz_m": list(pose["center_xyz_m"]),
++        "size_xyz_m": list(UNMAPPED_BOX_SIZE_XYZ_M),
++        "aabb_pad_m": UNMAPPED_BOX_AABB_PAD_M,
++        "offset_m": float(offset_m),
++        "spawn": mode in ("spawn", "lidar"),
++        "lidar_target": mode == "lidar",
++        "robot_overlap": {
++            "intersects": intersects,
++            "robot_aabb": {
++                "min_xyz_m": list(robot_aabb["min_xyz_m"]),
++                "max_xyz_m": list(robot_aabb["max_xyz_m"]),
++            },
++            "box_aabb": {
++                "min_xyz_m": list(box_aabb["min_xyz_m"]),
++                "max_xyz_m": list(box_aabb["max_xyz_m"]),
++            },
++        },
++    }
++
++def _unmapped_box_setup(mode, start_ground, start_yaw, body_height, output_dir):
++    """Pose, overlap fail-closed, and identity for --unmapped-box; off does not spawn."""
++    if mode not in UNMAPPED_BOX_MODES:
++        raise AdapterFailure("unsupported --unmapped-box value: %r" % (mode,))
++    identity = unmapped_box_identity(mode, start_ground, start_yaw, body_height)
++    identity["module"] = {
++        "path": UNMAPPED_BOX_SOURCE_REL,
++        "sha256": UNMAPPED_BOX_SOURCE_SHA256,
++        "body_sha256": UNMAPPED_BOX_BODY_SHA256,
++    }
++    write_json(Path(output_dir) / "unmapped_box_setup.json", identity)
++    if identity["spawn"] and identity["robot_overlap"]["intersects"]:
++        raise AdapterFailure("unmapped box AABB intersects the robot AABB at spawn")
++    return identity
  
  
  def _read_viewer_camera_intrinsics(stage, cam_prim_path: str, resolution) -> dict:
-@@ -147,6 +1687,9 @@
+@@ -115,6 +1847,14 @@
+     parser.add_argument("--lidar-horizontal-resolution", type=float, default=2.0)
+     parser.add_argument("--lidar-min-range", type=float, default=0.10)
+     parser.add_argument("--lidar-max-range", type=float, default=12.0)
++    parser.add_argument("--lidar-pattern-mode", choices=("uniform", "livox_mid360"), default="uniform",
++                        help="Opt-in Livox CSV geometric snapshot; uniform keeps the previous stand_probe")
++    parser.add_argument("--lidar-pattern-csv", type=Path, default=None,
++                        help="Pinned Livox mid360.csv; required only for livox_mid360")
++    parser.add_argument("--robot-asset", type=Path, default=None,
++                        help="Isaac-safe Lite3 sensor-rig URDF; required with livox_mid360")
++    parser.add_argument("--canonical-robot-asset", type=Path, default=None,
++                        help="canonical sensor-rig URDF; required with livox_mid360")
+     parser.add_argument("--terrain-filter-cell-size", type=float, default=0.30)
+     parser.add_argument("--terrain-filter-height-threshold", type=float, default=0.12)
+     parser.add_argument("--terrain-filter-neighbor-cells", type=int, default=1)
+@@ -147,6 +1887,9 @@
      parser.add_argument("--camera-height-m", type=float, default=0.55)
      parser.add_argument("--camera-look-ahead-m", type=float, default=0.6)
      parser.add_argument("--camera-look-down-m", type=float, default=0.25)
@@ -1572,7 +1779,7 @@
      parser.add_argument("--video-resolution", type=int, nargs=2, default=(1920, 1080))
      parser.add_argument("--cloud-record-stride", type=int, default=1)
      # Complete body state at every control step, independent of the point-cloud
-@@ -169,6 +1712,24 @@
+@@ -169,6 +1912,28 @@
      parser.add_argument("--no-freeze-gc", dest="freeze_gc", action="store_false")
      parser.add_argument("--feedback-dropout-start-s", type=float, default=-1.0)
      parser.add_argument("--feedback-dropout-wall-s", type=float, default=0.0)
@@ -1594,10 +1801,14 @@
 +                             "law to the hold, arming after 1 s of sim time; PRD D6)")
 +    parser.add_argument("--command-script", type=Path, default=None,
 +                        help="JSON command script; required by and only valid with --case scripted_walk")
++    parser.add_argument("--unmapped-box", choices=UNMAPPED_BOX_MODES, default="off",
++                        help="off: no extra cuboid (previous stand_probe). "
++                             "spawn: cuboid at /World/unmapped_box, omitted from mesh_prim_paths. "
++                             "lidar: cuboid plus the string target /World/unmapped_box")
      parser.add_argument("--seed", type=int, default=42)
      parser.add_argument("--device", default="cuda:0")
      return parser
-@@ -193,7 +1754,8 @@
+@@ -193,9 +1958,58 @@
  
  def validate_run_duration(case, duration):
      """Long runs require their own case; old dispatch bounds stay unchanged."""
@@ -1606,26 +1817,78 @@
 +               "stand_probe": 60.0, "scripted_walk": 60.0}.get(case, 45.0)
      if case not in CASES or not math.isfinite(duration) or not 0 < duration <= maximum:
          raise ValueError(f"duration-seconds must be within (0, {maximum:g}] for {case}")
++
++
++PINNED_SENSOR_RIG_CANONICAL_SHA256 = (
++    "d0a1be09f018c0ab31df26f69ad8e700bd88ec06ae5b0f4dfbcc4fddf21cec80"
++)
++PINNED_SENSOR_RIG_ISAAC_SHA256 = (
++    "803d552703bcc4f72ce15f38b95bc3f62e3e4ada0b42bf3ecf71b32b6590bb9d"
++)
++OFFICIAL_MID360_PATTERN_SHA256 = (
++    "aa1fc08b6a4400608dbd6ee832b7ea3a9c3c37197e734f60f58fe5abf762269a"
++)
++
++
++def _livox_mid360_validate_args(args) -> None:
++    """Fail closed before Isaac if livox_mid360 is missing the pinned CSV or rig."""
++    mode = getattr(args, "lidar_pattern_mode", "uniform")
++    csv_path = getattr(args, "lidar_pattern_csv", None)
++    robot = getattr(args, "robot_asset", None)
++    canonical = getattr(args, "canonical_robot_asset", None)
++    if mode == "uniform":
++        if any(value is not None for value in (csv_path, robot, canonical)):
++            raise ValueError(
++                "Livox CSV and sensor-rig URDFs are valid only with --lidar-pattern-mode livox_mid360"
++            )
++        return
++    if mode != "livox_mid360":
++        raise ValueError("--lidar-pattern-mode must be uniform or livox_mid360")
++    if csv_path is None or robot is None or canonical is None:
++        raise ValueError(
++            "livox_mid360 requires --lidar-pattern-csv, --robot-asset and --canonical-robot-asset"
++        )
++    csv_path = Path(csv_path)
++    robot = Path(robot)
++    canonical = Path(canonical)
++    if not csv_path.is_file() or not robot.is_file() or not canonical.is_file():
++        raise ValueError("livox_mid360 CSV or sensor-rig URDF is missing")
++    if sha256(csv_path) != OFFICIAL_MID360_PATTERN_SHA256:
++        raise ValueError("livox_mid360 CSV SHA-256 does not match the pinned Livox table")
++    if sha256(robot) != PINNED_SENSOR_RIG_ISAAC_SHA256:
++        raise ValueError("Isaac-safe Lite3 sensor-rig URDF hash mismatch")
++    if sha256(canonical) != PINNED_SENSOR_RIG_CANONICAL_SHA256:
++        raise ValueError("canonical Lite3 sensor-rig URDF hash mismatch")
++    if abs(float(args.sensor_period) - 0.10) > 1.0e-9:
++        raise ValueError("livox_mid360 requires a 0.1 s sensor period")
++    if abs(float(args.lidar_min_range) - 0.10) > 1.0e-9:
++        raise ValueError("livox_mid360 requires the 0.1 m blind-zone filter")
++    if abs(float(args.lidar_max_range) - 40.0) > 1.0e-9:
++        raise ValueError("livox_mid360 requires the conservative 40 m range")
  
-@@ -208,7 +1770,7 @@
+ 
+ def route_scope(case, scope):
+@@ -208,7 +2022,8 @@
  def execution_configuration(args):
      """Freeze every runner setting independently of host/artifact paths."""
      paths = {"scene", "runtime", "checkpoint", "route_artifact", "scope", "output",
 -             "execution_manifest"}
-+             "execution_manifest", "external_control_dir", "command_script"}
++             "execution_manifest", "external_control_dir", "command_script",
++             "lidar_pattern_csv", "robot_asset", "canonical_robot_asset"}
      # Round-trip normalizes argparse tuples and JSON lists identically.
      return json.loads(json.dumps({key: value for key, value in vars(args).items() if key not in paths}))
  
-@@ -240,6 +1802,8 @@
+@@ -240,6 +2055,9 @@
      prove which copy of this source the interpreter actually loaded.
      """
      args = build_parser().parse_args(argv)
 +    _validate_external_goal_args(args)
 +    _scripted_walk_validate_args(args)
++    _livox_mid360_validate_args(args)
      if args.case == "native_nominal" and args.contact_policy != "native_v12":
          raise SystemExit("native_nominal records contact and preserves native V12 termination")
      from .feedback_dropout import FeedbackDropout
-@@ -322,10 +1886,14 @@
+@@ -322,10 +2140,14 @@
      from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper  # noqa: E402
  
      __import__("robot_lab.tasks")
@@ -1640,7 +1903,85 @@
      if sha256(args.checkpoint) != v12.PINNED_CHECKPOINT_SHA256:
          raise AdapterFailure("checkpoint SHA-256 does not match the pinned V12 weights")
      if sha256(args.checkpoint) != frozen["checkpoint"]["sha256"]:
-@@ -480,6 +2048,9 @@
+@@ -369,7 +2191,7 @@
+     if contract["policy_observation_dimension"] != 450 or contract["action_dimension"] != 12:
+         raise AdapterFailure("pinned V12 observation/action contract changed")
+ 
+-    helper_args = v12._parser().parse_args([
++    helper_argv = [
+         "--output-dir", str(args.output),
+         "--checkpoint", str(args.checkpoint),
+         "--vendored-rsl-rl", str(args.runtime / "source/rsl_rl"),
+@@ -386,15 +2208,42 @@
+         "--lidar-horizontal-resolution", str(args.lidar_horizontal_resolution),
+         "--lidar-min-range", str(args.lidar_min_range),
+         "--lidar-max-range", str(args.lidar_max_range),
++        "--lidar-pattern-mode", str(args.lidar_pattern_mode),
+         "--max-vx", str(args.max_vx),
+         "--max-vy", str(args.max_vy),
+         "--max-wz", str(args.max_wz),
+         "--watchdog-seconds", str(args.watchdog_seconds),
+-    ])
++    ]
++    if args.lidar_pattern_csv is not None:
++        helper_argv += ["--lidar-pattern-csv", str(args.lidar_pattern_csv)]
++    if args.robot_asset is not None:
++        helper_argv += ["--robot-asset", str(args.robot_asset),
++                       "--canonical-robot-asset", str(args.canonical_robot_asset)]
++    helper_args = v12._parser().parse_args(helper_argv)
++    helper_args.mid360_pattern_table = None
++    if v12._official_mid360_enabled(helper_args):
++        try:
++            helper_args.mid360_pattern_table = v12.load_mid360_pattern(
++                helper_args.lidar_pattern_csv)
++        except v12.Mid360PatternError as error:
++            raise AdapterFailure("invalid livox_mid360 pattern: %s" % error) from error
++        if helper_args.mid360_pattern_table.points_per_scan != v12.MID360_POINTS_PER_SCAN:
++            raise AdapterFailure(
++                "livox_mid360 pattern does not produce exactly 20,000 rays per scan")
++        if v12._sha256(helper_args.robot_asset) != v12.PINNED_SENSOR_RIG_ISAAC_SHA256:
++            raise AdapterFailure("Isaac-safe Lite3 sensor-rig URDF hash mismatch")
++        if v12._sha256(helper_args.canonical_robot_asset) != v12.PINNED_SENSOR_RIG_CANONICAL_SHA256:
++            raise AdapterFailure("canonical Lite3 sensor-rig URDF hash mismatch")
+     # Reuse the pinned environment configuration path: zero command ranges, no
+     # domain randomization, external-mode episode length, and the existing
+     # navigation LiDAR construction with its audited mount transform.
+     v12._configure_environment(cfg, helper_args)
++    if v12._official_mid360_enabled(helper_args):
++        spawn_asset = Path(cfg.scene.robot.spawn.asset_path).resolve()
++        if spawn_asset != Path(args.robot_asset).resolve():
++            raise AdapterFailure("sensor-rig URDF was not installed as the spawn asset")
++        if v12.MID360_FRAME not in str(cfg.scene.navigation_lidar.prim_path):
++            raise AdapterFailure("livox_mid360 LiDAR is not mounted on mid360_scan_frame")
+     if cfg.scene.navigation_lidar is None:
+         raise AdapterFailure("navigation LiDAR was not configured; real sensing is required")
+ 
+@@ -440,6 +2289,24 @@
+     cfg.scene.robot.init_state.rot = (
+         math.cos(start_yaw / 2.0), 0.0, 0.0, math.sin(start_yaw / 2.0)
+     )
++    unmapped_box = _unmapped_box_setup(
++        args.unmapped_box, start_ground, start_yaw, body_height, args.output)
++    if unmapped_box["spawn"]:
++        # Fallback CuboidCfg at a sibling of /World/ground, not a child of it.
++        cfg.scene.unmapped_box = AssetBaseCfg(
++            prim_path=UNMAPPED_BOX_PRIM,
++            spawn=sim_utils.CuboidCfg(
++                size=UNMAPPED_BOX_SIZE_XYZ_M,
++                collision_props=sim_utils.CollisionPropertiesCfg(),
++                visual_material=sim_utils.PreviewSurfaceCfg(
++                    diffuse_color=(0.8, 0.1, 0.1)
++                ),
++            ),
++            init_state=AssetBaseCfg.InitialStateCfg(pos=tuple(unmapped_box["center_xyz_m"])),
++        )
++    if unmapped_box["lidar_target"]:
++        # Isaac Lab static string target: track_mesh_transforms=False. Do not wrap in RaycastTargetCfg.
++        cfg.scene.navigation_lidar.mesh_prim_paths.append(UNMAPPED_BOX_PRIM)
+     cfg.scene.sky_light = AssetBaseCfg(
+         prim_path="/World/skyLight", spawn=sim_utils.DomeLightCfg(intensity=1100)
+     )
+@@ -480,6 +2347,9 @@
          raise AdapterFailure("expected four foot contact bodies")
      nonfoot_ids = [index for index in range(len(contact.body_names)) if index not in foot_ids]
      body_foot_ids, _ = robot.find_bodies(foot_names, preserve_order=True)
@@ -1650,7 +1991,20 @@
  
      # Contact data is consumed after every physics scene update below. History
      # ordering is no longer used to infer when the case should have stopped.
-@@ -658,6 +2229,31 @@
+@@ -523,7 +2393,11 @@
+         for prim in env.sim.stage.Traverse()
+         if str(prim.GetPath()).startswith(f"{GROUND_MESH_PRIM}/terrain")
+     )
+-    lidar.update(dt=0.0, force_recompute=True)
++    if v12._official_mid360_enabled(helper_args):
++        v12._set_mid360_scan_window(
++            lidar, helper_args.mid360_pattern_table, 0, torch)
++    else:
++        lidar.update(dt=0.0, force_recompute=True)
+     first_hits = lidar.data.ray_hits_w[0]
+     finite_first = torch.isfinite(first_hits).all(dim=-1)
+     if int(finite_first.sum().item()) == 0:
+@@ -658,6 +2532,31 @@
          "seed": helper_args.seed,
          "autoreset_allowed": False,
          "duration_seconds": args.duration_seconds,
@@ -1682,7 +2036,7 @@
          "actor_obs_shape": list(observation["policy"].shape),
      }
      config_sha256 = canonical_config_sha256(identity)
-@@ -686,6 +2282,18 @@
+@@ -686,6 +2585,18 @@
      # it sees, so a packet replayed from an earlier run can never be mistaken
      # for current state.
      run_epoch_ns = time.time_ns()
@@ -1701,7 +2055,7 @@
      recorder = AsyncRecorder(max_pending=64) if args.async_recording else None
      metrics_path = args.output / "metrics.jsonl"
      sensor_path = args.output / "sensor_metrics.jsonl"
-@@ -709,6 +2317,7 @@
+@@ -709,6 +2620,7 @@
      nonfoot_events: list[dict] = []
      frame_luminance_std: list[float] = []
      camera_frame_index = 0
@@ -1709,7 +2063,7 @@
      wall_start = time.monotonic()
  
      command_server.start()
-@@ -797,11 +2406,18 @@
+@@ -797,11 +2709,18 @@
                      status = "WALL_TIMEOUT"
                      break
                  sim_time = float(env.sim.current_time) - initial_sim_time
@@ -1728,7 +2082,7 @@
                  horizontal_norm = math.hypot(command[0], command[1])
                  if horizontal_norm > args.max_horizontal_norm + 1e-9:
                      raise AdapterFailure(
-@@ -936,7 +2552,22 @@
+@@ -936,7 +2855,22 @@
                  if not torch.isfinite(actions).all() or not torch.isfinite(observation["policy"]).all():
                      status = "NONFINITE"
                      break
@@ -1752,7 +2106,7 @@
  
                  sim_time = float(env.sim.current_time) - initial_sim_time
                  position = robot.data.root_pos_w[0].detach().cpu().numpy().copy()
-@@ -1011,6 +2642,9 @@
+@@ -1011,6 +2945,9 @@
                      "goal_error_xy_m": goal_error_xy,
                      "goal_layer_error_m": goal_layer_error,
                  }
@@ -1762,7 +2116,7 @@
                  # ---- complete body state, every control step ---------------
                  # Position, orientation and both twist representations all come
                  # from the physics update that has just completed, so a consumer
-@@ -1051,6 +2685,56 @@
+@@ -1051,6 +2988,56 @@
                          complete_state_frames += 1
                          complete_state_dropped += int(not published)
  
@@ -1819,11 +2173,10 @@
                  records.append(row)
                  metrics_file.write(json.dumps(row, sort_keys=True) + "\n")
  
-@@ -1074,6 +2758,41 @@
-                         terminal_window_satisfied_s = sim_time
+@@ -1075,9 +3062,48 @@
                  else:
                      terminal_window_start_s = None
-+
+ 
 +                if args.external_goal_mode and external_finish_path is not None:
 +                    if external_finish_latched is None:
 +                        finish_check = _external_finish_request(
@@ -1858,10 +2211,19 @@
 +                        external_finish_state["last_request"] = _external_request_identity(external_finish_latched)
 +                    if external_finish_ready_status is not None:
 +                        external_finish_state["final_reason"] = "backend_terminal_and_measured_still"
- 
++
                  # ---- sensing and telemetry --------------------------------
                  if step % sensor_stride == 0:
-@@ -1273,8 +2992,10 @@
+-                    lidar.update(dt=0.0, force_recompute=True)
++                    if v12._official_mid360_enabled(helper_args):
++                        v12._set_mid360_scan_window(
++                            lidar, helper_args.mid360_pattern_table, scan_index, torch)
++                    else:
++                        lidar.update(dt=0.0, force_recompute=True)
+                     hits = lidar.data.ray_hits_w[0]
+                     sensor_position_values, sensor_quaternion_values = mounted_sensor_pose(
+                         lidar.data.pos_w[0].detach().cpu().tolist(),
+@@ -1273,8 +3299,10 @@
  
                  # ---- third-person capture, world-side camera only ---------
                  if step % capture_stride == 0:
@@ -1874,7 +2236,7 @@
                      camera_eye = (
                          position
                          - args.camera_trail_m * heading
-@@ -1306,6 +3027,8 @@
+@@ -1306,6 +3334,8 @@
                          "up_axis": [0.0, 0.0, 1.0],
                          "base_xyz": [float(v) for v in position],
                          "yaw_rad": float(yaw),
@@ -1883,7 +2245,7 @@
                      }) + "\n")
                      camera_frame_index += 1
  
-@@ -1338,8 +3061,12 @@
+@@ -1338,8 +3368,12 @@
                          and robot.data.projected_gravity_b[0, 2].item() > -0.5):
                      status = "EXCESSIVE_TILT"
                      break
@@ -1897,7 +2259,7 @@
                      and sim_time - terminal_window_satisfied_s > 0.5
                  ):
                      status = "GOAL_REACHED_AND_STOPPED"
-@@ -1419,6 +3146,23 @@
+@@ -1419,6 +3453,42 @@
              "maximum_command_obs_error": max_command_obs_error,
              "nonfoot_contact_events_over_threshold": nonfoot_events,
              "contact_guard": contact_guard.as_record(),
@@ -1917,11 +2279,30 @@
 +            },
 +            "stance_hold": _stance_hold_summary(stance_hold_runtime),
 +            "scripted_walk": _scripted_walk_summary(scripted_walk),
++            "unmapped_box": unmapped_box,
++            "lidar_pattern_mode": args.lidar_pattern_mode,
++            "livox_mid360": {
++                "enabled": bool(v12._official_mid360_enabled(helper_args)),
++                "claim": "Livox MID-360 source-backed geometric snapshot",
++                "pattern_csv": None if args.lidar_pattern_csv is None else str(args.lidar_pattern_csv),
++                "pattern_sha256": (
++                    None if args.lidar_pattern_csv is None else sha256(args.lidar_pattern_csv)
++                ),
++                "robot_asset": None if args.robot_asset is None else str(args.robot_asset),
++                "robot_asset_sha256": None if args.robot_asset is None else sha256(args.robot_asset),
++                "canonical_robot_asset": (
++                    None if args.canonical_robot_asset is None else str(args.canonical_robot_asset)
++                ),
++                "points_per_scan": (
++                    None if helper_args.mid360_pattern_table is None
++                    else int(helper_args.mid360_pattern_table.points_per_scan)
++                ),
++            },
 +            "runtime_import_identity": runtime_import_identity,
              "case_failed": case_failure is not None,
              "contact_policy": args.contact_policy,
              "case_failure_reason": (
-@@ -1438,6 +3182,8 @@
+@@ -1438,6 +3508,8 @@
                  "height_m": args.camera_height_m,
                  "look_ahead_m": args.camera_look_ahead_m,
                  "look_down_m": args.camera_look_down_m,
@@ -1930,7 +2311,7 @@
                  "capture_stride_steps": capture_stride,
                  "capture_fps": capture_fps,
                  "pose_log": str(camera_frames_path),
-@@ -1484,7 +3230,7 @@
+@@ -1484,7 +3556,7 @@
          events.restore()
          raw_env.close()
      # A latched physical failure is a failed trial, not a completed one.

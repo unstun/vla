@@ -69,6 +69,31 @@ DEFAULT_STANCE_ENTRY_KD_AUTO = "xfade1s"
 # prepared before the flags existed and ran the hold off with the ramp entry.
 LEGACY_PACKAGE_STANCE_HOLD = "off"
 LEGACY_PACKAGE_STANCE_ENTRY_KD = "ramp"
+UNMAPPED_BOX_CHOICES = ("off", "spawn", "lidar")
+DEFAULT_UNMAPPED_BOX = "off"
+LEGACY_PACKAGE_UNMAPPED_BOX = "off"
+LIDAR_PATTERN_MODE_CHOICES = ("uniform", "livox_mid360")
+DEFAULT_LIDAR_PATTERN_MODE = "uniform"
+LEGACY_PACKAGE_LIDAR_PATTERN_MODE = "uniform"
+LIVOX_LIDAR_MAX_RANGE_M = 40.0
+ASSETS = HERE / "assets"
+SENSOR_RIG_URDF_DIR = ASSETS / "lite3_sensor_rig/urdf"
+ISAAC_SENSOR_RIG_URDF = SENSOR_RIG_URDF_DIR / "lite3_pro_sensor_rig_real_with_interface_isaac.urdf"
+CANONICAL_SENSOR_RIG_URDF = SENSOR_RIG_URDF_DIR / "lite3_pro_sensor_rig_real_with_interface.urdf"
+MID360_CSV = ASSETS / "livox_mid360/mid360.csv"
+PINNED_SENSOR_RIG_CANONICAL_SHA256 = (
+    "d0a1be09f018c0ab31df26f69ad8e700bd88ec06ae5b0f4dfbcc4fddf21cec80"
+)
+PINNED_SENSOR_RIG_ISAAC_SHA256 = (
+    "803d552703bcc4f72ce15f38b95bc3f62e3e4ada0b42bf3ecf71b32b6590bb9d"
+)
+OFFICIAL_MID360_PATTERN_SHA256 = (
+    "aa1fc08b6a4400608dbd6ee832b7ea3a9c3c37197e734f60f58fe5abf762269a"
+)
+SENSOR_RIG_PACKAGE_REL = "inputs/sensor_rig"
+ISAAC_URDF_PACKAGE_REL = SENSOR_RIG_PACKAGE_REL + "/lite3_pro_sensor_rig_real_with_interface_isaac.urdf"
+CANONICAL_URDF_PACKAGE_REL = SENSOR_RIG_PACKAGE_REL + "/lite3_pro_sensor_rig_real_with_interface.urdf"
+MID360_CSV_PACKAGE_REL = "inputs/livox_mid360/mid360.csv"
 DEFAULT_DURATION_SECONDS = 8.0
 DEFAULT_FINISH_AFTER_SIM_SECONDS = 2.0
 # Patched runner cap for stand_probe and scripted_walk (materializer anchors
@@ -315,9 +340,76 @@ def stance_settings(args) -> Tuple[str, str]:
     return stance_hold, entry_kd
 
 
+def unmapped_box_setting(args) -> str:
+    mode = getattr(args, "unmapped_box", None)
+    if mode is None:
+        mode = DEFAULT_UNMAPPED_BOX
+    if mode not in UNMAPPED_BOX_CHOICES:
+        raise ValueError("--unmapped-box must be one of %s" % (UNMAPPED_BOX_CHOICES,))
+    return mode
+
+
+def lidar_pattern_setting(args) -> str:
+    mode = getattr(args, "lidar_pattern_mode", None)
+    if mode is None:
+        mode = DEFAULT_LIDAR_PATTERN_MODE
+    if mode not in LIDAR_PATTERN_MODE_CHOICES:
+        raise ValueError("--lidar-pattern-mode must be one of %s" % (LIDAR_PATTERN_MODE_CHOICES,))
+    return mode
+
+
+def verify_livox_assets() -> Dict[str, str]:
+    """Hash-gate the pinned CSV and both sensor-rig URDFs before packaging."""
+    missing = [
+        str(path) for path in (MID360_CSV, ISAAC_SENSOR_RIG_URDF, CANONICAL_SENSOR_RIG_URDF)
+        if not path.is_file()
+    ]
+    if missing:
+        raise RuntimeError("livox_mid360 assets missing: " + ", ".join(missing))
+    observed = {
+        "csv": sha256(MID360_CSV),
+        "isaac_urdf": sha256(ISAAC_SENSOR_RIG_URDF),
+        "canonical_urdf": sha256(CANONICAL_SENSOR_RIG_URDF),
+    }
+    expected = {
+        "csv": OFFICIAL_MID360_PATTERN_SHA256,
+        "isaac_urdf": PINNED_SENSOR_RIG_ISAAC_SHA256,
+        "canonical_urdf": PINNED_SENSOR_RIG_CANONICAL_SHA256,
+    }
+    for name, digest in expected.items():
+        if observed[name] != digest:
+            raise RuntimeError("livox_mid360 %s SHA-256 mismatch: got %s expected %s"
+                               % (name, observed[name], digest))
+    mesh_dir = SENSOR_RIG_URDF_DIR / "meshes"
+    if not mesh_dir.is_dir() or not any(mesh_dir.iterdir()):
+        raise RuntimeError("sensor-rig meshes are missing under " + str(mesh_dir))
+    return observed
+
+
+def stage_livox_assets(local_run: Path) -> Dict[str, str]:
+    observed = verify_livox_assets()
+    dest = local_run / SENSOR_RIG_PACKAGE_REL
+    dest.mkdir(parents=True)
+    shutil.copy2(ISAAC_SENSOR_RIG_URDF, local_run / ISAAC_URDF_PACKAGE_REL)
+    shutil.copy2(CANONICAL_SENSOR_RIG_URDF, local_run / CANONICAL_URDF_PACKAGE_REL)
+    shutil.copytree(SENSOR_RIG_URDF_DIR / "meshes", dest / "meshes")
+    csv_dest = local_run / MID360_CSV_PACKAGE_REL
+    csv_dest.parent.mkdir(parents=True)
+    shutil.copy2(MID360_CSV, csv_dest)
+    if sha256(local_run / ISAAC_URDF_PACKAGE_REL) != observed["isaac_urdf"]:
+        raise RuntimeError("Isaac-safe URDF changed while it was copied into the package")
+    if sha256(local_run / CANONICAL_URDF_PACKAGE_REL) != observed["canonical_urdf"]:
+        raise RuntimeError("canonical URDF changed while it was copied into the package")
+    if sha256(csv_dest) != observed["csv"]:
+        raise RuntimeError("mid360.csv changed while it was copied into the package")
+    return observed
+
+
 def stand_settings(args) -> Dict[str, object]:
     """Validated case, duration, finish time, stance hold, camera and command script for one package."""
     stance_hold, entry_kd = stance_settings(args)
+    unmapped_box = unmapped_box_setting(args)
+    lidar_pattern_mode = lidar_pattern_setting(args)
     duration = float(getattr(args, "duration_seconds", DEFAULT_DURATION_SECONDS))
     finish_after = float(getattr(args, "finish_after_sim_seconds", DEFAULT_FINISH_AFTER_SIM_SECONDS))
     case = getattr(args, "case", DEFAULT_CASE)
@@ -361,6 +453,9 @@ def stand_settings(args) -> Dict[str, object]:
         }
     elif script_path is not None:
         raise ValueError("--command-script is valid only with --case scripted_walk")
+    livox_assets = None
+    if lidar_pattern_mode == "livox_mid360":
+        livox_assets = verify_livox_assets()
     return {
         "case": case,
         "stance_hold": stance_hold,
@@ -371,6 +466,9 @@ def stand_settings(args) -> Dict[str, object]:
         "camera": camera_settings(camera_preset),
         "command_limits": limits,
         "command_script": script,
+        "unmapped_box": unmapped_box,
+        "lidar_pattern_mode": lidar_pattern_mode,
+        "livox_assets": livox_assets,
     }
 
 
@@ -385,6 +483,14 @@ def build_runner_argv(args, remote_run: str, external_run_id: str) -> List[str]:
     script_flags = []
     if settings["command_script"] is not None:
         script_flags = ["--command-script", remote_run + "/" + COMMAND_SCRIPT_PACKAGE_REL]
+    livox_flags = ["--lidar-pattern-mode", settings["lidar_pattern_mode"]]
+    if settings["lidar_pattern_mode"] == "livox_mid360":
+        livox_flags += [
+            "--lidar-pattern-csv", remote_run + "/" + MID360_CSV_PACKAGE_REL,
+            "--robot-asset", remote_run + "/" + ISAAC_URDF_PACKAGE_REL,
+            "--canonical-robot-asset", remote_run + "/" + CANONICAL_URDF_PACKAGE_REL,
+            "--lidar-max-range", str(LIVOX_LIDAR_MAX_RANGE_M),
+        ]
     return [
         "--scene",
         remote_run + "/inputs/building.usda",
@@ -452,6 +558,9 @@ def build_runner_argv(args, remote_run: str, external_run_id: str) -> List[str]:
         settings["stance_hold"],
         "--stance-entry-kd",
         settings["stance_entry_kd"],
+        "--unmapped-box",
+        settings["unmapped_box"],
+        *livox_flags,
         *script_flags,
         "--seed",
         "42",
@@ -692,6 +801,10 @@ def main():
         runner_argv = json.loads(args.runner_argv_json)
         stance_hold = runner_arg_value(runner_argv, "--stance-hold")
         stance_entry_kd = runner_arg_value(runner_argv, "--stance-entry-kd")
+        unmapped_box = (runner_arg_value(runner_argv, "--unmapped-box")
+                        if "--unmapped-box" in runner_argv else "off")
+        lidar_pattern_mode = (runner_arg_value(runner_argv, "--lidar-pattern-mode")
+                              if "--lidar-pattern-mode" in runner_argv else "uniform")
         case = runner_arg_value(runner_argv, "--case")
         heading_mode = (runner_arg_value(runner_argv, "--camera-heading-mode")
                         if "--camera-heading-mode" in runner_argv else "body")
@@ -709,6 +822,8 @@ def main():
             "case": case,
             "stance_hold": stance_hold,
             "stance_entry_kd": stance_entry_kd,
+            "unmapped_box": unmapped_box,
+            "lidar_pattern_mode": lidar_pattern_mode,
             "camera_heading_mode": heading_mode,
             "command_script_sha256": script_sha,
             "accepted_summary_statuses": accepted_statuses,
@@ -853,6 +968,8 @@ print(json.dumps({
             "max_horizontal_speed_mps": summary.get("max_horizontal_speed_mps"),
             "case_failed": summary.get("case_failed"),
             "stance_hold": summary.get("stance_hold"),
+            "unmapped_box": summary.get("unmapped_box"),
+            "lidar_pattern_mode": summary.get("lidar_pattern_mode"),
             "case": summary.get("case"),
             "travel_xy_m": summary.get("travel_xy_m"),
             "camera_heading_mode": (summary.get("camera") or {}).get("heading_mode"),
@@ -866,6 +983,10 @@ print(json.dumps({
             raise RuntimeError("runner summary stance_hold mode differs from --stance-hold " + stance_hold)
         if (summary.get("stance_hold") or {}).get("entry_kd") != stance_entry_kd:
             raise RuntimeError("runner summary stance_hold entry_kd differs from --stance-entry-kd " + stance_entry_kd)
+        if (summary.get("unmapped_box") or {}).get("mode") != unmapped_box:
+            raise RuntimeError("runner summary unmapped_box mode differs from --unmapped-box " + unmapped_box)
+        if summary.get("lidar_pattern_mode") != lidar_pattern_mode:
+            raise RuntimeError("runner summary lidar_pattern_mode differs from --lidar-pattern-mode " + lidar_pattern_mode)
         if (summary.get("camera") or {}).get("heading_mode") != heading_mode:
             raise RuntimeError("runner summary camera heading_mode differs from " + heading_mode)
         if result["summary"]["scripted_walk_sha256"] != script_sha:
@@ -900,7 +1021,7 @@ if __name__ == "__main__":
 
 def package_manifest(run_dir: Path) -> dict:
     files = []
-    for rel in [
+    rels = [
         "inputs/building.usda",
         "inputs/pilot.json",
         "inputs/input_manifest.json",
@@ -910,7 +1031,16 @@ def package_manifest(run_dir: Path) -> dict:
         "config/foxy_bridge_stand.yaml",
         "remote_worker.py",
         "source_env_hashes.json",
-    ] + ([COMMAND_SCRIPT_PACKAGE_REL] if (run_dir / COMMAND_SCRIPT_PACKAGE_REL).exists() else []):
+    ]
+    if (run_dir / COMMAND_SCRIPT_PACKAGE_REL).exists():
+        rels.append(COMMAND_SCRIPT_PACKAGE_REL)
+    extras_root = run_dir / "inputs"
+    for extra in ("sensor_rig", "livox_mid360"):
+        folder = extras_root / extra
+        if folder.exists():
+            for path in sorted(p for p in folder.rglob("*") if p.is_file()):
+                rels.append(path.relative_to(run_dir).as_posix())
+    for rel in rels:
         path = run_dir / rel
         files.append({"path": rel, "sha256": sha256(path), "bytes": path.stat().st_size})
     return {"schema_version": 1, "root": str(run_dir), "files": files}
@@ -946,6 +1076,8 @@ def prepare(args) -> Tuple[Path, dict]:
         shutil.copyfile(script["source_path"], packaged)
         if sha256(packaged) != script["sha256"]:
             raise RuntimeError("command script changed while it was copied into the package")
+    if settings["lidar_pattern_mode"] == "livox_mid360":
+        stage_livox_assets(local_run)
     copytree_clean(BRIDGE_REF, local_run / "bridge")
 
     materializer = load_materializer()
@@ -1090,6 +1222,9 @@ def prepare(args) -> Tuple[Path, dict]:
         "camera": settings["camera"],
         "command_limits": settings["command_limits"],
         "command_script": script,
+        "unmapped_box": settings["unmapped_box"],
+        "lidar_pattern_mode": settings["lidar_pattern_mode"],
+        "livox_assets": settings["livox_assets"],
         "max_wall_seconds": 600.0,
         "telemetry_port": args.telemetry_port,
         "command_port": args.command_port,
@@ -1120,17 +1255,21 @@ def check_prepared_request(args, local_run: Path) -> Dict[str, object]:
 
     Packages written before these flags ran the legacy runner: stand_probe,
     stance hold off with the ramp entry, 8 s duration, finish request after
-    2 sim seconds, rear camera and no command script. Those legacy meanings are
-    kept after the PRD D8 default change. The command script is compared by the
-    SHA-256 of the requested file.
+    2 sim seconds, rear camera, no command script and --unmapped-box off. Those
+    legacy meanings are kept after the PRD D8 default change. The command script
+    is compared by the SHA-256 of the requested file.
     """
     request = json.loads((Path(local_run) / "run_request.json").read_text(encoding="utf-8"))
     prepared_script = request.get("command_script")
     requested_stance_hold, requested_entry_kd = stance_settings(args)
+    requested_unmapped_box = unmapped_box_setting(args)
+    requested_lidar_pattern_mode = lidar_pattern_setting(args)
     prepared = {
         "case": request.get("case", DEFAULT_CASE),
         "stance_hold": request.get("stance_hold", LEGACY_PACKAGE_STANCE_HOLD),
         "stance_entry_kd": request.get("stance_entry_kd", LEGACY_PACKAGE_STANCE_ENTRY_KD),
+        "unmapped_box": request.get("unmapped_box", LEGACY_PACKAGE_UNMAPPED_BOX),
+        "lidar_pattern_mode": request.get("lidar_pattern_mode", LEGACY_PACKAGE_LIDAR_PATTERN_MODE),
         "duration_seconds": float(request.get("duration_seconds", DEFAULT_DURATION_SECONDS)),
         "finish_after_sim_seconds": float(request.get("finish_after_sim_seconds", DEFAULT_FINISH_AFTER_SIM_SECONDS)),
         "camera_preset": request.get("camera_preset", DEFAULT_CAMERA_PRESET),
@@ -1141,6 +1280,8 @@ def check_prepared_request(args, local_run: Path) -> Dict[str, object]:
         "case": getattr(args, "case", DEFAULT_CASE),
         "stance_hold": requested_stance_hold,
         "stance_entry_kd": requested_entry_kd,
+        "unmapped_box": requested_unmapped_box,
+        "lidar_pattern_mode": requested_lidar_pattern_mode,
         "duration_seconds": float(getattr(args, "duration_seconds", DEFAULT_DURATION_SECONDS)),
         "finish_after_sim_seconds": float(getattr(args, "finish_after_sim_seconds", DEFAULT_FINISH_AFTER_SIM_SECONDS)),
         "camera_preset": getattr(args, "camera_preset", DEFAULT_CAMERA_PRESET),
@@ -1271,6 +1412,16 @@ def build_parser() -> argparse.ArgumentParser:
                         help="run duration, at most 60 s (AC3 stand uses 60, the D5 walk 26)")
     parser.add_argument("--finish-after-sim-seconds", type=float, default=DEFAULT_FINISH_AFTER_SIM_SECONDS,
                         help="sim time before the worker writes the finish request; needs 2 s before the duration end")
+    parser.add_argument("--unmapped-box", choices=UNMAPPED_BOX_CHOICES, default=DEFAULT_UNMAPPED_BOX,
+                        help="runner unmapped-box mode, default off: off keeps today's stand_probe. "
+                             "spawn places a cuboid at /World/unmapped_box and omits it from mesh_prim_paths. "
+                             "lidar also appends the prim string as a LiDAR target. A package prepared without "
+                             "this field ran off")
+    parser.add_argument("--lidar-pattern-mode", choices=LIDAR_PATTERN_MODE_CHOICES,
+                        default=DEFAULT_LIDAR_PATTERN_MODE,
+                        help="uniform: 16-beam TORSO LiDAR (previous stand_probe). "
+                             "livox_mid360: pinned Livox CSV geometric snapshot on the v17 sensor-rig URDF. "
+                             "A package prepared without this field ran uniform")
     return parser
 
 

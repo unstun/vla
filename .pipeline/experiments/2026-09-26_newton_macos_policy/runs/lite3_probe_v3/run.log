@@ -1,0 +1,25 @@
+Warp 1.17.0 initialized:
+   CUDA not enabled in this build
+   Devices:
+     "cpu"      : "arm"
+   Kernel cache:
+     /Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/runtime/warp-cache/1.17.0
+ ArchWarn: ARCH_CACHE_LINE_SIZE != Arch_ObtainCacheLineSize()
+ Function: Arch_ValidateAssumptions
+     File: /Users/runner/work/OpenUSD/OpenUSD/pxr/base/arch/assumptions.cpp
+     Line: 140
+golden policy {'frames': 1000, 'max_abs_error': 0.0059814453125, 'limit': 0.01, 'history_layout': 'term-major oldest-to-newest, repeated first frame', 'passed': True}
+Module newton._src.geometry.inertia f6b4bd8 load on device 'cpu' took 6.42 ms  (cached)
+Module validate_and_correct_inertia_kernel_1ff2ac62 6ad45b8 load on device 'cpu' took 5.08 ms  (cached)
+Module newton._src.geometry.bvh 4a1c07f load on device 'cpu' took 0.43 ms  (cached)
+Module newton._src.solvers.mujoco.kernels 90c0c67 load on device 'cpu' took 0.71 ms  (cached)
+Module newton._src.sim.articulation 2e73608 load on device 'cpu' took 0.66 ms  (cached)
+joint labels ['lite3/worldbody/base_link/floating_base', 'lite3/worldbody/base_link/FL_HIP/FL_HipX_joint', 'lite3/worldbody/base_link/FL_HIP/FL_THIGH/FL_HipY_joint', 'lite3/worldbody/base_link/FL_HIP/FL_THIGH/FL_SHANK/FL_Knee_joint', 'lite3/worldbody/base_link/FR_HIP/FR_HipX_joint', 'lite3/worldbody/base_link/FR_HIP/FR_THIGH/FR_HipY_joint', 'lite3/worldbody/base_link/FR_HIP/FR_THIGH/FR_SHANK/FR_Knee_joint', 'lite3/worldbody/base_link/HL_HIP/HL_HipX_joint', 'lite3/worldbody/base_link/HL_HIP/HL_THIGH/HL_HipY_joint', 'lite3/worldbody/base_link/HL_HIP/HL_THIGH/HL_SHANK/HL_Knee_joint', 'lite3/worldbody/base_link/HR_HIP/HR_HipX_joint', 'lite3/worldbody/base_link/HR_HIP/HR_THIGH/HR_HipY_joint', 'lite3/worldbody/base_link/HR_HIP/HR_THIGH/HR_SHANK/HR_Knee_joint']
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/scripts/probe_lite3.py", line 23, in <module>
+    robot.step((0., 0., 0.))
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/scripts/lite3_newton.py", line 139, in step
+    self.infer(command)
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_macos_policy/scripts/lite3_newton.py", line 129, in infer
+    raise ValueError(f"Newton-to-native observation mismatch: {error}")
+ValueError: Newton-to-native observation mismatch: 1.600000023841858

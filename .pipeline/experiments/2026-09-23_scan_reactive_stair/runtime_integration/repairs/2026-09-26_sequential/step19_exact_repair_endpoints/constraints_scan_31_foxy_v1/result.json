@@ -1,0 +1,130 @@
+{
+  "compile_command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-DEIGEN_INITIALIZE_MATRICES_BY_NAN",
+    "-I/test",
+    "-I/usr/include/eigen3",
+    "/test/test.cpp",
+    "-o",
+    "/test/native_tests"
+  ],
+  "compile_exit": 0,
+  "inputs_sha256": {
+    "worker.py": "abcd1c5f3180fc887984b8c2b68f14182bda5c56e480439e5da5517dcf86f0af",
+    "native_blocks.inc": "07ff673d49338c8f48501a35d9a6333a137e18bc720538e7d79d57e35c1aa55e",
+    "source_optimizer.h": "ddd2c2e812b2dd59bb32f383c093246ebe12a9a667ae93d448ef5d1e4b9ef926",
+    "rebound_constraint_utils.h": "cc16da1d3974982a771a79f93240053e12bfa7d6bf0dfaf478595fbf986cbaaa",
+    "test.cpp": "e8798141f1535005a40e07f0ad4df90c9ee1b5d3cac7686ed632c378395fcf5b",
+    "native_init.inc": "45ce7d4f4ff7da2600bc8fab09ee837bd3769995b971a3ddeefe54eb95eed134",
+    "native_control_points.inc": "6bbb33e4ce4a39acce54aef7beb9338b1d32d54da3dd3eafc3a35711dacb0b88",
+    "source_optimizer.cpp": "9d6c02376d7b0ea3b163d25e9c4c937a76025b109ba2412d8ecfb1c17b9fad7f",
+    "extraction.json": "b120a9c975d27e904bec2533a2be0d7fec1b19e1523f16b3c0ed30c551caf779",
+    "rclcpp/rclcpp.hpp": "2b29ba5bab9d812de6e6151298ed507005c8d24c8e20af17007d7e2c1f2c5c47"
+  },
+  "platform": "Linux-6.17.0-22-generic-x86_64-with-glibc2.29",
+  "cases": {
+    "empty_route": {
+      "returncode": 0,
+      "stdout": "PASS empty_route\n",
+      "stderr": "A-star path has fewer than 2 points; drop collision segmentrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.001421824999852106
+    },
+    "no_intersection": {
+      "returncode": 0,
+      "stdout": "PASS no_intersection\n",
+      "stderr": "Failed to generate rebound directionrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.0007419609974022023
+    },
+    "stale_intersection": {
+      "returncode": 0,
+      "stdout": "PASS stale_intersection\n",
+      "stderr": "",
+      "wall_s": 0.0006593970028916374
+    },
+    "zero_direction": {
+      "returncode": 0,
+      "stdout": "PASS zero_direction\n",
+      "stderr": "",
+      "wall_s": 0.0006460010044975206
+    },
+    "rebound_stale_intersection": {
+      "returncode": 0,
+      "stdout": "PASS rebound_stale_intersection\n",
+      "stderr": "",
+      "wall_s": 0.0009445010000490583
+    },
+    "rebound_zero_direction": {
+      "returncode": 0,
+      "stdout": "PASS rebound_zero_direction\n",
+      "stderr": "Failed to generate rebound directionrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.0006829509948147461
+    },
+    "valid_then_zero": {
+      "returncode": 0,
+      "stdout": "PASS valid_then_zero\n",
+      "stderr": "",
+      "wall_s": 0.0006250110018299893
+    },
+    "valid_constraints": {
+      "returncode": 0,
+      "stdout": "PASS valid_constraints\n",
+      "stderr": "",
+      "wall_s": 0.00069191799411783
+    },
+    "no_collision": {
+      "returncode": 0,
+      "stdout": "PASS no_collision\n",
+      "stderr": "",
+      "wall_s": 0.0006088820009608753
+    },
+    "short_segment": {
+      "returncode": 0,
+      "stdout": "PASS short_segment\n",
+      "stderr": "",
+      "wall_s": 0.0006289289958658628
+    },
+    "initial_mode": {
+      "returncode": 0,
+      "stdout": "PASS initial_mode\n",
+      "stderr": "",
+      "wall_s": 0.0006184789963299409
+    },
+    "retry_mode": {
+      "returncode": 0,
+      "stdout": "PASS retry_mode\n",
+      "stderr": "",
+      "wall_s": 0.0006219659990165383
+    },
+    "callback_mode": {
+      "returncode": 0,
+      "stdout": "PASS callback_mode\n",
+      "stderr": "",
+      "wall_s": 0.0006730210006935522
+    },
+    "merge_mode": {
+      "returncode": 0,
+      "stdout": "PASS merge_mode\n",
+      "stderr": "A-star failed on a collision segment; merge it with the next segment",
+      "wall_s": 0.0007101020019035786
+    },
+    "failure_modes": {
+      "returncode": 0,
+      "stdout": "PASS failure_modes\n",
+      "stderr": "A-star failed; aborting optimizationA-star errorrebound_no_valid_new_constraints; aborting this optimizationA-star path has fewer than 2 pointsA-star path has fewer than 2 points; drop collision segmentrebound_no_valid_new_constraints; aborting this optimization",
+      "wall_s": 0.0006386870009009726
+    },
+    "reuse_modes": {
+      "returncode": 0,
+      "stdout": "PASS reuse_modes\n",
+      "stderr": "",
+      "wall_s": 0.0006196819958859123
+    }
+  },
+  "claim": "Actual full native initControlPoints and check_collision_and_rebound methods plus assignment block and ControlPoints. Map/search/logger are doubles. Search spy verifies exact-endpoint mode and unchanged control-column endpoints; actual route and curve acceptance require runtime replay.",
+  "all_passed": true
+}

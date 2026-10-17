@@ -5,14 +5,21 @@ The frozen reference runner is not edited in place. This helper verifies the
 known source hash, applies exact anchor replacements to a copy, and writes a
 unified diff plus source-hash record for review.
 
-Three anchor groups are applied in order: the external-episode anchors
+Five anchor groups are applied in order: the external-episode anchors
 (`_replacements`), the stance-hold anchors (`_stance_hold_replacements`), which
-insert `stance_hold.py` verbatim and default to `--stance-hold off`, and the
+insert `stance_hold.py` verbatim and default to `--stance-hold off`, the
 scripted-walk anchors (`_scripted_walk_replacements`, PRD D5), which insert
 `command_script.py` verbatim and add the `scripted_walk` case, the camera
-heading mode and the stance-hold entry damping variants. Every D5 default
+heading mode and the stance-hold entry damping variants, the unmapped-box
+anchors (`_unmapped_box_replacements`), which insert `unmapped_box.py` and add
+`--unmapped-box {off,spawn,lidar}` (default `off`), and the livox-mid360
+anchors (`_livox_mid360_replacements`), which add opt-in
+`--lidar-pattern-mode {uniform,livox_mid360}` (default `uniform`) and call the
+already-ported fallback `_set_mid360_scan_window`. Every D5 default
 (`--camera-heading-mode body`, `--stance-entry-kd ramp`, no command script)
-keeps the previous control and camera path.
+keeps the previous control and camera path. `--unmapped-box off` does not spawn
+a cuboid or change `mesh_prim_paths`. `--lidar-pattern-mode uniform` keeps the
+16-beam TORSO LiDAR.
 
 The PRD D6 crossfade variants (`--stance-entry-kd xfade1s|xfade2s`) and their
 landing grace live in `stance_hold.py`; the CLI choices come from its
@@ -46,11 +53,29 @@ COMMAND_SCRIPT_MODULE_REL = (
 )
 COMMAND_SCRIPT_BODY_BEGIN = "# >>> command_script runner body begin\n"
 COMMAND_SCRIPT_BODY_END = "# <<< command_script runner body end\n"
+UNMAPPED_BOX_MODULE = HERE / "unmapped_box.py"
+UNMAPPED_BOX_MODULE_REL = (
+    ".pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/unmapped_box.py"
+)
+UNMAPPED_BOX_BODY_BEGIN = "# >>> unmapped_box runner body begin\n"
+UNMAPPED_BOX_BODY_END = "# <<< unmapped_box runner body end\n"
 # Patched runner executed by the actual4 package and the scan_04 fix series
 # (external-episode anchors only). Applying only those anchors must still give
 # exactly these bytes, so every other difference is a stance-hold anchor.
 EXTERNAL_ONLY_PATCHED_SHA256 = (
     "e215a6014bf15dc22a3261cb97c3435252b83ce2bde2f042375ae313493470f3"
+)
+# Full patched runner after the first three groups (external + stance-hold +
+# scripted-walk) and before the unmapped-box group. Applying those three must
+# still give exactly these bytes.
+THREE_GROUP_PATCHED_SHA256 = (
+    "0649747e80eb40f3508946e862513f25a0a2052a594c9b3c4fea429718dfc881"
+)
+# Full patched runner after the first four groups (external + stance-hold +
+# scripted-walk + unmapped-box) and before the livox-mid360 group. Applying
+# those four must still give exactly these bytes.
+FOUR_GROUP_PATCHED_SHA256 = (
+    "f0f1020651173a22c37e61476905ee901ac7ee1554ce676a115cfee6368e6ee0"
 )
 SOURCE_REL = (
     "references/upstream/2026-09-16_lite3_isaac_harness_backend/"
@@ -826,6 +851,11 @@ def load_command_script_module(path: Optional[Path] = None) -> Dict[str, str]:
     return load_marked_module(path or COMMAND_SCRIPT_MODULE, COMMAND_SCRIPT_BODY_BEGIN, COMMAND_SCRIPT_BODY_END)
 
 
+def load_unmapped_box_module(path: Optional[Path] = None) -> Dict[str, str]:
+    """Return the marked body of unmapped_box.py and its hashes."""
+    return load_marked_module(path or UNMAPPED_BOX_MODULE, UNMAPPED_BOX_BODY_BEGIN, UNMAPPED_BOX_BODY_END)
+
+
 def _replacements() -> List[Dict[str, str]]:
     return [
         {
@@ -1466,6 +1496,373 @@ def _scripted_walk_replacements(module: Dict[str, str]) -> List[Dict[str, str]]:
     ]
 
 
+UNMAPPED_BOX_RUNNER_SOURCE = r'''
+def _unmapped_box_setup(mode, start_ground, start_yaw, body_height, output_dir):
+    """Pose, overlap fail-closed, and identity for --unmapped-box; off does not spawn."""
+    if mode not in UNMAPPED_BOX_MODES:
+        raise AdapterFailure("unsupported --unmapped-box value: %r" % (mode,))
+    identity = unmapped_box_identity(mode, start_ground, start_yaw, body_height)
+    identity["module"] = {
+        "path": UNMAPPED_BOX_SOURCE_REL,
+        "sha256": UNMAPPED_BOX_SOURCE_SHA256,
+        "body_sha256": UNMAPPED_BOX_BODY_SHA256,
+    }
+    write_json(Path(output_dir) / "unmapped_box_setup.json", identity)
+    if identity["spawn"] and identity["robot_overlap"]["intersects"]:
+        raise AdapterFailure("unmapped box AABB intersects the robot AABB at spawn")
+    return identity
+'''
+
+
+UNMAPPED_BOX_SCENE_BRANCH = (
+    "    cfg.scene.robot.init_state.rot = (\n"
+    "        math.cos(start_yaw / 2.0), 0.0, 0.0, math.sin(start_yaw / 2.0)\n"
+    "    )\n"
+    "    unmapped_box = _unmapped_box_setup(\n"
+    "        args.unmapped_box, start_ground, start_yaw, body_height, args.output)\n"
+    "    if unmapped_box[\"spawn\"]:\n"
+    "        # Fallback CuboidCfg at a sibling of /World/ground, not a child of it.\n"
+    "        cfg.scene.unmapped_box = AssetBaseCfg(\n"
+    "            prim_path=UNMAPPED_BOX_PRIM,\n"
+    "            spawn=sim_utils.CuboidCfg(\n"
+    "                size=UNMAPPED_BOX_SIZE_XYZ_M,\n"
+    "                collision_props=sim_utils.CollisionPropertiesCfg(),\n"
+    "                visual_material=sim_utils.PreviewSurfaceCfg(\n"
+    "                    diffuse_color=(0.8, 0.1, 0.1)\n"
+    "                ),\n"
+    "            ),\n"
+    "            init_state=AssetBaseCfg.InitialStateCfg(pos=tuple(unmapped_box[\"center_xyz_m\"])),\n"
+    "        )\n"
+    "    if unmapped_box[\"lidar_target\"]:\n"
+    "        # Isaac Lab static string target: track_mesh_transforms=False. Do not wrap in RaycastTargetCfg.\n"
+    "        cfg.scene.navigation_lidar.mesh_prim_paths.append(UNMAPPED_BOX_PRIM)\n"
+    "    cfg.scene.sky_light = AssetBaseCfg(\n"
+)
+
+
+def _unmapped_box_replacements(module: Dict[str, str]) -> List[Dict[str, str]]:
+    """Anchors applied after the scripted-walk group; `off` does not spawn or retarget LiDAR."""
+    return [
+        {
+            "name": "unmapped_box_module",
+            "old": "\n\ndef _read_viewer_camera_intrinsics(stage, cam_prim_path: str, resolution) -> dict:\n",
+            "new": (
+                "\n\n# ---- unmapped box geometry, inserted verbatim from unmapped_box.py ------\n"
+                "UNMAPPED_BOX_SOURCE_REL = %r\n"
+                "UNMAPPED_BOX_SOURCE_SHA256 = %r\n"
+                "UNMAPPED_BOX_BODY_SHA256 = %r\n"
+                % (UNMAPPED_BOX_MODULE_REL, module["sha256"], module["body_sha256"])
+                + module["body"]
+                + UNMAPPED_BOX_RUNNER_SOURCE
+                + "\n\ndef _read_viewer_camera_intrinsics(stage, cam_prim_path: str, resolution) -> dict:\n"
+            ),
+        },
+        {
+            "name": "cli_unmapped_box",
+            "old": (
+                "    parser.add_argument(\"--command-script\", type=Path, default=None,\n"
+                "                        help=\"JSON command script; required by and only valid with --case scripted_walk\")\n"
+                "    parser.add_argument(\"--seed\", type=int, default=42)\n"
+                "    parser.add_argument(\"--device\", default=\"cuda:0\")\n"
+            ),
+            "new": (
+                "    parser.add_argument(\"--command-script\", type=Path, default=None,\n"
+                "                        help=\"JSON command script; required by and only valid with --case scripted_walk\")\n"
+                "    parser.add_argument(\"--unmapped-box\", choices=UNMAPPED_BOX_MODES, default=\"off\",\n"
+                "                        help=\"off: no extra cuboid (previous stand_probe). \"\n"
+                "                             \"spawn: cuboid at /World/unmapped_box, omitted from mesh_prim_paths. \"\n"
+                "                             \"lidar: cuboid plus the string target /World/unmapped_box\")\n"
+                "    parser.add_argument(\"--seed\", type=int, default=42)\n"
+                "    parser.add_argument(\"--device\", default=\"cuda:0\")\n"
+            ),
+        },
+        {
+            "name": "unmapped_box_scene",
+            "old": (
+                "    cfg.scene.robot.init_state.rot = (\n"
+                "        math.cos(start_yaw / 2.0), 0.0, 0.0, math.sin(start_yaw / 2.0)\n"
+                "    )\n"
+                "    cfg.scene.sky_light = AssetBaseCfg(\n"
+            ),
+            "new": UNMAPPED_BOX_SCENE_BRANCH,
+        },
+        {
+            "name": "unmapped_box_summary",
+            "old": (
+                "            \"stance_hold\": _stance_hold_summary(stance_hold_runtime),\n"
+                "            \"scripted_walk\": _scripted_walk_summary(scripted_walk),\n"
+            ),
+            "new": (
+                "            \"stance_hold\": _stance_hold_summary(stance_hold_runtime),\n"
+                "            \"scripted_walk\": _scripted_walk_summary(scripted_walk),\n"
+                "            \"unmapped_box\": unmapped_box,\n"
+            ),
+        },
+    ]
+
+
+LIVOX_MID360_CLI = (
+    "    parser.add_argument(\"--lidar-pattern-mode\", choices=(\"uniform\", \"livox_mid360\"), default=\"uniform\",\n"
+    "                        help=\"Opt-in Livox CSV geometric snapshot; uniform keeps the previous stand_probe\")\n"
+    "    parser.add_argument(\"--lidar-pattern-csv\", type=Path, default=None,\n"
+    "                        help=\"Pinned Livox mid360.csv; required only for livox_mid360\")\n"
+    "    parser.add_argument(\"--robot-asset\", type=Path, default=None,\n"
+    "                        help=\"Isaac-safe Lite3 sensor-rig URDF; required with livox_mid360\")\n"
+    "    parser.add_argument(\"--canonical-robot-asset\", type=Path, default=None,\n"
+    "                        help=\"canonical sensor-rig URDF; required with livox_mid360\")\n"
+)
+
+LIVOX_MID360_VALIDATE_SOURCE = '''
+PINNED_SENSOR_RIG_CANONICAL_SHA256 = (
+    "d0a1be09f018c0ab31df26f69ad8e700bd88ec06ae5b0f4dfbcc4fddf21cec80"
+)
+PINNED_SENSOR_RIG_ISAAC_SHA256 = (
+    "803d552703bcc4f72ce15f38b95bc3f62e3e4ada0b42bf3ecf71b32b6590bb9d"
+)
+OFFICIAL_MID360_PATTERN_SHA256 = (
+    "aa1fc08b6a4400608dbd6ee832b7ea3a9c3c37197e734f60f58fe5abf762269a"
+)
+
+
+def _livox_mid360_validate_args(args) -> None:
+    """Fail closed before Isaac if livox_mid360 is missing the pinned CSV or rig."""
+    mode = getattr(args, "lidar_pattern_mode", "uniform")
+    csv_path = getattr(args, "lidar_pattern_csv", None)
+    robot = getattr(args, "robot_asset", None)
+    canonical = getattr(args, "canonical_robot_asset", None)
+    if mode == "uniform":
+        if any(value is not None for value in (csv_path, robot, canonical)):
+            raise ValueError(
+                "Livox CSV and sensor-rig URDFs are valid only with --lidar-pattern-mode livox_mid360"
+            )
+        return
+    if mode != "livox_mid360":
+        raise ValueError("--lidar-pattern-mode must be uniform or livox_mid360")
+    if csv_path is None or robot is None or canonical is None:
+        raise ValueError(
+            "livox_mid360 requires --lidar-pattern-csv, --robot-asset and --canonical-robot-asset"
+        )
+    csv_path = Path(csv_path)
+    robot = Path(robot)
+    canonical = Path(canonical)
+    if not csv_path.is_file() or not robot.is_file() or not canonical.is_file():
+        raise ValueError("livox_mid360 CSV or sensor-rig URDF is missing")
+    if sha256(csv_path) != OFFICIAL_MID360_PATTERN_SHA256:
+        raise ValueError("livox_mid360 CSV SHA-256 does not match the pinned Livox table")
+    if sha256(robot) != PINNED_SENSOR_RIG_ISAAC_SHA256:
+        raise ValueError("Isaac-safe Lite3 sensor-rig URDF hash mismatch")
+    if sha256(canonical) != PINNED_SENSOR_RIG_CANONICAL_SHA256:
+        raise ValueError("canonical Lite3 sensor-rig URDF hash mismatch")
+    if abs(float(args.sensor_period) - 0.10) > 1.0e-9:
+        raise ValueError("livox_mid360 requires a 0.1 s sensor period")
+    if abs(float(args.lidar_min_range) - 0.10) > 1.0e-9:
+        raise ValueError("livox_mid360 requires the 0.1 m blind-zone filter")
+    if abs(float(args.lidar_max_range) - 40.0) > 1.0e-9:
+        raise ValueError("livox_mid360 requires the conservative 40 m range")
+
+
+'''
+
+LIVOX_MID360_HELPER_ARGS_OLD = (
+    "        \"--lidar-min-range\", str(args.lidar_min_range),\n"
+    "        \"--lidar-max-range\", str(args.lidar_max_range),\n"
+    "        \"--max-vx\", str(args.max_vx),\n"
+    "        \"--max-vy\", str(args.max_vy),\n"
+    "        \"--max-wz\", str(args.max_wz),\n"
+    "        \"--watchdog-seconds\", str(args.watchdog_seconds),\n"
+    "    ])\n"
+    "    # Reuse the pinned environment configuration path: zero command ranges, no\n"
+    "    # domain randomization, external-mode episode length, and the existing\n"
+    "    # navigation LiDAR construction with its audited mount transform.\n"
+    "    v12._configure_environment(cfg, helper_args)\n"
+)
+
+LIVOX_MID360_HELPER_ARGS_NEW = (
+    "        \"--lidar-min-range\", str(args.lidar_min_range),\n"
+    "        \"--lidar-max-range\", str(args.lidar_max_range),\n"
+    "        \"--lidar-pattern-mode\", str(args.lidar_pattern_mode),\n"
+    "        \"--max-vx\", str(args.max_vx),\n"
+    "        \"--max-vy\", str(args.max_vy),\n"
+    "        \"--max-wz\", str(args.max_wz),\n"
+    "        \"--watchdog-seconds\", str(args.watchdog_seconds),\n"
+    "    ]\n"
+    "    if args.lidar_pattern_csv is not None:\n"
+    "        helper_argv += [\"--lidar-pattern-csv\", str(args.lidar_pattern_csv)]\n"
+    "    if args.robot_asset is not None:\n"
+    "        helper_argv += [\"--robot-asset\", str(args.robot_asset),\n"
+    "                       \"--canonical-robot-asset\", str(args.canonical_robot_asset)]\n"
+    "    helper_args = v12._parser().parse_args(helper_argv)\n"
+    "    helper_args.mid360_pattern_table = None\n"
+    "    if v12._official_mid360_enabled(helper_args):\n"
+    "        try:\n"
+    "            helper_args.mid360_pattern_table = v12.load_mid360_pattern(\n"
+    "                helper_args.lidar_pattern_csv)\n"
+    "        except v12.Mid360PatternError as error:\n"
+    "            raise AdapterFailure(\"invalid livox_mid360 pattern: %s\" % error) from error\n"
+    "        if helper_args.mid360_pattern_table.points_per_scan != v12.MID360_POINTS_PER_SCAN:\n"
+    "            raise AdapterFailure(\n"
+    "                \"livox_mid360 pattern does not produce exactly 20,000 rays per scan\")\n"
+    "        if v12._sha256(helper_args.robot_asset) != v12.PINNED_SENSOR_RIG_ISAAC_SHA256:\n"
+    "            raise AdapterFailure(\"Isaac-safe Lite3 sensor-rig URDF hash mismatch\")\n"
+    "        if v12._sha256(helper_args.canonical_robot_asset) != v12.PINNED_SENSOR_RIG_CANONICAL_SHA256:\n"
+    "            raise AdapterFailure(\"canonical Lite3 sensor-rig URDF hash mismatch\")\n"
+    "    # Reuse the pinned environment configuration path: zero command ranges, no\n"
+    "    # domain randomization, external-mode episode length, and the existing\n"
+    "    # navigation LiDAR construction with its audited mount transform.\n"
+    "    v12._configure_environment(cfg, helper_args)\n"
+    "    if v12._official_mid360_enabled(helper_args):\n"
+    "        spawn_asset = Path(cfg.scene.robot.spawn.asset_path).resolve()\n"
+    "        if spawn_asset != Path(args.robot_asset).resolve():\n"
+    "            raise AdapterFailure(\"sensor-rig URDF was not installed as the spawn asset\")\n"
+    "        if v12.MID360_FRAME not in str(cfg.scene.navigation_lidar.prim_path):\n"
+    "            raise AdapterFailure(\"livox_mid360 LiDAR is not mounted on mid360_scan_frame\")\n"
+)
+
+# The helper_args list currently starts with helper_args = v12._parser().parse_args([
+# The livox group renames that binding to helper_argv so flags can be appended.
+LIVOX_MID360_HELPER_ARGV_OLD = "    helper_args = v12._parser().parse_args([\n"
+LIVOX_MID360_HELPER_ARGV_NEW = "    helper_argv = [\n"
+
+LIVOX_MID360_FIRST_UPDATE_OLD = (
+    "    lidar.update(dt=0.0, force_recompute=True)\n"
+    "    first_hits = lidar.data.ray_hits_w[0]\n"
+)
+LIVOX_MID360_FIRST_UPDATE_NEW = (
+    "    if v12._official_mid360_enabled(helper_args):\n"
+    "        v12._set_mid360_scan_window(\n"
+    "            lidar, helper_args.mid360_pattern_table, 0, torch)\n"
+    "    else:\n"
+    "        lidar.update(dt=0.0, force_recompute=True)\n"
+    "    first_hits = lidar.data.ray_hits_w[0]\n"
+)
+
+LIVOX_MID360_LOOP_UPDATE_OLD = (
+    "                    lidar.update(dt=0.0, force_recompute=True)\n"
+    "                    hits = lidar.data.ray_hits_w[0]\n"
+)
+LIVOX_MID360_LOOP_UPDATE_NEW = (
+    "                    if v12._official_mid360_enabled(helper_args):\n"
+    "                        v12._set_mid360_scan_window(\n"
+    "                            lidar, helper_args.mid360_pattern_table, scan_index, torch)\n"
+    "                    else:\n"
+    "                        lidar.update(dt=0.0, force_recompute=True)\n"
+    "                    hits = lidar.data.ray_hits_w[0]\n"
+)
+
+LIVOX_MID360_SUMMARY_OLD = (
+    "            \"unmapped_box\": unmapped_box,\n"
+    "            \"runtime_import_identity\": runtime_import_identity,\n"
+)
+LIVOX_MID360_SUMMARY_NEW = (
+    "            \"unmapped_box\": unmapped_box,\n"
+    "            \"lidar_pattern_mode\": args.lidar_pattern_mode,\n"
+    "            \"livox_mid360\": {\n"
+    "                \"enabled\": bool(v12._official_mid360_enabled(helper_args)),\n"
+    "                \"claim\": \"Livox MID-360 source-backed geometric snapshot\",\n"
+    "                \"pattern_csv\": None if args.lidar_pattern_csv is None else str(args.lidar_pattern_csv),\n"
+    "                \"pattern_sha256\": (\n"
+    "                    None if args.lidar_pattern_csv is None else sha256(args.lidar_pattern_csv)\n"
+    "                ),\n"
+    "                \"robot_asset\": None if args.robot_asset is None else str(args.robot_asset),\n"
+    "                \"robot_asset_sha256\": None if args.robot_asset is None else sha256(args.robot_asset),\n"
+    "                \"canonical_robot_asset\": (\n"
+    "                    None if args.canonical_robot_asset is None else str(args.canonical_robot_asset)\n"
+    "                ),\n"
+    "                \"points_per_scan\": (\n"
+    "                    None if helper_args.mid360_pattern_table is None\n"
+    "                    else int(helper_args.mid360_pattern_table.points_per_scan)\n"
+    "                ),\n"
+    "            },\n"
+    "            \"runtime_import_identity\": runtime_import_identity,\n"
+)
+
+
+def _livox_mid360_replacements() -> List[Dict[str, str]]:
+    """Anchors applied after the unmapped-box group; `uniform` keeps the 16-beam LiDAR."""
+    return [
+        {
+            "name": "livox_mid360_validate",
+            "old": (
+                "    if case not in CASES or not math.isfinite(duration) or not 0 < duration <= maximum:\n"
+                "        raise ValueError(f\"duration-seconds must be within (0, {maximum:g}] for {case}\")\n"
+                "\n"
+                "\n"
+                "def route_scope(case, scope):\n"
+            ),
+            "new": (
+                "    if case not in CASES or not math.isfinite(duration) or not 0 < duration <= maximum:\n"
+                "        raise ValueError(f\"duration-seconds must be within (0, {maximum:g}] for {case}\")\n"
+                "\n"
+                + LIVOX_MID360_VALIDATE_SOURCE
+                + "def route_scope(case, scope):\n"
+            ),
+        },
+        {
+            "name": "cli_livox_mid360",
+            "old": (
+                "    parser.add_argument(\"--lidar-max-range\", type=float, default=12.0)\n"
+                "    parser.add_argument(\"--terrain-filter-cell-size\", type=float, default=0.30)\n"
+            ),
+            "new": (
+                "    parser.add_argument(\"--lidar-max-range\", type=float, default=12.0)\n"
+                + LIVOX_MID360_CLI
+                + "    parser.add_argument(\"--terrain-filter-cell-size\", type=float, default=0.30)\n"
+            ),
+        },
+        {
+            "name": "cli_livox_mid360_main_validate",
+            "old": (
+                "    args = build_parser().parse_args(argv)\n"
+                "    _validate_external_goal_args(args)\n"
+                "    _scripted_walk_validate_args(args)\n"
+            ),
+            "new": (
+                "    args = build_parser().parse_args(argv)\n"
+                "    _validate_external_goal_args(args)\n"
+                "    _scripted_walk_validate_args(args)\n"
+                "    _livox_mid360_validate_args(args)\n"
+            ),
+        },
+        {
+            "name": "execution_paths_livox",
+            "old": (
+                "    paths = {\"scene\", \"runtime\", \"checkpoint\", \"route_artifact\", \"scope\", \"output\",\n"
+                "             \"execution_manifest\", \"external_control_dir\", \"command_script\"}\n"
+            ),
+            "new": (
+                "    paths = {\"scene\", \"runtime\", \"checkpoint\", \"route_artifact\", \"scope\", \"output\",\n"
+                "             \"execution_manifest\", \"external_control_dir\", \"command_script\",\n"
+                "             \"lidar_pattern_csv\", \"robot_asset\", \"canonical_robot_asset\"}\n"
+            ),
+        },
+        {
+            "name": "helper_argv_binding",
+            "old": LIVOX_MID360_HELPER_ARGV_OLD,
+            "new": LIVOX_MID360_HELPER_ARGV_NEW,
+        },
+        {
+            "name": "helper_args_livox",
+            "old": LIVOX_MID360_HELPER_ARGS_OLD,
+            "new": LIVOX_MID360_HELPER_ARGS_NEW,
+        },
+        {
+            "name": "livox_first_lidar_update",
+            "old": LIVOX_MID360_FIRST_UPDATE_OLD,
+            "new": LIVOX_MID360_FIRST_UPDATE_NEW,
+        },
+        {
+            "name": "livox_loop_lidar_update",
+            "old": LIVOX_MID360_LOOP_UPDATE_OLD,
+            "new": LIVOX_MID360_LOOP_UPDATE_NEW,
+        },
+        {
+            "name": "livox_summary",
+            "old": LIVOX_MID360_SUMMARY_OLD,
+            "new": LIVOX_MID360_SUMMARY_NEW,
+        },
+    ]
+
+
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -1489,16 +1886,30 @@ def _apply(result: str, items: List[Dict[str, str]]) -> str:
 def apply_patch_text(source: str, include_stance_hold: bool = True,
                      stance_module: Optional[Dict[str, str]] = None,
                      include_scripted_walk: bool = True,
-                     command_script_module: Optional[Dict[str, str]] = None) -> str:
-    """Apply the anchor groups in order; the scripted-walk group needs the stance-hold group."""
+                     command_script_module: Optional[Dict[str, str]] = None,
+                     include_unmapped_box: bool = True,
+                     unmapped_box_module: Optional[Dict[str, str]] = None,
+                     include_livox_mid360: Optional[bool] = None) -> str:
+    """Apply the anchor groups in order; later groups need the earlier ones."""
+    if include_livox_mid360 is None:
+        include_livox_mid360 = include_unmapped_box
     if include_scripted_walk and not include_stance_hold:
         raise ValueError("the scripted-walk anchors apply on top of the stance-hold anchors")
+    if include_unmapped_box and not include_scripted_walk:
+        raise ValueError("the unmapped-box anchors apply on top of the scripted-walk anchors")
+    if include_livox_mid360 and not include_unmapped_box:
+        raise ValueError("the livox-mid360 anchors apply on top of the unmapped-box anchors")
     result = _apply(source, _replacements())
     if include_stance_hold:
         result = _apply(result, _stance_hold_replacements(stance_module or load_stance_hold_module()))
     if include_scripted_walk:
         result = _apply(result, _scripted_walk_replacements(
             command_script_module or load_command_script_module()))
+    if include_unmapped_box:
+        result = _apply(result, _unmapped_box_replacements(
+            unmapped_box_module or load_unmapped_box_module()))
+    if include_livox_mid360:
+        result = _apply(result, _livox_mid360_replacements())
     return result
 
 
@@ -1519,24 +1930,48 @@ def verify_patch(data: Dict[str, str]) -> Dict[str, object]:
     names = _top_level_definitions(data["patched_text"])
     duplicates = sorted({name for name in names if names.count(name) > 1})
     compile(data["patched_text"], "run_pct_scan_building.py", "exec")
+    patched = data["patched_text"]
     checks = {
         "external_only_patched_sha256": data["external_only_sha256"],
         "external_only_matches_executed_runner": data["external_only_sha256"] == EXTERNAL_ONLY_PATCHED_SHA256,
+        "three_group_patched_sha256": data["three_group_sha256"],
+        "three_group_matches_previous_patched_runner": data["three_group_sha256"] == THREE_GROUP_PATCHED_SHA256,
+        "four_group_patched_sha256": data["four_group_sha256"],
+        "four_group_matches_previous_patched_runner": data["four_group_sha256"] == FOUR_GROUP_PATCHED_SHA256,
         "duplicate_top_level_definitions": duplicates,
-        "stance_step_branch_present": STANCE_HOLD_STEP_BRANCH in data["patched_text"],
-        "default_stance_hold_off": "choices=STANCE_HOLD_MODES, default=\"off\"" in data["patched_text"],
-        "scripted_walk_command_branch_present": SCRIPTED_WALK_COMMAND_BRANCH in data["patched_text"],
-        "default_camera_heading_body": "choices=CAMERA_HEADING_MODES, default=\"body\"" in data["patched_text"],
-        "default_stance_entry_kd_ramp": "choices=STANCE_ENTRY_KD_MODES, default=\"ramp\"" in data["patched_text"],
+        "stance_step_branch_present": STANCE_HOLD_STEP_BRANCH in patched,
+        "default_stance_hold_off": "choices=STANCE_HOLD_MODES, default=\"off\"" in patched,
+        "scripted_walk_command_branch_present": SCRIPTED_WALK_COMMAND_BRANCH in patched,
+        "default_camera_heading_body": "choices=CAMERA_HEADING_MODES, default=\"body\"" in patched,
+        "default_stance_entry_kd_ramp": "choices=STANCE_ENTRY_KD_MODES, default=\"ramp\"" in patched,
         "default_command_script_none": (
-            "parser.add_argument(\"--command-script\", type=Path, default=None," in data["patched_text"]
+            "parser.add_argument(\"--command-script\", type=Path, default=None," in patched
         ),
+        "default_unmapped_box_off": "choices=UNMAPPED_BOX_MODES, default=\"off\"" in patched,
+        "unmapped_box_scene_branch_present": UNMAPPED_BOX_SCENE_BRANCH in patched,
+        "unmapped_box_not_under_ground": "/World/ground/unmapped_box" not in patched,
+        "unmapped_box_no_raycast_target_cfg": (
+            "prim_expr=UNMAPPED_BOX_PRIM" not in patched
+            and 'prim_expr="/World/unmapped_box"' not in patched
+        ),
+        "default_lidar_pattern_uniform": "choices=(\"uniform\", \"livox_mid360\"), default=\"uniform\"" in patched,
+        "livox_scan_window_branch_present": LIVOX_MID360_LOOP_UPDATE_NEW in patched,
+        "livox_no_rtx_emitter": "emitterStateArrays" not in patched,
+        "livox_no_gazebo_gpu_lidar": "gpu_lidar" not in patched,
         "patched_text_compiles": True,
     }
     failed = [
-        key for key in ("external_only_matches_executed_runner", "stance_step_branch_present", "default_stance_hold_off",
-                        "scripted_walk_command_branch_present", "default_camera_heading_body",
-                        "default_stance_entry_kd_ramp", "default_command_script_none")
+        key for key in (
+            "external_only_matches_executed_runner", "three_group_matches_previous_patched_runner",
+            "four_group_matches_previous_patched_runner",
+            "stance_step_branch_present", "default_stance_hold_off",
+            "scripted_walk_command_branch_present", "default_camera_heading_body",
+            "default_stance_entry_kd_ramp", "default_command_script_none",
+            "default_unmapped_box_off", "unmapped_box_scene_branch_present",
+            "unmapped_box_not_under_ground", "unmapped_box_no_raycast_target_cfg",
+            "default_lidar_pattern_uniform", "livox_scan_window_branch_present",
+            "livox_no_rtx_emitter", "livox_no_gazebo_gpu_lidar",
+        )
         if not checks[key]
     ]
     if duplicates:
@@ -1567,9 +2002,19 @@ def load_and_patch(source_path: Path, allow_source_sha: bool = False) -> Dict[st
         )
     stance_module = load_stance_hold_module()
     script_module = load_command_script_module()
+    unmapped_module = load_unmapped_box_module()
     patched_text = apply_patch_text(source_text, stance_module=stance_module,
-                                    command_script_module=script_module)
-    external_only = apply_patch_text(source_text, include_stance_hold=False, include_scripted_walk=False)
+                                    command_script_module=script_module,
+                                    unmapped_box_module=unmapped_module)
+    four_group = apply_patch_text(
+        source_text, stance_module=stance_module, command_script_module=script_module,
+        unmapped_box_module=unmapped_module, include_livox_mid360=False)
+    three_group = apply_patch_text(
+        source_text, stance_module=stance_module, command_script_module=script_module,
+        include_unmapped_box=False)
+    external_only = apply_patch_text(
+        source_text, include_stance_hold=False, include_scripted_walk=False,
+        include_unmapped_box=False)
     return {
         "source_text": source_text,
         "patched_text": patched_text,
@@ -1577,8 +2022,11 @@ def load_and_patch(source_path: Path, allow_source_sha: bool = False) -> Dict[st
         "patched_sha256": sha256_text(patched_text),
         "patch_text": unified_diff(source_text, patched_text),
         "external_only_sha256": sha256_text(external_only),
+        "three_group_sha256": sha256_text(three_group),
+        "four_group_sha256": sha256_text(four_group),
         "stance_hold_module": stance_module,
         "command_script_module": script_module,
+        "unmapped_box_module": unmapped_module,
     }
 
 
@@ -1607,9 +2055,15 @@ def write_outputs(args: argparse.Namespace) -> Dict[str, str]:
             "external_episode": [item["name"] for item in _replacements()],
             "stance_hold": [item["name"] for item in _stance_hold_replacements(data["stance_hold_module"])],
             "scripted_walk": [item["name"] for item in _scripted_walk_replacements(data["command_script_module"])],
+            "unmapped_box": [item["name"] for item in _unmapped_box_replacements(data["unmapped_box_module"])],
+            "livox_mid360": [item["name"] for item in _livox_mid360_replacements()],
         },
         "external_only_patched_sha256": data["external_only_sha256"],
         "external_only_expected_sha256": EXTERNAL_ONLY_PATCHED_SHA256,
+        "three_group_patched_sha256": data["three_group_sha256"],
+        "three_group_expected_sha256": THREE_GROUP_PATCHED_SHA256,
+        "four_group_patched_sha256": data["four_group_sha256"],
+        "four_group_expected_sha256": FOUR_GROUP_PATCHED_SHA256,
         "stance_hold_module": {
             "path": STANCE_HOLD_MODULE_REL,
             "sha256": data["stance_hold_module"]["sha256"],
@@ -1620,13 +2074,21 @@ def write_outputs(args: argparse.Namespace) -> Dict[str, str]:
             "sha256": data["command_script_module"]["sha256"],
             "body_sha256": data["command_script_module"]["body_sha256"],
         },
+        "unmapped_box_module": {
+            "path": UNMAPPED_BOX_MODULE_REL,
+            "sha256": data["unmapped_box_module"]["sha256"],
+            "body_sha256": data["unmapped_box_module"]["body_sha256"],
+        },
         "stance_hold_default": "off",
         "stance_entry_kd_default": "ramp",
         "camera_heading_mode_default": "body",
         "command_script_default": None,
+        "unmapped_box_default": "off",
+        "lidar_pattern_mode_default": "uniform",
         "claim_boundary": (
             "Patch materialization only. Passing tests do not claim Isaac, ROS, "
-            "PCT, SCAN, V12 policy, stance hold, scripted walk, or simulator success."
+            "PCT, SCAN, V12 policy, stance hold, scripted walk, unmapped-box LiDAR "
+            "hits, a physical MID-360, or simulator success."
         ),
     }
     if args.check:

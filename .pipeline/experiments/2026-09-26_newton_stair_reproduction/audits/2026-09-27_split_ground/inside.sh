@@ -1,0 +1,11 @@
+set -e
+source /opt/ros/humble/setup.bash
+source /workspace/install/setup.bash
+cmake -S /attempt/probe_source -B /attempt/probe_build -DCMAKE_BUILD_TYPE=Release
+cmake --build /attempt/probe_build -j2
+env VLA_RAW_GROUND=/attempt/raw_ground.f32 VLA_GEOMETRY_INPUT=/archive/audits/2026-09-27_v19_frontier/inputs VLA_GEOMETRY_OUTPUT=/attempt/v19_split.json /attempt/probe_build/gen_probe --ros-args --params-file /version/building_planner.yaml > /attempt/v19_split.log 2>&1
+env VLA_RAW_GROUND=/archive/audits/2026-09-27_pct_ground_negatives/mapped_low_box/qualified_ground.f32 VLA_GEOMETRY_INPUT=/archive/audits/2026-09-27_pct_ground_negatives/mapped_low_box VLA_GEOMETRY_OUTPUT=/attempt/mapped_low_box.json /attempt/probe_build/measured_cloud_probe --ros-args --params-file /version/building_planner.yaml > /attempt/mapped_low_box.log 2>&1
+env VLA_RAW_GROUND=/archive/audits/2026-09-27_pct_ground_negatives/mapped_low_box_near_wall/qualified_ground.f32 VLA_GEOMETRY_INPUT=/archive/audits/2026-09-27_pct_ground_negatives/mapped_low_box_near_wall VLA_GEOMETRY_OUTPUT=/attempt/mapped_low_box_near_wall.json /attempt/probe_build/measured_cloud_probe --ros-args --params-file /version/building_planner.yaml > /attempt/mapped_low_box_near_wall.log 2>&1
+env VLA_RAW_GROUND=/archive/audits/2026-09-27_pct_ground_negatives/mapped_box/qualified_ground.f32 VLA_GEOMETRY_INPUT=/archive/audits/2026-09-27_pct_ground_negatives/mapped_box VLA_GEOMETRY_OUTPUT=/attempt/mapped_box.json /attempt/probe_build/measured_cloud_probe --ros-args --params-file /version/building_planner.yaml > /attempt/mapped_box.log 2>&1
+env VLA_RAW_GROUND=/archive/audits/2026-09-27_pct_ground_negatives/mapped_short_wall/qualified_ground.f32 VLA_GEOMETRY_INPUT=/archive/audits/2026-09-27_pct_ground_negatives/mapped_short_wall VLA_GEOMETRY_OUTPUT=/attempt/mapped_short_wall.json /attempt/probe_build/measured_cloud_probe --ros-args --params-file /version/building_planner.yaml > /attempt/mapped_short_wall.log 2>&1
+env VLA_RAW_GROUND=/archive/audits/2026-09-27_pct_ground_negatives/mapped_overhead/qualified_ground.f32 VLA_GEOMETRY_INPUT=/archive/audits/2026-09-27_pct_ground_negatives/mapped_overhead VLA_GEOMETRY_OUTPUT=/attempt/mapped_overhead.json /attempt/probe_build/measured_cloud_probe --ros-args --params-file /version/building_planner.yaml > /attempt/mapped_overhead.log 2>&1

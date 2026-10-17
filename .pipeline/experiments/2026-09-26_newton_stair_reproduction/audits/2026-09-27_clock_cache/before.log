@@ -1,0 +1,50 @@
+F.FF.
+======================================================================
+FAIL: test_filter_reset_invalidates_cached_estimate (__main__.ClockCacheTests.test_filter_reset_invalidates_cached_estimate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_clock_cache/test_clock_cache.py", line 66, in test_filter_reset_invalidates_cached_estimate
+    bad,out=exercise(rows);self.assertEqual(bad,[],str(bad[:5]));self.assertFalse(out[-1])
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [{'index': 501, 'expected': True, 'actual'[863 chars]on'}] != []
+
+First list contains 10 additional elements.
+First extra element 0:
+{'index': 501, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}
+
+Diff is 1065 characters long. Set self.maxDiff to None to see it. : [{'index': 501, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 502, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 503, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 504, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 505, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}]
+
+======================================================================
+FAIL: test_recorded_rejections_preserve_fresh_estimate (__main__.ClockCacheTests.test_recorded_rejections_preserve_fresh_estimate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_clock_cache/test_clock_cache.py", line 60, in test_recorded_rejections_preserve_fresh_estimate
+    bad,_=exercise(prefix);self.assertGreater(len(prefix),500);self.assertEqual(bad,[],str(bad[:5]))
+                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [{'index': 905, 'expected': True, 'actual'[3908 chars]on'}] != []
+
+First list contains 43 additional elements.
+First extra element 0:
+{'index': 905, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}
+
+Diff is 4605 characters long. Set self.maxDiff to None to see it. : [{'index': 905, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 1331, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 1542, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 1543, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 1544, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}]
+
+======================================================================
+FAIL: test_rejected_samples_do_not_refresh_ttl (__main__.ClockCacheTests.test_rejected_samples_do_not_refresh_ttl)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-09-27_clock_cache/test_clock_cache.py", line 63, in test_rejected_samples_do_not_refresh_ttl
+    bad,out=exercise(rows);self.assertEqual(bad,[],str(bad[:5]));self.assertTrue(out[501]);self.assertFalse(out[-1])
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [{'index': 501, 'expected': True, 'actual'[3411 chars]on'}] != []
+
+First list contains 38 additional elements.
+First extra element 0:
+{'index': 501, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}
+
+Diff is 4033 characters long. Set self.maxDiff to None to see it. : [{'index': 501, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 502, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 503, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 504, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}, {'index': 505, 'expected': True, 'actual': False, 'reason': 'rejected_clock_observation'}]
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.056s
+
+FAILED (failures=3)

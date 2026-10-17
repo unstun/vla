@@ -1,0 +1,71 @@
+{
+  "inputs_sha256": {
+    "worker.py": "f8658cd07b613b9dc78c9cb209697a186f4ef4a2fd934e4fffa5de677bc5e2b4",
+    "source_optimizer.h": "ddd2c2e812b2dd59bb32f383c093246ebe12a9a667ae93d448ef5d1e4b9ef926",
+    "provenance.json": "bfc5c759c6ca459773374c7100bf614210b388b19800961d12ed756f5f7bd9c0",
+    "test.cpp": "faf15c31b214bc035bc8f1ea1fecd9c08c8692cdf90a292db14aa3d74accc085",
+    "native_optimizer_methods.inc": "6509c3d55ab4745e5341125d5f769ba6fbc25e6cb5fb5c642d64116f3530e67e",
+    "native_control_points.inc": "6bbb33e4ce4a39acce54aef7beb9338b1d32d54da3dd3eafc3a35711dacb0b88",
+    "uniform_bspline.cpp": "e91c5a429155738389602dc4c50301ea65f8f134809406545779c1bf0c1d7a8b",
+    "source_optimizer.cpp": "d1129ea88475d6b5a3a8f1995d3a04793e60182555ec53ec78b5510476d5c6da",
+    "recorded_curve.txt": "d2457f62f5130052530874e972c9906d5e1195c672533f2d78fa5f21f723244e",
+    "include/rclcpp/rclcpp.hpp": "2b29ba5bab9d812de6e6151298ed507005c8d24c8e20af17007d7e2c1f2c5c47",
+    "include/bspline_opt/uniform_bspline.h": "3746719f8d1377191be673b704fcd6b8967c67c7e3e866de75d585e52cf71a75",
+    "include/bspline_opt/rebound_constraint_utils.h": "cc16da1d3974982a771a79f93240053e12bfa7d6bf0dfaf478595fbf986cbaaa",
+    "include/bspline_opt/full_trajectory_collision.h": "0e96924362431e4ad3c296ecfe319141cd11b512374f9f3b091ddf6153f24d3d"
+  },
+  "compile_command": [
+    "clang++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-I/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step17_optimizer_curve_contract/native_scan_30_local_v1/package/include",
+    "-I/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step17_optimizer_curve_contract/native_scan_30_local_v1/package",
+    "-I/Users/sun/tongbu/study/phdproject/machine-dog-nav/.pipeline/experiments/2026-09-04_pct_scan_lite3_stairs/local_macos/runtime/dependencies/source/gtsam-4.2/gtsam/3rdparty/Eigen",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step17_optimizer_curve_contract/native_scan_30_local_v1/package/uniform_bspline.cpp",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step17_optimizer_curve_contract/native_scan_30_local_v1/package/test.cpp",
+    "-o",
+    "/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-23_scan_reactive_stair/runtime_integration/repairs/2026-09-26_sequential/step17_optimizer_curve_contract/native_scan_30_local_v1/package/native_tests"
+  ],
+  "compile_exit": 0,
+  "cases": {
+    "clear": {
+      "returncode": 0,
+      "stdout": "\u001b[32miter(+1)=0,time(ms)=0.000,total_t(ms)=0.000,cost=0.000\n\u001b[0mrebound accepted=1\nrefine accepted=1\nclear: PASS\n",
+      "stderr": "optimizer_full_curve stage=rebound status=0 first_t=5.000000000000 duration=5.000000000000 samples=501 control_sqnorm=92optimizer_full_curve stage=refine status=0 first_t=5.000000000000 duration=5.000000000000 samples=501 control_sqnorm=92"
+    },
+    "tail": {
+      "returncode": 0,
+      "stdout": "\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0m\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0m\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0mrebound accepted=0\nrefine accepted=0\ntail: PASS\n",
+      "stderr": "optimizer_full_curve stage=rebound status=1 first_t=4.510000000000 duration=5.000000000000 samples=452 control_sqnorm=92optimizer_collision_retry attempt=1 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=rebound status=1 first_t=4.510000000000 duration=5.000000000000 samples=452 control_sqnorm=92optimizer_collision_retry attempt=2 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=rebound status=1 first_t=4.510000000000 duration=5.000000000000 samples=452 control_sqnorm=92optimizer_collision_retry attempt=3 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=refine status=1 first_t=4.510000000000 duration=5.000000000000 samples=452 control_sqnorm=92"
+    },
+    "endpoint": {
+      "returncode": 0,
+      "stdout": "\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0m\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0m\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0mrebound accepted=0\nrefine accepted=0\nendpoint: PASS\n",
+      "stderr": "optimizer_full_curve stage=rebound status=1 first_t=5.000000000000 duration=5.000000000000 samples=501 control_sqnorm=92optimizer_collision_retry attempt=1 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=rebound status=1 first_t=5.000000000000 duration=5.000000000000 samples=501 control_sqnorm=92optimizer_collision_retry attempt=2 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=rebound status=1 first_t=5.000000000000 duration=5.000000000000 samples=501 control_sqnorm=92optimizer_collision_retry attempt=3 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=refine status=1 first_t=5.000000000000 duration=5.000000000000 samples=501 control_sqnorm=92"
+    },
+    "thin_prefix": {
+      "returncode": 0,
+      "stdout": "\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0m\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0m\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0mrebound accepted=0\nrefine accepted=0\nthin_prefix: PASS\n",
+      "stderr": "optimizer_full_curve stage=rebound status=1 first_t=2.030000000000 duration=5.000000000000 samples=204 control_sqnorm=92optimizer_collision_retry attempt=1 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=rebound status=1 first_t=2.030000000000 duration=5.000000000000 samples=204 control_sqnorm=92optimizer_collision_retry attempt=2 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=rebound status=1 first_t=2.030000000000 duration=5.000000000000 samples=204 control_sqnorm=92optimizer_collision_retry attempt=3 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=refine status=1 first_t=2.030000000000 duration=5.000000000000 samples=204 control_sqnorm=92"
+    },
+    "zero_chord": {
+      "returncode": 0,
+      "stdout": "0 0 0\n1 0 0\n1 0 0\n1 0 0\nrebound accepted=0\nrefine accepted=0\nzero_chord: PASS\n",
+      "stderr": "optimizer_full_curve stage=rebound status=1 first_t=0.420000000000 duration=5.000000000000 samples=43 control_sqnorm=6First three control points are in obstacles; t=0.420000optimizer_full_curve stage=refine status=1 first_t=0.420000000000 duration=5.000000000000 samples=43 control_sqnorm=6"
+    },
+    "budget": {
+      "returncode": 0,
+      "stdout": "rebound accepted=0\nrefine accepted=0\nbudget: PASS\n",
+      "stderr": "optimizer_full_curve stage=rebound status=5 first_t=0.000000000000 duration=150.000000000000 samples=0 control_sqnorm=92optimizer_full_curve stage=refine status=5 first_t=0.000000000000 duration=150.000000000000 samples=0 control_sqnorm=92"
+    },
+    "recorded_window": {
+      "returncode": 0,
+      "stdout": "\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0m\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0m\u001b[32miter(+1)=0,time(ms)=0.000,keep optimizing\n\u001b[0mrebound accepted=0\nrefine accepted=0\nrecorded_window: PASS\n",
+      "stderr": "optimizer_full_curve stage=rebound status=1 first_t=46.347717327670 duration=79.156101481302 samples=4636 control_sqnorm=21115.128579881224optimizer_collision_retry attempt=1 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=rebound status=1 first_t=46.347717327670 duration=79.156101481302 samples=4636 control_sqnorm=21115.128579881224optimizer_collision_retry attempt=2 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=rebound status=1 first_t=46.347717327670 duration=79.156101481302 samples=4636 control_sqnorm=21115.128579881224optimizer_collision_retry attempt=3 valid_constraints_before=0 valid_constraints_after=0optimizer_full_curve stage=refine status=1 first_t=46.347717327670 duration=79.156101481302 samples=4636 control_sqnorm=21115.128579881224"
+    }
+  },
+  "claim": "Two actual native optimizer methods and native spline math. Solver, map oracle and constraint generation are doubles; this verifies terminal/retry contract, not optimization or terrain integration."
+}
