@@ -1184,3 +1184,14 @@ check (0/3821 rejected, exact XYZ goal). Full call is 0.727 s versus v228
 Nine packages and 148 distinct cases pass. Original 126324+3 replay verdicts
 and occupancy predicates are unchanged. [Results](v229/RESULTS.md).
 No new physics or accepted-source promotion.
+
+### v230 — mission-scoped local obstruction feedback
+
+Reuse typed native LIVE queries and the existing Header/BT trigger. Actual
+installed PCT fixture routes detour 0.179713 m from a 0.15 m obstruction, retain
+the detour on unknown, and recover the exact original geometry on newer Free
+or new mission. A blocked terminal cache is never republished. Nine packages/
+154 distinct cases pass; 126324+3 native typed/binary decisions and occupancy
+predicates are unchanged. Building retains the v229 first-round reference,
+0/3821 rejected, raw solid margin +0.056539 m; shared full call 0.731 s.
+[Results](v230/RESULTS.md). Component/recorded-input gate only; no new physics.

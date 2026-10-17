@@ -1,0 +1,16 @@
+# A global-planning query, never permission to publish robot commands.
+uint8 STATIC_ONLY=0
+uint8 STATIC_AND_LIVE=1
+std_msgs/Header header
+geometry_msgs/PoseStamped body
+geometry_msgs/Pose[] poses
+uint8 mode
+---
+bool ready
+# Values are the stable reactive_stair::Verdict enum; zero means clear.
+uint8[] verdicts
+uint64 map_revision
+std_msgs/Header observation
+string message
+# Stable native navigation/surface/physical source fingerprints; not map revision.
+string source_identity

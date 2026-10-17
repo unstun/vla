@@ -156,3 +156,30 @@ not an invented hard minimum: that disconnects native-feasible steps. Preserve
 XY polyline and original endpoint Z; densify collinearly and bound neighboring
 height transitions. Missing/ambiguous/empty association rejects, and the final
 native reference checker remains mandatory. This does not prove Z dynamics.
+
+## 9. Persistent local obstruction feedback (v230)
+
+LIVE feedback must preserve the original reactiveOccupancy binary query and
+return its exact typed reason through CheckTraversability STATIC_AND_LIVE. A
+binary 1 includes unknown/stale/outside and cannot be called a solid obstacle.
+Use an immutable snapshot, unchanged freshness checks, stable native source IDs,
+observation time and map revision. Rebuild interfaces/provider/client together
+when the service schema changes.
+
+Pull current managed reference evidence when createPlan runs; the existing
+Header/BT chain only wakes planning. Bind retained witnesses to mission/epoch
+and stable source, independently of Path timestamps. Only fresh typed solids
+become directional, height-associated constraints. Unknown never clears them;
+a strictly newer exact-pose/yaw Free or bounded steady-clock expiry permits
+reconsideration. Keep witness positions fixed while deduplicating neighbors.
+Reuse the existing derived A*/GPMP map and final connector/rotation sampler;
+check persistent constraints on every return, including terminal/error cache.
+Per-call static repairs use the current authoritative native final verdict,
+not an old expanded search mask. Explicitly query graph headings if needed;
+do not infer every heading blocked from one oriented footprint.
+
+Require actual installed PCT blocked/unknown/cleared/new-mission routes, blocked
+terminal cache rejection, native typed/binary and stable-source recorded parity,
+and the unchanged full-goal Building route. Component wire fixtures and recorded
+native replay are separate from a live NativeWorker/closed-loop sensor run.
+See v229/RESULTS.md and v230/RESULTS.md for exact gates and remaining latency.
