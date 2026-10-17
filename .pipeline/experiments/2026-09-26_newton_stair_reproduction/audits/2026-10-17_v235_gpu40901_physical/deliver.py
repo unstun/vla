@@ -1,0 +1,79 @@
+"""Package compact verified evidence and videos; never return raw/build trees."""
+from pathlib import Path
+import hashlib
+import json
+import shutil
+import subprocess
+import zipfile
+
+HERE = Path(__file__).resolve().parent
+BASE = HERE.parents[1]
+PREFIX = Path('/home/ubuntu/sun/vla_v234_20261017')
+OUT = HERE / 'results'
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def main():
+    partial = json.loads((OUT / 'partial_video_verification.json').read_text())
+    assert partial['passed'] and partial['render_only_no_physics_steps']
+    physical = PREFIX / 'trials/v235_linux_full_attempt01/runs/v235_linux_full_attempt01'
+    assert not (physical / 'result.json').exists()
+    assert not (physical / 'artifacts/external_episode/finish_request.json').exists()
+    ledger = json.loads((PREFIX / 'evidence/v235_physical_launch_once.json').read_text())
+    assert ledger['authorized_attempts'] == 1
+    videos = {'v235_partial_attempt01.mp4': partial['video_sha256']}
+    for name in ('full_physics_comparison', 'stairs_physics_45_55'):
+        proof = json.loads((OUT / (name + '_verification.json')).read_text())
+        assert proof['passed'] and proof['full_decode_passed']
+        videos[name + '.mp4'] = proof['video_sha256']
+    for name, expected in videos.items():
+        assert sha(HERE / 'delivered' / name) == expected, name
+    snapshot = json.loads((OUT / 'capture_snapshot.json').read_text())
+    archive = Path(snapshot['archive'])
+    assert sha(archive) == snapshot['archive_sha256']
+    with zipfile.ZipFile(archive) as source:
+        for name, row in snapshot['members'].items():
+            data = source.read(name)
+            assert len(data) == row['bytes'] and hashlib.sha256(data).hexdigest() == row['sha256']
+            assert sha(physical / name) == row['sha256'], name
+    render = Path(partial['render_root']) / 'runs/full01'
+    for name in ('video_verification.json', 'display_contract.json'):
+        shutil.copyfile(render / name, OUT / name)
+    (OUT / 'display_binding.json').write_text(json.dumps(dict(
+        physical_source_version='v235', native_source_version='v232', migration='v234',
+        locomotion='v216', display_parent='v220', original_capture=str(physical),
+        render_root=partial['render_root'], recorded_states_only=True,
+        no_render_physics=partial['render_only_no_physics_steps'],
+        note='The inherited v220 host_port_verification.json retains its old v219 literal label; current source binding is the actual v235 episode request and this independently checked partial-video proof.'), indent=2) + '\n')
+    evidence = OUT / 'preparation_logs'
+    evidence.mkdir(exist_ok=True)
+    for name in ('v235_preflight01.log', 'v235_preflight02.log', 'v235_physical01.log',
+                 'v235_physical_entry02.log', 'v235_analysis01.log', 'v235_render01.log',
+                 'v235_render02.log', 'v235_render03.log', 'v235_compare01.log'):
+        path = PREFIX / 'evidence' / name
+        if path.is_file():
+            shutil.copyfile(path, evidence / name)
+    shutil.copyfile(physical / 'run.log', evidence / 'physical_run.log')
+    shutil.copyfile(PREFIX / 'evidence/v235_physical_launch_once.json', OUT / 'physical_launch_once.json')
+    review = OUT / 'visual_review'
+    review.mkdir(exist_ok=True)
+    for name, video, t in (('partial_initial.png', 'v235_partial_attempt01.mp4', 0),
+                           ('partial_tail.png', 'v235_partial_attempt01.mp4', 13),
+                           ('stairs_not_reached.png', 'stairs_physics_45_55.mp4', 3)):
+        subprocess.run(['ffmpeg', '-v', 'error', '-ss', str(t), '-i', str(HERE / 'delivered' / video),
+                        '-frames:v', '1', str(review / name)], check=True)
+    files = [p for tree in (OUT, HERE / 'delivered') for p in tree.rglob('*') if p.is_file() and p.name != 'return_manifest.json']
+    assert not any(p.suffix in ('.npz', '.zip', '.so', '.o', '.a') or 'CMakeFiles' in p.parts for p in files)
+    assert sum(p.stat().st_size for p in files) < 150 * 2**20
+    manifest = dict(passed=True, physics_attempts=1, full_route_passed=False,
+        raw_archive=snapshot['archive'], raw_archive_sha256=snapshot['archive_sha256'],
+        files={str(p.relative_to(HERE)): dict(bytes=p.stat().st_size, sha256=sha(p)) for p in sorted(files)})
+    (OUT / 'return_manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    print(json.dumps(dict(files=len(files), bytes=sum(p.stat().st_size for p in files), videos=videos)), flush=True)
+
+
+if __name__ == '__main__':
+    main()

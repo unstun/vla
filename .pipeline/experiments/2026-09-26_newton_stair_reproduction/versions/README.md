@@ -27,6 +27,27 @@ manifests or the original acceptance rules.
 full-route pass); v231's failed v230 execution and all earlier failures remain
 intact. Historical "current" statements below describe their checkpoint only.
 
+## gpu40901 offline migration passed — v234
+
+[v234](v234/RESULTS.md) reconstructs the exact 317-file v232 source and prepares
+an isolated gpu40901 runtime. All 14 packages build; 165 cases / 186 colcon
+records, the 12-second graph, zero-step factory/RL/render smokes and static
+Building admission pass. The admitted route matches v232 byte for byte.
+The [current readiness assessment](v234/READINESS.md) accepts these offline
+migration gates. Original native artifact comparison and 126324+3 historical
+dynamic replay remain optional supplementary audits; the powered-off gpu5070ti
+does not block gpu40901 preparation. The full-route host launcher still needs
+preparation/preflight. No new physical trial or baseline adoption occurred.
+
+## gpu40901 physical attempt — v235
+
+[v235](v235/RESULTS.md) adds the complete host entry. Its source/install and
+12-second actual graph/profile preflight pass. The single physical attempt
+stops at the scanner deadline guard, with a last retained state at12.802s,
+before sending a navigation goal. Full-route/stair/terminal acceptance remains
+unvalidated on40901; no second physics attempt was launched. See the
+[partial-recording audit](../audits/2026-10-17_v235_gpu40901_physical/RESULTS.md).
+
 | Version | One change | Evidence status |
 |---|---|---|
 | v3 | Registered current empty 12 m PD/RL baseline | One bounded trial validated; not generally stable |

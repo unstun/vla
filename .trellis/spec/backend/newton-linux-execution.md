@@ -95,6 +95,63 @@ are mandatory; there is no port-reuse or timeout relaxation. `test_native_graph`
 must source the actual candidate install and save evidence to the step directory.
 The inherited v114 graph preflight alone cannot qualify the new candidate.
 
+## gpu40901 continuation: v234 migration and v235 single trial
+
+### Scope / trigger
+
+Dr Sun authorized the move to gpu40901 on2026-10-17. v234 reconstructs the
+exact317-file v232 native source; v235 binds the full physical entry. Original
+5070Ti install-byte comparison and historical126324+3 replay remain optional
+audits. They do not block a source-verified rebuild with new-host offline gates.
+
+### Signatures
+
+Use `versions/v235/launch.py --preflight-only`, then `launch.py` for the one
+authorized physical attempt, with the private Python under
+`/home/ubuntu/sun/vla_v234_20261017/env/newton_worker/bin/python` and private
+v234/bin before v233/bin on PATH. `--episode` is the supervised child entry.
+
+### Contracts
+
+The local repository remains authoritative. Bind the rebuilt native receipt,
+all14 package prefixes, original policy, original route and generated profile.
+The create-exclusive `evidence/v235_physical_launch_once.json` records the
+single full-route invocation. Native execution uses4 CPUs/6GiB/shares128;
+host physics uses2 CPUs/nice19 and no CUDA. These caps are an execution choice,
+not evidence that sensor deadlines or physical performance will pass.
+
+### Validation / error matrix
+
+| Condition | Evidence / behavior |
+|---|---|
+| Source/install/profile/actual graph pass | Offline readiness only |
+| Preflight socket is still in TIME_WAIT | Wait for release; never kill a foreign process |
+| Captured scanner misses the original0.1s period | Preserve the exception and failed attempt; do not relax the period |
+| Recorder exits before result/finish | Keep both absent; report partial physics and no arrival |
+| Global lsof emits inaccessible-mount warnings | Retain originals; a verified non-pruning snapshot is permitted |
+
+### Good / base / bad cases
+
+v235 passes the12s graph/profile gate but stops with a scanner deadline
+exception; the last retained frame is12.801543235778809s and no navigation
+goal was sent. Full-route,45–55s stairs and terminal PD are untested. A partial
+recorded-state video may show the failure without creating a source result.
+
+### Tests and assertion points
+
+Verify the actual generated profile, all source/install hashes and the real
+graph before physics. Check exact source-state indices/times, zero render
+physics, full MP4 decode and input hashes for partial video. A warm zero-step
+scan and static graph do not establish deadline headroom under concurrent
+physical execution; separate scanner timing evidence is needed for diagnosis.
+
+### Wrong / correct
+
+Wrong: infer physical readiness from165 passing native cases, synthesize a
+FINISHED result for a partial capture, or automatically rerun a one-shot test.
+Correct: preserve the failed physical attempt, original missing result/finish,
+honest comparison video and independently passing offline gates.
+
 ## Step-3 execution binding (v127, 2026-10-10)
 
 v126 remains parked. Step 3 starts from native v122 and host v125; use new

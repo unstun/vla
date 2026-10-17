@@ -1,0 +1,41 @@
+Warp CUDA error 100: no CUDA-capable device is detected (in function init_cuda_driver, /builds/omniverse/warp/warp/native/cuda_util.cpp:333)
+Warp 1.17.0 initialized:
+   CUDA Toolkit 12.9, CUDA driver not available (NVRTC compilation available)
+   Devices:
+     "cpu"      : "x86_64"
+   Kernel cache:
+     /home/ubuntu/sun/vla_v234_20261017/trials/v235_linux_full_attempt01/video_v235/cache/1.17.0
+Module newton._src.geometry.inertia f6b4bd8 load on device 'cpu' took 1443.66 ms  (compiled)
+Module validate_and_correct_inertia_kernel_1ff2ac62 6ad45b8 load on device 'cpu' took 325.34 ms  (compiled)
+Module newton._src.geometry.bvh 4a1c07f load on device 'cpu' took 591.04 ms  (compiled)
+Module newton._src.solvers.mujoco.kernels 90c0c67 load on device 'cpu' took 5322.20 ms  (compiled)
+Module mujoco_warp._src.io 66a94ae load on device 'cpu' took 1396.70 ms  (compiled)
+Module mujoco_warp._src.smooth 15aab42 load on device 'cpu' took 2559.94 ms  (compiled)
+Module _tile_cholesky_factorize_block__locals__kernel_b26c508a e2a541f load on device 'cpu' took 159.54 ms  (compiled)
+Module _tile_cholesky_solve_block__locals__kernel_fcaeb5dd 60f1c27 load on device 'cpu' took 156.30 ms  (compiled)
+Module newton._src.sim.articulation 2e73608 load on device 'cpu' took 3193.30 ms  (compiled)
+Traceback (most recent call last):
+  File "/home/ubuntu/sun/vla_v234_20261017/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-17_v235_gpu40901_physical/render_partial.py", line 83, in <module>
+    main()
+  File "/home/ubuntu/sun/vla_v234_20261017/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-17_v235_gpu40901_physical/render_partial.py", line 59, in main
+    namespace['main']()
+  File "/home/ubuntu/sun/vla_v234_20261017/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-17_v235_gpu40901_physical/render_partial.py", line 182, in main
+  File "/home/ubuntu/sun/vla_v234_20261017/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v51/render_heading_v51.py", line 87, in <module>
+    render_episode.main()
+  File "/home/ubuntu/sun/vla_v234_20261017/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v51/render_episode_v51.py", line 276, in main
+    robot = StairRobot(startup_mode=episode_request["startup_mode"], stance_hold=True,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sun/vla_v234_20261017/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v40/physics/robot_scene_v40.py", line 58, in __init__
+    super().__init__(robot_source=source, scene_builder=add_scene, spawn_xyz=spawn,
+  File "/home/ubuntu/sun/vla_v234_20261017/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v40/physics/lite3_newton_v40.py", line 161, in __init__
+    from newton_stance import NewtonStance
+  File "/home/ubuntu/sun/vla_v234_20261017/repo/.pipeline/experiments/2026-09-26_newton_macos_policy/scripts/newton_stance.py", line 12, in <module>
+    if hashlib.sha256(SOURCE.read_bytes()).hexdigest() != SOURCE_SHA256:
+                      ^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sun/vla_v234_20261017/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/pathlib.py", line 1019, in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sun/vla_v234_20261017/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/ubuntu/sun/vla_v234_20261017/repo/.pipeline/experiments/2026-09-16_pi_cortex_harnessvln/isaac_runner/stance_hold.py'

@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(body_margin_probe)
+set(CMAKE_CXX_STANDARD 17)
+find_package(ament_cmake REQUIRED)
+find_package(plan_env REQUIRED)
+add_executable(body_margin body_margin.cpp)
+ament_target_dependencies(body_margin plan_env)
