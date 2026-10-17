@@ -1114,3 +1114,64 @@ frames / 123.333 s. Full decode, causal indexing, visual QA and local delivery
 hash pass. [Video](v220/delivered/v219_linux_full_attempt01.mp4). No extra physics.
 Latest validated source is v219; current display is v220. v210 and all failures
 remain available. This is one successful condition, not repeated reliability.
+
+## v221-v224: shared checking, precise floor rejection and environmental preference
+
+v221 is the retained component-tested shared PCT/SCAN hard-checking parent
+(attempt03, source identity recorded in v223). v222 remains the separately
+planned spatial-feedback change and is not part of this implementation.
+
+v223 restores a diagnostic association to the physical floor and reports
+`EdgeClearance` without granting selected support. Nine packages build and all
+158 colcon test records pass. The 126,324-query v217 replay and three exact
+planning queries preserve every binary decision. The report separates first
+rejections, overlapping edge/history/envelope predicates, and the 1,847
+queries for which a torso-only occupancy substitution could remove the final
+remaining rejection. None of the recorded-body failures or three exact
+planning failures falls into that last group. [Results](v223/RESULTS.md).
+
+v224 owns the shared environmental soft scorer and its PCT search, PCT GPMP and
+SCAN spline integrations. Nine packages and 164 colcon records pass. The real-map
+A* score improves by 98.6%, but GPMP loses that clearance advantage; total scored
+planning still takes 8.023 s versus 0.032 s with the score disabled. The actual
+plugin's bounded static admission/repair comparison returns truthful no-route in
+both modes. This is a component-validated candidate, not an accepted Building
+route improvement. Failed attempts and exact-source receipts are retained in
+[Results](v224/RESULTS.md). No new physics or current-run promotion occurs; the
+accepted physical source/display pair remains v219/v220.
+
+### v225 — offline atlas and analytic environmental gradients
+
+Performance candidate on frozen v224. The shared PCT probe drops from 8.023 s
+to 0.113 s; active SCAN environmental evaluation from 35.24 ms to 0.043 ms.
+Nine packages and 144 distinct test cases pass. Raw-oracle approximation errors,
+including large uniform-height-switch outliers, remain explicit. Actual final
+admission still returns no-route; GPMP interpolation and support-cell boundary
+repairs remain follow-up work. [Results](v225/RESULTS.md). No physics run or
+accepted-source promotion; v219/v220 remains the physical source/display pair.
+
+### v226 — continuous shared-mode GPMP cost interpolation
+
+Integer-anchored bilinear sampling removes the measured legacy extrapolation
+and half-cell jump in shared mode. Nine packages and 145 distinct test cases
+pass; legacy route bytes match v225. Shared smoothing retains 0.1424/0.1458 m
+edge/solid margin in 0.639 s, but final admission still fails. [Results](v226/RESULTS.md).
+
+### v227 — failed physical-origin canonical support lookup
+
+Preserved failure. All three old corner witnesses become Free, but full
+admission fails at two new equivalent corners. Physical float32-derived origin
+is itself offset from the PCT lattice. Original 126,324+3 replay queries and
+all independent occupancy predicates retain binary parity. Nine packages and
+146 distinct cases pass; no physical-run promotion. [Results](v227/RESULTS.md).
+
+### v228 — original PCT lattice and checked full-goal references
+
+Nominal support-cell origin comes from the SHA-bound PCT header, with ULP
+normalization and half-open cells. Nine packages and 147 distinct cases pass.
+Both actual installed planner modes return full-goal references with zero final
+native-static rejection. Shared final extra edge margin is 0.147524 m and raw
+PCD solid margin 0.064950 m; full repair/admission takes 1.032 s. Both use the
+existing checked raw-graph fallback; GPMP height smoothing remains an explicit
+limitation. Original v217 126,324+3 query verdicts and occupancy predicates are
+unchanged. [Results](v228/RESULTS.md). No new physics or accepted-source promotion.

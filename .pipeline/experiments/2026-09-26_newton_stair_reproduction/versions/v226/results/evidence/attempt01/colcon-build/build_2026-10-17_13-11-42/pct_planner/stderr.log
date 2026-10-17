@@ -1,0 +1,58 @@
+CMake Warning (dev) at /opt/ros/foxy/share/ament_cmake_core/cmake/core/python.cmake:22 (find_package):
+  Policy CMP0148 is not set: The FindPythonInterp and FindPythonLibs modules
+  are removed.  Run "cmake --help-policy CMP0148" for policy details.  Use
+  the cmake_policy command to set the policy and suppress this warning.
+
+Call Stack (most recent call first):
+  /opt/ros/foxy/share/ament_cmake_core/cmake/core/all.cmake:53 (include)
+  /opt/ros/foxy/share/ament_cmake_core/cmake/ament_cmake_core-extras.cmake:17 (include)
+  /opt/ros/foxy/share/ament_cmake_core/cmake/ament_cmake_coreConfig.cmake:41 (include)
+  /opt/ros/foxy/share/ament_cmake/cmake/ament_cmake_export_dependencies-extras.cmake:15 (find_package)
+  /opt/ros/foxy/share/ament_cmake/cmake/ament_cmakeConfig.cmake:41 (include)
+  CMakeLists.txt:4 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+CMake Deprecation Warning at /opt/ros/foxy/share/cmake/pybind11/pybind11Tools.cmake:8 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+Call Stack (most recent call first):
+  /opt/ros/foxy/share/cmake/pybind11/pybind11Config.cmake:100 (include)
+  CMakeLists.txt:7 (find_package)
+
+
+CMake Warning (dev) at /opt/ros/foxy/share/cmake/pybind11/FindPythonLibsNew.cmake:60 (find_package):
+  Policy CMP0148 is not set: The FindPythonInterp and FindPythonLibs modules
+  are removed.  Run "cmake --help-policy CMP0148" for policy details.  Use
+  the cmake_policy command to set the policy and suppress this warning.
+
+Call Stack (most recent call first):
+  /opt/ros/foxy/share/cmake/pybind11/pybind11Tools.cmake:16 (find_package)
+  /opt/ros/foxy/share/cmake/pybind11/pybind11Config.cmake:100 (include)
+  CMakeLists.txt:7 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+CMake Deprecation Warning at /opt/ros/foxy/share/cmake/pybind11/pybind11Tools.cmake:8 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+Call Stack (most recent call first):
+  /opt/ros/foxy/share/cmake/pybind11/pybind11Config.cmake:100 (include)
+  lib/CMakeLists.txt:26 (find_package)
+
+
+/work/src/pct_planner/lib/src/map_manager/dense_elevation_map.cc: In member function ‘double DenseElevationMap::GetValueBilinearSafe(int, double, double, double, Eigen::Vector2d*)’:
+/work/src/pct_planner/lib/src/map_manager/dense_elevation_map.cc:372:39: error: ‘clamp’ is not a member of ‘std’
+  372 |   const double qx = continuous ? std::clamp(x, 0.0, double(max_x_ - 1)) : x;
+      |                                       ^~~~~
+/work/src/pct_planner/lib/src/map_manager/dense_elevation_map.cc:373:39: error: ‘clamp’ is not a member of ‘std’
+  373 |   const double qy = continuous ? std::clamp(y, 0.0, double(max_y_ - 1)) : y;
+      |                                       ^~~~~
+make[2]: *** [lib/src/map_manager/CMakeFiles/map_manager.dir/build.make:76: lib/src/map_manager/CMakeFiles/map_manager.dir/dense_elevation_map.cc.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:395: lib/src/map_manager/CMakeFiles/map_manager.dir/all] Error 2
+make[1]: *** Waiting for unfinished jobs....
+make: *** [Makefile:146: all] Error 2

@@ -32,6 +32,7 @@ establishes conventions.
 | [Newton PD Startup](./newton-pd-startup.md) | Pinned SDK crouch/stand control, measured policy handoff and navigation gating | Scoped to the 2026-09-27 flat startup trial |
 | [Newton PD Hold](./newton-stance-hold.md) | Existing PD/RL state machine, measured foot support and long-route execution | Scoped to the 2026-09-27 empty-floor trial |
 | [Newton Support Coverage](./newton-support-coverage.md) | Static subcell floor-gap veto and captured torso/optical-frame separation | Scoped to v134 simulator map correction |
+| [Shared Floor and Environmental Costs](./newton-shared-environment.md) | Diagnostic floor association, unchanged hard admission, shared soft-score contracts and attribution | Scoped to v223/v224 component and replay work |
 | [Newton Versioning](./newton-versioning.md) | User-designated v3 baseline, immutable source snapshots and version-bound trials | Active for local Newton integration |
 | [Newton Stair Repairs](./newton-stair-repair-contracts.md) | Ground/support, seed ownership, stop replies, endpoint evidence and trajectory epoch | Scoped to Newton v8–v59 |
 | [Newton Asynchronous Mapping](./newton-async-mapping.md) | Compact polls, immutable map revisions, publication leases and guarded duplicate backlog reduction | Scoped to Newton v79–v82 |
