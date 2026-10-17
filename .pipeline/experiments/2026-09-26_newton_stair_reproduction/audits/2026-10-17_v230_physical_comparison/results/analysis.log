@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/data/sun/vla_mppi_20261009/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/analyze_remote.py", line 135, in <module>
+    p=argparse.ArgumentParser();p.add_argument('--run-root',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--metrics-only',action='store_true');args=p.parse_args();analyze(args.run_root,args.output,args.metrics_only)
+                                                                                                                                                                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sun/vla_mppi_20261009/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/analyze_remote.py", line 89, in analyze
+    'terminal':result.get('finish_request'),'backend_gate':result.get('last_backend',{}).get('gate',{}).get('closed_reason'),'stop_flow':result.get('last_backend',{}).get('stop_flow'),'shared_state_verified':__import__('shared_state').verify_capture(capture),
+                                                                                                                                                                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sun/vla_mppi_20261009/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v196/shared_state.py", line 62, in verify_capture
+    assert report['verified'] and report['method'] == 'shared_bind_mount_after_graph_stop'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

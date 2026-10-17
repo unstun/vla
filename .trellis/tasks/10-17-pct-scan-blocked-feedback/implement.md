@@ -22,8 +22,8 @@ Recorded native typed/binary parity and all occupancy predicates are unchanged
 for 126324+3 queries; source identities remain nonempty/stable. Building retains
 v229's exact route, 0/3821 rejected, +0.056539 m raw solid margin, 0.730794 s.
 See versions/v230/RESULTS.md. Earlier failed source/tests are retained. No
-physics/closed-loop NativeWorker promotion. New v229/v230 changes remain local
-and uncommitted; the three previously approved batches are already committed.
+physics/closed-loop NativeWorker promotion at this component gate. The approved
+source commits are v229 `420a0ff9` and v230 `e9f8bec0`.
 
 ## Commit and next experiment authorization, 2026-10-17
 
@@ -32,3 +32,15 @@ task documentation. He then authorized one complete v230 closed-loop physics
 route from the original v219 endpoints/gates, unchanged RL and 0.35 m thresholds,
 with 45-55 s stair diagnostics and a comparison video. That experiment is a
 separate run package; it does not rewrite this frozen component gate.
+
+## v231 single physical attempt: failed
+
+The authorized original-route v230 execution ran once under frozen v231
+bindings, unchanged RL/0.35 m guards. Controller_server SIGABRT (-6) near46.7s
+prevents route completion. Original recording ends at600000 steps without a
+finish request; original full-route and shared-terminal gates both fail.
+42 completed successful rounds in45–55s stop at46.376s, with one incomplete
+start; no completed rounds start at47–55s. No positive physical feedback-detour
+claim is supported. Keep the task in progress and v219/v220 accepted. See
+versions/v231/RESULTS.md and the linked audit; no retry or controller fix in
+this execution-only step.

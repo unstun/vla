@@ -1195,3 +1195,14 @@ or new mission. A blocked terminal cache is never republished. Nine packages/
 predicates are unchanged. Building retains the v229 first-round reference,
 0/3821 rejected, raw solid margin +0.056539 m; shared full call 0.731 s.
 [Results](v230/RESULTS.md). Component/recorded-input gate only; no new physics.
+
+### v231 — one physical execution binding for frozen v230 navigation
+
+Original v219 endpoints/gates, v216 locomotion, unchanged RL and 0.35 m guards.
+The single authorized full-route attempt fails: controller_server aborts with
+SIGABRT (-6) near 46.7 s. It records standing to its original 600000-step bound
+without arrival or terminal notification. Early edge-margin samples improve,
+but 42/42 successful completed stair rounds end at 46.376 s; later planning is
+absent. This is not full-window 100% success or physical promotion.
+[Results](v231/RESULTS.md). Accepted physical source/display remains v219/v220.
+

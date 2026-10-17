@@ -13,3 +13,13 @@
 Remote execution copies live under /data/sun/vla_mppi_20261009/pct_scan_traversability_v221 and ..._v222. Sync only owned source overlays after local hashing; preparation verifies the parent inventory before composition. Build/test output is version-scoped. Heavy archive data stays remote.
 
 Validation commands will be recorded in each version's build.sh and replay entry; never invoke the physics launcher as part of component verification.
+
+## 2026-10-17 committed sources and authorized physical follow-up
+
+v229 height alignment is committed as420a0ff9; v230 mission feedback as e9f8bec0.
+The separately authorized single full-route physical attempt uses v231 execution
+bindings with frozen v230 navigation and unchanged v219 endpoints/RL/0.35m
+guards. It fails on controller_server SIGABRT near46.7s and remains unaccepted;
+the task is not complete. Detailed evidence/video comparison is under
+audits/2026-10-17_v230_physical_comparison. No physics retry or navigation repair
+was performed. Preserve v219/v220 as the accepted physical pair.
