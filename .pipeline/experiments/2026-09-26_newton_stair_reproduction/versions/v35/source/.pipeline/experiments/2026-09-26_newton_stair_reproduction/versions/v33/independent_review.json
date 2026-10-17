@@ -1,0 +1,121 @@
+{
+  "passed": true,
+  "passing_round": 4,
+  "reviewer": "one independent read-only subagent, resumed for rounds 1-4; its output is model output, verified by the main session before each fix",
+  "rounds": {
+    "1": {
+      "file": "independent_review_round1.json",
+      "passed": false,
+      "response": "REVIEW_RESPONSE_round1.md",
+      "note": "two blocking findings (B1: setup/runtime_sources.json was not updated, so the trial would have been refused before physics; B2: the claim boundary misstated the stalled-pose-path case) and eight non-blocking; the round-1 files as reviewed are kept in round1/. After this round Dr Sun decided to keep the 2.0 s backstop, document the stalled-pose-path case and flag it in the trial analysis (PLAN.md, decisions)"
+    },
+    "2": {
+      "file": "independent_review_round2.json",
+      "passed": true,
+      "response": "REVIEW_RESPONSE_round2.md",
+      "note": "the first round with no blocking finding (PLAN.md K6); ten non-blocking findings, whose fixes changed the pre-registered analysis, a check script and the K5 harness records, so round 3 confirmed them"
+    },
+    "3": {
+      "file": "independent_review_round3.json",
+      "passed": true,
+      "response": "REVIEW_RESPONSE_round3.md",
+      "note": "confirmation round; six non-blocking findings, two of them pre-registered analysis rules and two check scripts, so round 4 confirmed them; while checking N1 the author found that K4 missed v5_building_route01's end"
+    },
+    "4": {
+      "file": "independent_review_round4.json",
+      "passed": true,
+      "note": "confirmation round; two non-blocking findings, both wording only by the reviewer's label, applied after it (post_review_edits); N1 corrected the K4 count to 10 of 12"
+    }
+  },
+  "post_review_edits": {
+    "scope": "Round 4's two non-blocking findings were wording only, by the reviewer's label, and were applied after it as the reviewer suggested. N2's last item gives the report for a case the attribution rule left undefined (no qualifying gap: unattributed, with the observer cross-check) and changes no defined case. No code, check, check output or runtime byte changed. The main session verified N1 and N2 from the records before editing. Four record-keeping edits by the author are listed too.",
+    "edits": [
+      {
+        "file": "versions/v33/COMPONENT_RESULTS.md",
+        "finding": "author, after round 4: the rounds covered",
+        "old": "# v33 component results (before the freeze), revised after independent review rounds 1 to 3\n",
+        "new": "# v33 component results (before the freeze), revised after independent review rounds 1 to 4\n"
+      },
+      {
+        "file": "versions/v33/COMPONENT_RESULTS.md",
+        "finding": "author, after round 4: the round-4 record",
+        "old": "- **Round 3** (`independent_review_round3.json`), the confirmation round, passed with six non-blocking findings.\n  `REVIEW_RESPONSE_round3.md` answers each. Two change the pre-registered analysis and two fix check scripts, so\n  round 4 confirms them.\n",
+        "new": "- **Round 3** (`independent_review_round3.json`), the first confirmation round, passed with six non-blocking\n  findings. `REVIEW_RESPONSE_round3.md` answers each. Two change the pre-registered analysis and two fix check\n  scripts, so round 4 confirms them.\n- **Round 4** (`independent_review_round4.json`), the second confirmation round, passed with two non-blocking\n  findings, both wording only. They were applied after it and are listed, with the old and new text, in\n  `independent_review.json`: the K4 count (10 of 12, below), and the freeze boundary, the monitor's delay and the\n  report when no gap qualifies.\n"
+      },
+      {
+        "file": "versions/v33/COMPONENT_RESULTS.md",
+        "finding": "round-4 N1",
+        "old": "- **Wall base (v32 rule):** 84 stale episodes in 16 runs. They reproduce 11 of the 12 recorded `odom_stale` ends:\n  v17, v25, v28, v30, v31, v32, `diag_v31_clock03/04`, `diag_v32_clock01` and `empty_long_route01/02`.\n  - **The one missed:** the 17th run with a gap over 0.25 s, `v5_building_route01`, also ended on `odom_stale`\n    (its `result.json`). Its only such gap, 0.2604 s, left a 10.4 ms stale window with no replay evaluation point\n    inside it, and the backend's own watchdog caught it.\n  - **Correction:** earlier versions of this record, and of `PLAN.md`, said every recorded end was reproduced.\n    I found the miss while checking round 3's N1.\n  - **What it affects:** the wall-base validation, not the simulation base's result, whose ages stayed at or\n    below 0.08 s.\n",
+        "new": "- **Wall base (v32 rule):** 84 stale episodes in 16 runs. An end counts as reproduced when a replay episode lies in\n  the pose gap its stop flow followed. They reproduce 10 of the 12 recorded `odom_stale` ends: v17, v25, v28, v30,\n  v31, v32, `diag_v31_clock03/04`, `diag_v32_clock01` and `empty_long_route01` (`evidence/k4_end_match.py`, added\n  after round 4).\n  - **The two missed:** both gaps exceeded 0.25 s by only milliseconds, no replay evaluation point fell inside the\n    stale window, and the backend's own watchdog caught them.\n    - `v5_building_route01`, the 17th run with a gap over 0.25 s: its only such gap, 0.2604 s, left a 10.4 ms\n      window.\n    - `empty_long_route02`: its first gap, 0.2532 s, left a 3.2 ms window. The replay's one episode in that run\n      lies in its second gap (0.339 s), which began about 3.9 s after the stop flow, so it is not the recorded end.\n  - **Corrections:** earlier versions of this record, and of `PLAN.md`, said every recorded end was reproduced.\n    I found `v5_building_route01`'s miss while checking round 3's N1 and wrote 11 of 12. That count matched runs,\n    not gaps: `empty_long_route02` has a replay episode, but in the wrong gap. Round 4 (N1) found it.\n  - **What it affects:** the wall-base validation, not the simulation base's result, whose ages stayed at or\n    below 0.08 s.\n"
+      },
+      {
+        "file": "versions/v33/COMPONENT_RESULTS.md",
+        "finding": "author, after round 4: what remains",
+        "old": "## Not yet done\n\n- K6 round 4, confirming the round-3 fixes.\n- The freeze.\n- The live run.\n",
+        "new": "## Next\n\n- The freeze: `freeze.py` writes `manifest.json` after this record.\n- The live run, `v33_historical_full01` (`PHYSICAL_RUN_PLAN.md`).\n"
+      },
+      {
+        "file": "versions/v33/PLAN.md",
+        "finding": "round-4 N1",
+        "old": "  - The wall base (v32 behaviour) trips wherever a recorded wall gap exceeds 0.25 s and the replay evaluates inside\n    the stale window. This validates the replay against the historical `odom_stale` ends. It reproduces 11 of the 12\n    recorded ends. It misses `v5_building_route01`'s: that gap exceeded 0.25 s by 10.4 ms, no evaluation point of\n    the replay fell inside it, and the backend's own watchdog caught it. (Corrected after review round 3: the\n    earlier text said every recorded end was reproduced.)\n",
+        "new": "  - The wall base (v32 behaviour) trips wherever a recorded wall gap exceeds 0.25 s and the replay evaluates inside\n    the stale window. This validates the replay against the historical `odom_stale` ends. It reproduces 10 of the 12\n    recorded ends, each by an episode in the gap its stop flow followed (`evidence/k4_end_match.py`). It misses\n    `v5_building_route01`'s and `empty_long_route02`'s: those gaps exceeded 0.25 s by 10.4 and 3.2 ms, no\n    evaluation point of the replay fell inside them, and the backend's own watchdog caught them.\n    `empty_long_route02`'s one replay episode is in a later gap, after the stop flow. (Corrected after review\n    rounds 3 and 4: the text first said every recorded end was reproduced, then 11 of 12.)\n"
+      },
+      {
+        "file": "versions/v33/PLAN.md",
+        "finding": "round-4 N2 (b) and (c)",
+        "old": "  - whether `odom_stale` occurs and its cause. The lag is measured from the start of the pose gap in which the\n    stop flow started, or which ended at most 0.1 s before it: the runtime's monitor starts the flow up to one\n    50 ms period after the gate closes. The backstop if and only if that lag is at least 2.0 s, otherwise the\n    simulation age (review rounds 2 and 3, N3 and N1). The observer's `/clock` is the proxy for the backend's,\n    whose receipts are not logged. A backstop end without `applied_evidence_stale` is read as a stalled pose path\n    with physics running (round 2, N1);\n",
+        "new": "  - whether `odom_stale` occurs and its cause. The lag is measured from the start of the pose gap in which the\n    stop flow started, or which ended at most 0.1 s before it: the runtime's monitor polls the gate every 50 ms, so\n    the flow normally starts within about 50 ms of the closure. Recorded flows started 4–76 ms after the earliest\n    possible trip (`evidence/k4_end_match.json`; review round 4, N2). The backstop if and only if that lag is at\n    least 2.0 s, otherwise the simulation age (review rounds 2 and 3, N3 and N1). With no qualifying gap, the cause\n    is reported as unattributed, with the observer cross-check (round 4, N2). The observer's `/clock` is the proxy\n    for the backend's, whose receipts are not logged. A backstop end without `applied_evidence_stale` is read as a\n    stalled pose path with physics running (round 2, N1);\n"
+      },
+      {
+        "file": "versions/v33/PHYSICAL_RUN_PLAN.md",
+        "finding": "author, after round 4: the rounds covered",
+        "old": "Written before the freeze and before any v33 physics. It was revised after independent review rounds 1 and 2,\nboth still before any v33 physics.",
+        "new": "Written before the freeze and before any v33 physics. It was revised after independent review rounds 1 to 4, all\nstill before any v33 physics."
+      },
+      {
+        "file": "versions/v33/PHYSICAL_RUN_PLAN.md",
+        "finding": "round-4 N2 (c)",
+        "old": "    - **Cross-check:** the observer's `clock_ns` at the stop flow's start, minus the stamp of the pose before the\n      gap. It is the proxy for the backend's `/clock`, whose receipts are not logged (`native_backend_entry.py`\n      wraps only the pose callback);\n",
+        "new": "    - **Cross-check:** the observer's `clock_ns` at the stop flow's start, minus the stamp of the pose before the\n      gap. It is the proxy for the backend's `/clock`, whose receipts are not logged (`native_backend_entry.py`\n      wraps only the pose callback);\n    - **No qualifying gap** (review round 4, N2): if no pose gap over 0.25 s contains the stop flow's start or\n      ended at most 0.1 s before it, the cause is reported as unattributed, with the observer cross-check;\n"
+      },
+      {
+        "file": "versions/v33/REVIEW_RESPONSE_round3.md",
+        "finding": "round-4 N1",
+        "old": "simulation base's result, with ages at or below 0.08 s, is not near its limit. Both files now state 11 of 12\nand the reason.\n",
+        "new": "simulation base's result, with ages at or below 0.08 s, is not near its limit. Both files now state 11 of 12\nand the reason. (Corrected after review round 4, N1: it reproduces 10 of 12. `empty_long_route02` is missed as\nwell: its first gap, 0.2532 s, left a 3.2 ms window, and the replay's one episode in that run is in its later gap,\nafter the stop flow. Both files now state 10 of 12.)\n"
+      },
+      {
+        "file": "versions/v33/freeze.py",
+        "finding": "round-4 N2 (a)",
+        "old": "                       '(independent_review.json: round 1 failed, round 2 passed with non-blocking findings, whose '\n                       'fixes a confirmation round reviewed); before any v33 physics (one trial, '\n                       'v33_historical_full01).'},\n",
+        "new": "                       '(independent_review.json: round 1 failed; rounds 2-4 passed with non-blocking findings; '\n                       'confirmation rounds 3 and 4 reviewed the fixes of rounds 2 and 3; round 4\\'s two findings '\n                       'were wording only, applied after it and listed there as post_review_edits); before any v33 '\n                       'physics (one trial, v33_historical_full01).'},\n"
+      }
+    ],
+    "added_files": [
+      {
+        "file": "versions/v33/evidence/k4_end_match.py",
+        "sha256": "a6c1e89081cdb50a47b49800ecdfb3c91489686eec0faa9075fd8cfdc7992ad0",
+        "note": "added after round 4 and not reviewed by it: re-derives round-4 N1's end-by-end count (10 of 12) and N2's delay bounds (4.4-75.7 ms) from the records with replay_gate.replay; prints and writes nothing"
+      },
+      {
+        "file": "versions/v33/evidence/k4_end_match.json",
+        "sha256": "322f5dfd03ec4ddd950fe568b4078017b294b4dafbcf84c8dc53248620f2289e",
+        "note": "its output, saved by redirection; its per-run episode lists equal replay_gate.json's counts and first episodes"
+      }
+    ]
+  },
+  "files_at_freeze_sha256": {
+    "PLAN.md": "41e649a47b7516520f78180bf822bb00a971197d47b6734c17e5d2cb8a232410",
+    "PHYSICAL_RUN_PLAN.md": "75d6e8e0e9bbee4fa8180651f693e1b07bdbd55e7691d3f1aa88c56df8c991dc",
+    "COMPONENT_RESULTS.md": "09b226f04be91483c55e8b873fdc19347c2ec5a7fce4964ab8759e907f1ee82d",
+    "REVIEW_RESPONSE_round3.md": "073503a569bee6117aa8bcfde02fbaec287825d5843ddb33c04a83bd29bb58e5",
+    "freeze.py": "e9c54cac388d401373949bc9a319e4148c67051f296f3c37a81e2bdcbdb3caa0",
+    "evidence/k4_end_match.py": "a6c1e89081cdb50a47b49800ecdfb3c91489686eec0faa9075fd8cfdc7992ad0",
+    "evidence/k4_end_match.json": "322f5dfd03ec4ddd950fe568b4078017b294b4dafbcf84c8dc53248620f2289e",
+    "../../runtime_sources/backend_adapter/backend_adapter/contracts.py": "372363794bd2de4c0f49d97c5d363354f9c2fc761addaa529456fd34e507618c",
+    "../../runtime_sources/backend_adapter/backend_adapter/control_gate.py": "b4dffb8c9b6db183cdd0264919c6b9f5f6c61b9684595ec19b97f5dbd5bf6a91",
+    "../../runtime_sources/backend_ros/p2b_backend_ros/node.py": "c94c901051fd6b86c83982e0eaee445ae081f62ad597a15ad6b9bc3254acc84f",
+    "../../scripts/native_graph.py": "f24002ceb5fd4d647a654eb29bf3abe5f4653b50294df5e5b38a4ea12be00ebf",
+    "../../setup/runtime_sources.json": "22adc45ed261cd2823845d57ba0f433be681efae0e21576af9c8fc22d8874018"
+  }
+}

@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SCAN · ESDF-free (p_j, v_j) Rebound</title>
+<style>
+  html,body{margin:0;height:100%;background:#090c11;overflow:hidden}
+  canvas{display:block;cursor:default}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// Core geometry for the SCAN/EGO (p_j, v_j) animation.
+// Mirrors bspline_optimizer.cpp: initControlPoints (L61-L297) and calcDistanceCostRebound (L405-L441).
+// 2-D, resolution = 1 cell. Exported for node testing and inlined into the HTML.
+(function (root) {
+  const W = 48, H = 27, RES = 1.0;
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  function topProfile(x) {
+    let t = 19.0;
+    t -= 7.0 * (1 - smooth(14.5, 19.0, x));      // rounded left flank
+    t -= 7.0 * smooth(29.0, 33.5, x);            // rounded right flank
+    t -= 4.2 * (smooth(20.2, 21.4, x) - smooth(26.6, 27.8, x)); // concave notch on top
+    return t;
+  }
+  function rawOcc(i, j) {
+    const x = i + 0.5, y = j + 0.5;
+    return x > 14.0 && x < 34.0 && y > 3.0 && y < topProfile(x);
+  }
+  const raw = [], infl = [];
+  for (let i = 0; i < W; i++) { raw.push([]); for (let j = 0; j < H; j++) raw[i].push(rawOcc(i, j)); }
+  for (let i = 0; i < W; i++) {
+    infl.push([]);
+    for (let j = 0; j < H; j++) {
+      let o = false;
+      for (let di = -1; di <= 1 && !o; di++) for (let dj = -1; dj <= 1 && !o; dj++) {
+        const a = i + di, b = j + dj;
+        if (a >= 0 && a < W && b >= 0 && b < H && raw[a][b]) o = true;
+      }
+      infl[i].push(o);
+    }
+  }
+  const occAt = (x, y) => { const i = Math.floor(x), j = Math.floor(y); if (i < 0 || j < 0 || i >= W || j >= H) return true; return infl[i][j]; };
+
+  // Initial control points (uniform cubic B-spline, order 3)
+  const Q0 = [[3, 12.2], [8, 12.8], [13, 13.3], [18.5, 13.7], [24, 13.9], [29.5, 13.6], [35, 13.1], [40, 12.6], [45, 12.1]];
+  const ORDER = 3;
+
+  // --- collision segmentation along control polygon (L72-L130) ---
+  function segment(Q) {
+    const n = Q.length;
+    const avg = Math.hypot(Q[0][0] - Q[n - 1][0], Q[0][1] - Q[n - 1][1]) / (n - 1);
+    const step = RES / avg / 2;
+    const ENOUGH = 2; let same = ENOUGH + 1, last = false, gotS = false, gotE = false, maybe = false, inId = -1, outId = -1;
+    const segs = [], samples = [];
+    const iEnd = n - ORDER - Math.floor((n - 2 * ORDER) / 3);
+    for (let i = ORDER - 2; i <= n - 1; i++) { // demo: scan whole polygon (code scans i in [order, i_end])
+      if (i < 1) continue;
+      for (let a = 1.0; a >= 0.0; a -= step) {
+        const x = a * Q[i - 1][0] + (1 - a) * Q[i][0], y = a * Q[i - 1][1] + (1 - a) * Q[i][1];
+        const occ = occAt(x, y);
+        samples.push({ x, y, occ, i });
+        if (occ && !last) { if (same > ENOUGH || i === ORDER) { inId = i - 1; gotS = true; } same = 0; maybe = false; }
+        else if (!occ && last) { outId = i; maybe = true; same = 0; }
+        else same++;
+        if (maybe && (same > ENOUGH || i === n - ORDER)) { maybe = false; gotE = true; }
+        last = occ;
+        if (gotS && gotE) { gotS = gotE = false; segs.push([inId, outId]); }
+      }
+    }
+    return { segs, samples, iEnd };
+  }
+
+  // --- 8-connected A* on inflated grid (stand-in for dyn_a_star) ---
+  function astar(s, g) {
+    const key = (i, j) => i * H + j;
+    const si = Math.floor(s[0]), sj = Math.floor(s[1]), gi = Math.floor(g[0]), gj = Math.floor(g[1]);
+    const h = (i, j) => { const dx = Math.abs(i - gi), dy = Math.abs(j - gj); return (dx + dy) + (Math.SQRT2 - 2) * Math.min(dx, dy); };
+    const gS = new Map(), parent = new Map(), closed = new Set(), order = [];
+    const open = [[h(si, sj), 0, si, sj]]; gS.set(key(si, sj), 0);
+    while (open.length) {
+      open.sort((a, b) => a[0] - b[0] || b[1] - a[1]);
+      const [, gc, i, j] = open.shift();
+      const k = key(i, j); if (closed.has(k)) continue; closed.add(k); order.push([i, j]);
+      if (i === gi && j === gj) break;
+      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+        if (!di && !dj) continue;
+        const a = i + di, b = j + dj;
+        if (a < 0 || b < 0 || a >= W || b >= H || infl[a][b]) continue;
+        if (di && dj && (infl[i + di][j] || infl[i][j + dj])) continue;
+        const ng = gc + (di && dj ? Math.SQRT2 : 1), kk = key(a, b);
+        if (ng < (gS.has(kk) ? gS.get(kk) : Infinity)) { gS.set(kk, ng); parent.set(kk, k); open.push([ng + h(a, b) * 1.0001, ng, a, b]); }
+      }
+    }
+    const path = []; let k = key(gi, gj);
+    while (k !== undefined) { const i = Math.floor(k / H), j = k % H; path.push([i + 0.5, j + 0.5]); k = parent.get(k); }
+    path.reverse();
+    path[0] = s.slice(); path[path.length - 1] = g.slice(); // code uses exact in/out endpoints
+    return { path, expanded: order };
+  }
+
+  // --- normal-plane intersection + ray stepping (L236-L297) ---
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1]], dot = (a, b) => a[0] * b[0] + a[1] * b[1];
+  function pv(Q, j, path) {
+    const law = sub(Q[j + 1], Q[j - 1]);
+    let id = Math.floor(path.length / 2), lastId, val = dot(sub(path[id], Q[j]), law), lastVal = val, P = null;
+    const walk = [id];
+    while (id >= 0 && id < path.length) {
+      lastId = id; lastVal = val;
+      id += val >= 0 ? -1 : 1;
+      if (id < 0 || id >= path.length) break;
+      walk.push(id);
+      val = dot(sub(path[id], Q[j]), law);
+      if (val * lastVal <= 0 && (Math.abs(val) > 0 || Math.abs(lastVal) > 0)) {
+        const d = sub(path[id], path[lastId]), den = dot(law, d);
+        const t = dot(law, sub(Q[j], path[id])) / den;
+        P = [path[id][0] + d[0] * t, path[id][1] + d[1] * t];
+        break;
+      }
+    }
+    if (!P) return null;
+    const L = Math.hypot(P[0] - Q[j][0], P[1] - Q[j][1]);
+    const steps = []; let base = null;
+    for (let a = L; a >= 0; a -= RES) {
+      const s = [(a / L) * P[0] + (1 - a / L) * Q[j][0], (a / L) * P[1] + (1 - a / L) * Q[j][1]];
+      const occ = occAt(s[0], s[1]);
+      steps.push({ p: s, occ, a });
+      if (occ || a < RES) {
+        const aa = occ ? a + RES : a;
+        base = [(aa / L) * P[0] + (1 - aa / L) * Q[j][0], (aa / L) * P[1] + (1 - aa / L) * Q[j][1]];
+        break;
+      }
+    }
+    const v = [(P[0] - Q[j][0]) / L, (P[1] - Q[j][1]) / L];
+    return { j, law, P, walk, steps, base, v, L };
+  }
+
+  // --- optimisation: jerk smoothness + rebound distance cost (L405-L441) ---
+  function optimise(Qinit, pairs, sf, opts) {
+    const o = Object.assign({ lamS: 1.0, lamD: 20.0, iters: 600, lr: 0.004, fixed: 2 }, opts || {});
+    const Q = Qinit.map(q => q.slice()); const n = Q.length; const hist = [Q.map(q => q.slice())];
+    const a3 = 3 * sf, b3 = -3 * sf * sf, c3 = sf ** 3;
+    for (let it = 0; it < o.iters; it++) {
+      const G = Q.map(() => [0, 0]);
+      for (let i = 0; i + 3 < n; i++) {
+        const jx = Q[i + 3][0] - 3 * Q[i + 2][0] + 3 * Q[i + 1][0] - Q[i][0];
+        const jy = Q[i + 3][1] - 3 * Q[i + 2][1] + 3 * Q[i + 1][1] - Q[i][1];
+        const c = [-1, 3, -3, 1];
+        for (let k = 0; k < 4; k++) { G[i + k][0] += o.lamS * 2 * c[k] * jx; G[i + k][1] += o.lamS * 2 * c[k] * jy; }
+      }
+      for (const pr of pairs) {
+        const q = Q[pr.j]; const d = (q[0] - pr.base[0]) * pr.v[0] + (q[1] - pr.base[1]) * pr.v[1];
+        const e = sf - d; let g = 0;
+        if (e < 0) g = 0; else if (e < sf) g = -3 * e * e; else g = -(2 * a3 * e + b3);
+        G[pr.j][0] += o.lamD * g * pr.v[0]; G[pr.j][1] += o.lamD * g * pr.v[1];
+      }
+      for (let i = o.fixed; i < n - o.fixed; i++) { Q[i][0] -= o.lr * G[i][0]; Q[i][1] -= o.lr * G[i][1]; }
+      if (it % 4 === 3) hist.push(Q.map(q => q.slice()));
+    }
+    return { Q, hist };
+  }
+
+  // Uniform cubic B-spline sample (with phantom end points so the curve spans Q[0]..Q[n-1])
+  function bspline(Q, perSeg) {
+    const n = Q.length, P = [[2 * Q[0][0] - Q[1][0], 2 * Q[0][1] - Q[1][1]], ...Q, [2 * Q[n - 1][0] - Q[n - 2][0], 2 * Q[n - 1][1] - Q[n - 2][1]]];
+    const out = [];
+    for (let s = 0; s + 3 < P.length; s++) for (let k = 0; k <= perSeg; k++) {
+      if (k === perSeg && s + 4 < P.length) continue;
+      const u = k / perSeg, u2 = u * u, u3 = u2 * u;
+      const b0 = (1 - u) ** 3 / 6, b1 = (3 * u3 - 6 * u2 + 4) / 6, b2 = (-3 * u3 + 3 * u2 + 3 * u + 1) / 6, b3 = u3 / 6;
+      out.push([b0 * P[s][0] + b1 * P[s + 1][0] + b2 * P[s + 2][0] + b3 * P[s + 3][0], b0 * P[s][1] + b1 * P[s + 1][1] + b2 * P[s + 2][1] + b3 * P[s + 3][1]]);
+    }
+    return out;
+  }
+
+  function solve(sf, opts) {
+    const seg = segment(Q0);
+    const [inId, outId] = seg.segs[0];
+    const as = astar(Q0[inId], Q0[outId]);
+    const pairs = [];
+    for (let j = inId + 1; j < outId; j++) { const r = pv(Q0, j, as.path); if (r) pairs.push(r); }
+    const opt = optimise(Q0, pairs, sf, opts);
+    const curve0 = bspline(Q0, 24), curve1 = bspline(opt.Q, 24);
+    const hits = curve1.filter(p => occAt(p[0], p[1])).length;
+    return { W, H, RES, raw, infl, occAt, Q0, seg, inId, outId, as, pairs, opt, curve0, curve1, hits, bspline, topProfile };
+  }
+  const api = { solve };
+  if (typeof module !== 'undefined') module.exports = api; else root.SCANCORE = api;
+})(window);
+
+</script>
+<script>
+'use strict';
+// ============================================================================
+//  One canvas, one draw(t). Every geometric quantity is computed by SCANCORE,
+//  which mirrors bspline_optimizer.cpp (initControlPoints L61-L297,
+//  calcDistanceCostRebound L405-L441). Nothing is hand-placed.
+// ============================================================================
+const SF = 1.5;
+const G = SCANCORE.solve(SF, { fixed: 2 });
+const PAIR = {}; G.pairs.forEach(p => PAIR[p.j] = p);
+const M = PAIR[4];                    // main example: Q5 (0-based j = 4), under the notch
+const SIDE = [PAIR[3], PAIR[5]];      // Q4, Q6
+const curve0 = G.curve0, curve0Occ = curve0.map(p => G.occAt(p[0], p[1]));
+const NQ = G.Q0.length;
+
+// ---------------------------------------------------------------- palette
+const C = {
+  bg: '#090c11', ink: '#e8edf4', dim: 'rgba(232,237,244,0.55)', faint: 'rgba(232,237,244,0.22)',
+  obst: '#1d2633', obstEdge: '#5b6b82', infl: 'rgba(122,146,180,0.13)', inflEdge: 'rgba(150,176,214,0.50)',
+  traj: '#f2c27b', hit: '#ff6b5e', guide: '#45d3c4', plane: '#a99cff', base: '#7ee08a', safe: '#f5d26b', free: '#9fb3c8'
+};
+const SANS = '"PingFang SC","Hiragino Sans GB","Noto Sans SC",-apple-system,system-ui,sans-serif';
+const SERIF = '"STIX Two Text","Times New Roman",Times,serif';
+const MONO = '"SF Mono",Menlo,Consolas,monospace';
+
+// ---------------------------------------------------------------- timeline
+const ACTS = [
+  { t0: 0,    t1: 4,    k: '',   name: '引言' },
+  { t0: 4,    t1: 13,   k: '01', name: '碰撞分段' },
+  { t0: 13,   t1: 21,   k: '02', name: '引导路径 Γ' },
+  { t0: 21,   t1: 31,   k: '03', name: '法平面求交' },
+  { t0: 31,   t1: 41,   k: '04', name: '射线步进' },
+  { t0: 41,   t1: 52,   k: '05', name: '方向与距离' },
+  { t0: 52,   t1: 58.5, k: '06', name: '其余碰撞点' },
+  { t0: 58.5, t1: 71,   k: '07', name: 'Rebound 优化' },
+  { t0: 71,   t1: 82,   k: '08', name: '小结' },
+];
+const T_END = 82;
+
+const CAPS = [
+  { kick: 'SCAN PLANNER · 局部轨迹优化', title: '无 ESDF 的碰撞约束：$(p_j, v_j)$ 是怎么来的',
+    body: ['一条三次 B 样条穿过了障碍物。EGO-Planner / SCAN 不计算全局距离场，',
+           '只为真正碰撞的控制点构造一对几何量，再沿它把控制点推出去。'] },
+  { kick: 'STEP 01 · 碰撞分段', title: '沿控制多边形采样，定位进入与离开障碍的位置',
+    body: ['在 $Q_{i−1} → Q_i$ 上以 res/2 步长查询占据（SCAN 中为带 yaw 的足迹检测）。',
+           '进入障碍那一段的起点记为 $Q_{in}$，离开那一段的终点记为 $Q_{out}$。'],
+    eq: ['$j ∈ (in, out)$', '$= Q_4, Q_5, Q_6$'] },
+  { kick: 'STEP 02 · 引导路径', title: '在膨胀栅格上从 $Q_{in}$ 到 $Q_{out}$ 做 A* 搜索',
+    body: ['得到一条绕开障碍的无碰撞折线 Γ。Γ 不直接当作轨迹，',
+           '它只回答一个问题：对每个碰撞控制点，自由空间在哪一侧。'],
+    eq: ['$Γ = A*(Q_{in}, Q_{out})$'] },
+  { kick: 'STEP 03 · 法平面求交', title: '过 $Q_j$ 作垂直于轨迹切向的平面，与 Γ 求交',
+    body: ['切向用相邻控制点差分近似 $τ_j = Q_{j+1} − Q_{j−1}$。从 Γ 的中间顶点出发，',
+           '按 $(Γ_k − Q_j)·τ_j$ 的符号前后移动，符号翻转处线性插值得到 $P_{int}$。'],
+    eq: ['$(P_{int} − Q_j)·τ_j = 0$'] },
+  { kick: 'STEP 04 · 射线步进', title: '从 $P_{int}$ 向 $Q_j$ 逐格回退，找到障碍表面点 $p_j$',
+    body: ['每步后退一个 res 查询占据；首次命中占据后退回一步，记为 base_point $p_j$。',
+           '$P_{int}$ 在 Γ 上，可能离障碍很远（例如这个凹槽）；$p_j$ 才贴着真实表面。'],
+    eq: ['$p_j = Q_j + (a_{hit} +$ res$)·v_j$'] },
+  { kick: 'STEP 05 · 方向与有符号距离', title: '$v_j$ 指向自由侧，$d_j$ 是到局部平面的有符号距离',
+    body: ['$v_j$ 为 $Q_j → P_{int}$ 的单位向量；$(p_j, v_j)$ 定义一个半空间，即障碍边界的局部线性近似。',
+           '$d_j < 0$ 表示仍在障碍侧；误差 $e = s_f − d_j > 0$ 时产生代价，其负梯度严格沿 $+v_j$。'],
+    eq: ['$d_j = (Q_j − p_j)·v_j$', '$−∇J_c ∥ +v_j$'] },
+  { kick: 'STEP 06 · 其余碰撞点', title: '对 $Q_4$、$Q_6$ 重复同样的构造',
+    body: ['它们的 $P_{int}$ 紧贴膨胀层，第一步即命中占据，因此 $p_j$ 退回到 $P_{int}$ 本身。',
+           '每个碰撞点得到一组固定的 $(p_j, v_j)$：一面只沿 $v_j$ 方向起作用的局部墙。'] },
+  { kick: 'STEP 07 · REBOUND 优化', title: '优化变量只有控制点：平滑项 + 碰撞项',
+    body: ['$J = λ_s J_s + λ_c Σ_j J_c(d_j)$，$J_s$ 为三阶差分平方和。碰撞项只沿 $v_j$ 推动 $Q_j$，',
+           '$d_j ≥ s_f$ 后其梯度归零；$Q_5$ 继续上移来自平滑项：它被 $Q_4$、$Q_6$ 带起。'],
+    note: '示意参数：res = 1 格，$s_f$ = 1.5 格，首尾各 2 个控制点固定；位移由 600 步梯度下降实时计算。',
+    eq: ['$e_j = s_f − d_j$', '$J_c = e_j^{3}$,  0 ≤ $e_j$ < $s_f$'] },
+  { kick: '小结', title: '用 A* 决定往哪推，用射线步进找到从哪推',
+    body: ['①  不建 ESDF：只在碰撞段做局部 A*，Γ 指明自由空间所在的一侧。',
+           '②  $p_j$ 由射线步进贴到障碍表面，$v_j$ 指向 Γ；$d_j = (Q_j − p_j)·v_j$ 是到局部平面的有符号距离。',
+           '③  本轮优化中 $(p_j, v_j)$ 固定；出现新碰撞时 `check_collision_and_rebound()` 追加新的一对再优化。'],
+    note: 'bspline_optimizer.cpp · initControlPoints L61–L297 · calcDistanceCostRebound L405–L441' },
+];
+
+// ---------------------------------------------------------------- math utils
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, u) => a + (b - a) * u;
+const ease = u => (u = clamp(u), u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+const eout = u => (u = clamp(u), 1 - Math.pow(1 - u, 3));
+const ramp = (t, a, b) => ease((t - a) / (b - a));
+const fade = (t, a, b, c = 1e9, d = 1e9) => Math.min(ramp(t, a, b), 1 - ramp(t, c, d));
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1]], add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+const mul = (a, s) => [a[0] * s, a[1] * s], dot = (a, b) => a[0] * b[0] + a[1] * b[1];
+const nrm = a => { const l = Math.hypot(a[0], a[1]); return [a[0] / l, a[1] / l]; };
+const perp = a => [-a[1], a[0]];
+const fmt = x => (x < 0 ? '−' : '') + Math.abs(x).toFixed(2);
+const signedDist = (q, pr) => dot(sub(q, pr.base), pr.v);
+
+// ---------------------------------------------------------------- canvas
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let DPR = 1, CW = 0, CH = 0, S = 1, OX = 0, OY = 0;
+function resize() {
+  DPR = window.devicePixelRatio || 1; CW = innerWidth; CH = innerHeight;
+  cv.width = Math.round(CW * DPR); cv.height = Math.round(CH * DPR);
+  cv.style.width = CW + 'px'; cv.style.height = CH + 'px';
+  S = Math.min(CW / 1920, CH / 1080); OX = (CW - 1920 * S) / 2; OY = (CH - 1080 * S) / 2;
+}
+addEventListener('resize', () => { resize(); draw(T); });
+resize();
+// visible design-space bounds (the world extends past the 16:9 frame)
+const VX0 = () => -OX / S, VX1 = () => (CW - OX) / S, VY0 = () => -OY / S, VY1 = () => (CH - OY) / S;
+
+// ---------------------------------------------------------------- camera
+const CAM = [
+  [0, 24, 15.0, 44], [20.6, 24, 15.0, 44],
+  [23.0, 24, 16.4, 72], [31.0, 24, 16.4, 72],
+  [32.4, 24, 16.9, 76], [40.6, 24, 16.9, 76],
+  [42.0, 24.6, 16.9, 76], [51.6, 24.6, 16.9, 76],
+  [53.6, 24, 16.4, 50], [58.6, 24, 16.4, 50],
+  [60.8, 24, 15.4, 42], [82, 24, 15.4, 42],
+];
+let cam = { x: 24, y: 15.0, k: 44 };
+function camAt(t) {
+  let i = 0; while (i < CAM.length - 1 && CAM[i + 1][0] <= t) i++;
+  if (i >= CAM.length - 1) { const c = CAM[CAM.length - 1]; return { x: c[1], y: c[2], k: c[3] }; }
+  const a = CAM[i], b = CAM[i + 1], u = ease((t - a[0]) / (b[0] - a[0]));
+  return { x: lerp(a[1], b[1], u), y: lerp(a[2], b[2], u), k: Math.exp(lerp(Math.log(a[3]), Math.log(b[3]), u)) };
+}
+const X = x => 960 + (x - cam.x) * cam.k;
+const Y = y => 540 - (y - cam.y) * cam.k;
+const P2 = p => [X(p[0]), Y(p[1])];
+
+// ---------------------------------------------------------------- rich text
+// Plain text is upright sans; $...$ is math (italic serif letters, sub/superscripts); `...` is mono.
+function layoutRich(s, size, weight) {
+  const runs = []; let mode = 'txt', buf = '';
+  const push = (text, font, dy) => { ctx.font = font; runs.push({ text, font, dy, w: ctx.measureText(text).width }); };
+  const flush = () => { if (buf) { push(buf, mode === 'code' ? `${size * 0.86}px ${MONO}` : `${weight} ${size}px ${SANS}`, 0); buf = ''; } };
+  for (let i = 0; i < s.length;) {
+    const c = s[i];
+    if (c === '`') { flush(); mode = mode === 'code' ? 'txt' : 'code'; i++; continue; }
+    if (c === '$' && mode !== 'code') { flush(); mode = mode === 'math' ? 'txt' : 'math'; i++; continue; }
+    if (mode !== 'math') { buf += c; i++; continue; }
+    if (c === '_' || c === '^') {
+      let t = ''; i++;
+      if (s[i] === '{') { i++; while (i < s.length && s[i] !== '}') t += s[i++]; i++; } else t = s[i++];
+      const ss = size * 0.68, dy = c === '_' ? size * 0.26 : -size * 0.42;
+      const it = t.length === 1 && /[a-zA-Zα-ω]/.test(t);
+      push(t, `${it ? 'italic ' : ''}${ss * 1.06}px ${SERIF}`, dy); continue;
+    }
+    if (c === ' ') { runs.push({ text: '', font: '', dy: 0, w: size * 0.22 }); i++; continue; }
+    if (/[a-zA-Zα-ω]/.test(c)) push(c, `italic ${size * 1.1}px ${SERIF}`, 0);
+    else if (/[\u3000-\u9fff\uff00-\uffef]/.test(c)) push(c, `${weight} ${size}px ${SANS}`, 0);
+    else push(c, `${size * 1.1}px ${SERIF}`, 0);
+    i++;
+  }
+  flush(); return runs;
+}
+function richWidth(s, size, weight = 400) { return layoutRich(s, size, weight).reduce((a, r) => a + r.w, 0); }
+function drawRich(s, x, y, size, color, align = 'left', weight = 400) {
+  const runs = layoutRich(s, size, weight), w = runs.reduce((a, r) => a + r.w, 0);
+  let cx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  ctx.fillStyle = color; ctx.textBaseline = 'alphabetic';
+  for (const r of runs) { if (r.text) { ctx.font = r.font; ctx.fillText(r.text, cx, y + r.dy); } cx += r.w; }
+  return w;
+}
+// Pill label anchored in screen space. ax/ay = anchor (design px), dx/dy = offset, al = 'l'|'c'|'r'
+function pill(s, ax, ay, o) {
+  o = Object.assign({ dx: 0, dy: 0, al: 'c', size: 19, color: C.ink, edge: 'rgba(255,255,255,0.18)', a: 1, lead: false }, o);
+  if (o.a <= 0.01) return;
+  ctx.save(); ctx.globalAlpha *= o.a;
+  const w = richWidth(s, o.size), h = o.size * 1.65, px = 11;
+  let x = ax + o.dx, y = ay + o.dy;
+  const bx = o.al === 'c' ? x - w / 2 - px : o.al === 'r' ? x - w - 2 * px : x;
+  if (o.lead) { ctx.strokeStyle = o.edge; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx + (o.al === 'r' ? w + 2 * px : o.al === 'l' ? 0 : w / 2 + px), y); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(9,12,17,0.82)'; ctx.strokeStyle = o.edge; ctx.lineWidth = 1;
+  rrect(bx, y - h / 2, w + 2 * px, h, h / 2); ctx.fill(); ctx.stroke();
+  drawRich(s, bx + px, y + o.size * 0.36, o.size, o.color);
+  ctx.restore();
+}
+function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+// ---------------------------------------------------------------- primitives (world coords in, screen px out)
+function wline(a, b, color, w = 2, dash = null, alpha = 1) {
+  if (alpha <= 0.01) return;
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round';
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(X(a[0]), Y(a[1])); ctx.lineTo(X(b[0]), Y(b[1])); ctx.stroke(); ctx.restore();
+}
+function wpoly(pts, color, w = 2, dash = null, alpha = 1, upto = 1) {
+  if (alpha <= 0.01 || upto <= 0) return;
+  const n = Math.max(2, Math.floor(pts.length * upto));
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(X(pts[0][0]), Y(pts[0][1]));
+  for (let i = 1; i < n && i < pts.length; i++) ctx.lineTo(X(pts[i][0]), Y(pts[i][1]));
+  ctx.stroke(); ctx.restore();
+}
+function warrow(a, b, color, w = 2.5, alpha = 1, head = 13, dash = null) {
+  if (alpha <= 0.01) return;
+  const A = P2(a), B = P2(b), d = [B[0] - A[0], B[1] - A[1]], L = Math.hypot(d[0], d[1]);
+  if (L < 2) return;
+  const u = [d[0] / L, d[1] / L], hh = Math.min(head, L * 0.45);
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round';
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0] - u[0] * hh * 0.8, B[1] - u[1] * hh * 0.8); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(B[0], B[1]);
+  ctx.lineTo(B[0] - u[0] * hh - u[1] * hh * 0.45, B[1] - u[1] * hh + u[0] * hh * 0.45);
+  ctx.lineTo(B[0] - u[0] * hh + u[1] * hh * 0.45, B[1] - u[1] * hh - u[0] * hh * 0.45);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function wdot(p, r, fill, stroke = null, alpha = 1, lw = 2) {
+  if (alpha <= 0.01) return;
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), r, 0, Math.PI * 2);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+  ctx.restore();
+}
+function halo(p, r, color, alpha) {
+  if (alpha <= 0.01) return;
+  const x = X(p[0]), y = Y(p[1]); const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+}
+function cellRect(i, j, fill, alpha = 1, stroke = null, lw = 1.5) {
+  if (alpha <= 0.01) return;
+  const x0 = X(i), y0 = Y(j + 1), s = cam.k;
+  ctx.save(); ctx.globalAlpha *= alpha;
+  if (fill) { ctx.fillStyle = fill; ctx.fillRect(x0 - 0.5, y0 - 0.5, s + 1, s + 1); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.strokeRect(x0 + lw / 2, y0 + lw / 2, s - lw, s - lw); }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- precomputed edges
+function edgesOf(grid) {
+  const E = [];
+  for (let i = 0; i < G.W; i++) for (let j = 0; j < G.H; j++) {
+    if (!grid[i][j]) continue;
+    const f = (a, b) => a < 0 || b < 0 || a >= G.W || b >= G.H || !grid[a][b];
+    if (f(i - 1, j)) E.push([i, j, i, j + 1]); if (f(i + 1, j)) E.push([i + 1, j, i + 1, j + 1]);
+    if (f(i, j - 1)) E.push([i, j, i + 1, j]); if (f(i, j + 1)) E.push([i, j + 1, i + 1, j + 1]);
+  }
+  return E;
+}
+const RAW_E = edgesOf(G.raw), INF_E = edgesOf(G.infl);
+function strokeEdges(E, color, w, dash, alpha) {
+  if (alpha <= 0.01) return;
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.strokeStyle = color; ctx.lineWidth = w; if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); for (const e of E) { ctx.moveTo(X(e[0]), Y(e[1])); ctx.lineTo(X(e[2]), Y(e[3])); } ctx.stroke(); ctx.restore();
+}
+
+// ---------------------------------------------------------------- scene pieces
+function drawBackdrop() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, CW, CH);
+  const g = ctx.createRadialGradient(CW * 0.5, CH * 0.42, 0, CW * 0.5, CH * 0.42, Math.max(CW, CH) * 0.75);
+  g.addColorStop(0, 'rgba(40,56,78,0.30)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, DPR * OX, DPR * OY);
+}
+function drawGrid() {
+  const x0 = Math.floor(cam.x + (VX0() - 960) / cam.k) - 1, x1 = Math.ceil(cam.x + (VX1() - 960) / cam.k) + 1;
+  const y0 = Math.floor(cam.y - (VY1() - 540) / cam.k) - 1, y1 = Math.ceil(cam.y - (VY0() - 540) / cam.k) + 1;
+  const a = 0.035 + 0.035 * clamp((cam.k - 38) / 50);
+  ctx.save(); ctx.lineWidth = 1;
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.strokeStyle = pass ? `rgba(170,190,220,${a + 0.035})` : `rgba(170,190,220,${a})`;
+    ctx.beginPath();
+    for (let x = x0; x <= x1; x++) if ((x % 6 === 0) === !!pass) { ctx.moveTo(X(x), VY0()); ctx.lineTo(X(x), VY1()); }
+    for (let y = y0; y <= y1; y++) if ((y % 6 === 0) === !!pass) { ctx.moveTo(VX0(), Y(y)); ctx.lineTo(VX1(), Y(y)); }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawObstacle(t) {
+  const rev = (i, j) => eout((t - 0.3 - (i - 13) * 0.04 - (j) * 0.01) / 0.55);
+  for (let i = 0; i < G.W; i++) for (let j = 0; j < G.H; j++) {
+    if (G.raw[i][j]) cellRect(i, j, C.obst, rev(i, j));
+    else if (G.infl[i][j]) cellRect(i, j, C.infl, rev(i, j));
+  }
+  const ea = ramp(t, 1.2, 2.2);
+  strokeEdges(INF_E, C.inflEdge, 1.2, [4, 4], ea);
+  strokeEdges(RAW_E, C.obstEdge, 1.6, null, ea);
+  // name tags
+  const la = fade(t, 4.6, 5.4, 11.6, 12.4);
+  pill('障碍物 · 占据体素', X(24), Y(9.6), { a: la, size: 17, color: C.dim });
+  pill('膨胀层（占据查询使用）', X(17.5), Y(19.5), { a: la, size: 17, color: C.dim, al: 'r', dx: -40, dy: -34, lead: true });
+}
+function curveColored(pts, occ, w, alphaFree, alphaHit, upto = 1) {
+  if (upto <= 0.001) return;
+  const n = Math.max(2, Math.floor(pts.length * upto));
+  ctx.save(); ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  let i = 0;
+  while (i < n - 1) {
+    const f = occ[i]; let jEnd = i + 1; while (jEnd < n - 1 && occ[jEnd] === f) jEnd++;
+    ctx.strokeStyle = f ? C.hit : C.traj; ctx.globalAlpha = f ? alphaHit : alphaFree;
+    ctx.beginPath(); ctx.moveTo(X(pts[i][0]), Y(pts[i][1]));
+    for (let k = i + 1; k <= jEnd; k++) ctx.lineTo(X(pts[k][0]), Y(pts[k][1]));
+    ctx.stroke(); i = jEnd;
+  }
+  ctx.restore();
+}
+
+// optimisation playback
+const OPT_T0 = 59.6, OPT_T1 = 68.6;
+// gradient descent moves most in its first iterations; re-time playback by cumulative displacement
+const HCUM = (() => {
+  const H = G.opt.hist, c = [0];
+  for (let i = 1; i < H.length; i++) {
+    let m = 0; for (let k = 0; k < NQ; k++) m = Math.max(m, Math.hypot(H[i][k][0] - H[i - 1][k][0], H[i][k][1] - H[i - 1][k][1]));
+    c.push(c[i - 1] + m);
+  }
+  return c.map(v => v / c[c.length - 1]);
+})();
+function Qat(t) {
+  if (t <= OPT_T0) return G.Q0;
+  const H = G.opt.hist, u = ease((t - OPT_T0) / (OPT_T1 - OPT_T0));
+  let i = 0; while (i < H.length - 2 && HCUM[i + 1] <= u) i++;
+  const r = clamp((u - HCUM[i]) / Math.max(1e-9, HCUM[i + 1] - HCUM[i]));
+  return H[i].map((q, k) => [lerp(q[0], H[i + 1][k][0], r), lerp(q[1], H[i + 1][k][1], r)]);
+}
+
+// segmentation probe timing
+const SAMP = G.seg.samples, PROBE_T0 = 8.0, PROBE_T1 = 11.8;
+const sampTime = idx => PROBE_T0 + (PROBE_T1 - PROBE_T0) * idx / (SAMP.length - 1);
+const inIdx = SAMP.findIndex(s => s.occ);
+const outIdx = SAMP.findIndex((s, k) => k > inIdx && !s.occ);
+const passTime = j => { const k = SAMP.findIndex(s => s.i === j + 1); return k < 0 ? 1e9 : sampTime(k); };
+
+// construction helpers for a (p,v) pair, timeline object tl
+function drawConstruction(pr, t, tl, Q) {
+  const q = Q[pr.j], law = pr.law, tau = nrm(law), nrmv = perp(tau);
+  // ctrl_pts_law (Q_{j+1} - Q_{j-1}) shown as dashed chord
+  if (tl.chord) {
+    const a = fade(t, tl.chord[0], tl.chord[0] + 0.6, tl.chord[1], tl.chord[1] + 0.5);
+    warrow(G.Q0[pr.j - 1], G.Q0[pr.j + 1], C.ink, 1.6, a * 0.75, 12, [7, 6]);
+    if (tl.labels) pill('$Q_{j+1} − Q_{j−1}$', X((G.Q0[pr.j - 1][0] + G.Q0[pr.j + 1][0]) / 2) + 150, Y(G.Q0[pr.j + 1][1]) + 54, { a, size: 18 });
+  }
+  // tangent
+  const ta = fade(t, tl.tan[0], tl.tan[0] + 0.6, tl.tan[1], tl.tan[1] + 0.6);
+  const tl3 = 2.6 * eout((t - tl.tan[0]) / 0.7);
+  warrow(q, add(q, mul(tau, tl3)), C.ink, 2.4, ta);
+  if (tl.labels) pill('$τ_5$', ...P2(add(q, mul(tau, 2.6))), { a: ta, dx: 30, dy: 0, size: 20 });
+  // normal plane (line in 2-D)
+  const pa = fade(t, tl.pl[0], tl.pl[0] + 0.5, tl.pl[1], tl.pl[1] + 0.6);
+  const ext = 9.5 * eout((t - tl.pl[0]) / 0.9);
+  wline(add(q, mul(nrmv, -ext)), add(q, mul(nrmv, ext)), C.plane, 1.8, [10, 7], pa);
+  if (pa > 0.01) { // right-angle mark
+    const s = 0.55, A = add(q, mul(tau, s)), B = add(A, mul(nrmv, s)), Cc = add(q, mul(nrmv, s));
+    ctx.save(); ctx.globalAlpha *= pa * 0.9; ctx.strokeStyle = C.plane; ctx.lineWidth = 1.4; ctx.beginPath();
+    ctx.moveTo(...P2(A)); ctx.lineTo(...P2(B)); ctx.lineTo(...P2(Cc)); ctx.stroke(); ctx.restore();
+  }
+  if (tl.labels) pill('$Π_5$  法平面（2D 中退化为直线）', ...P2(add(q, mul(nrmv, 8.6))), { a: pa, al: 'l', dx: 22, size: 18, color: C.plane, edge: 'rgba(169,156,255,0.45)' });
+  // walk along Γ from its middle vertex
+  if (tl.walk) {
+    const path = G.as.path, hop = (tl.walk[1] - tl.walk[0]) / Math.max(1, pr.walk.length);
+    pr.walk.forEach((id, k) => {
+      const t0 = tl.walk[0] + k * hop, a = fade(t, t0, t0 + 0.25, tl.walk[2], tl.walk[2] + 0.5);
+      if (a <= 0) return;
+      const v = dot(sub(path[id], q), law);
+      wdot(path[id], 6, v >= 0 ? C.guide : '#0b1016', C.guide, a, 2);
+      if (tl.labels) pill(v >= 0 ? '+' : '−', ...P2(path[id]), { a, dy: 30, size: 17, color: C.guide, edge: 'rgba(69,211,196,0.4)' });
+    });
+    if (tl.labels) {
+      const a = fade(t, tl.walk[0], tl.walk[0] + 0.3, tl.walk[2], tl.walk[2] + 0.5);
+      pill('从 Γ 中间顶点出发', ...P2(path[pr.walk[0]]), { a, dx: -30, dy: -40, al: 'r', size: 17, color: C.dim });
+    }
+  }
+  // P_int
+  const ia = fade(t, tl.pint, tl.pint + 0.4, tl.pintOut || 1e9, (tl.pintOut || 1e9) + 0.6);
+  if (ia > 0) {
+    halo(pr.P, 34, 'rgba(69,211,196,0.45)', ia * (0.6 + 0.4 * Math.sin((t - tl.pint) * 5) * Math.exp(-(t - tl.pint))));
+    const s = 8; const [x, y] = P2(pr.P);
+    ctx.save(); ctx.globalAlpha *= ia; ctx.fillStyle = C.guide; ctx.strokeStyle = '#0b1016'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, y - s); ctx.lineTo(x + s, y); ctx.lineTo(x, y + s); ctx.lineTo(x - s, y); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+    if (tl.labels) pill('$P_{int}$', x, y, { a: ia, dx: 22, dy: -30, al: 'l', size: 20, color: C.guide, edge: 'rgba(69,211,196,0.5)' });
+    else if (tl.tag) pill(tl.tag, x, y, { a: ia, dx: 0, dy: -32, size: 17, color: C.guide, edge: 'rgba(69,211,196,0.45)' });
+  }
+  // ray stepping
+  if (tl.seg) {
+    const sa = fade(t, tl.seg[0], tl.seg[0] + 0.3, tl.seg[1], tl.seg[1] + 0.6);
+    const u = eout((t - tl.seg[0]) / 0.8);
+    wline(pr.P, add(pr.P, mul(sub(q, pr.P), u)), C.free, 1.6, [3, 6], sa * 0.9);
+  }
+  if (tl.steps) {
+    const n = pr.steps.length, dt = (tl.steps[1] - tl.steps[0]) / n;
+    pr.steps.forEach((st, k) => {
+      const t0 = tl.steps[0] + k * dt, a = fade(t, t0, t0 + 0.2, tl.steps[2], tl.steps[2] + 0.6);
+      if (a <= 0) return;
+      const ci = Math.floor(st.p[0]), cj = Math.floor(st.p[1]);
+      const cur = t < t0 + dt || k === n - 1;
+      if (st.occ) cellRect(ci, cj, 'rgba(255,107,94,0.30)', a, C.hit, 2);
+      else cellRect(ci, cj, null, a * (cur ? 0.9 : 0.35), C.guide, 1.5);
+      if (st.occ) {
+        const [x, y] = P2(st.p), r = 7; ctx.save(); ctx.globalAlpha *= a; ctx.strokeStyle = C.hit; ctx.lineWidth = 2.6;
+        ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r); ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke(); ctx.restore();
+      } else wdot(st.p, 4.5, C.ink, null, a);
+      if (tl.labels && cur && a > 0.01) {
+        const la = Math.min(a, 1 - ramp(t, t0 + dt * 0.95, t0 + dt * 1.15) * (k === n - 1 ? 0 : 1));
+        pill(st.occ ? `a = ${st.a.toFixed(2)}   占据 ✕` : `a = ${st.a.toFixed(2)}   free`, ...P2(st.p),
+          { a: la * fade(t, 0, 0, tl.steps[2] - 2.5, tl.steps[2] - 2), al: 'l', dx: cam.k * 0.5 + 18, size: 18, color: st.occ ? C.hit : C.ink, edge: st.occ ? 'rgba(255,107,94,0.55)' : 'rgba(255,255,255,0.2)' });
+      }
+    });
+    if (tl.labels) {
+      const a = fade(t, tl.steps[0], tl.steps[0] + 0.4, tl.steps[0] + 3.2, tl.steps[0] + 3.8);
+      pill('每步 a ← a − res', ...P2(pr.P), { a, al: 'r', dx: -cam.k * 0.5 - 18, dy: 4, size: 18, color: C.dim });
+    }
+  }
+  // back-off arrow + base point
+  if (tl.back) {
+    const last = pr.steps[pr.steps.length - 1], prev = pr.steps[pr.steps.length - 2] || last;
+    const a = fade(t, tl.back, tl.back + 0.4, tl.backOut, tl.backOut + 0.5);
+    if (a > 0 && last.occ && prev !== last) {
+      const A = P2(last.p), B = P2(prev.p), off = cam.k * 0.55;
+      ctx.save(); ctx.globalAlpha *= a; ctx.strokeStyle = C.base; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(A[0] - 10, A[1]); ctx.bezierCurveTo(A[0] - off, A[1], B[0] - off, B[1], B[0] - 12, B[1]); ctx.stroke();
+      ctx.fillStyle = C.base; ctx.beginPath(); ctx.moveTo(B[0] - 8, B[1]); ctx.lineTo(B[0] - 20, B[1] - 6); ctx.lineTo(B[0] - 20, B[1] + 6); ctx.fill(); ctx.restore();
+      if (tl.labels) pill('a ← a + res（退回一步）', A[0] - off, (A[1] + B[1]) / 2, { a, al: 'r', dx: -14, size: 18, color: C.base, edge: 'rgba(126,224,138,0.5)' });
+    }
+  }
+}
+function drawPV(pr, t, tp, tv, tw, Q, opts = {}) {
+  const q = Q[pr.j];
+  // wall: plane through p with normal v; shade the obstacle side
+  const wa = ramp(t, tw, tw + 0.8) * (opts.wallA ?? 1);
+  if (wa > 0.01) {
+    const n = perp(pr.v), e = (opts.wallExt ?? 4.2) * eout((t - tw) / 0.9), depth = 1.6;
+    const A = add(pr.base, mul(n, -e)), B = add(pr.base, mul(n, e));
+    ctx.save(); ctx.globalAlpha *= wa;
+    const g = ctx.createLinearGradient(...P2(pr.base), ...P2(add(pr.base, mul(pr.v, -depth))));
+    g.addColorStop(0, 'rgba(126,224,138,0.20)'); g.addColorStop(1, 'rgba(126,224,138,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(...P2(A)); ctx.lineTo(...P2(B));
+    ctx.lineTo(...P2(add(B, mul(pr.v, -depth)))); ctx.lineTo(...P2(add(A, mul(pr.v, -depth)))); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    wline(A, B, C.base, 2, null, wa * 0.9);
+    if (opts.safe) { // safety line at d = s_f
+      const sa = ramp(t, opts.safe, opts.safe + 0.8) * (opts.safeA ?? 1);
+      const o = mul(pr.v, SF);
+      wline(add(A, o), add(B, o), C.safe, 1.6, [8, 6], sa);
+    }
+  }
+  // v arrow from Q
+  const va = ramp(t, tv, tv + 0.6) * (opts.vA ?? 1) * (1 - ramp(t, OPT_T0 - 0.6, OPT_T0));
+  if (va > 0.01) {
+    const L = (opts.vLen ?? 2.4) * eout((t - tv) / 0.7);
+    warrow(q, add(q, mul(pr.v, L)), C.base, 3, va, 15);
+  }
+  // base point
+  const pa = ramp(t, tp, tp + 0.5) * (opts.pA ?? 1);
+  if (pa > 0.01) {
+    halo(pr.base, 30, 'rgba(126,224,138,0.5)', pa * (0.5 + 0.5 * Math.exp(-(t - tp) * 1.5)));
+    wdot(pr.base, 7, C.base, '#0b1016', pa, 2);
+  }
+}
+function drawQ(Q, t, styleFn) {
+  for (let k = 0; k < NQ; k++) {
+    const s = styleFn(k); if (s.a <= 0.01) continue;
+    const r = clamp(cam.k * 0.13, 6, 10);
+    if (s.ring) halo(Q[k], r * 3.2, s.ring, s.a * s.ringA);
+    wdot(Q[k], r, s.fill, s.stroke, s.a, 2.2);
+    if (s.label) pill(`$Q_${k + 1}$`, ...P2(Q[k]), { a: s.a * s.la, dx: s.ldx ?? 0, dy: s.ldy ?? 28, size: 18, color: s.lc || C.ink });
+  }
+}
+
+// ---------------------------------------------------------------- inset: penalty J_c(d)
+function drawInset(t, d, a) {
+  if (a <= 0.01) return;
+  const x0 = 1430, y0 = 92, w = 400, h = 230, pad = 34;
+  ctx.save(); ctx.globalAlpha *= a;
+  ctx.fillStyle = 'rgba(9,12,17,0.86)'; ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+  rrect(x0, y0, w, h, 14); ctx.fill(); ctx.stroke();
+  drawRich('碰撞代价  $J_c(d_j)$', x0 + 18, y0 + 30, 17, C.dim);
+  const dmin = -3.5, dmax = 3, Jmax = 92;
+  ctx.save(); rrect(x0, y0, w, h, 14); ctx.clip();
+  const px = d => x0 + pad + (d - dmin) / (dmax - dmin) * (w - 2 * pad), py = J => y0 + h - pad - J / Jmax * (h - 2 * pad - 22);
+  const J = d => { const e = SF - d; if (e < 0) return 0; if (e < SF) return e ** 3; return 3 * SF * e * e - 3 * SF * SF * e + SF ** 3; };
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.moveTo(px(dmin), py(0)); ctx.lineTo(px(dmax), py(0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px(0), py(0)); ctx.lineTo(px(0), y0 + 44); ctx.stroke();
+  ctx.strokeStyle = C.safe; ctx.lineWidth = 2.4; ctx.beginPath();
+  for (let i = 0; i <= 140; i++) { const dd = dmin + (dmax - dmin) * i / 140; i ? ctx.lineTo(px(dd), py(J(dd))) : ctx.moveTo(px(dd), py(J(dd))); }
+  ctx.stroke();
+  ctx.setLineDash([3, 4]); ctx.strokeStyle = 'rgba(245,210,107,0.6)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(px(SF), py(0)); ctx.lineTo(px(SF), py(0) - 70); ctx.stroke(); ctx.setLineDash([]);
+  drawRich('$s_f$', px(SF) - 6, py(0) + 22, 16, C.safe);
+  drawRich('0', px(0) - 4, py(0) + 22, 15, C.dim);
+  drawRich('$d_j$', px(dmax) - 4, py(0) + 22, 16, C.dim);
+  drawRich('二次', px(-3.3), py(22), 14, C.dim);
+  drawRich('$e^3$', px(0.35), py(16), 15, C.dim);
+  const dd = clamp(d, dmin, dmax);
+  ctx.fillStyle = d < 0 ? C.hit : d < SF ? C.safe : C.base; ctx.beginPath(); ctx.arc(px(dd), py(J(dd)), 6.5, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#0b1016'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.restore(); ctx.restore();
+}
+
+// ---------------------------------------------------------------- caption + chrome
+function drawCaption(t) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const g = ctx.createLinearGradient(0, CH - 380 * S - OY, 0, CH);
+  g.addColorStop(0, 'rgba(9,12,17,0)'); g.addColorStop(0.45, 'rgba(9,12,17,0.82)'); g.addColorStop(1, 'rgba(9,12,17,0.96)');
+  ctx.fillStyle = g; ctx.fillRect(0, CH - 380 * S - OY, CW, 380 * S + OY);
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, DPR * OX, DPR * OY);
+  ACTS.forEach((A, i) => {
+    const last = i === ACTS.length - 1;
+    const a = Math.min(ramp(t, A.t0 + (i ? 0.05 : 0.3), A.t0 + 0.75), last ? 1 : 1 - ramp(t, A.t1 - 0.4, A.t1 - 0.02));
+    if (a <= 0.01) return;
+    const cap = CAPS[i], rise = (1 - eout((t - A.t0) / 0.8)) * 14, x = 112;
+    const nb = cap.body.length;
+    let y = (nb > 2 ? 832 : 866) + rise;
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.font = `600 15px ${SANS}`; ctx.fillStyle = C.guide; ctx.textBaseline = 'alphabetic';
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '3px';
+    ctx.fillText(cap.kick, x, y); if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    y += 48; drawRich(cap.title, x, y, 36, C.ink, 'left', 600);
+    y += 44; cap.body.forEach(l => { drawRich(l, x, y, 21, 'rgba(232,237,244,0.74)'); y += 33; });
+    if (cap.note) drawRich(cap.note, x, y + 2, 15, 'rgba(232,237,244,0.42)');
+    if (cap.eq) {
+      let ey = (nb > 2 ? 880 : 912) + rise;
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1; ctx.beginPath();
+      ctx.moveTo(1470, ey - 34); ctx.lineTo(1470, ey - 34 + cap.eq.length * 50 + 6); ctx.stroke();
+      cap.eq.forEach(e => { drawRich(e, 1500, ey, 30, C.ink); ey += 50; });
+    }
+    ctx.restore();
+  });
+}
+let hintA = 1, lastMove = 0, paused = false, hoverBar = false;
+function drawChrome(t) {
+  // top-left mark & top-right act counter
+  ctx.save();
+  ctx.font = `600 14px ${SANS}`; ctx.fillStyle = 'rgba(232,237,244,0.42)';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '2.5px';
+  ctx.fillText('SCAN / EGO-PLANNER  ·  ESDF-FREE REBOUND', 112, 74);
+  const ai = actIndex(t), A = ACTS[ai];
+  if (A.k) { ctx.textAlign = 'right'; ctx.fillText(`${A.k} / 08   ${A.name}`, 1808, 74); }
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  ctx.restore();
+  // progress bar in window space
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const bh = hoverBar ? 6 : 3, by = CH - bh;
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(0, by, CW, bh);
+  ctx.fillStyle = C.guide; ctx.fillRect(0, by, CW * t / T_END, bh);
+  ctx.fillStyle = 'rgba(9,12,17,0.9)'; ACTS.forEach(a => { if (a.t0 > 0) ctx.fillRect(CW * a.t0 / T_END - 1, by, 2, bh); });
+  const show = Math.max(paused ? 1 : 0, hintA);
+  if (show > 0.01) {
+    ctx.globalAlpha = show * 0.6; ctx.font = `13px ${SANS}`; ctx.fillStyle = C.ink; ctx.textAlign = 'right';
+    ctx.fillText((paused ? '已暂停  ·  ' : '') + '空格 播放/暂停   ←/→ 切换步骤   点击底部进度条跳转', CW - 22, CH - 18);
+    ctx.textAlign = 'left'; ctx.fillText(`${t.toFixed(1)} s`, 22, CH - 18); ctx.globalAlpha = 1;
+  }
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, DPR * OX, DPR * OY);
+}
+const actIndex = t => { let i = 0; while (i < ACTS.length - 1 && t >= ACTS[i + 1].t0) i++; return i; };
+
+// ---------------------------------------------------------------- the film
+// timelines for the main pair (Q5)
+const TL_M = { labels: true, chord: [23.3, 25.6], tan: [24.6, 52.4], pl: [25.6, 52.4], walk: [27.3, 28.5, 31.2], pint: 28.7, pintOut: 52.4,
+  seg: [31.6, 52.4], steps: [32.6, 37.8, 41.0], back: 38.3, backOut: 41.0 };
+const TL_S = [
+  { tan: [53.0, 56.0], pl: [53.25, 56.0], pint: 53.9, pintOut: 58.6, seg: [54.2, 56.0], steps: [54.4, 54.9, 56.0], tag: '$p_4 ≡ P_{int}$' },
+  { tan: [55.6, 58.6], pl: [55.85, 58.6], pint: 56.5, pintOut: 59.0, seg: [56.8, 58.6], steps: [57.0, 57.5, 58.6], tag: '$p_6 ≡ P_{int}$' },
+];
+const SIDE_T = [{ p: 55.1, v: 55.3, w: 55.5 }, { p: 57.7, v: 57.9, w: 58.1 }];
+
+let T = 0;
+function draw(t) {
+  cam = camAt(t);
+  drawBackdrop();
+  drawGrid();
+  const Q = Qat(t);
+
+  // A* expansion (act 2)
+  const ex = G.as.expanded, exA = fade(t, 13.3, 13.6, 19.6, 20.8);
+  if (exA > 0) ex.forEach((c, k) => {
+    const tk = 13.6 + 3.3 * k / ex.length, a = ramp(t, tk, tk + 0.35) * exA;
+    if (a > 0) cellRect(c[0], c[1], 'rgba(69,211,196,0.11)', a, (t - tk) < 0.4 ? 'rgba(69,211,196,0.55)' : null, 1);
+  });
+  drawObstacle(t);
+
+  // focus dimming during macro acts
+  const macro = fade(t, 21.5, 23, 51.6, 53.6);
+
+  // guide path Γ
+  const gu = ramp(t, 16.9, 19.0), gA = 1 - 0.55 * ramp(t, 68.8, 70.5);
+  wpoly(G.as.path, C.guide, 2.6, null, gA * (gu > 0 ? 1 : 0), gu);
+  if (gu > 0) G.as.path.forEach((p, k) => { if (k / G.as.path.length <= gu) wdot(p, 2.6, C.guide, null, gA * 0.8); });
+  pill('Γ  局部 A* 路径', X(24), Y(G.as.path[Math.floor(G.as.path.length / 2)][1]), { a: fade(t, 18.6, 19.3, 21.2, 21.8), dy: -36, size: 18, color: C.guide, edge: 'rgba(69,211,196,0.5)' });
+
+  // half-space walls (drawn under curves)
+  const wallFinal = 1 - 0.5 * ramp(t, 71, 72.5);
+  drawPV(M, t, 1e9, 1e9, 43.2, Q, { safe: 47.6, wallA: wallFinal * (1 - 0.35 * ramp(t, 52, 53)), safeA: 1 - 0.5 * ramp(t, 52, 53), wallExt: 4.6 });
+  SIDE.forEach((pr, s) => drawPV(pr, t, 1e9, 1e9, SIDE_T[s].w, Q, { safe: SIDE_T[s].w + 0.3, wallA: wallFinal * 0.85, safeA: 0.5, wallExt: 3.2 }));
+
+  // trajectory
+  if (t < OPT_T0) {
+    const up = ramp(t, 1.4, 3.2), dimC = 1 - 0.45 * macro;
+    const mask = curve0Occ.map((o, i) => o && t > sampTime(Math.min(SAMP.length - 1, Math.round(i / curve0.length * SAMP.length))));
+    curveColored(curve0, mask, 3.2, dimC, dimC, up);
+  } else {
+    wpoly(curve0, C.traj, 1.6, [6, 7], 0.28);
+    const cur = G.bspline(Q, 18), occ = cur.map(p => G.occAt(p[0], p[1]));
+    curveColored(cur, occ, 3.4, 1, 1);
+    if (t > OPT_T1 - 0.4) { // success glow
+      const a = fade(t, OPT_T1 - 0.4, OPT_T1 + 0.6, 76, 78);
+      ctx.save(); ctx.globalAlpha = a * 0.35; ctx.shadowColor = C.base; ctx.shadowBlur = 18; wpoly(cur, C.base, 4, null, 1); ctx.restore();
+      wpoly(cur, '#bff0c6', 2.2, null, a * 0.9);
+    }
+  }
+  // control polygon
+  const polyA = ramp(t, 5.0, 6.0) * (1 - 0.5 * macro);
+  wpoly(Q, 'rgba(232,237,244,0.30)', 1.2, [4, 5], polyA);
+
+  // segmentation probe (act 1)
+  if (t > PROBE_T0 - 0.2 && t < 14) {
+    const sa = fade(t, PROBE_T0 - 0.2, PROBE_T0, 12.6, 13.6);
+    const n = Math.floor(clamp((t - PROBE_T0) / (PROBE_T1 - PROBE_T0)) * (SAMP.length - 1));
+    for (let k = 0; k <= n; k++) wdot([SAMP[k].x, SAMP[k].y], SAMP[k].occ ? 3.2 : 2.2, SAMP[k].occ ? C.hit : 'rgba(232,237,244,0.55)', null, sa);
+    if (t < PROBE_T1 + 0.2) { const s = SAMP[n]; wdot([s.x, s.y], 9, null, s.occ ? C.hit : C.ink, sa, 1.8); }
+  }
+
+  // construction for main pair, then side pairs
+  if (t > 23) drawConstruction(M, t, TL_M, G.Q0);
+  TL_S.forEach((tl, s) => { if (t > tl.tan[0]) drawConstruction(SIDE[s], t, tl, G.Q0); });
+
+  // p, v for all pairs (above construction)
+  drawPV(M, t, 38.6, 41.6, 1e9, Q, { vLen: 2.4 });
+  SIDE.forEach((pr, s) => drawPV(pr, t, SIDE_T[s].p, SIDE_T[s].v, 1e9, Q, { vLen: 2.0 }));
+  if (t >= OPT_T0) G.pairs.forEach(pr => { // gradient arrows during rebound
+    const e = SF - signedDist(Q[pr.j], pr); if (e <= 0) return;
+    const a = fade(t, OPT_T0, OPT_T0 + 0.4, OPT_T1, OPT_T1 + 0.5) * clamp(e / 0.6);
+    warrow(Q[pr.j], add(Q[pr.j], mul(pr.v, Math.min(3.2, 0.45 * e + 0.5))), C.base, 3, a, 14);
+  });
+
+  // labels for p and v (main)
+  const pLab = fade(t, 38.9, 39.5, 51.8, 52.6);
+  pill('$p_5$  base_point', ...P2(M.base), { a: pLab, al: 'l', dx: 24, dy: 0, size: 19, color: C.base, edge: 'rgba(126,224,138,0.55)' });
+  const vLab = fade(t, 42.0, 42.6, 51.8, 52.6);
+  pill('$v_5$', ...P2(add(G.Q0[4], mul(M.v, 1.5))), { a: vLab, al: 'l', dx: 18, size: 20, color: C.base, edge: 'rgba(126,224,138,0.55)' });
+  const wLab = fade(t, 43.8, 44.4, 51.8, 52.6);
+  pill('过 $p_5$、法向 $v_5$ 的平面', ...P2(add(M.base, mul(perp(M.v), -4.3))), { a: wLab, al: 'l', dx: 0, dy: 26, size: 17, color: C.base, edge: 'rgba(126,224,138,0.4)' });
+  // d measurement (act 5)
+  const dA = fade(t, 45.2, 45.9, 51.8, 52.6);
+  if (dA > 0) {
+    const n = perp(M.v), off = mul(n, 2.1), A = add(M.base, off), B = add(add(M.base, mul(M.v, signedDist(G.Q0[4], M))), off);
+    wline(A, B, C.hit, 2, null, dA); wline(add(A, mul(n, -0.25)), add(A, mul(n, 0.25)), C.hit, 2, null, dA); wline(add(B, mul(n, -0.25)), add(B, mul(n, 0.25)), C.hit, 2, null, dA);
+    wline(G.Q0[4], B, C.hit, 1, [2, 4], dA * 0.7);
+    pill(`$d_5 = ${fmt(signedDist(G.Q0[4], M))}$  < 0`, ...P2(lerp2(A, B, 0.5)), { a: dA, al: 'r', dx: -16, size: 19, color: C.hit, edge: 'rgba(255,107,94,0.55)' });
+  }
+  const sA = fade(t, 47.9, 48.5, 51.8, 52.6);
+  if (sA > 0) {
+    const n = perp(M.v), off = mul(n, -2.6), A = add(M.base, off), B = add(A, mul(M.v, SF));
+    wline(A, B, C.safe, 2, null, sA); wline(add(A, mul(n, -0.22)), add(A, mul(n, 0.22)), C.safe, 2, null, sA); wline(add(B, mul(n, -0.22)), add(B, mul(n, 0.22)), C.safe, 2, null, sA);
+    pill('$s_f$  安全裕度', ...P2(lerp2(A, B, 0.5)), { a: sA, al: 'r', dx: -14, size: 18, color: C.safe, edge: 'rgba(245,210,107,0.5)' });
+  }
+
+  // control points
+  drawQ(Q, t, k => {
+    const isCol = k >= 3 && k <= 5, isIO = k === G.inId || k === G.outId;
+    const appear = ramp(t, 4.8 + k * 0.12, 5.2 + k * 0.12);
+    const colOn = isCol ? ramp(t, passTime(k), passTime(k) + 0.3) : 0;
+    const dq = t > OPT_T0 && isCol ? signedDist(Q[k], PAIR[k]) : -1;
+    let fill = '#0b1016', stroke = C.ink;
+    if (colOn > 0.5) { fill = dq < 0 ? C.hit : dq < SF ? C.safe : C.base; stroke = '#0b1016'; }
+    let a = appear;
+    if (macro > 0 && !(k >= 3 && k <= 5)) a *= 1 - 0.5 * macro;
+    const focus = k === 4 ? fade(t, 21.5, 22.5, 52, 53) : (k === 3 || k === 5) ? fade(t, 23.3, 23.8, 25.4, 26.0) : 0;
+    return { a, fill, stroke, label: true, la: k === 4 && t > 31 && t < 52 ? 0.0 : 1, ldy: 28, ldx: 0,
+      ring: focus > 0 ? 'rgba(255,255,255,0.35)' : null, ringA: focus };
+  });
+  // Q5 label repositioned during macro steps (avoid clash with stepping column)
+  pill('$Q_5$', ...P2(G.Q0[4]), { a: fade(t, 31, 31.5, 51.6, 52), al: 'l', dx: 20, dy: 18, size: 18 });
+  // Q_in / Q_out tags
+  const ioA = fade(t, sampTime(inIdx), sampTime(inIdx) + 0.4, 58.6, 59.6) * (1 - 0.6 * macro);
+  pill('$Q_{in}$', ...P2(G.Q0[G.inId]), { a: ioA, dy: -32, size: 18, color: C.guide, edge: 'rgba(69,211,196,0.5)' });
+  const ooA = fade(t, sampTime(outIdx), sampTime(outIdx) + 0.4, 58.6, 59.6) * (1 - 0.6 * macro);
+  pill('$Q_{out}$', ...P2(G.Q0[G.outId]), { a: ooA, dy: -32, size: 18, color: C.guide, edge: 'rgba(69,211,196,0.5)' });
+
+  // live d readouts during rebound
+  if (t >= OPT_T0 - 0.6) G.pairs.forEach(pr => {
+    const d = signedDist(Q[pr.j], pr), a = fade(t, OPT_T0 - 0.6, OPT_T0, 70.6, 71.4);
+    pill(`$d_${pr.j + 1}$ = ${fmt(d)}`, ...P2(Q[pr.j]), { a, al: 'l', dx: 20, dy: -26, size: 17, color: d < 0 ? C.hit : d < SF ? C.safe : C.base, edge: 'rgba(255,255,255,0.18)' });
+  });
+  const okA = fade(t, OPT_T1 + 0.3, OPT_T1 + 1.0, 80.5, 81.5);
+  if (okA > 0) { const cur = G.bspline(Q, 18), hits = cur.filter(p => G.occAt(p[0], p[1])).length;
+    pill(hits === 0 ? '轨迹采样点全部 free  ✓' : `仍有 ${hits} 个采样碰撞`, X(40), Y(19.5), { a: okA, size: 18, color: hits === 0 ? C.base : C.hit, edge: 'rgba(126,224,138,0.5)' }); }
+
+  // inset
+  drawInset(t, signedDist(G.Q0[4], M), fade(t, 49.2, 50.0, 51.8, 52.6));
+
+  drawCaption(t);
+  drawChrome(t);
+}
+const lerp2 = (a, b, u) => [lerp(a[0], b[0], u), lerp(a[1], b[1], u)];
+
+// ---------------------------------------------------------------- playback
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!paused) { T += dt; if (T >= T_END) { T = T_END; paused = true; } }
+  hintA = clamp(1 - (now - lastMove - 2500) / 600);
+  draw(T); requestAnimationFrame(frame);
+}
+window.setFilmTime = t => { T = clamp(t, 0, T_END); paused = true; draw(T); return T; };
+window.play = () => { paused = false; };
+addEventListener('keydown', e => {
+  if (e.code === 'Space') { if (T >= T_END) T = 0; paused = !paused; e.preventDefault(); }
+  else if (e.code === 'ArrowRight') { const i = actIndex(T); T = ACTS[Math.min(ACTS.length - 1, i + 1)].t0 + 0.01; }
+  else if (e.code === 'ArrowLeft') { const i = actIndex(T); T = ACTS[Math.max(0, T - ACTS[i].t0 < 1 ? i - 1 : i)].t0 + 0.01; }
+  else if (e.key === 'r') { T = 0; paused = false; }
+  lastMove = performance.now();
+});
+addEventListener('mousemove', e => { lastMove = performance.now(); hoverBar = e.clientY > CH - 26; cv.style.cursor = hoverBar ? 'pointer' : 'default'; });
+addEventListener('mousedown', e => { if (e.clientY > CH - 26) { T = clamp(e.clientX / CW) * T_END; } else { if (T >= T_END) T = 0; paused = !paused; } });
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

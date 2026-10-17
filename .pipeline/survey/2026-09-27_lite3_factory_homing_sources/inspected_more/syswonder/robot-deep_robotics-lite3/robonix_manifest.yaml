@@ -1,0 +1,298 @@
+manifestVersion: 1
+name: robonix-lite3-deploy
+
+catalog:
+  name: robonix.robot.deep_robotics.lite3
+  version: 0.2.0
+  description: Minimal Robonix deployment for the Deep Robotics Lite3.
+  license: Apache-2.0
+  tags: [robot, deploy, deep_robotics, lite3, quadruped, jetson, lidar, rgbd, mapping, navigation]
+  maintainers:
+    - Bunnycxk <2501213313@stu.pku.edu.cn>
+
+env:
+  # Single-host ROS 2 transport. start.sh owns the local rmw_zenohd;
+  # Mixing RMW implementations makes topics and TF invisible across packages.
+  ROS_DOMAIN_ID: "0"
+  RMW_IMPLEMENTATION: rmw_zenoh_cpp
+  RBNX_BUILD_TARGET: jetson-native
+  ROBONIX_SCENE_FORCE: native
+  ROBONIX_SCENE_PLATFORM: jetson_orin
+  ROBONIX_SCENE_ROS_DISTRO: humble
+  SCENE_NATIVE_PYTHON: python3
+  SCENE_WEB_PORT: "50107"
+  ROBONIX_MAPPING_FORCE: native
+  ROBONIX_MAPPING_PLATFORM: jetson_orin
+  MAPPING_WEBUI_PORT: "8091"
+  ROBONIX_NAV2_FORCE: native
+  ROBONIX_NAV2_PLATFORM: jetson_orin
+  # Keep this equal to mapping.config.map_id when booting localization mode.
+  SCENE_MAP_ID: 3f_full_lite3
+  SCENE_RESTORE_ON_START: "true"
+  MAPPING_MAPS_DIR: ${HOME}/.robonix/maps
+  SCENE_OBJECT_MEMORY_DB: ${HOME}/.robonix/scene/objects.db
+  SCENE_GRAPH_CACHE_DIR: ${HOME}/.robonix/scene/graph
+  SCENE_ANNOTATIONS_DIR: ${HOME}/.robonix/scene/annotations
+  SCENE_GRAPH_ENABLED: "false"
+  SPEECH_BACKEND: tencent
+
+system:
+  # Atlas, Executor, and Liaison must be reachable by robonix-client. Keep
+  # Pilot and Soma private to the robot host.
+  atlas: {listen: 0.0.0.0:50051, log: info}
+  executor: {listen: 0.0.0.0:50061, log: info}
+  pilot:
+    listen: 127.0.0.1:50071
+    log: info
+    vlm:
+      upstream: ${VLM_BASE_URL}
+      api_key: ${VLM_API_KEY}
+      model: ${VLM_MODEL}
+      api_format: openai
+  liaison: {listen: 0.0.0.0:50081, log: info}
+  soma:
+    listen: 127.0.0.1:50091
+    provider_id: soma
+    robot_yaml: ${ROBONIX_DEPLOY_DIR}/soma.yaml
+    log: info
+  scene:
+    log: info
+    # camera_provider_id: no_camera
+    camera_provider_id: orbbec_camera
+
+primitive:
+  - name: lite3_quadruped
+    # Chassis owns Nav2's low-latency odom -> base_link chain and publishes
+    # the upstream-standard /odom topic. Mapping keeps its ICP trajectory in the private odom_icp
+    # frame, so enabling this TF does not create a competing publisher.
+    url: https://github.com/syswonder/primitive-deep_robotics-lite3_quadruped.git
+    branch: main
+    config:
+      odom_frame: odom
+      base_frame: base_link
+      odom_topic: /odom
+      odom_rate_hz: 20.0
+      publish_odom_tf: true
+      target_ip: 192.168.1.120
+      target_port: 43893
+      local_port: 43897
+      app_port: 43899
+      sentinel_timeout_s: 30.0
+
+  - name: mid360_lidar
+    url: https://github.com/syswonder/primitive-livox-mid360-lidar-rbnx
+    branch: main
+    config:
+      lidar_topic: /scanner/cloud
+      imu_topic: /livox/imu
+      lidar_ip: 192.168.1.3
+      host_ip: 192.168.1.102
+      xfer_format: 0
+      sentinel_timeout_s: 45.0
+
+  # Registers the IMU stream published by mid360_lidar as the standard
+  # Robonix IMU capability; it does not start a second Livox driver.
+  - name: mid360_imu
+    url: https://github.com/syswonder/primitive-livox-mid360-imu-rbnx
+    branch: main
+    config:
+      imu_topic: /livox/imu 
+      sentinel_timeout_s: 45.0
+
+  # Publishes the Soma-owned Lite3 URDF as /robot_description and the standard
+  # TF tree. Soma remains the single authoritative source for the robot model.
+  - name: robot_description
+    url: https://github.com/syswonder/primitive-robot-description-rbnx
+    branch: main
+    manifest: package_manifest.native.yaml
+
+  - name: orbbec_camera
+    url: https://github.com/syswonder/primitive-orbbec-camera.git
+    branch: main
+    config:
+      camera_name: camera
+      camera_model: gemini330_series
+      color_profile: 640x480x15
+      depth_profile: 640x480x15
+      depth_registration: true
+      enable_color: true
+      enable_depth: true
+      # Keep the registered depth cloud available for optional near-field Nav2
+      # obstacle observations. The current local costmap temporarily uses scan
+      # only; RTAB-Map's occupancy grid also excludes depth (Grid/FromDepth).
+      enable_point_cloud: true
+      enable_imu: false
+      sentinel_timeout_s: 45.0
+
+  # robonix-client discovers this provider through Atlas and connects from
+  # the client to the robot. No client IP is stored in this deployment.
+  - name: audio_client_bridge
+    url: https://github.com/syswonder/primitive-audio-client-bridge-rbnx
+    branch: main
+    config:
+      transport: reverse
+      listen_port: 60002
+
+service:
+  # Only for the optional slam_toolbox profile below: it needs a scan before
+  # Nav2 starts. When enabling this service, also disable Nav2 scan_projection
+  # and use topic_remap.scan: /scanner/scan to avoid two scan publishers.
+  # - name: pcld2lscan
+  #   url: https://github.com/syswonder/service-pcld2lscan-rbnx
+  #   branch: main
+  #   config:
+  #     scan_frame: base_link
+  #     scan_rate_hz: 6.0
+  #     queue_size: 1
+  #     max_scan_age_s: 0.5
+  #     transform_tolerance_s: 0.05
+  #     min_height_m: 0.05
+  #     max_height_m: 1.0
+  #     range_min_m: 0.03
+  #     range_max_m: 20.0
+  #     angle_increment_rad: 0.0087
+  #     self_filter_mode: circle
+  #     self_filter_footprint:
+  #       - [0.305, 0.185]
+  #       - [0.305, -0.185]
+  #       - [-0.305, -0.185]
+  #       - [-0.305, 0.185]
+  #     self_filter_margin_m: 0.0
+  #     speckle_filter_enabled: true
+  #     speckle_window_bins: 2
+  #     speckle_max_range_delta_m: 0.20
+  #     speckle_min_neighbors: 2
+  #     deskewing: false
+  #     scan_timeout_s: 45.0
+
+  - name: mapping
+    # Use the upstream mapping service. MID-360 ICP owns the mapping trajectory;
+    # the chassis odometry remains dedicated to Nav2.
+    url: https://github.com/syswonder/service-map-rbnx
+    branch: main
+    manifest: package_manifest.jetson-native.yaml
+    config:
+      algo: rtabmap
+      base_frame: base_link
+      odom_frame: odom_icp
+      use_sim_time: false
+      map_id: 3f_full_lite3
+      map_mode: localization
+      # The bridge composes RTAB-Map's map -> odom_icp localization with the
+      # time-aligned ICP and chassis poses, then publishes the sole map -> odom
+      # correction consumed by Nav2.
+      navigation_odom_bridge: true
+      navigation_odom_topic: /odom
+      navigation_odom_frame: odom
+      deskew_lidar: true
+      params_file: config/rtabmap_params.yaml
+      sensor_providers:
+        lidar3d: mid360_lidar
+        imu: mid360_imu
+        rgb: orbbec_camera
+        depth: orbbec_camera
+
+  # Optional slam_toolbox + Beluga profile. To activate, disable the RTAB-Map
+  # mapping block, enable this block and pcld2lscan above, and match SCENE_MAP_ID
+  # to map_id. Disable Nav2 scan_projection, remove provider_ids.scan_cloud,
+  # and remap scan to /scanner/scan.
+  # Never enable both mapping services or both scan publishers.
+  # - name: mapping
+  #   url: https://github.com/syswonder/service-map-rbnx
+  #   branch: feat/map-localizer
+  #   manifest: package_manifest.jetson-native.yaml
+  #   config:
+  #     algo: slam_toolbox
+  #     localizer: beluga
+  #     localizer_particles: {min: 500, max: 2000}
+  #     base_frame: base_link
+  #     odom_frame: odom
+  #     use_sim_time: false
+  #     map_mode: localization
+  #     map_id: lab_slam_3f
+  #     slam_toolbox_params:
+  #       min_travel_m: 0.10
+  #       min_heading_rad: 0.10
+  #       scan_buffer: 30
+  #       loop_search_m: 2.5
+  #     sensor_providers:
+  #       scan_converter: pcld2lscan
+  #       lidar3d: mid360_lidar
+
+  - name: speech
+    path: ${ROBONIX_SOURCE_PATH}/services/speech
+    config:
+      speech_backend: tencent
+      disable_whisper: true
+      default_speaker_provider_id: audio_client_bridge
+      wake_words: ["罗伯特"]
+      tencent_asr_appid: ${TENCENT_ASR_APPID}
+      tencent_asr_engine: 16k_zh
+      tencent_tts_voice_type: 502003
+      tencent_tts_region: ap-guangzhou
+      tencent_tts_model_type: 1
+      tencent_tts_sample_rate: 16000
+      tencent_tts_codec: pcm
+
+  - name: nav2
+    url: https://github.com/syswonder/service-navigation-rbnx
+    branch: main
+    manifest: package_manifest.jetson-native.yaml
+    config:
+      # RTAB-Map publishes the saved /map and map -> odom localization TF; do
+      # not start a second AMCL/map_server localization stack on top of it.
+      # Deployment-owned Lite3 tuning: external localization plus a gait-aware,
+      # replan-persistent terminal pose controller.
+      params_file: config/nav2_params_lite3.yml
+      # Conservative recovery flow: replan, clear costmaps, and wait. It never
+      # commands Nav2's generic Spin or BackUp recoveries on the quadruped.
+      bt_xml_file: config/navigate.xml
+      use_sim_time: false
+      action_wait_s: 90.0
+      dynamic_speed:
+        # Match the effective DWB and velocity-smoother planar ceiling.
+        # The 75% startup limit is 0.2625 m/s.
+        max_linear_speed_mps: 0.35
+        default_percentage: 75
+        step_percentage: 20
+        min_percentage: 20
+      # Project the MID-360 cloud in base_link, remove returns inside the Soma
+      # footprint, reject isolated scan speckles, and publish the canonical
+      # /scanner/scan consumed by both Nav2 costmaps and the velocity guard.
+      # Keeping this conversion inside navigation avoids the incompatible QoS
+      # and duplicate scan publishers seen with the legacy pcld2lscan service.
+      scan_projection:
+        enabled: true
+        target_frame: base_link
+        # base_link is at the torso centre; URDF places the lidar 4.5 cm
+        # forward and 0.10 m above it.
+        # This band excludes the floor while retaining human legs and torso.
+        min_height_m: 0.10
+        max_height_m: 1.50
+        range_max_m: 12.0
+        # Upstream navigation uses Soma's physical footprint to derive its
+        # circular projection self-filter (about 0.36 m for Lite3).
+        self_filter_margin_m: 0.0
+      provider_ids:
+        map: mapping
+        # Nav2 consumes chassis velocities directly; Mapping's bridge uses the
+        # same stream only to express ICP localization as map -> odom.
+        odom: lite3_quadruped
+        scan_cloud: mid360_lidar
+
+skill:
+  - name: explore
+    url: https://github.com/syswonder/skill-explore-rbnx
+    branch: main
+    config: {}
+
+  - name: find_object
+    url: https://github.com/syswonder/skill-find-object-rbnx
+    branch: main
+    config:
+      step_deg: 45.0
+      settle_s: 0.6
+      # Image saving is off by default. To enable it, uncomment both settings
+      # and choose a writable output directory on the robot host.
+      # save_images: true
+      # image_output_dir: /data/robonix/find-object/scans

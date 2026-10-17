@@ -1,0 +1,238 @@
+--- v206/src/scan_nav2_controller/test/test_controller.cpp
++++ v217/src/scan_nav2_controller/test/test_controller.cpp
+@@ -25,6 +25,8 @@
+   {
+     parent=std::make_shared<rclcpp_lifecycle::LifecycleNode>("test_nav2_scan");
+     parent->declare_parameter("SCAN.native_worker_enabled",false);
++    parent->declare_parameter("SCAN.bspline_timeout",5.0); // Original test timing; new recovery cases override below.
++    parent->declare_parameter("SCAN.trajectory_starvation_timeout",5.0);
+     parent->declare_parameter("SCAN.route_lookahead_heading_enabled",routeLookaheadEnabled());
+     io=std::make_shared<rclcpp::Node>("test_scan_inputs");
+     controller_loader=std::make_unique<pluginlib::ClassLoader<nav2_core::Controller>>("nav2_core","nav2_core::Controller");
+@@ -197,6 +199,96 @@
+ protected:
+   bool routeLookaheadEnabled() const override { return true; }
+ };
++
++class StarvationTest : public PluginTest
++{
++protected:
++  int64_t origin;
++  void SetUp() override {
++    PluginTest::SetUp();
++    actual->motion_->trajectory_starvation_timeout_s_=0.75;
++    origin=parent->now().nanoseconds();
++    at(0);
++  }
++  void at(double seconds) {
++    for (const auto &clock : {parent->get_clock(),actual->motion_->tracker_->get_clock()}) {
++      ASSERT_EQ(rcl_enable_ros_time_override(clock->get_clock_handle()),RCL_RET_OK);
++      ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),origin+int64_t(seconds*1e9)),RCL_RET_OK);
++    }
++  }
++  void expiredCornerStub() {
++    PluginTest::expiredCornerStub();
++    origin=parent->now().nanoseconds(); // Parent fixture uses a fixed 19 s clock.
++  }
++};
++
++TEST_F(StarvationTest, ExpiredStoppedCurveMustReachOrdinaryRecovery)
++{
++  expiredCornerStub();
++  EXPECT_NO_THROW(plugin->computeVelocityCommands(pose(),{}));
++  ASSERT_TRUE(actual->motion_->tracker_->expired_braking_);
++  at(.74); EXPECT_NO_THROW(plugin->computeVelocityCommands(pose(),{}));
++  at(.76); EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
++  EXPECT_FALSE(actual->motion_->hasRoute());
++}
++
++TEST_F(StarvationTest, RepeatedEmergencyAndSameRouteDoNotRenewDeadline)
++{
++  plan();injectSpline(std::make_shared<sm::Bspline>(curve()));
++  auto stop=std::make_shared<sm::Bspline>(curve());stop->emergency_stop=true;
++  injectSpline(stop);
++  at(.5);plugin->setPlan(route);injectSpline(stop);
++  EXPECT_NO_THROW(plugin->computeVelocityCommands(pose(),{}));
++  at(.76);EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
++}
++
++TEST_F(StarvationTest, FreshExecutableCurveClearsExpiredWait)
++{
++  expiredCornerStub();plugin->computeVelocityCommands(pose(),{});
++  at(.6);auto fresh=std::make_shared<sm::Bspline>(curve());fresh->traj_id=20;injectSpline(fresh);
++  at(.8);EXPECT_NO_THROW(plugin->computeVelocityCommands(pose(),{}));
++  EXPECT_TRUE(actual->motion_->hasRoute());
++  EXPECT_FALSE(actual->motion_->waiting_for_spline_);
++}
++
++TEST_F(StarvationTest, ActiveCurveAndTurningAreNotStarvation)
++{
++  plan();injectSpline(std::make_shared<sm::Bspline>(curve()));
++  auto body=pose();body.pose.orientation.w=0.;body.pose.orientation.z=1.;
++  for(double t : {0.,.5,1.,1.5}) {
++    at(t);EXPECT_NO_THROW(plugin->computeVelocityCommands(body,{}));
++  }
++  EXPECT_TRUE(actual->motion_->hasRoute());
++  EXPECT_FALSE(actual->motion_->tracker_->expired_braking_);
++}
++
++TEST_F(StarvationTest, GoalStandingDoesNotBecomeOrdinaryStarvation)
++{
++  plan();
++  for(double t : {0.,.8,2.}) {
++    at(t);EXPECT_NO_THROW(plugin->computeVelocityCommands(route.poses.back(),{}));
++  }
++  EXPECT_TRUE(actual->terminalPhase());
++}
++
++TEST_F(StarvationTest, FinalYawAlignmentClearsOldExpiredCurveWait)
++{
++  expiredCornerStub();plugin->computeVelocityCommands(pose(),{});
++  auto body=route.poses.back();body.pose.orientation.w=0.;body.pose.orientation.z=1.;
++  for(double t : {.5,1.,1.5}) {
++    at(t);EXPECT_NO_THROW(plugin->computeVelocityCommands(body,{}));
++  }
++  EXPECT_TRUE(actual->motion_->hasRoute());
++  EXPECT_FALSE(actual->motion_->waiting_for_spline_);
++}
++
++TEST_F(StarvationTest, NewGoalRestoresOriginalAdmissionBudget)
++{
++  plan();injectSpline(std::make_shared<sm::Bspline>(curve()));
++  at(.7);route.poses.back()=pose(9);plugin->setPlan(route);
++  at(1.5);EXPECT_NO_THROW(plugin->computeVelocityCommands(pose(),{}));
++  at(5.71);EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
++}
+ 
+ TEST_F(RouteHeadingTest, ExpiredStoppedStubTurnsThroughBothHeadingBands)
+ {
+--- v206/src/scan_nav2_controller/config/controller.yaml
++++ v217/src/scan_nav2_controller/config/controller.yaml
+@@ -20,6 +20,7 @@
+       base_frame: base_link
+       route_topic: /pct_path
+       bspline_timeout: 5.0
++      trajectory_starvation_timeout: 0.75
+       execution_state_topic: /quad_0/execution_state
+       stand_hold_seconds: 2.0
+       stand_timeout_seconds: 10.0
+--- v206/src/scan_nav2_controller/src/local_motion.cpp
++++ v217/src/scan_nav2_controller/src/local_motion.cpp
+@@ -114,7 +114,9 @@
+ {
+   global_frame_=parameter(parent_,name_+".global_frame",std::string("world"));
+   bspline_timeout_s_=parameter(parent_,name_+".bspline_timeout",5.0);
+-  if (!std::isfinite(bspline_timeout_s_) || bspline_timeout_s_<=0)
++  trajectory_starvation_timeout_s_=parameter(parent_,name_+".trajectory_starvation_timeout",0.75);
++  if (!std::isfinite(bspline_timeout_s_) || bspline_timeout_s_<=0 ||
++      !std::isfinite(trajectory_starvation_timeout_s_) || trajectory_starvation_timeout_s_<=0)
+     throw nav2_core::PlannerException("Invalid SCAN B-spline timeout");
+   native_worker_enabled_=parameter(parent_, name_+".native_worker_enabled", true);
+   const bool use_sim=parameter(parent_, "use_sim_time", false);
+@@ -162,6 +164,7 @@
+ void LocalMotion::cancel()
+ {
+   exchange_->cancel();has_active_plan_=false;waiting_for_spline_=false;
++  received_spline_=false;
+   tracker_->clearTrajectory();
+ }
+ bool LocalMotion::setRoute(const nav_msgs::msg::Path &path)
+@@ -177,6 +180,7 @@
+     std::equal(path.poses.begin(),path.poses.end(),reference_path_.poses.begin(),
+       [](const auto &a,const auto &b){return a.pose==b.pose;});
+   if (!same_goal) {
++    received_spline_=false;
+     tracker_->clearTrajectory();waiting_for_spline_=true;waiting_for_spline_since_=parent_->now();
+   } else if (!tracker_->haveTrajectory() && !waiting_for_spline_) {
+     waiting_for_spline_=true;waiting_for_spline_since_=parent_->now();
+@@ -194,12 +198,12 @@
+   const auto &message=output.spline;
+   if (!has_active_plan_ || output.generation!=generation_ || !message || !validSplineLayout(*message)) return;
+   if (message->emergency_stop) {
+-    if (tracker_->haveTrajectory() || !waiting_for_spline_) {
++    if (!waiting_for_spline_) {
+       waiting_for_spline_=true;waiting_for_spline_since_=parent_->now();
+     }
+     tracker_->clearTrajectory();return;
+   }
+-  tracker_->bsplineCallback(message);waiting_for_spline_=false;
++  tracker_->bsplineCallback(message);waiting_for_spline_=false;received_spline_=true;
+ }
+ void LocalMotion::update()
+ {
+@@ -218,15 +222,29 @@
+   exchange_->feedback(generation_,true,tracker_->traj_id_);
+   return tracker_->sampled_command_;
+ }
++void LocalMotion::waitForExecutableSpline()
++{
++  if (!waiting_for_spline_) {
++    waiting_for_spline_=true;waiting_for_spline_since_=parent_->now();
++  }
++  const double elapsed=(parent_->now()-waiting_for_spline_since_).seconds();
++  // Initial map/reference admission keeps its original budget. Once moving,
++  // a missing or expired curve is a local failure, not a new initialization.
++  const double limit=received_spline_ ? trajectory_starvation_timeout_s_ : bspline_timeout_s_;
++  if (elapsed>limit) {
++    RCLCPP_WARN(parent_->get_logger(),
++      "local_trajectory_starvation elapsed_s=%.6f limit_s=%.6f generation=%lu; ordinary recovery required",
++      elapsed,limit,static_cast<unsigned long>(generation_));
++    cancel();
++    throw nav2_core::PlannerException("Native SCAN has no executable trajectory before timeout");
++  }
++}
+ geometry_msgs::msg::Twist LocalMotion::command(const geometry_msgs::msg::Pose &pose,
+     const geometry_msgs::msg::Twist &velocity)
+ {
+   if (!has_active_plan_) throw nav2_core::PlannerException("No active plan");
+   if (!tracker_->haveTrajectory()) {
+-    if (!waiting_for_spline_) {waiting_for_spline_=true;waiting_for_spline_since_=parent_->now();}
+-    if ((parent_->now()-waiting_for_spline_since_).seconds()>bspline_timeout_s_) {
+-      cancel();throw nav2_core::PlannerException("Native SCAN did not publish a trajectory before timeout");
+-    }
++    waitForExecutableSpline();
+     return geometry_msgs::msg::Twist();
+   }
+   const auto sample=tracker_->sampleCommand(pose,velocity,true);
+@@ -236,6 +254,8 @@
+       !std::isfinite(t.angular.y) || !std::isfinite(t.angular.z)) {
+     cancel();throw nav2_core::PlannerException("Native SCAN trajectory sample invalid");
+   }
++  if (tracker_->awaitingReplacement()) waitForExecutableSpline();
++  else waiting_for_spline_=false;
+   exchange_->feedback(generation_,tracker_->executionFrozen(),tracker_->executionFrozenTrajectory());
+   return sample.twist;
+ }
+--- v206/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp
++++ v217/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp
+@@ -32,6 +32,7 @@
+   Tolerances tolerances() const {return tolerances_;}
+ private:
+   void acceptSpline(const MotionExchange::Output &output);
++  void waitForExecutableSpline();
+   rclcpp_lifecycle::LifecycleNode::SharedPtr parent_;
+   rclcpp::Node::SharedPtr observations_;
+   std::string name_,global_frame_,route_topic_;
+@@ -42,8 +43,9 @@
+   std::shared_ptr<MotionExchange> exchange_{std::make_shared<MotionExchange>()};
+   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr route_pub_;
+   bool native_worker_enabled_{true},has_active_plan_{false},waiting_for_spline_{false};
++  bool received_spline_{false};
+   uint64_t generation_{0};
+-  double bspline_timeout_s_{5.0};
++  double bspline_timeout_s_{5.0},trajectory_starvation_timeout_s_{0.75};
+   rclcpp::Time waiting_for_spline_since_{0,0,RCL_ROS_TIME};
+   nav_msgs::msg::Path reference_path_;
+ };
+--- v206/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
++++ v217/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
+@@ -394,6 +394,9 @@
+   }
+ 
+   bool haveTrajectory() const { return receive_traj_ && !emergency_stop_ && !traj_.empty(); }
++  // Expired-curve braking is not a usable route continuation. Final yaw
++  // alignment still has an explicit goal and must not trigger route recovery.
++  bool awaitingReplacement() const { return expired_braking_ && !goal_position_latched_; }
+ 
+   struct CommandSample { bool valid{false}; geometry_msgs::msg::Twist twist; };
+   CommandSample sampleCommand(const geometry_msgs::msg::Pose &pose,

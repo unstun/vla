@@ -1,5 +1,183 @@
 # Foxy SCAN controller and observation window
 
+## Event recovery override (v219)
+
+The authorized v219 implementation supersedes earlier periodic-refresh wording.
+Keep initial/changed-goal and ordinary-recovery planning. Additionally, report
+actual native local-round outcomes through DirectIO -> MotionExchange, bound to
+generation and route revision. Two or more consecutive failed rounds spanning
+0.75 s request a new global route; success or route replacement clears the
+interval. A healthy controller must not periodically request global planning.
+
+Bind `/scan/replan_request` to the exact current Path header. PlanOnGoalChange
+rejects old-route requests and keeps FollowPath active while the new plan runs.
+Foxy lacks per-callback-group executor attachment: use a dedicated event-listener
+node spun by the BT decorator. Native SCAN changes only report the existing
+boolean outcomes; geometry/seed/optimizer source must remain byte-identical
+when those reporting lines are removed. Preserve usable spline output and
+feedback across same-goal revisions.
+
+The v217 fallback also detects expired-braking curves, not just absent curves:
+0.75 s after a previously executable trajectory stalls, then ordinary failure.
+Initial map/reference admission keeps 5 s. Repeated emergency or same-route
+messages cannot renew the wait; goal braking/final yaw alignment are excluded.
+Keep six ordinary retries, Wait 1 s and typed terminal-timeout non-retry.
+
+v217 stood upright but exhausted retries at the stair. v219 passed one original
+full route, with 132 passing component cases. Its 45-55 s local success fraction
+was 118/208 (56.7%), below v210's 250/253; do not call it planning-rate parity.
+Evidence: `versions/v219/RESULTS.md`, `native_geometry_equivalence.json`, and the
+installed BT/controller regressions in the 2026-09-26 Newton experiment.
+
+## Command continuity override (v206)
+
+Dr Sun explicitly authorized these tracking behavior changes after the v204
+physical review. They supersede the older same-goal geometry invalidation rule.
+Ordinary same-goal route refresh updates only revision/route. New goal or cancel
+changes generation; retain the independent reset revision and trajectory-bound
+freeze feedback. A valid solve crossing an ordinary refresh remains publishable.
+
+TrackingNode owns dt-based x/y/yaw command limiting independently of spline
+receipt. Normal Controller terminal braking must pass through that same history;
+emergency/cancel/no-valid-curve stops clear it immediately. Heading uses continuous
+translation attenuation and turn hysteresis (1.0 rad entry / 0.6 exit) retained
+across spline replacement. Do not reset these states on a routine route refresh.
+
+An expired curve with a sub-0.20 m/s unattenuated XY command brakes to exact zero
+and stays stopped until a new native spline. This does not mean goal arrival,
+clear the route, or alter the original 2 cm local-capture test. Active small
+corrections remain valid. The threshold is not a claim of a universal V12 training
+dead zone. Preserve final XYZ/yaw/physical PD qualification, 1 Hz global refresh,
+six ordinary retries, and the typed non-retry stand timeout.
+
+Build and fixed-input regressions run on gpu5070ti for this change. Physical route
+validation is separate; component success does not establish faster navigation.
+
+## Behavior-preserving restoration (v204)
+
+The latest override restores three v196 managed-mission behaviors while retaining
+the v198-v203 architecture. Do not change navigation policy as part of module
+relocation. Keep 1 Hz global refresh; event-driven planning (step 5) is deferred.
+
+- The first successful native route supplies the canonical XYZ. Explicit HTTP
+  yaw, including zero, wins; omitted yaw uses the last horizontal segment longer
+  than 1e-6 m. Lock the full terminal pose for that mission. Keep the 2 m final
+  connector bound.
+- C++ RoutePolicy retains the last valid route for the same active task only on
+  `pct_no_route`, `pct_height_count_mismatch_or_empty_route`, or
+  `pct_canonical_goal_disconnected`, and within the original terminal approach
+  test (XY <= 1 m and abs Z <= 0.35 m, using start or measured body). Do not add
+  fallback reasons, TTLs, or new replan/deviation thresholds.
+- Ordinary planning/tracking failure uses the original RecoveryNode: Wait 1 s,
+  maximum six retries. Only typed terminal-settle timeout bypasses retry. Foxy's
+  empty FollowPath result requires querying the cause by its actual action UUID;
+  never infer the reason from logs, a stale boolean or text matching.
+
+The planner owns canonical pose/cache; MissionBridge only sends begin/end task
+metadata and the optional-yaw bit. No per-plan service roundtrip or Python PCT
+returns. Preserve LocalMotion snapshots, static terrain consolidation, map shells,
+SCAN geometry/support and ControllerServer's sole robot command publication.
+Wait recovery is restored; its stock unused cmd_vel is not connected to the robot.
+Prior version sections below are historical wherever this override differs.
+Use v204's frozen-v196 oracle, real ROS action/session tests and retained component
+checks. Full-route experiments are outside this restoration's authorization.
+
+## Static terrain and map-shell override (v203, component-checked)
+
+`terrain_manifest` is the navigation launch's single static input entry. One
+`StaticTerrain` node loads and publishes three separate immutable cloud payloads:
+selected navigation ground, surface evidence and physical-floor presence. Keep
+original layout, hashes, FNV source IDs, 3 cm projection offset, physical origin,
+resolution, advancing-positive-clock gate and reset/republication behavior.
+The same manifest binds the PCT native file and negative-only support-gap mask.
+Never merge these roles or grant traversability from physical presence alone.
+
+`write_profile` generates SCAN static bindings and PCT parameters from that
+manifest. Preserve all non-static native planning/geometry parameters. The native
+map/optimizer sources remain unchanged. LocalMotion no longer computes/publishes
+2D terrain slices; the new plugin library does not build TerrainLayer. v203 removed Wait with the no-retry tree; v204 restores its consumer and server.
+
+Foxy cannot parse an empty YAML plugin array. Use its stock ObstacleLayer disabled,
+with empty observation_sources and footprint clearing disabled, for the minimal
+Nav2 TF/lifecycle shell. Keep a nonzero update rate: Costmap2DROS::start waits for
+its first map update. v203 uses 1x1 grids, 1 Hz and zero grid publication. Do not
+remove native SCAN 3D inflation or support checks under this 2D cleanup.
+
+Keep exact static-byte/role checks, real ROS late-subscriber/reset tests, native
+three-role decoding and gap-mask checks, actual shell lifecycle activation and
+launch/profile regressions. Evidence lives in `versions/v203/verification/` under
+the Newton stair experiment: 97 ROS cases plus one host graph check; no new physics.
+The BT's 1 Hz planning child remains; step 5 is deferred.
+
+## LocalMotion override (v202, component-checked)
+
+The Nav2 Controller delegates route, command and cancellation to LocalMotion.
+LocalMotion owns the SCAN worker and Tracker. Its methods run on the serialized
+control thread; native planning state is written only on the SCAN work group.
+Never let worker callbacks mutate Tracker or call back into Controller stop locks.
+
+`MotionExchange` holds one immutable input and one completed output. New geometry,
+new goals and cancellation invalidate older outputs. Identical route refreshes
+keep their generation. A separate reset revision survives latest-input replacement,
+so an unconsumed cancellation cannot disappear when a new route is submitted.
+Freeze feedback carries trajectory ID; do not apply one curve's freeze to another.
+
+Native `DirectIO` reads snapshots at existing planning/collision work boundaries
+and copies completed splines before releasing the existing publication lease.
+Map cadence, collision/support rules, optimizer and tracking equations stay intact.
+No internal Path, Bspline or execution-freeze subscriptions exist in LocalMotion;
+these topics are observation outlets. External sensors, pose, clock and physical
+execution state remain ROS inputs. Default standalone SCAN initialization retains
+its old ROS interface. `native_worker_enabled=false` is a component fixture switch,
+not an external ROS spline mode.
+
+Evidence: `versions/v202/{BUILD.md,RESULTS.md,verification/}` under the Newton stair
+experiment. Seven packages built, 77 unique component cases and 300 tracking
+samples passed. Preserve the real plugin/native direct-output, ROS injection,
+late-result cancellation, bounded exchange and three-cycle lifecycle regressions.
+No new physics or full-route evidence; terrain cleanup and 1 Hz removal are pending.
+
+## Direct PCT override (v201, component-checked)
+
+`lite3_nav2::PCTPlanner` calls the pinned `OfflineElePlanner` directly. It reads
+the one-time exported `PCTMAP01` bundle, preserving float32 preprocessing,
+ties-to-even grid rounding, XY swap, layer selection and native optimizer height.
+Never reintroduce the discarded Python conversion's +0.5 m Z offset.
+
+MissionBridge only adapts HTTP tasks to the Nav2 action; it has no planner,
+PlanRoute service or route cache. The launch supplies `pct_map_bundle` and the
+same body reference height to the planner and input adapter. In v201 the requested
+goal was fixed and omitted yaw defaulted to zero; v204 supersedes those behaviors. `/pct_planned_path` is a
+C++ planner observation, not an internal service synchronization mechanism.
+
+The native algorithm source remains the runtime-selected v174 snapshot.
+Evidence: `versions/v201/verification/` under the Newton stair experiment:
+11 fixed inputs, 2,033 matching XYZ points, exact input matrices and 21 affected
+component cases. No new physical navigation evidence is implied.
+
+## Current refactor override (v198–v200, component-checked)
+
+The historical contracts below describe earlier versions. For the new v200
+component overlay, `ControllerServer` owns the sole Twist publisher. SCAN returns
+a command; `ExecutionControl::stop` only clears execution. Both launch paths
+remap the server's `cmd_vel` to `/quad_0/cmd_vel`.
+
+The v198 additive TCP message 9 becomes typed `RobotExecutionState` feedback.
+Do not read shared JSON from GoalChecker or infer PD ownership from zero velocity.
+The v200 controller/GoalChecker share one two-second physical hold window, reset
+on cancellation, a changed goal or departure from terminal tolerance. Source
+time proves duration and steady time bounds freshness and the terminal deadline.
+
+Compute the terminal phase before checking movement progress, and reset the
+movement checker only while terminal waiting is active. The v200 BT has no outer
+RecoveryNode/Wait: a FollowPath failure ends the task. Its 1 Hz planning child is
+still present pending the event-driven planning migration. Do not claim dynamic
+blockage-aware PCT from a static start/goal-only planning API.
+
+Evidence and reproduction: `versions/v200/{RESULTS.md,BUILD.md,verification/}`
+under the Newton stair experiment. These are component checks with zero new
+physics steps; the previous physical route evidence remains v196.
+
 ## 1. Scope / trigger
 
 Applies to the v86+ component workspace and v89/v92 full Nav2 integration in the

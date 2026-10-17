@@ -1,0 +1,418 @@
+--- v217/src/lite3_nav2_plugins/include/lite3_nav2_plugins/plan_on_goal_change.hpp
++++ v219/src/lite3_nav2_plugins/include/lite3_nav2_plugins/plan_on_goal_change.hpp
+@@ -1,6 +1,9 @@
+ #pragma once
+ #include <behaviortree_cpp_v3/decorator_node.h>
+ #include <geometry_msgs/msg/pose_stamped.hpp>
++#include <nav_msgs/msg/path.hpp>
++#include <std_msgs/msg/header.hpp>
++#include <rclcpp/rclcpp.hpp>
+ #include <optional>
+ #include <stdexcept>
+ 
+@@ -12,13 +15,22 @@
+ {
+ public:
+   PlanOnGoalChange(const std::string &name, const BT::NodeConfiguration &config)
+-  : BT::DecoratorNode(name, config) {}
++  : BT::DecoratorNode(name, config) {
++    // Foxy cannot attach one callback group to a private executor. Keep this
++    // event listener separate from the BT action client's shared node.
++    rclcpp::NodeOptions options;options.use_global_arguments(false);
++    node_=std::make_shared<rclcpp::Node>("scan_replan_event_listener",options);
++    request_=node_->create_subscription<std_msgs::msg::Header>("/scan/replan_request",rclcpp::QoS(1).reliable(),
++      [this](std_msgs::msg::Header::ConstSharedPtr msg) {pending_=*msg;});
++    executor_.add_node(node_);
++  }
+ 
+   static BT::PortsList providedPorts() {
+-    return {BT::InputPort<geometry_msgs::msg::PoseStamped>("goal")};
++    return {BT::InputPort<geometry_msgs::msg::PoseStamped>("goal"),BT::InputPort<nav_msgs::msg::Path>("reference")};
+   }
+ 
+   BT::NodeStatus tick() override {
++    executor_.spin_some();
+     // PipelineSequence resets successful children to IDLE without calling halt.
+     // Recovery must invalidate that completed plan as well as running actions.
+     if (status() == BT::NodeStatus::IDLE) { requested_.reset(); planned_ = false; }
+@@ -31,6 +43,15 @@
+       resetChild(); // Cancels an in-flight old-goal action before replacement.
+       requested_ = goal;
+       planned_ = false;
++      pending_.reset();
++    }
++    if (planned_ && pending_) {
++      const auto path=getInput<nav_msgs::msg::Path>("reference");
++      if (path && pending_->frame_id==path.value().header.frame_id && pending_->stamp==path.value().header.stamp) {
++        // PipelineSequence keeps FollowPath running while this child replans.
++        resetChild();planned_=false;
++      }
++      pending_.reset();
+     }
+     if (planned_) return BT::NodeStatus::SUCCESS;
+     const auto result = child_node_->executeTick();
+@@ -43,11 +64,16 @@
+   void halt() override {
+     requested_.reset();
+     planned_ = false;
++    pending_.reset();
+     BT::DecoratorNode::halt();
+   }
+ 
+ private:
+   std::optional<geometry_msgs::msg::PoseStamped> requested_;
+   bool planned_{false};
++  rclcpp::Node::SharedPtr node_;
++  rclcpp::Subscription<std_msgs::msg::Header>::SharedPtr request_;
++  rclcpp::executors::SingleThreadedExecutor executor_;
++  std::optional<std_msgs::msg::Header> pending_;
+ };
+ }
+--- v217/src/lite3_nav2_bridge/test/test_terminal_tree.cpp
++++ v219/src/lite3_nav2_bridge/test/test_terminal_tree.cpp
+@@ -44,7 +44,12 @@
+   return status;
+ }
+ }
+-TEST(RecoveryTree, OrdinaryFailuresMatchFrozenTreeAndNextMissionResets) {
++class RecoveryTree : public ::testing::Test {
++protected:
++  void SetUp() override {int argc=0;rclcpp::init(argc,nullptr);}
++  void TearDown() override {rclcpp::shutdown();}
++};
++TEST_F(RecoveryTree, OrdinaryFailuresMatchFrozenTreeAndNextMissionResets) {
+   for(bool planner:{false,true})for(int count:{2,99}) {
+     std::vector<int> expected;
+     for(const char *file:{LEGACY_TREE,NAVIGATION_TREE}) {
+@@ -60,7 +65,7 @@
+     }
+   }
+ }
+-TEST(RecoveryTree, TerminalTimeoutDoesNotWaitOrRetryAndFlagIsConsumed) {
++TEST_F(RecoveryTree, TerminalTimeoutDoesNotWaitOrRetryAndFlagIsConsumed) {
+   plans=follows=waits=0;failures=99;plan_failure=false;terminal=true;
+   BT::BehaviorTreeFactory factory;registerNodes(factory);
+   auto bb=BT::Blackboard::create();bb->set("goal",geometry_msgs::msg::PoseStamped());
+@@ -70,8 +75,7 @@
+   tree.haltTree();terminal=false;plan_failure=true;plans=follows=waits=0;
+   EXPECT_EQ(run(tree),BT::NodeStatus::FAILURE);EXPECT_EQ(plans,7);EXPECT_EQ(waits,6);
+ }
+-TEST(RecoveryTree, RealFollowPathActionQueriesItsOwnFailureUuid) {
+-  int argc=0;rclcpp::init(argc,nullptr);
++TEST_F(RecoveryTree, RealFollowPathActionQueriesItsOwnFailureUuid) {
+   auto io=std::make_shared<rclcpp::Node>("failure_fixture");
+   auto node=std::make_shared<rclcpp::Node>("failure_bt");
+   using Action=nav2_msgs::action::FollowPath;using Handle=rclcpp_action::ServerGoalHandle<Action>;
+@@ -96,5 +100,5 @@
+     tree.haltTree();terminal_reply=false;plans=waits=0;queries=0;
+     EXPECT_EQ(run(tree),BT::NodeStatus::FAILURE);EXPECT_EQ(queries,7);EXPECT_EQ(plans,7);EXPECT_EQ(waits,6);
+   }
+-  executor.cancel();thread.join();executor.remove_node(io);server.reset();service.reset();node.reset();io.reset();rclcpp::shutdown();
++  executor.cancel();thread.join();executor.remove_node(io);server.reset();service.reset();node.reset();io.reset();
+ }
+--- v217/src/lite3_nav2_bridge/test/test_mission_bridge.py
++++ v219/src/lite3_nav2_bridge/test/test_mission_bridge.py
+@@ -259,7 +259,7 @@
+     assert pipeline.get('name') == 'NavigateWithReplanning'
+     assert pipeline.find('RateController') is None
+     rate = pipeline.find('PlanOnGoalChange')
+-    assert rate.attrib == {'goal': '{goal}'}
++    assert rate.attrib == {'goal': '{goal}', 'reference': '{path}'}
+     assert rate.find('ComputePathToPose').attrib == dict(goal='{goal}', path='{path}',
+         planner_id='PCT', server_name='/compute_path_to_pose', server_timeout='1000')
+     assert pipeline.find('FollowPathWithFailure').get('controller_id') == 'SCAN'
+--- v217/src/lite3_nav2_bridge/test/test_event_planning.cpp
++++ v219/src/lite3_nav2_bridge/test/test_event_planning.cpp
+@@ -3,6 +3,8 @@
+ #include <behaviortree_cpp_v3/action_node.h>
+ #include <geometry_msgs/msg/pose_stamped.hpp>
+ #include <nav_msgs/msg/path.hpp>
++#include <std_msgs/msg/header.hpp>
++#include <rclcpp/rclcpp.hpp>
+ #include <thread>
+ #include <chrono>
+ 
+@@ -26,7 +28,8 @@
+     if (status() != Status::RUNNING) { ++starts; requested = getInput<Pose>("goal").value(); }
+     if (fail_plan) return Status::FAILURE;
+     if (!finish_plan) return Status::RUNNING;
+-    nav_msgs::msg::Path path; path.poses.push_back(requested); setOutput("path",path);
++    nav_msgs::msg::Path path;path.header.frame_id="world";path.header.stamp.sec=starts;
++    path.poses.push_back(requested); setOutput("path",path);
+     return Status::SUCCESS;
+   }
+   void halt() override {if(status()==Status::RUNNING) ++cancels;setStatus(Status::IDLE);}
+@@ -53,6 +56,10 @@
+ 
+ class EventPlanning : public ::testing::Test {
+ protected:
++  static void SetUpTestCase(){int argc=0;rclcpp::init(argc,nullptr);}
++  static void TearDownTestCase(){rclcpp::shutdown();}
++  rclcpp::Node::SharedPtr node;
++  rclcpp::Publisher<std_msgs::msg::Header>::SharedPtr request;
+   BT::BehaviorTreeFactory factory;
+   BT::Blackboard::Ptr board;
+   Pose goal;
+@@ -69,11 +76,38 @@
+     factory.registerNodeType<Follow>("FollowPath");
+     factory.registerNodeType<Wait>("Wait");
+     board=BT::Blackboard::create();goal.header.frame_id="world";
++    node=std::make_shared<rclcpp::Node>("test_event_requests");board->set("node",node);
++    request=node->create_publisher<std_msgs::msg::Header>("/scan/replan_request",rclcpp::QoS(1).reliable());
+     goal.pose.position.x=5.;goal.pose.orientation.w=1.;board->set("goal",goal);
+   }
+   BT::Tree tree(const char *file=NAVIGATION_TREE){return factory.createTreeFromFile(file,board);}
+   void update(){board->set("goal",goal);}
+ };
++
++TEST_F(EventPlanning, CurrentRouteFailureReplansWithoutStoppingFollowPath) {
++  auto t=tree();t.tickRoot();
++  const auto header=board->get<nav_msgs::msg::Path>("path").header;
++  for(int i=0;i<100 && !request->get_subscription_count();++i)std::this_thread::sleep_for(std::chrono::milliseconds(5));
++  ASSERT_GT(request->get_subscription_count(),0u);
++  finish_plan=false;request->publish(header);
++  for(int i=0;i<100 && starts==1;++i){t.tickRoot();std::this_thread::sleep_for(std::chrono::milliseconds(5));}
++  ASSERT_EQ(starts,2);const int before=follows;
++  for(int i=0;i<10;++i)t.tickRoot();
++  EXPECT_GT(follows,before);EXPECT_EQ(cancels,0);EXPECT_EQ(waits,0);
++  finish_plan=true;t.tickRoot();EXPECT_EQ(starts,2);
++  request->publish(header); // Old route request cannot invalidate the replacement.
++  for(int i=0;i<10;++i){t.tickRoot();std::this_thread::sleep_for(std::chrono::milliseconds(5));}
++  EXPECT_EQ(starts,2);
++}
++
++TEST_F(EventPlanning, WrongRouteRequestDoesNotReplan) {
++  auto t=tree();t.tickRoot();
++  for(int i=0;i<100 && !request->get_subscription_count();++i)std::this_thread::sleep_for(std::chrono::milliseconds(5));
++  auto header=board->get<nav_msgs::msg::Path>("path").header;header.stamp.sec+=10;
++  request->publish(header);
++  for(int i=0;i<20;++i){t.tickRoot();std::this_thread::sleep_for(std::chrono::milliseconds(5));}
++  EXPECT_EQ(starts,1);
++}
+ 
+ TEST_F(EventPlanning, NoPeriodicPlansWhileLocalTrackingKeepsTicking) {
+   auto t=tree();ASSERT_EQ(t.tickRoot(),Status::RUNNING);
+--- v217/src/lite3_nav2_bridge/config/navigate.xml
++++ v219/src/lite3_nav2_bridge/config/navigate.xml
+@@ -2,7 +2,7 @@
+  <BehaviorTree ID="MainTree">
+   <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+    <PipelineSequence name="NavigateWithReplanning">
+-    <PlanOnGoalChange goal="{goal}">
++    <PlanOnGoalChange goal="{goal}" reference="{path}">
+      <ComputePathToPose goal="{goal}" path="{path}" planner_id="PCT" server_name="/compute_path_to_pose" server_timeout="1000"/>
+     </PlanOnGoalChange>
+     <FollowPathWithFailure path="{path}" controller_id="SCAN" server_name="/follow_path" server_timeout="1000"/>
+--- v217/src/scan_nav2_controller/test/test_controller.cpp
++++ v219/src/scan_nav2_controller/test/test_controller.cpp
+@@ -288,6 +288,38 @@
+   at(.7);route.poses.back()=pose(9);plugin->setPlan(route);
+   at(1.5);EXPECT_NO_THROW(plugin->computeVelocityCommands(pose(),{}));
+   at(5.71);EXPECT_THROW(plugin->computeVelocityCommands(pose(),{}),nav2_core::PlannerException);
++}
++
++TEST_F(StarvationTest, ConsecutivePlannerFailuresRequestOnceWhileCurveRemainsExecutable)
++{
++  std::vector<std_msgs::msg::Header> requests;
++  auto sub=io->create_subscription<std_msgs::msg::Header>("/scan/replan_request",10,
++    [&](std_msgs::msg::Header::ConstSharedPtr h){requests.push_back(*h);});
++  ASSERT_TRUE(wait([&]{return sub->get_publisher_count()>0;}));
++  plan();injectSpline(std::make_shared<sm::Bspline>(curve()));
++  auto exchange=actual->motion_->exchange_;const auto input=exchange->input();
++  exchange->planningResult(input.generation,input.revision,false,origin);
++  exchange->planningResult(input.generation,input.revision,false,origin+200000000);
++  at(.7);plugin->computeVelocityCommands(pose(),{});rclcpp::spin_some(io);EXPECT_TRUE(requests.empty());
++  at(.8);plugin->computeVelocityCommands(pose(),{});
++  ASSERT_TRUE(wait([&]{return requests.size()==1;}));
++  EXPECT_EQ(requests[0],route.header);
++  EXPECT_TRUE(actual->motion_->hasRoute());EXPECT_TRUE(actual->motion_->tracker_->haveTrajectory());
++  at(.9);plugin->computeVelocityCommands(pose(),{});rclcpp::spin_some(io);EXPECT_EQ(requests.size(),1u);
++  route.header.stamp=parent->now();plugin->setPlan(route);
++  EXPECT_FALSE(exchange->planning());EXPECT_GT(exchange->input().revision,input.revision);
++  EXPECT_EQ(exchange->input().generation,input.generation);
++  EXPECT_TRUE(actual->motion_->tracker_->haveTrajectory());
++}
++
++TEST_F(StarvationTest, SuccessfulLocalRoundSuppressesGlobalRequest)
++{
++  plan();injectSpline(std::make_shared<sm::Bspline>(curve()));
++  auto e=actual->motion_->exchange_;const auto i=e->input();
++  e->planningResult(i.generation,i.revision,false,origin);
++  e->planningResult(i.generation,i.revision,true,origin+500000000);
++  at(.8);plugin->computeVelocityCommands(pose(),{});
++  EXPECT_FALSE(actual->motion_->replan_requested_);EXPECT_TRUE(actual->motion_->hasRoute());
+ }
+ 
+ TEST_F(RouteHeadingTest, ExpiredStoppedStubTurnsThroughBothHeadingBands)
+--- v217/src/scan_nav2_controller/test/test_motion_exchange.cpp
++++ v219/src/scan_nav2_controller/test/test_motion_exchange.cpp
+@@ -9,6 +9,18 @@
+   nav_msgs::msg::Path p;p.header.frame_id="world";
+   geometry_msgs::msg::PoseStamped pose;pose.pose.position.x=x;pose.pose.orientation.w=1.;
+   p.poses={pose,pose};return p;
++}
++
++TEST(MotionExchange, ConsecutiveFailuresResetOnlyOnSuccessOrRouteRevision)
++{
++  MotionExchange e;const auto g=e.setRoute(route(),true);const auto rev=e.input().revision;
++  e.planningResult(g,rev,false,100);e.planningResult(g,rev,false,200);
++  ASSERT_TRUE(e.planning());EXPECT_EQ(e.planning()->first_failure_ns,100);EXPECT_EQ(e.planning()->failures,2u);
++  e.planningResult(g,rev,true,300);EXPECT_FALSE(e.planning());
++  e.planningResult(g,rev,false,400);EXPECT_EQ(e.planning()->first_failure_ns,400);
++  e.setRoute(route(2),false);EXPECT_FALSE(e.planning());
++  e.planningResult(g,rev,false,500);EXPECT_FALSE(e.planning());
++  e.cancel();e.planningResult(g,e.input().revision,false,600);EXPECT_FALSE(e.planning());
+ }
+ 
+ TEST(MotionExchange, CopiesInputsAndDeliversEachOutputOnce)
+--- v217/src/scan_nav2_controller/src/local_motion.cpp
++++ v219/src/scan_nav2_controller/src/local_motion.cpp
+@@ -47,6 +47,9 @@
+     direct.spline=[this](const scan_planner_msgs::msg::Bspline &spline) {
+       exchange_->publish(current_generation_,spline);
+     };
++    direct.planning_result=[this](bool success,int64_t started_ns) {
++      exchange_->planningResult(current_generation_,input_revision_,success,started_ns);
++    };
+     planner_->init(node_.get(),work_group_,std::move(direct));
+     // Foxy schedules /clock in the default callback group. Keep native data and
+     // planning serialized, while its real ROS clock can progress during a solve.
+@@ -149,6 +152,7 @@
+   route_topic_=parameter(parent_,name_+".route_topic",std::string("/pct_path"));
+   route_pub_=observations_->create_publisher<nav_msgs::msg::Path>(
+     route_topic_,rclcpp::QoS(1).reliable().transient_local());
++  replan_pub_=observations_->create_publisher<std_msgs::msg::Header>("/scan/replan_request",rclcpp::QoS(1).reliable());
+   executor_=std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+   executor_->add_node(tracker_);
+ }
+@@ -165,6 +169,7 @@
+ {
+   exchange_->cancel();has_active_plan_=false;waiting_for_spline_=false;
+   received_spline_=false;
++  replan_requested_=false;
+   tracker_->clearTrajectory();
+ }
+ bool LocalMotion::setRoute(const nav_msgs::msg::Path &path)
+@@ -185,7 +190,10 @@
+   } else if (!tracker_->haveTrajectory() && !waiting_for_spline_) {
+     waiting_for_spline_=true;waiting_for_spline_since_=parent_->now();
+   }
+-  const bool submit=!same_geometry || !tracker_->haveTrajectory() || waiting_for_spline_;
++  const bool new_plan_header=reference_path_.header!=path.header;
++  const bool submit=!same_geometry || !tracker_->haveTrajectory() || waiting_for_spline_ ||
++    (replan_requested_ && new_plan_header);
++  if (new_plan_header || !same_goal) replan_requested_=false;
+   tracker_->setReferencePath(path);reference_path_=path;has_active_plan_=true;
+   if (submit) {
+     generation_=exchange_->setRoute(path,!same_goal);
+@@ -243,6 +251,14 @@
+     const geometry_msgs::msg::Twist &velocity)
+ {
+   if (!has_active_plan_) throw nav2_core::PlannerException("No active plan");
++  const auto planning=exchange_->planning();
++  if (!replan_requested_ && planning && planning->generation==generation_ && planning->failures>=2 &&
++      (parent_->now().nanoseconds()-planning->first_failure_ns)*1e-9>=trajectory_starvation_timeout_s_) {
++    replan_pub_->publish(reference_path_.header);
++    replan_requested_=true;
++    RCLCPP_WARN(parent_->get_logger(),"local_replan_request failed_rounds=%u ros_s=%.9f; retaining current trajectory",
++      planning->failures,parent_->now().seconds());
++  }
+   if (!tracker_->haveTrajectory()) {
+     waitForExecutableSpline();
+     return geometry_msgs::msg::Twist();
+--- v217/src/scan_nav2_controller/include/scan_nav2_controller/motion_exchange.hpp
++++ v219/src/scan_nav2_controller/include/scan_nav2_controller/motion_exchange.hpp
+@@ -23,6 +23,7 @@
+     uint64_t generation;
+     scan_planner_msgs::msg::Bspline::ConstSharedPtr spline;
+   };
++  struct Planning {uint64_t generation,revision; int64_t first_failure_ns; unsigned failures;};
+   uint64_t setRoute(const nav_msgs::msg::Path &route,bool new_goal) {
+     auto copy=std::make_shared<const nav_msgs::msg::Path>(route);
+     std::lock_guard<std::mutex> lock(mutex_);
+@@ -30,13 +31,23 @@
+     if (new_goal) {
+       ++input_.generation; ++input_.reset; output_.reset(); input_.feedback={};
+     }
+-    ++input_.revision;input_.route=std::move(copy);
++    ++input_.revision;input_.route=std::move(copy);planning_.reset();
+     return input_.generation;
+   }
+   void cancel() {
+     std::lock_guard<std::mutex> lock(mutex_);
+     ++input_.generation;++input_.revision;++input_.reset;
+-    input_.route.reset();input_.feedback={};output_.reset();
++    input_.route.reset();input_.feedback={};output_.reset();planning_.reset();
++  }
++  void planningResult(uint64_t generation,uint64_t revision,bool success,int64_t started_ns) {
++    std::lock_guard<std::mutex> lock(mutex_);
++    if (!input_.route || generation!=input_.generation || revision!=input_.revision) return;
++    if (success) {planning_.reset();return;}
++    if (!planning_) planning_=Planning{generation,revision,started_ns,0};
++    ++planning_->failures;
++  }
++  std::optional<Planning> planning() const {
++    std::lock_guard<std::mutex> lock(mutex_);return planning_;
+   }
+   void feedback(uint64_t generation,bool frozen,int64_t trajectory) {
+     std::lock_guard<std::mutex> lock(mutex_);
+@@ -61,5 +72,6 @@
+   mutable std::mutex mutex_;
+   Input input_;
+   std::optional<Output> output_;
++  std::optional<Planning> planning_;
+ };
+ }  // namespace scan_nav2_controller
+--- v217/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp
++++ v219/src/scan_nav2_controller/include/scan_nav2_controller/local_motion.hpp
+@@ -2,6 +2,7 @@
+ 
+ #include <scan_nav2_controller/motion_exchange.hpp>
+ #include <geometry_msgs/msg/twist.hpp>
++#include <std_msgs/msg/header.hpp>
+ #include <rclcpp/rclcpp.hpp>
+ #include <rclcpp_lifecycle/lifecycle_node.hpp>
+ 
+@@ -42,6 +43,8 @@
+   std::unique_ptr<NativeWorker> native_worker_;
+   std::shared_ptr<MotionExchange> exchange_{std::make_shared<MotionExchange>()};
+   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr route_pub_;
++  rclcpp::Publisher<std_msgs::msg::Header>::SharedPtr replan_pub_;
++  bool replan_requested_{false};
+   bool native_worker_enabled_{true},has_active_plan_{false},waiting_for_spline_{false};
+   bool received_spline_{false};
+   uint64_t generation_{0};
+--- v202/src/plan_manage/src/scan_replan_fsm.cpp
++++ v219/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -795,8 +795,10 @@
+   {
+     if (!nominalReplanDue(true)) return;
+     const auto started = std::chrono::steady_clock::now();
++    const auto started_ros_ns = node_->now().nanoseconds();
+     const auto profile_before=planner_manager_->grid_map_->planning_profile_.values;
+     const bool success = planFromCurrentTraj();
++    if (direct_io_.planning_result) direct_io_.planning_result(success,started_ros_ns);
+     RCLCPP_INFO(node_->get_logger(), "V50_PROFILE %s", planner_manager_->grid_map_->planning_profile_.since(profile_before).c_str());
+     const double elapsed = std::chrono::duration<double>(
+         std::chrono::steady_clock::now() - started).count();
+@@ -895,8 +897,10 @@
+         flag_random_poly_init = true;
+ 
+       const auto initial_started=std::chrono::steady_clock::now();
++      const auto initial_started_ros_ns=node_->now().nanoseconds();
+       const auto profile_before=planner_manager_->grid_map_->planning_profile_.values;
+       bool success = callReboundReplan(true, flag_random_poly_init);
++      if (direct_io_.planning_result) direct_io_.planning_result(success,initial_started_ros_ns);
+       RCLCPP_INFO(node_->get_logger(), "V50_PROFILE %s", planner_manager_->grid_map_->planning_profile_.since(profile_before).c_str());
+       const double initial_elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-initial_started).count();
+       if(replan_frequency_>0.0)
+--- v202/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ v219/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -32,6 +32,7 @@
+     struct DirectIO {
+       std::function<void()> before_work;
+       std::function<void(const scan_planner_msgs::msg::Bspline &)> spline;
++      std::function<void(bool,int64_t)> planning_result;
+     };
+ 
+   private:

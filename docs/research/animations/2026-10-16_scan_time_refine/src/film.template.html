@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SCAN · Step 4: Time Reallocation & Trajectory Refine</title>
+<style>
+  html,body{margin:0;height:100%;background:#090c11;overflow:hidden}
+  canvas{display:block;cursor:default}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+/*__CORE__*/
+</script>
+<script>
+'use strict';
+// ============================================================================
+//  One canvas, one draw(t). Every quantity is computed by REFINECORE,
+//  mirroring uniform_bspline.cpp (L14-L279), planner_manager.cpp (L282-L508),
+//  and bspline_optimizer.cpp (L443-L716, L951-L1199).
+// ============================================================================
+const G = REFINECORE.solve();
+const NQ = G.Qreb.length; // 11 control points (Q_1 .. Q_11), 8 active segments
+const curveInit = REFINECORE.sampleProfile(G.Qinit, G.knots0, G.ORDER, 140).pts.map(p => p.pos);
+const curveInitOcc = curveInit.map(p => G.occAt(p[0], p[1]));
+const curveReb = G.prof0.pts.map(p => p.pos);
+const curveRep = G.profReparam.pts.map(p => p.pos);
+const curveRef = G.profRef.pts.map(p => p.pos);
+const FIT_HERO = G.fitnessItems[1]; // i = 3 (1-indexed Q_4, ref_pts_[2]) on left climb shoulder
+
+// ---------------------------------------------------------------- palette
+const C = {
+  bg: '#090c11', ink: '#e8edf4', dim: 'rgba(232,237,244,0.56)', faint: 'rgba(232,237,244,0.22)',
+  obst: '#1d2633', obstEdge: '#5b6b82', infl: 'rgba(122,146,180,0.13)', inflEdge: 'rgba(150,176,214,0.50)',
+  traj: '#f2c27b', hit: '#ff6b5e', guide: '#45d3c4', plane: '#a99cff', base: '#7ee08a', safe: '#f5d26b', free: '#9fb3c8'
+};
+const SANS = '"PingFang SC","Hiragino Sans GB","Noto Sans SC",-apple-system,system-ui,sans-serif';
+const SERIF = '"STIX Two Text","Times New Roman",Times,serif';
+const MONO = '"SF Mono",Menlo,Consolas,monospace';
+
+// ---------------------------------------------------------------- timeline
+const ACTS = [
+  { t0: 0,    t1: 4.5,  k: '',   name: '引言' },
+  { t0: 4.5,  t1: 15.5, k: '01', name: '可行性检测' },
+  { t0: 15.5, t1: 27.5, k: '02', name: '非均匀拉长' },
+  { t0: 27.5, t1: 39.5, k: '03', name: '均匀重参数化' },
+  { t0: 39.5, t1: 48.5, k: '04', name: '残余超限与参考点' },
+  { t0: 48.5, t1: 61.5, k: '05', name: '各向异性贴合项' },
+  { t0: 61.5, t1: 74.5, k: '06', name: 'Refine 优化' },
+  { t0: 74.5, t1: 86.0, k: '07', name: '硬门控与小结' },
+];
+const T_END = 86.0;
+
+const CAPS = [
+  { kick: 'SCAN PLANNER · STEP 04 动力学精炼', title: 'Rebound 避障之后：空间安全了，时间还够吗？',
+    body: ['上一阶段 Rebound 把控制点推离障碍物，消除了空间碰撞；但绕行段弧长显著增加，',
+           '而均匀 B 样条的节点步长仍停留在初始的 $t_s = 0.50$ s，导致局部速度与加速度双双超限。'],
+    eq: ['$T_0 = 8 t_s = 4.00$ s', '$L_{reb} > L_{init}$'] },
+  { kick: 'STEP 01 · 导数控制点超限检测', title: '`checkFeasibility()`：在控制点差分上计算超限拉长比 $r$',
+    body: ['利用 B 样条导数性质，直接由相邻控制点一阶/二阶差分算出速度控制点 $V_i$ 与加速度控制点 $A_i$。',
+           '时间拉长 $r$ 倍会使速度降为 $1/r$、加速度降为 $1/r^{2}$，因此加速度项取平方根。'],
+    eq: ['$r = \\max(|V|/v_{max}, √(|A|/a_{max}))$', '$r = \\max(1.37, 1.25) = 1.372$'] },
+  { kick: 'STEP 02 · 非均匀节点拉长', title: '`lengthenTime(r)`：冻结首尾边界节点，只拉长中间绕行段',
+    body: ['为什么不把所有节点一并拉长？因为首尾各 2 段 ($i ≤ 5$ 与 $i > m−5$) 决定了起止高阶导数 $(v_0, a_0)$。',
+           '只将中间 4 段 $u_5 … u_9$ 按比例 $r = 1.372$ 拉长 $+0.19$ s/段，总时长由 $4.00$ s 增至 $4.75$ s。'],
+    eq: ['$ΔT = (r − 1)(u_{num2} − u_{num1})$', '$T_{new} = 4.00 + 0.75 = 4.75$ s'] },
+  { kick: 'STEP 03 · 均匀重采样与重参数化', title: '`reparamBspline()`：等步长采样 De Boor 曲线，解 $Ax = b$ 还原均匀样条',
+    body: ['后续优化器要求均匀节点步长 $dt = T_{new} / 8 = 0.593$ s。在非均匀曲线上按等时间 $dt$ 采样 $K=9$ 个点，',
+           '联立位置行 $1/6 [1, 4, 1]$ 与首尾导数约束解线性方程组 $A Q_{reparam} = b$，生成新的均匀控制点。'],
+    eq: ['$dt = T_{new} / N_{seg} = 0.593$ s', '$A Q_{reparam} = b$'] },
+  { kick: 'STEP 04 · 为什么还要做 REFINE 优化？', title: '局部拉长被平均摊薄后仍有残余超限，需采样 `ref_pts_` 准备精炼',
+    body: ['`lengthenTime` 只拉长了中间 4 段，重参数化将其平均分摊到全部 8 段 ($0.593 < 0.686$ s)，',
+           '导致爬升/下降过渡段仍有残余超限 ($|V_3|=12.8 > 10.5$)。先采样安全参考点 $R_k$ 锁定避障几何形状。'],
+    eq: ['$R_k = \\text{traj}(k · dt)$', '$|V_3| = 12.84 > v_{max}$'] },
+  { kick: 'STEP 05 · 各向异性贴合代价', title: '`calcFitnessCost()`：切向宽松、法向紧锁的 $5:1$ 椭圆势场',
+    body: ['用节点位置 $\\hat{P}_i = (Q_{i−1}+4Q_i+Q_{i+1})/6$ 到参考点 $R_{i−1}$ 的偏差 $x$ 替代障碍物距离场：',
+           '切向权重 $1/a^{2}=1/25$、法向权重 $1/b^{2}=1$——允许沿轨迹切向滑动调速，严禁向法向偏离撞回障碍物！'],
+    eq: ['$f_i = (x · v)^{2}/25 + |x × v|^{2}/1$', '$a : b = 5 : 1$'] },
+  { kick: 'STEP 06 · REFINE 联合优化', title: '`BsplineOptimizeTrajRefine()`：光滑项 + 贴合项 + 动力学软惩罚',
+    body: ['在固定步长 $dt = 0.593$ s 下最小化 $J_{refine} = λ_1 J_s + λ_4 J_{fit} + λ_3 J_f$（首尾各 3 个控制点固定）。',
+           '各节点 $\\hat{P}_i$ 沿切向椭圆主轴滑移，将残余速度峰值压至 $8.69$、加速度峰值压至 $11.05$。'],
+    note: '示意参数：$v_{max}=10.5$，$a_{max}=13.5$，$a^2=25, b^2=1$；位移由 540 步梯度下降实时计算。',
+    eq: ['$J_{refine} = λ_1 J_s + λ_4 J_{fit} + λ_3 J_f$', '$\\max |v_d| = 8.69 ≤ 10.5$'] },
+  { kick: 'STEP 07 · 硬门控校验与小结', title: '`checkDynamicFeasibility()` 密集采样通过，发布最终轨迹',
+    body: ['①  `checkFeasibility` 用控制点差分算出超限比 $r$，`lengthenTime` 仅拉长中间节点段以保护边界导数。',
+           '②  `reparamBspline` 按新均匀步长 $dt$ 重采样并解 $Ax=b$，再以 `ref_pts_` 的 $5:1$ 切向椭圆锁定安全几何。',
+           '③  `BsplineOptimizeTrajRefine` 沿切向重分配加减速，最终通过密集采样硬门控校验后由 `updateTrajInfo` 发布。'],
+    note: 'uniform_bspline.cpp L134–L279 · planner_manager.cpp L282–L508 · bspline_optimizer.cpp L443–L716, L951–L1199' },
+];
+
+// ---------------------------------------------------------------- math utils
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, u) => a + (b - a) * u;
+const lerp2 = (a, b, u) => [lerp(a[0], b[0], u), lerp(a[1], b[1], u)];
+const ease = u => (u = clamp(u), u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+const eout = u => (u = clamp(u), 1 - Math.pow(1 - u, 3));
+const ramp = (t, a, b) => ease((t - a) / (b - a));
+const fade = (t, a, b, c = 1e9, d = 1e9) => Math.min(ramp(t, a, b), 1 - ramp(t, c, d));
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1]], add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+const mul = (a, s) => [a[0] * s, a[1] * s], dot = (a, b) => a[0] * b[0] + a[1] * b[1];
+
+// ---------------------------------------------------------------- canvas
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let DPR = 1, CW = 0, CH = 0, S = 1, OX = 0, OY = 0;
+function resize() {
+  DPR = window.devicePixelRatio || 1; CW = innerWidth; CH = innerHeight;
+  cv.width = Math.round(CW * DPR); cv.height = Math.round(CH * DPR);
+  cv.style.width = CW + 'px'; cv.style.height = CH + 'px';
+  S = Math.min(CW / 1920, CH / 1080); OX = (CW - 1920 * S) / 2; OY = (CH - 1080 * S) / 2;
+}
+addEventListener('resize', () => { resize(); draw(T); });
+resize();
+const VX0 = () => -OX / S, VX1 = () => (CW - OX) / S, VY0 = () => -OY / S, VY1 = () => (CH - OY) / S;
+
+// ---------------------------------------------------------------- camera choreography
+const CAM = [
+  [0,    24.0, 15.2, 42], [4.5,  24.0, 15.2, 42],
+  [6.2,  28.2, 14.8, 38], [48.2, 28.2, 14.8, 38],
+  [50.2, 17.2, 17.8, 76], [60.8, 17.2, 17.8, 76],
+  [62.8, 28.2, 14.8, 38], [86.0, 28.2, 14.8, 38],
+];
+let cam = { x: 24.0, y: 15.2, k: 42 };
+function camAt(t) {
+  let i = 0; while (i < CAM.length - 1 && CAM[i + 1][0] <= t) i++;
+  if (i >= CAM.length - 1) { const c = CAM[CAM.length - 1]; return { x: c[1], y: c[2], k: c[3] }; }
+  const a = CAM[i], b = CAM[i + 1], u = ease((t - a[0]) / (b[0] - a[0]));
+  return { x: lerp(a[1], b[1], u), y: lerp(a[2], b[2], u), k: Math.exp(lerp(Math.log(a[3]), Math.log(b[3]), u)) };
+}
+const X = x => 960 + (x - cam.x) * cam.k;
+const Y = y => 540 - (y - cam.y) * cam.k;
+const P2 = p => [X(p[0]), Y(p[1])];
+
+// ---------------------------------------------------------------- rich text & pills
+function layoutRich(s, size, weight) {
+  const runs = []; let mode = 'txt', buf = '';
+  const push = (text, font, dy) => { ctx.font = font; runs.push({ text, font, dy, w: ctx.measureText(text).width }); };
+  const flush = () => { if (buf) { push(buf, mode === 'code' ? `${size * 0.86}px ${MONO}` : `${weight} ${size}px ${SANS}`, 0); buf = ''; } };
+  for (let i = 0; i < s.length;) {
+    const c = s[i];
+    if (c === '`') { flush(); mode = mode === 'code' ? 'txt' : 'code'; i++; continue; }
+    if (c === '$' && mode !== 'code') { flush(); mode = mode === 'math' ? 'txt' : 'math'; i++; continue; }
+    if (mode !== 'math') { buf += c; i++; continue; }
+    if (c === '\\') {
+      let cmd = ''; i++; while (i < s.length && /[a-zA-Z]/.test(s[i])) cmd += s[i++];
+      const map = { max: 'max', min: 'min', Delta: 'Δ', lambda: 'λ', le: '≤', ge: '≥', cdot: '·', times: '×', dots: '…' };
+      if (cmd === 'hat') {
+        if (s[i] === '{') { i++; let inner = ''; while (i < s.length && s[i] !== '}') inner += s[i++]; i++; push(inner + '\u0302', `italic ${size * 1.1}px ${SERIF}`, 0); }
+        continue;
+      }
+      if (cmd === 'text') {
+        if (s[i] === '{') { i++; let inner = ''; while (i < s.length && s[i] !== '}') inner += s[i++]; i++; push(inner, `${weight} ${size * 0.92}px ${SANS}`, 0); }
+        continue;
+      }
+      if (cmd in map && map[cmd]) push(map[cmd], `${size * 1.05}px ${SERIF}`, 0);
+      continue;
+    }
+    if (c === '_' || c === '^') {
+      let t = ''; i++;
+      if (s[i] === '{') { i++; while (i < s.length && s[i] !== '}') t += s[i++]; i++; } else t = s[i++];
+      const ss = size * 0.68, dy = c === '_' ? size * 0.26 : -size * 0.42;
+      const it = t.length === 1 && /[a-zA-Zα-ω]/.test(t);
+      push(t, `${it ? 'italic ' : ''}${ss * 1.06}px ${SERIF}`, dy); continue;
+    }
+    if (c === ' ') { runs.push({ text: '', font: '', dy: 0, w: size * 0.22 }); i++; continue; }
+    if (/[a-zA-Zα-ω]/.test(c)) push(c, `italic ${size * 1.1}px ${SERIF}`, 0);
+    else if (/[\u3000-\u9fff\uff00-\uffef]/.test(c)) push(c, `${weight} ${size}px ${SANS}`, 0);
+    else push(c, `${size * 1.1}px ${SERIF}`, 0);
+    i++;
+  }
+  flush(); return runs;
+}
+function richWidth(s, size, weight = 400) { return layoutRich(s, size, weight).reduce((a, r) => a + r.w, 0); }
+function drawRich(s, x, y, size, color, align = 'left', weight = 400) {
+  const runs = layoutRich(s, size, weight), w = runs.reduce((a, r) => a + r.w, 0);
+  let cx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  ctx.fillStyle = color; ctx.textBaseline = 'alphabetic';
+  for (const r of runs) { if (r.text) { ctx.font = r.font; ctx.fillText(r.text, cx, y + r.dy); } cx += r.w; }
+  return w;
+}
+function rrect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function pill(s, ax, ay, o) {
+  o = Object.assign({ dx: 0, dy: 0, al: 'c', size: 18, color: C.ink, edge: 'rgba(255,255,255,0.18)', a: 1, lead: false }, o);
+  if (o.a <= 0.01) return;
+  ctx.save(); ctx.globalAlpha *= o.a;
+  const w = richWidth(s, o.size), h = o.size * 1.65, px = 11;
+  let x = ax + o.dx, y = ay + o.dy;
+  const bx = o.al === 'c' ? x - w / 2 - px : o.al === 'r' ? x - w - 2 * px : x;
+  if (o.lead) {
+    ctx.strokeStyle = o.edge; ctx.lineWidth = 1; ctx.beginPath();
+    ctx.moveTo(ax, ay); ctx.lineTo(bx + (o.al === 'r' ? w + 2 * px : o.al === 'l' ? 0 : w / 2 + px), y); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(9,12,17,0.84)'; ctx.strokeStyle = o.edge; ctx.lineWidth = 1;
+  rrect(bx, y - h / 2, w + 2 * px, h, h / 2); ctx.fill(); ctx.stroke();
+  drawRich(s, bx + px, y + o.size * 0.36, o.size, o.color);
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- primitives
+function wline(a, b, color, w = 2, dash = null, alpha = 1) {
+  if (alpha <= 0.01) return;
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round';
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(X(a[0]), Y(a[1])); ctx.lineTo(X(b[0]), Y(b[1])); ctx.stroke(); ctx.restore();
+}
+function wpoly(pts, color, w = 2, dash = null, alpha = 1, upto = 1) {
+  if (alpha <= 0.01 || upto <= 0) return;
+  const n = Math.max(2, Math.floor(pts.length * upto));
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(X(pts[0][0]), Y(pts[0][1]));
+  for (let i = 1; i < n && i < pts.length; i++) ctx.lineTo(X(pts[i][0]), Y(pts[i][1]));
+  ctx.stroke(); ctx.restore();
+}
+function warrow(a, b, color, w = 2.5, alpha = 1, head = 12, dash = null) {
+  if (alpha <= 0.01) return;
+  const A = P2(a), B = P2(b), d = [B[0] - A[0], B[1] - A[1]], L = Math.hypot(d[0], d[1]);
+  if (L < 2) return;
+  const u = [d[0] / L, d[1] / L], hh = Math.min(head, L * 0.45);
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round';
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0] - u[0] * hh * 0.8, B[1] - u[1] * hh * 0.8); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(B[0], B[1]);
+  ctx.lineTo(B[0] - u[0] * hh - u[1] * hh * 0.45, B[1] - u[1] * hh + u[0] * hh * 0.45);
+  ctx.lineTo(B[0] - u[0] * hh + u[1] * hh * 0.45, B[1] - u[1] * hh - u[0] * hh * 0.45);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function wdot(p, r, fill, stroke = null, alpha = 1, lw = 2) {
+  if (alpha <= 0.01) return;
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), r, 0, Math.PI * 2);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+  ctx.restore();
+}
+function halo(p, r, color, alpha) {
+  if (alpha <= 0.01) return;
+  const x = X(p[0]), y = Y(p[1]); const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+}
+function cellRect(i, j, fill, alpha = 1) {
+  if (alpha <= 0.01) return;
+  const x0 = X(i), y0 = Y(j + 1), s = cam.k;
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.fillStyle = fill; ctx.fillRect(x0 - 0.5, y0 - 0.5, s + 1, s + 1); ctx.restore();
+}
+function wEllipse(center, v, rxWorld, ryWorld, strokeColor, fillColor, alpha = 1, lw = 1.8, dash = null) {
+  if (alpha <= 0.01) return;
+  const [cx, cy] = P2(center);
+  const ang = Math.atan2(-v[1], v[0]); // screen Y is inverted
+  ctx.save(); ctx.globalAlpha *= alpha;
+  ctx.translate(cx, cy); ctx.rotate(ang);
+  ctx.beginPath(); ctx.ellipse(0, 0, rxWorld * cam.k, ryWorld * cam.k, 0, 0, Math.PI * 2);
+  if (fillColor) { ctx.fillStyle = fillColor; ctx.fill(); }
+  if (strokeColor) { ctx.strokeStyle = strokeColor; ctx.lineWidth = lw; if (dash) ctx.setLineDash(dash); ctx.stroke(); }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- obstacle edges
+function edgesOf(grid) {
+  const E = [];
+  for (let i = 0; i < G.W; i++) for (let j = 0; j < G.H; j++) {
+    if (!grid[i][j]) continue;
+    const f = (a, b) => a < 0 || b < 0 || a >= G.W || b >= G.H || !grid[a][b];
+    if (f(i - 1, j)) E.push([i, j, i, j + 1]); if (f(i + 1, j)) E.push([i + 1, j, i + 1, j + 1]);
+    if (f(i, j - 1)) E.push([i, j, i + 1, j]); if (f(i, j + 1)) E.push([i, j + 1, i + 1, j + 1]);
+  }
+  return E;
+}
+const RAW_E = edgesOf(G.raw), INF_E = edgesOf(G.infl);
+function strokeEdges(E, color, w, dash, alpha) {
+  if (alpha <= 0.01) return;
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.strokeStyle = color; ctx.lineWidth = w; if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); for (const e of E) { ctx.moveTo(X(e[0]), Y(e[1])); ctx.lineTo(X(e[2]), Y(e[3])); } ctx.stroke(); ctx.restore();
+}
+
+function drawBackdrop() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, CW, CH);
+  const g = ctx.createRadialGradient(CW * 0.45, CH * 0.40, 0, CW * 0.45, CH * 0.40, Math.max(CW, CH) * 0.75);
+  g.addColorStop(0, 'rgba(40,56,78,0.28)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, DPR * OX, DPR * OY);
+}
+function drawGrid() {
+  const x0 = Math.floor(cam.x + (VX0() - 960) / cam.k) - 1, x1 = Math.ceil(cam.x + (VX1() - 960) / cam.k) + 1;
+  const y0 = Math.floor(cam.y - (VY1() - 540) / cam.k) - 1, y1 = Math.ceil(cam.y - (VY0() - 540) / cam.k) + 1;
+  const a = 0.032 + 0.032 * clamp((cam.k - 38) / 50);
+  ctx.save(); ctx.lineWidth = 1;
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.strokeStyle = pass ? `rgba(170,190,220,${a + 0.032})` : `rgba(170,190,220,${a})`;
+    ctx.beginPath();
+    for (let x = x0; x <= x1; x++) if ((x % 6 === 0) === !!pass) { ctx.moveTo(X(x), VY0()); ctx.lineTo(X(x), VY1()); }
+    for (let y = y0; y <= y1; y++) if ((y % 6 === 0) === !!pass) { ctx.moveTo(VX0(), Y(y)); ctx.lineTo(VX1(), Y(y)); }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawObstacle(t) {
+  const a = ramp(t, 0.1, 0.9);
+  for (let i = 0; i < G.W; i++) for (let j = 0; j < G.H; j++) {
+    if (G.raw[i][j]) cellRect(i, j, C.obst, a);
+    else if (G.infl[i][j]) cellRect(i, j, C.infl, a);
+  }
+  strokeEdges(INF_E, C.inflEdge, 1.2, [4, 4], a);
+  strokeEdges(RAW_E, C.obstEdge, 1.6, null, a);
+}
+
+// ---------------------------------------------------------------- dynamic control points Q(t)
+const REPARAM_T0 = 33.2, REPARAM_T1 = 36.8;
+const REFINE_T0 = 62.6, REFINE_T1 = 71.8;
+const HCUM = (() => {
+  const H = G.refined.hist, c = [0];
+  for (let i = 1; i < H.length; i++) {
+    let m = 0; for (let k = 0; k < NQ; k++) m = Math.max(m, Math.hypot(H[i][k][0] - H[i - 1][k][0], H[i][k][1] - H[i - 1][k][1]));
+    c.push(c[i - 1] + m);
+  }
+  return c.map(v => v / (c[c.length - 1] || 1));
+})();
+function Qat(t) {
+  if (t < REPARAM_T0) return G.Qreb;
+  if (t < REFINE_T0) {
+    const u = ease((t - REPARAM_T0) / (REPARAM_T1 - REPARAM_T0));
+    return G.Qreb.map((q, k) => lerp2(q, G.Qreparam[k], u));
+  }
+  const H = G.refined.hist, u = ease((t - REFINE_T0) / (REFINE_T1 - REFINE_T0));
+  let i = 0; while (i < H.length - 2 && HCUM[i + 1] <= u) i++;
+  const r = clamp((u - HCUM[i]) / Math.max(1e-9, HCUM[i + 1] - HCUM[i]));
+  return H[i].map((q, k) => lerp2(q, H[i + 1][k], r));
+}
+
+// ---------------------------------------------------------------- overlay 1: Knot Vector Timeline Track (Acts 2 & 3)
+function drawKnotTrack(t) {
+  const a = fade(t, 15.6, 16.4, 39.0, 39.8);
+  if (a <= 0.01) return;
+  const x0 = 112, y0 = 682, w = 1160, h = 132;
+  ctx.save(); ctx.globalAlpha *= a;
+  ctx.fillStyle = 'rgba(9,12,17,0.90)'; ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1;
+  rrect(x0, y0, w, h, 14); ctx.fill(); ctx.stroke();
+
+  const stretchU = ramp(t, 18.8, 23.6);
+  const knotsCur = G.knots0.map((u0, idx) => lerp(u0, G.lengthened.knots[idx], stretchU));
+  const uMin = -1.65, uMax = 6.55;
+  const ux = u => x0 + 48 + (u - uMin) / (uMax - uMin) * (w - 96);
+  const ry = y0 + 76;
+
+  // Title & legend
+  drawRich('B 样条节点向量  $u_0 … u_{14}$   （有效定义域 $[u_3, u_{11}]$，共 8 段）', x0 + 20, y0 + 28, 16, C.dim);
+  const durCur = knotsCur[11] - knotsCur[3];
+  drawRich(`总时长 $T = ${durCur.toFixed(2)}$ s`, x0 + w - 20, y0 + 28, 16, stretchU > 0.1 ? C.base : C.traj, 'right', 600);
+
+  // Shade active spans: left boundary [u3,u5], middle stretched [u5,u9], right boundary [u9,u11]
+  const x3 = ux(knotsCur[3]), x5 = ux(knotsCur[5]), x9 = ux(knotsCur[9]), x11 = ux(knotsCur[11]);
+  ctx.fillStyle = 'rgba(159,179,200,0.16)';
+  ctx.fillRect(x3, ry - 13, x5 - x3, 26);
+  ctx.fillRect(x9, ry - 13, x11 - x9, 26);
+  ctx.fillStyle = stretchU > 0.05 ? 'rgba(69,211,196,0.22)' : 'rgba(255,107,94,0.20)';
+  ctx.fillRect(x5, ry - 13, x9 - x5, 26);
+
+  // Baseline
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(ux(knotsCur[0]), ry); ctx.lineTo(ux(knotsCur[14]), ry); ctx.stroke();
+
+  // Knot ticks
+  for (let idx = 0; idx <= 14; idx++) {
+    const xk = ux(knotsCur[idx]);
+    const inActive = idx >= 3 && idx <= 11;
+    const isMid = idx >= 5 && idx <= 9;
+    ctx.strokeStyle = !inActive ? 'rgba(255,255,255,0.25)' : isMid ? C.guide : C.ink;
+    ctx.lineWidth = (idx === 3 || idx === 5 || idx === 9 || idx === 11) ? 2.6 : 1.6;
+    const th = inActive ? 13 : 8;
+    ctx.beginPath(); ctx.moveTo(xk, ry - th); ctx.lineTo(xk, ry + th); ctx.stroke();
+    if (idx === 0 || idx === 3 || idx === 5 || idx === 9 || idx === 11 || idx === 14) {
+      const lbl = idx === 5 ? '$u_5$ (num1)' : idx === 9 ? '$u_9$ (num2)' : `$u_{${idx}}$`;
+      drawRich(lbl, xk, ry + 34, 14, isMid ? C.guide : inActive ? C.ink : C.dim, 'center');
+    }
+  }
+
+  const repA = ramp(t, 28.2, 29.8);
+  const spanA = 1 - repA;
+  if (spanA > 0.01) {
+    ctx.save(); ctx.globalAlpha *= spanA;
+    drawRich('首边界锁定 (2段)', (x3 + x5) / 2, ry - 21, 13.5, C.free, 'center');
+    drawRich(stretchU > 0.1 ? `中间绕行段 ×r 拉长 (+0.19 s/段)` : '中间绕行段 (4段)', (x5 + x9) / 2, ry - 21, 14, C.guide, 'center');
+    drawRich('尾边界平移 (2段)', (x9 + x11) / 2, ry - 21, 13.5, C.free, 'center');
+    ctx.restore();
+  }
+
+  // In Act 3 (t >= 28.2): show uniform re-subdivision ticks dt = T_new / 8 = 0.593s
+  if (repA > 0.01) {
+    ctx.save(); ctx.globalAlpha *= repA;
+    for (let k = 0; k <= 8; k++) {
+      const tk = k * G.dt1;
+      const xk = ux(tk);
+      ctx.fillStyle = C.safe;
+      ctx.beginPath(); ctx.arc(xk, ry, 4.8, 0, Math.PI * 2); ctx.fill();
+    }
+    drawRich(`均匀重分步长 $dt = T_{new}/8 = ${G.dt1.toFixed(3)}$ s （黄色圆点为等时间重采样时刻）`, (x3 + x11) / 2, ry - 21, 14.5, C.safe, 'center');
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- overlay 2: Kinematic Profile Panel (|v_d(t)| & |a_d(t)|)
+function drawKinematicPanel(t) {
+  const a = fade(t, 6.2, 7.2, 85.2, 86.0) * (1 - fade(t, 48.6, 49.6, 61.0, 62.0));
+  if (a <= 0.01) return;
+  const x0 = 1340, y0 = 96, w = 490, h = 440;
+  ctx.save(); ctx.globalAlpha *= a;
+  ctx.fillStyle = 'rgba(9,12,17,0.88)'; ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1;
+  rrect(x0, y0, w, h, 16); ctx.fill(); ctx.stroke();
+
+  // Blend active profile according to current stage
+  const uStretch = ramp(t, 18.8, 23.6);
+  const uReparam = ramp(t, REPARAM_T0, REPARAM_T1);
+  const uRefine  = ramp(t, REFINE_T0, REFINE_T1);
+
+  const stageTag = t < 18.5 ? 'Rebound 初始 ($t_s=0.50$ s)' :
+                   t < REPARAM_T0 ? '`lengthenTime` 非均匀拉长' :
+                   t < REFINE_T0 ? '`reparamBspline` 均匀重参数化' : '`BsplineOptimizeTrajRefine` 精炼后';
+  drawRich('动力学包络监控', x0 + 22, y0 + 32, 17, C.ink, 'left', 600);
+  drawRich(stageTag, x0 + w - 22, y0 + 32, 14.5, uRefine > 0.8 ? C.base : C.guide, 'right');
+
+  const nPts = G.prof0.pts.length;
+  const dur = lerp(G.duration0, G.duration1, uStretch);
+  const maxT = 5.0; // fixed time axis max so stretching 4.00s -> 4.75s is visually obvious!
+
+  function drawSubChart(cy0, ch, title, limitVal, maxVal, getter, unitLabel) {
+    const padL = 54, padR = 24, cw = w - padL - padR;
+    const tx = time => x0 + padL + (time / maxT) * cw;
+    const vy = val => cy0 + ch - 26 - clamp(val / maxVal, 0, 1.08) * (ch - 48);
+
+    // Axes
+    ctx.strokeStyle = 'rgba(255,255,255,0.20)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(tx(0), vy(0)); ctx.lineTo(tx(maxT), vy(0));
+    ctx.moveTo(tx(0), vy(0)); ctx.lineTo(tx(0), cy0 + 16); ctx.stroke();
+
+    // Limit line
+    const ly = vy(limitVal);
+    ctx.save(); ctx.setLineDash([5, 5]); ctx.strokeStyle = 'rgba(245,210,107,0.75)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(tx(0), ly); ctx.lineTo(tx(maxT), ly); ctx.stroke(); ctx.restore();
+    drawRich(`${unitLabel} = ${limitVal.toFixed(1)}`, tx(maxT) - 4, ly - 7, 14, C.safe, 'right');
+    drawRich(title, x0 + 18, cy0 + 22, 15, C.dim);
+
+    // Faint reference curve from initial Rebound
+    if (uStretch > 0.05) {
+      ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      G.prof0.pts.forEach((p, k) => {
+        const px = tx(p.t), py = vy(getter(p));
+        k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      });
+      ctx.stroke(); ctx.restore();
+    }
+
+    // Current blended curve, colored red above limitVal and green/gold below
+    let peak = 0;
+    const curPts = [];
+    for (let k = 0; k < nPts; k++) {
+      const v0 = getter(G.prof0.pts[k]);
+      const vL = getter(G.profNonUni.pts[k]);
+      const vR = getter(G.profReparam.pts[k]);
+      const vF = getter(G.profRef.pts[k]);
+      let v = lerp(v0, vL, uStretch);
+      v = lerp(v, vR, uReparam);
+      v = lerp(v, vF, uRefine);
+      if (v > peak) peak = v;
+      const tk = dur * k / (nPts - 1);
+      curPts.push({ x: tx(tk), y: vy(v), over: v > limitVal + 0.02 });
+    }
+
+    // Fill red overshoot area above limitVal
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(tx(0), cy0, cw, ly - cy0);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255,107,94,0.22)';
+    ctx.beginPath(); ctx.moveTo(curPts[0].x, ly);
+    curPts.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(curPts[curPts.length - 1].x, ly); ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    // Draw curve segments
+    ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let k = 0; k < curPts.length - 1; k++) {
+      ctx.strokeStyle = (curPts[k].over || curPts[k + 1].over) ? C.hit : (uRefine > 0.8 ? C.base : C.traj);
+      ctx.beginPath(); ctx.moveTo(curPts[k].x, curPts[k].y); ctx.lineTo(curPts[k + 1].x, curPts[k + 1].y); ctx.stroke();
+    }
+
+    // Peak badge
+    const isOver = peak > limitVal + 0.02;
+    drawRich(`峰值 ${peak.toFixed(2)} ${isOver ? '> 限值 ✕' : '≤ 限值 ✓'}`, x0 + w - 125, cy0 + 22, 14, isOver ? C.hit : C.base, 'right', 600);
+
+    // Time ticks on bottom chart
+    [0, 2.0, 4.0, 4.75].forEach(tv => {
+      const xk = tx(tv);
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.moveTo(xk, vy(0)); ctx.lineTo(xk, vy(0) + 4); ctx.stroke();
+      drawRich(`${tv.toFixed(tv === 4.75 ? 2 : 1)}s`, xk, vy(0) + 18, 13, tv === 4.75 && uStretch > 0.3 ? C.guide : C.dim, 'center');
+    });
+  }
+
+  drawSubChart(y0 + 48, 184, '轴向速度 $|v_d(t)|$', G.limitVel, 15.5, p => p.vmaxAxis, '$v_{max}$');
+  drawSubChart(y0 + 242, 184, '轴向加速度 $|a_d(t)|$', G.limitAcc, 24.0, p => p.amaxAxis, '$a_{max}$');
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- caption + chrome
+function drawCaption(t) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const g = ctx.createLinearGradient(0, CH - 350 * S - OY, 0, CH);
+  g.addColorStop(0, 'rgba(9,12,17,0)'); g.addColorStop(0.45, 'rgba(9,12,17,0.85)'); g.addColorStop(1, 'rgba(9,12,17,0.97)');
+  ctx.fillStyle = g; ctx.fillRect(0, CH - 350 * S - OY, CW, 350 * S + OY);
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, DPR * OX, DPR * OY);
+  ACTS.forEach((A, i) => {
+    const last = i === ACTS.length - 1;
+    const a = Math.min(ramp(t, A.t0 + (i ? 0.05 : 0.2), A.t0 + 0.7), last ? 1 : 1 - ramp(t, A.t1 - 0.4, A.t1 - 0.02));
+    if (a <= 0.01) return;
+    const cap = CAPS[i], rise = (1 - eout((t - A.t0) / 0.8)) * 14, x = 112;
+    const nb = cap.body.length;
+    let y = (nb > 2 ? 836 : 868) + rise;
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.font = `600 15px ${SANS}`; ctx.fillStyle = C.guide; ctx.textBaseline = 'alphabetic';
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '3px';
+    ctx.fillText(cap.kick, x, y); if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    y += 46; drawRich(cap.title, x, y, 34, C.ink, 'left', 600);
+    y += 42; cap.body.forEach(l => { drawRich(l, x, y, 20.5, 'rgba(232,237,244,0.76)'); y += 32; });
+    if (cap.note) drawRich(cap.note, x, y + 2, 15, 'rgba(232,237,244,0.44)');
+    if (cap.eq) {
+      let ey = (nb > 2 ? 882 : 914) + rise;
+      ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1; ctx.beginPath();
+      ctx.moveTo(1430, ey - 32); ctx.lineTo(1430, ey - 32 + cap.eq.length * 48 + 6); ctx.stroke();
+      cap.eq.forEach(e => { drawRich(e, 1456, ey, 27, C.ink); ey += 48; });
+    }
+    ctx.restore();
+  });
+}
+
+let hintA = 1, lastMove = 0, paused = false, hoverBar = false;
+const actIndex = t => { let i = 0; while (i < ACTS.length - 1 && t >= ACTS[i + 1].t0) i++; return i; };
+function drawChrome(t) {
+  ctx.save();
+  ctx.font = `600 14px ${SANS}`; ctx.fillStyle = 'rgba(232,237,244,0.42)';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '2.5px';
+  ctx.fillText('SCAN / EGO-PLANNER  ·  STEP 4 TIME REALLOCATION & REFINE', 112, 68);
+  const ai = actIndex(t), A = ACTS[ai];
+  if (A.k) { ctx.textAlign = 'right'; ctx.fillText(`${A.k} / 07   ${A.name}`, 1808, 68); }
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  ctx.restore();
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const bh = hoverBar ? 6 : 3, by = CH - bh;
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(0, by, CW, bh);
+  ctx.fillStyle = C.guide; ctx.fillRect(0, by, CW * t / T_END, bh);
+  ctx.fillStyle = 'rgba(9,12,17,0.9)'; ACTS.forEach(a => { if (a.t0 > 0) ctx.fillRect(CW * a.t0 / T_END - 1, by, 2, bh); });
+  const show = Math.max(paused ? 1 : 0, hintA);
+  if (show > 0.01) {
+    ctx.globalAlpha = show * 0.6; ctx.font = `13px ${SANS}`; ctx.fillStyle = C.ink; ctx.textAlign = 'right';
+    ctx.fillText((paused ? '已暂停  ·  ' : '') + '空格 播放/暂停   ←/→ 切换步骤   点击底部进度条跳转', CW - 22, CH - 18);
+    ctx.textAlign = 'left'; ctx.fillText(`${t.toFixed(1)} s`, 22, CH - 18); ctx.globalAlpha = 1;
+  }
+  ctx.setTransform(DPR * S, 0, 0, DPR * S, DPR * OX, DPR * OY);
+}
+
+// ---------------------------------------------------------------- main draw(t)
+let T = 0;
+function draw(t) {
+  cam = camAt(t);
+  drawBackdrop();
+  drawGrid();
+  drawObstacle(t);
+
+  const Q = Qat(t);
+  const macro = fade(t, 48.8, 50.2, 60.6, 62.0);
+
+  // 1. Faint initial colliding trajectory (shown in Intro to contrast arc length)
+  const initA = fade(t, 0.3, 1.0, 14.5, 15.5) * 0.42;
+  if (initA > 0.01) {
+    wpoly(curveInit, C.hit, 2.0, [6, 6], initA);
+    pill('原始碰撞轨迹 $L_{init} = 41.7$', X(24), Y(13.0), { a: fade(t, 1.0, 1.6, 4.2, 4.6), dy: 28, size: 17, color: C.hit, edge: 'rgba(255,107,94,0.45)' });
+  }
+
+  // 2. Active B-spline trajectory & control polygon
+  const curKnots = t < REPARAM_T0 ? G.knots0 : G.knots1;
+  const curCurve = REFINECORE.sampleProfile(Q, curKnots, G.ORDER, 120).pts.map(p => p.pos);
+
+  // In Act 2 (15.5 - 27.5s), highlight the middle stretched curve span [u5, u9] in cyan
+  if (t >= 15.5 && t < 28.0) {
+    wpoly(curCurve, C.traj, 3.0, null, 0.55);
+    const midPts = [];
+    for (let s = 0; s <= 60; s++) {
+      const u = G.lengthened.knots[5] + (G.lengthened.knots[9] - G.lengthened.knots[5]) * (s / 60);
+      midPts.push(REFINECORE.evaluateDeBoorT(G.Qreb, G.lengthened.knots, G.ORDER, u));
+    }
+    const ma = fade(t, 16.5, 17.3, 27.2, 27.8);
+    wpoly(midPts, C.guide, 4.2, null, ma);
+    pill('被拉长的中间节点区间 $[u_5, u_9]$', X(24.0), Y(25.2), { a: ma, dy: -28, size: 18, color: C.guide, edge: 'rgba(69,211,196,0.5)' });
+  } else {
+    // Ghost of Rebound curve after reparam/refine
+    if (t >= REPARAM_T0) wpoly(curveReb, C.traj, 1.6, [5, 6], 0.28 * (1 - 0.5 * macro));
+    const col = t >= REFINE_T1 - 0.5 ? C.base : C.traj;
+    wpoly(curCurve, col, 3.4, null, 1 - 0.25 * macro);
+    if (t >= REFINE_T1 - 0.5) {
+      const ga = fade(t, REFINE_T1 - 0.5, REFINE_T1 + 0.5, 85.5, 86.0);
+      ctx.save(); ctx.globalAlpha = ga * 0.32; ctx.shadowColor = C.base; ctx.shadowBlur = 16;
+      wpoly(curCurve, C.base, 4.2, null, 1); ctx.restore();
+    }
+  }
+
+  // Control polygon
+  wpoly(Q, 'rgba(232,237,244,0.28)', 1.2, [4, 5], 1 - 0.45 * macro);
+  if (t < 4.5) {
+    pill('Rebound 避障后轨迹 $L_{reb} = 46.8$ （弧长 +12.2%，步长仍为 $t_s = 0.50$ s）', X(24.0), Y(25.2),
+      { a: fade(t, 1.2, 1.8, 4.1, 4.5), dy: -28, size: 18, color: C.traj, edge: 'rgba(242,194,123,0.5)' });
+  }
+
+  // 3. Act 1 (4.5 - 15.5s): Velocity & Acceleration derivative control vectors (checkFeasibility)
+  if (t >= 4.5 && t < 16.0) {
+    const va = fade(t, 4.8, 5.5, 15.0, 15.6);
+    G.fea0.velCtrl.forEach((vc, idx) => {
+      const pA = G.Qreb[idx], pB = G.Qreb[idx + 1], mid = lerp2(pA, pB, 0.5);
+      if (vc.overAxis) {
+        warrow(pA, pB, C.hit, 3.2, va, 13);
+        if (idx === 2 || idx === 7) {
+          pill(`$|V_${idx + 1}| = ${vc.maxAxis.toFixed(2)} > v_{max}$`, ...P2(mid),
+            { a: va, al: idx === 2 ? 'r' : 'l', dx: idx === 2 ? -18 : 18, dy: -10, size: 17, color: C.hit, edge: 'rgba(255,107,94,0.55)' });
+        }
+      }
+    });
+    const aa = fade(t, 7.6, 8.4, 15.0, 15.6);
+    G.fea0.accCtrl.forEach(ac => {
+      if (!ac.overAxis) return;
+      const q = G.Qreb[ac.i + 1];
+      const tip = add(q, mul(ac.a, 0.11));
+      warrow(q, tip, C.plane, 2.6, aa, 11);
+      if (ac.i === 3 || ac.i === 5) {
+        pill(`$|A_${ac.i + 1}| = ${ac.maxAxis.toFixed(1)} > a_{max}$`, ...P2(tip),
+          { a: aa, al: ac.i === 3 ? 'r' : 'l', dx: ac.i === 3 ? -14 : 14, dy: -16, size: 17, color: C.plane, edge: 'rgba(169,156,255,0.55)' });
+      }
+    });
+  }
+
+  // 4. Act 3 (27.5 - 39.5s): Uniform time resampling `point_set` diamonds along lengthened curve
+  if (t >= 27.8 && t < 39.5) {
+    const pa = fade(t, 28.2, 29.2, 38.6, 39.4);
+    G.pointSet.forEach((pt, k) => {
+      const appear = ramp(t, 28.2 + k * 0.22, 28.6 + k * 0.22) * pa;
+      if (appear <= 0.01) return;
+      const [px, py] = P2(pt), s = 7;
+      ctx.save(); ctx.globalAlpha *= appear; ctx.fillStyle = C.safe; ctx.strokeStyle = '#0b1016'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px, py - s); ctx.lineTo(px + s, py); ctx.lineTo(px, py + s); ctx.lineTo(px - s, py); ctx.closePath();
+      ctx.fill(); ctx.stroke(); ctx.restore();
+    });
+    pill('等时间步长 $dt = 0.593$ s 采样点 `point_set` ($K=9$)', X(24.0), Y(25.2),
+      { a: fade(t, 30.6, 31.2, 33.0, 33.6), dy: -28, size: 18, color: C.safe, edge: 'rgba(245,210,107,0.5)' });
+    pill('解线性方程组 $A Q_{reparam} = b$ 更新均匀控制点', X(24.0), Y(25.2),
+      { a: fade(t, 33.4, 34.0, 38.6, 39.3), dy: -28, size: 18, color: C.guide, edge: 'rgba(69,211,196,0.5)' });
+  }
+
+  // 5. Act 4 (39.5 - 48.5s): Residual violation on Q_reparam & sampling `ref_pts_`
+  if (t >= 39.5 && t < 48.6) {
+    const ra = fade(t, 40.0, 40.8, 48.0, 48.6);
+    warrow(G.Qreparam[2], G.Qreparam[3], C.hit, 3.2, ra, 13);
+    warrow(G.Qreparam[7], G.Qreparam[8], C.hit, 3.2, ra, 13);
+    pill('残余超限 $|V_3| = 12.84 > 10.5$, $|A_2| = 14.58 > 13.5$', ...P2(lerp2(G.Qreparam[2], G.Qreparam[3], 0.5)),
+      { a: ra, al: 'r', dx: -20, dy: -16, size: 17, color: C.hit, edge: 'rgba(255,107,94,0.55)' });
+
+    const refA = fade(t, 43.5, 44.3, 48.0, 48.6);
+    G.refPts.forEach(rp => wdot(rp, 5.5, '#0b1016', C.guide, refA, 2.2));
+    pill('安全几何参考点 $R_k =$ `ref_pts_`', X(24.0), Y(25.2),
+      { a: refA, dy: -28, size: 18, color: C.guide, edge: 'rgba(69,211,196,0.5)' });
+  }
+
+  // 6. Act 5 (48.5 - 61.5s): Macro Zoom on Anisotropic 5:1 Fitness Ellipse (calcFitnessCost)
+  if (t >= 48.5 && t < 62.5) {
+    const fa = fade(t, 49.4, 50.2, 61.0, 61.8);
+    const R3 = FIT_HERO.ref, v = FIT_HERO.v, n = FIT_HERO.n;
+    wEllipse(R3, v, 2.75, 0.55, C.guide, 'rgba(69,211,196,0.12)', fa, 2.2, null);
+    wEllipse(R3, v, 1.65, 0.33, 'rgba(69,211,196,0.45)', null, fa, 1.3, [5, 5]);
+
+    warrow(R3, add(R3, mul(v, 2.75)), C.guide, 2.4, fa, 12);
+    warrow(R3, add(R3, mul(n, 1.15)), C.hit, 2.2, fa, 11);
+    pill('切向 $v$ （$a^2=25$，允许沿轨迹滑动调速）', ...P2(add(R3, mul(v, 2.75))),
+      { a: fa, al: 'l', dx: 16, dy: -6, size: 18, color: C.guide, edge: 'rgba(69,211,196,0.5)' });
+    pill('法向 $n$ （$b^2=1$，刚度 25 倍，严禁偏离撞障）', ...P2(add(R3, mul(n, 1.15))),
+      { a: fa, al: 'r', dx: -16, dy: -12, size: 18, color: C.hit, edge: 'rgba(255,107,94,0.5)' });
+
+    const slideU = ramp(t, 53.5, 58.5);
+    const pHatCur = lerp2(FIT_HERO.pHatRep, FIT_HERO.pHatRef, slideU);
+    const q3 = lerp2(G.Qreparam[2], G.Qref[2], slideU);
+    const q4 = lerp2(G.Qreparam[3], G.Qref[3], slideU);
+    const q5 = lerp2(G.Qreparam[4], G.Qref[4], slideU);
+    [q3, q4, q5].forEach(qk => wline(qk, pHatCur, 'rgba(245,210,107,0.45)', 1.3, [4, 4], fa));
+
+    const dx = sub(pHatCur, R3);
+    const projV = add(R3, mul(v, dot(dx, v)));
+    if (slideU > 0.05) {
+      wline(R3, projV, C.safe, 2.8, null, fa);
+      wline(projV, pHatCur, C.hit, 2.2, [3, 3], fa);
+      warrow(R3, pHatCur, C.safe, 2.4, fa, 11);
+    }
+    wdot(R3, 6.5, '#0b1016', C.guide, fa, 2.4);
+    pill('$R_3 =$ `ref_pts_[2]`', ...P2(R3), { a: fa, al: 'l', dx: 20, dy: 28, size: 18, color: C.guide });
+    wdot(pHatCur, 7.5, C.safe, '#0b1016', fa, 2.2);
+    pill(`$\\hat{P}_4 = (Q_3+4Q_4+Q_5)/6$   切向滑移 $x·v = ${(dot(dx, v)).toFixed(2)}$`, ...P2(pHatCur),
+      { a: fa, al: 'r', dx: -18, dy: 24, size: 18, color: C.safe, edge: 'rgba(245,210,107,0.55)' });
+  }
+
+  // 7. Act 6 (61.5 - 74.5s): Full-trajectory Refine optimization with all 5:1 ellipses
+  if (t >= 61.5 && t < 74.5) {
+    const ea = fade(t, 61.8, 62.5, 73.2, 74.2);
+    G.fitnessItems.forEach((f, idx) => {
+      if (idx === 0 || idx === G.fitnessItems.length - 1) return;
+      wEllipse(f.ref, f.v, 2.1, 0.42, 'rgba(69,211,196,0.65)', 'rgba(69,211,196,0.10)', ea, 1.5);
+      wdot(f.ref, 4.0, C.guide, null, ea * 0.8);
+      const pHat = [
+        (Q[f.i - 1][0] + 4 * Q[f.i][0] + Q[f.i + 1][0]) / 6,
+        (Q[f.i - 1][1] + 4 * Q[f.i][1] + Q[f.i + 1][1]) / 6
+      ];
+      wdot(pHat, 5.2, C.safe, '#0b1016', ea, 1.6);
+    });
+  }
+
+  // 8. Act 7 (74.5 - 86.0s): Dense dynamic feasibility check sweep (`checkDynamicFeasibility`)
+  if (t >= 74.5) {
+    const sweepU = clamp((t - 75.0) / 3.8);
+    const nSweep = Math.floor(sweepU * (curveRef.length - 1));
+    const sa = fade(t, 74.6, 75.2, 85.5, 86.0);
+    for (let k = 0; k <= nSweep; k += 3) {
+      wdot(curveRef[k], 3.2, C.base, null, sa * 0.85);
+    }
+    if (sweepU < 1.0) {
+      const pt = curveRef[nSweep];
+      halo(pt, 28, 'rgba(126,224,138,0.55)', sa);
+      wdot(pt, 7, C.base, '#0b1016', sa, 2);
+    }
+    pill('✓ `checkDynamicFeasibility` 通过：全程无碰撞且 $|v_d| ≤ 8.69$, $|a_d| ≤ 11.05$', X(22.0), Y(25.2),
+      { a: ramp(t, 78.8, 79.6), dy: -28, size: 18, color: C.base, edge: 'rgba(126,224,138,0.55)' });
+  }
+
+  // 9. Draw Control Points Q_1 .. Q_11
+  for (let k = 0; k < NQ; k++) {
+    const isFixed = k < 3 || k >= NQ - 3;
+    const r = clamp(cam.k * 0.13, 5.5, 9.5);
+    let fill = '#0b1016', stroke = C.ink;
+    if (t >= REFINE_T0 && isFixed) { stroke = C.free; }
+    else if (t >= REFINE_T1 - 0.3) { fill = C.base; stroke = '#0b1016'; }
+    else if (t >= REPARAM_T0 && !isFixed) { fill = C.safe; stroke = '#0b1016'; }
+    let a = 1.0;
+    if (macro > 0 && (k < 2 || k > 5)) a *= 1 - 0.65 * macro;
+    wdot(Q[k], r, fill, stroke, a, 2.2);
+    const showLbl = macro > 0.3 ? (k === 3 || k === 4) : (k === 2 || k === 3 || k === 5 || k === 7 || k === 8 || (k === 10 && t < 5.5));
+    if (showLbl) {
+      const al = (macro > 0.3 && k === 3) ? 'l' : (k === 7 ? 'r' : 'c');
+      const dx = (macro > 0.3 && k === 3) ? 18 : (k === 7 ? -16 : 0);
+      const dy = (macro > 0.3 && k === 3) ? -22 : (k === 5 ? 32 : (k === 7 ? 18 : (k >= 3 && k <= 7 ? -26 : 28)));
+      pill(`$Q_{${k + 1}}$`, ...P2(Q[k]), { a: a * 0.92, al, dx, dy, size: 16, color: C.ink });
+    }
+  }
+
+  // Overlays & HUD
+  drawKnotTrack(t);
+  drawKinematicPanel(t);
+  drawCaption(t);
+  drawChrome(t);
+}
+
+// ---------------------------------------------------------------- playback
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!paused) { T += dt; if (T >= T_END) { T = T_END; paused = true; } }
+  hintA = clamp(1 - (now - lastMove - 2500) / 600);
+  draw(T); requestAnimationFrame(frame);
+}
+window.setFilmTime = t => { T = clamp(t, 0, T_END); paused = true; draw(T); return T; };
+window.play = () => { paused = false; };
+addEventListener('keydown', e => {
+  if (e.code === 'Space') { if (T >= T_END) T = 0; paused = !paused; e.preventDefault(); }
+  else if (e.code === 'ArrowRight') { const i = actIndex(T); T = ACTS[Math.min(ACTS.length - 1, i + 1)].t0 + 0.01; }
+  else if (e.code === 'ArrowLeft') { const i = actIndex(T); T = ACTS[Math.max(0, T - ACTS[i].t0 < 1 ? i - 1 : i)].t0 + 0.01; }
+  else if (e.key === 'r') { T = 0; paused = false; }
+  lastMove = performance.now();
+});
+addEventListener('mousemove', e => { lastMove = performance.now(); hoverBar = e.clientY > CH - 26; cv.style.cursor = hoverBar ? 'pointer' : 'default'; });
+addEventListener('mousedown', e => { if (e.clientY > CH - 26) { T = clamp(e.clientX / CW) * T_END; } else { if (T >= T_END) T = 0; paused = !paused; } });
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

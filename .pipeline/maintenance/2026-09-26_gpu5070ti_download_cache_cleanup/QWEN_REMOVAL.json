@@ -1,0 +1,46 @@
+{
+  "timestamp_utc": "2026-09-26T11:19:12Z",
+  "host_alias": "gpu5070ti",
+  "gpu": "NVIDIA GeForce RTX 5070 Ti",
+  "authorization": "Dr Sun explicitly authorized deletion of the entire qwen_image_21 directory.",
+  "deleted_path": "/home/sun/qwen_image_21",
+  "directory_bytes_before": 40227614720,
+  "stopped_processes": [
+    {
+      "pid": 146284,
+      "start_tick": "2743225",
+      "cwd": "/home/sun/qwen_image_21/ComfyUI"
+    },
+    {
+      "pid": 146282,
+      "start_tick": "2743225",
+      "cwd": "/home/sun/qwen_image_21/ComfyUI"
+    }
+  ],
+  "target_absent": true,
+  "stopped_processes_exited": true,
+  "available_bytes_before": 32149270528,
+  "available_bytes_after": 72376877056,
+  "available_bytes_increase": 40227606528,
+  "df_after": "Filesystem     Type  Size  Used Avail Use% Mounted on\n/dev/nvme0n1p4 ext4  573G  477G   68G  88% /",
+  "gpu_compute_processes_after": "",
+  "storage_assessment": {
+    "source": "Live /sys/class/block start/size sectors and lsblk; on-disk partition table still requires administrator-level verification before any partition operation.",
+    "system_disk": "/dev/nvme0n1",
+    "system_disk_bytes": 1000204886016,
+    "unpartitioned_gap_start_sector": 32768,
+    "unpartitioned_gap_end_sector_exclusive": 586334208,
+    "unpartitioned_gap_GiB": 279.57,
+    "layout_in_disk_order": [
+      "nvme0n1p1: approximately 16 MiB",
+      "unpartitioned gap: 279.57 GiB",
+      "nvme0n1p2: EFI 1.05 GiB",
+      "nvme0n1p3: swap 67.869 GiB",
+      "nvme0n1p4: ext4 root partition 583.007 GiB"
+    ],
+    "recommendation": "After privileged partition-table verification, create a separate ext4 data partition in the gap and mount it for model and experiment storage. Direct root-partition growth cannot use this non-adjacent gap without rearranging existing partitions.",
+    "partition_changes_performed": false,
+    "administrator_access": "sudo -n requires a password",
+    "second_disk": "/dev/nvme1n1 has existing NTFS/VFAT partitions; no meaningful unpartitioned gap was observed."
+  }
+}

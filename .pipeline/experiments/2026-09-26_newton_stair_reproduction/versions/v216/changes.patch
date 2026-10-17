@@ -1,0 +1,163 @@
+--- v208/stance_hold.py
++++ v216/stance_hold.py
+@@ -1,9 +1,10 @@
+ #!/usr/bin/env python3
+-"""v208 stillness-based return, preserving V12 torque-matched stand targets.
++"""v216 supported return with interruptible PD transfer.
+ 
+ This version replaces the old entry load-share gate with the machine-dog
+ A5/A7 body/joint stillness gate, uses xfade2s, and applies its A6 target cap.
+-Factory hold, disturbance exit and rejoin retain the parent behavior.
++Every foot must support the stillness dwell. Transition disturbances return
++immediately to RL; fixed-hold persistence and normal rejoin remain unchanged.
+ The historical implementation notes below describe the shared parent code.
+ 
+ Pure Python + NumPy; no Isaac, Torch or ROS import. `materialize_runner_patch.py`
+@@ -529,7 +530,7 @@
+                 self.counters["settle_starts"] += 1
+ 
+         if self.mode == "STAND_SETTLING":
+-            # Measured body/joint stillness; contact loads remain observations.
++            # Quiet motion alone does not establish a supported stopping pose.
+             failure = None
+             if not zero_command:
+                 failure = "new_command"
+@@ -541,6 +542,8 @@
+                 failure = "tilt"
+             elif bool(np.any(np.abs(joint_vel) > SETTLE_JOINT_SPEED_MAX)):
+                 failure = "joint_speed"
++            elif not bool(np.all(forces >= ENTRY_FOOT_FORCE_N)):
++                failure = "four_contact"
+             if failure == "new_command":
+                 self._set_mode("RL", "fixed_stand_cancelled:new_command", now)
+                 self.progress = 0.0
+@@ -580,7 +583,7 @@
+                     stiffness_torque = applied_kp * (applied_target - joint_pos)
+                     self.last_entry = {
+                         "t_s": now,
+-                        "entry_gate": "quiet_body_and_joints",
++                        "entry_gate": "quiet_body_joints_and_four_supports",
+                         "dwell_samples": int(self._settle_split_count),
+                         "foot_forces_n": [float(v) for v in forces],
+                         "entry_ramp_s": ENTRY_RAMP_S if self._crossfade_s is None else self._crossfade_s,
+@@ -600,8 +603,10 @@
+                 self.progress = 0.0
+                 self.reason = "waiting_for_" + failure
+ 
+-        if self.mode == "FIXED_STAND" and zero_command:
+-            # Disturbance exit with persistence (MJ:1709-1746).
++        if self.mode == "STAND_TRANSITION" or (self.mode == "FIXED_STAND" and zero_command):
++            # Transition has no disturbance dwell: abort before applying the
++            # next PD blend, including the tick that would declare FIXED_STAND.
++            # Established fixed hold retains the original persistence policy.
+             disturbance = None
+             if linear_speed > SETTLE_LINEAR_SPEED_MAX:
+                 disturbance = "linear_speed"
+@@ -611,7 +616,17 @@
+                 disturbance = "tilt"
+             elif not bool(np.all(forces > HOLD_CONTACT_N)):
+                 disturbance = "four_contact"
+-            if disturbance is None:
++            if self.mode == "STAND_TRANSITION":
++                if disturbance is not None:
++                    self._set_mode("RL", "stand_transition_disturbance:" + disturbance, now)
++                    self.progress = 0.0
++                    self._reentry_until = now + REENTRY_LOCKOUT_S
++                    self._settle_started = None
++                    self._disturbance_started = None
++                    self._disturbance_reason = None
++                    self._capped_return = False
++                    self.counters["disturbance_exits"] += 1
++            elif disturbance is None:
+                 self._disturbance_started = None
+                 self._disturbance_reason = None
+             else:
+--- v208/newton_stance.py
++++ v216/newton_stance.py
+@@ -8,7 +8,7 @@
+ import numpy as np
+ 
+ SOURCE = Path(__file__).resolve().with_name("stance_hold.py")
+-SOURCE_SHA256 = "3974c8b3d641a80c3d3a2a54bed021df8494e0dc0fcf2428c7a9692c4e2c130c"
++SOURCE_SHA256 = "ad33d885820cab324a9768d4b528f58a313965aa3781873ca772d3b8e188d280"
+ if hashlib.sha256(SOURCE.read_bytes()).hexdigest() != SOURCE_SHA256:
+     raise ValueError("Existing PD hold source identity changed")
+ spec = importlib.util.spec_from_file_location("vla_existing_stance_hold", SOURCE)
+--- v208/activate.py
++++ v216/activate.py
+@@ -11,7 +11,7 @@
+     existing = sys.modules.get('newton_stance')
+     if existing is not None:
+         if Path(existing.__file__).resolve() != path:
+-            raise RuntimeError('Select v208 before constructing or importing a different stance adapter')
++            raise RuntimeError('Select v216 before constructing or importing a different stance adapter')
+         return existing
+     spec = importlib.util.spec_from_file_location('newton_stance', path)
+     module = importlib.util.module_from_spec(spec)
+--- v208/test_return.py
++++ v216/test_return.py
+@@ -30,8 +30,8 @@
+ 
+ 
+ class ReturnTests(unittest.TestCase):
+-    def test_uneven_and_missing_foot_loads_do_not_block_stillness(self):
+-        for forces in ([55,38,17,20],[40,0,0,40],[0,0,0,0]):
++    def test_uneven_supported_loads_allow_entry(self):
++        for forces in ([55,38,17,20],[80,10,10,10]):
+             with self.subTest(forces=forces):
+                 loop=Loop()
+                 for k in range(14):
+@@ -39,6 +39,53 @@
+                     self.assertEqual(out.mode,'STAND_SETTLING' if k<13 else 'STAND_TRANSITION')
+                 self.assertEqual(out.reason,'still_confirmed')
+                 self.assertFalse(out.policy_owns_joints)
++
++    def test_every_foot_needs_support_for_complete_dwell(self):
++        for leg in range(4):
++            for missing in (0., 1., 9.99):
++                with self.subTest(leg=leg, missing=missing):
++                    loop=Loop();forces=np.full(4,30.);forces[leg]=missing
++                    for k in range(650):
++                        _,out=loop.step(20+k*.02,foot_forces=forces)
++                        self.assertEqual(out.mode,'STAND_SETTLING')
++                        self.assertTrue(out.policy_owns_joints)
++                    self.assertEqual(loop.hold.counters['entries'],0)
++
++    def test_lost_support_resets_entry_dwell(self):
++        loop=Loop()
++        for k in range(12):loop.step(20+k*.02)
++        loop.step(20.24,foot_forces=[50,56,25,0])
++        for k in range(14):
++            _,out=loop.step(20.26+k*.02)
++            self.assertEqual(out.mode,'STAND_SETTLING' if k<13 else 'STAND_TRANSITION')
++
++    def test_transition_disturbance_immediately_restores_policy(self):
++        cases=[('linear_speed',dict(linear_speed=.151)),
++               ('angular_speed',dict(angular_speed=.501)),
++               ('tilt',dict(tilt_deg=10.01))]
++        for leg in range(4):
++            forces=np.full(4,30.);forces[leg]=1.
++            cases.append(('four_contact',dict(foot_forces=forces)))
++        for elapsed in (.02,1.,2.):
++            for reason,case in cases:
++                with self.subTest(elapsed=elapsed,reason=reason,case=case):
++                    loop=Loop();loop.enter()
++                    x,out=loop.step(20.26+elapsed,policy_target=Q+.17,**case)
++                    self.assertEqual(out.mode,'RL')
++                    self.assertEqual(out.reason,'stand_transition_disturbance:'+reason)
++                    self.assertTrue(out.policy_owns_joints)
++                    np.testing.assert_array_equal(out.target,x.policy_target)
++                    np.testing.assert_array_equal(out.kp,np.full(12,20.))
++                    np.testing.assert_array_equal(out.kd,np.full(12,.5))
++                    self.assertEqual(loop.hold.counters['fixed_stand'],0)
++                    _,out=loop.step(20.28+elapsed)
++                    self.assertEqual(out.mode,'RL')
++
++    def test_transition_disturbance_wins_over_new_command(self):
++        loop=Loop();loop.enter()
++        _,out=loop.step(20.28,command=[.1,0,0],tilt_deg=11.)
++        self.assertEqual(out.mode,'RL')
++        self.assertTrue(out.policy_owns_joints)
+ 
+     def test_each_motion_gate_blocks_without_forced_timeout(self):
+         cases=[dict(linear_speed=.16),dict(angular_speed=.51),dict(tilt_deg=8.60),

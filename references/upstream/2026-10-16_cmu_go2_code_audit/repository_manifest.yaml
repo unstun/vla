@@ -1,0 +1,69 @@
+topic: CMU Go2 public navigation completeness and Lite3 stair migration
+date: '2026-10-16'
+origin: ai_only
+reviewed: false
+status: surveyed
+acquisition: pinned read-only source reference; not an adopted navigation baseline
+repositories:
+  - name: autonomy_stack_go2
+    canonical_url: https://github.com/jizhang-cmu/autonomy_stack_go2
+    project_page: https://www.cmu-exploration.com/
+    default_branch: foxy-humble
+    pinned_commit: 43d5f54b389b251713f0097893c30fa76c870d54
+    commit_date: '2026-02-18T23:10:57Z'
+    commit_message: update download link
+    license: Mixed and incompletely declared; see component inventory and licenses
+    license_notes:
+      - Base autonomy and FAR package manifests declare BSD
+      - Point-LIO package manifest says BSD but included LICENSE contains GPLv2
+      - Several utility and Unitree packages have TODO license declarations
+      - ROS-TCP-Endpoint uses Apache-2.0
+      - No repository-root LICENSE found in pinned tree
+    robot_platforms:
+      - Unitree Go2 EDU with vendor Sport controller and SDK access
+    ros_version: ROS 2 Foxy and Humble
+    sensors:
+      - Go2 L1 lidar PointCloud2
+      - L1 IMU with per-robot calibration
+    simulator: Unity external environment binary plus exposed kinematic vehicle simulator
+    paper: https://gfchen01.cc/publication/navplatform/NavPlatform.pdf
+    locomotion_interface: Body vx/vy/yaw-rate via TwistStamped and Unitree Sport Move or StopMove
+    locomotion_source_included: false
+    dependencies:
+      - ROS 2 and colcon with ament
+      - PCL and perception-pcl
+      - Eigen and OpenCV
+      - sensor-msgs-py, tf-transformations, joy
+      - Cyclone DDS and Unitree ROS 2 setup for real Go2
+      - Python transforms3d and pyyaml
+      - Included Point-LIO, FAR, terrain analysis and local planner packages
+      - Included Unitree messages and Sport API request library
+      - External Unity environment downloads for simulation
+    model_or_dataset_links:
+      - https://drive.google.com/drive/folders/1CeAA5aeXCk8Sh3ZuJR7UME6sQZFuaorf?usp=sharing
+    original_install_command: colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+    original_demo_command: ./system_simulation_with_route_planner.sh
+    original_real_robot_command: ./system_real_robot_with_route_planner.sh
+    command_status: Recorded from upstream README; not executed
+    local_source_path: source/autonomy_stack_go2
+    local_modifications: None to upstream source
+    reproduction_status: not_run
+    source_tree_paths: 435
+    materialized_source_files: 417
+    package_count: 23
+    excluded_acquisition:
+      - Media, large path and map assets
+      - External Unity environment binaries and example sensor bags
+    evidence_paths:
+      - comparison.md
+      - repository_metadata.json
+      - source_inventory.json
+      - package_inventory.json
+      - source_facts.json
+      - inspect_source.py
+      - raw_logs/checkout.json
+    limitations:
+      - No upstream dependency installation or ROS build
+      - No navigation, physics, or hardware run
+      - No demonstrated repeated stair or multi-floor acceptance result for Lite3
+      - Vendor Go2 locomotion behavior is outside this source release

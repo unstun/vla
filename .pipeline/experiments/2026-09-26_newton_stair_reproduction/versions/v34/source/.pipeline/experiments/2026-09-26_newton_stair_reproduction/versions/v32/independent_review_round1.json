@@ -1,0 +1,129 @@
+{
+  "passed": false,
+  "scope": "Read-only review, 2026-09-29, of audits/2026-09-29_wall_clock_chain and versions/v32. Audit files: RESULT.md sha256 754ff89d, DIAG_RUN_PLAN.md e0560353, plus the analysis, attribution and probe JSONs and their scripts. v32 files: PLAN.md 63f337f7, PHYSICAL_RUN_PLAN.md (added while I was reviewing), materialize.py 779345c9, changes.patch aa44667a, check_change.py and check_change.json, freeze.py 65d38621, and the working-tree scripts/newton_episode.py 2e93fd5d. I recomputed the numbers from the raw run files: telemetry.jsonl, backend_body_callbacks.jsonl, clock_samples.jsonl, applied_sent.jsonl, result.json, process.json, bridge.log, and diagnostics/*.npy and *.jsonl for v28-v31, diag_v31_clock03 and diag_v31_clock04. The scripts were short Python scripts in the session scratchpad. One probe ran only in the scratchpad: it built the pinned Newton intersect_ray kernel with its launch patched out and the Warp cache pointed at the scratchpad. I wrote no repository file and ran no docker or simulation.",
+  "blocking": [
+    {
+      "id": "B1",
+      "where": "RESULT.md section 4 'Mechanism C' (lines 144-149) and the diag_v31_clock04 row of the source table (line 166); analyze_gc.py:80-88; gc_attribution_diag_v31_clock04.json pose_gaps_over_0.2s; PLAN.md 'Decision and basis' ('C in diag_v31_clock04') and 'Not addressed by v32' ('as it did in diag_v31_clock04')",
+      "finding": "The attribution of clock04's fatal gap rests on a unit error. analyze_gc.py turns a pose stamp into a physics step with round(stamp_ns/1e6). The stamps are MuJoCo-Warp float32 time (physics_time() = mjw_data.time), which drifts away from steps x 1 ms: -43 ms at step 100,000, +451 ms at step 200,000 and +1,779 ms at step 387,640. Stamp 389.419128418 s is exactly physics step 387,640, not 389,419. The reported 79.7 ms 'Mac publish interval' therefore compares substeps that finished about 4.1 s after the backend had already received pose A. With the correct mapping, poses A (step 387,640) and B (step 387,675) were enqueued 278.6 ms apart. The control step that began 2.9 ms after A took 176.8 ms, with 58.3 ms of main-thread CPU, 465.5 ms of process runnable wait and an E-core share of 0.23; the external probe was up to 39 ms late. It was followed by a 119.7 ms step with 131.7 ms of wait. That is a mechanism-B slowdown. Six intermediate poses (not seven) were enqueued 83.5-244.5 ms after A and never reached the backend. By the script's own rule (Mac interval > 0.5 x gap means 'mac'), this gap is on the Mac side. So 'The Mac published on time: those two poses left the Mac 80 ms apart' is false, 'diag_v31_clock04 | C' is unsupported, and PLAN.md repeats both.",
+      "evidence": "Recomputed from diag_v31_clock04: telemetry.jsonl (physics_steps and physics_time_s pairs), diagnostics/substeps.npy, steps.npy and stall_stacks.jsonl, the clock_samples.jsonl offset (stable within 1.1 ms over the run) and backend_body_callbacks.jsonl. With the correct mapping the backend received A 3.7 ms and B 22.4 ms after each was enqueued. With the script's mapping, the 'enqueue' comes 4.14 s after the backend had received A, which is causally impossible.",
+      "required_fix": "Map stamps to physics steps through the telemetry (physics_steps, physics_time_s) pairs or the BodyStateV2 state_sequence, then rerun analyze_gc.py. Rewrite section 4, the source table and PLAN.md's basis: clock04 ended on a B-type Mac slowdown plus six poses superseded at the bridge. Fix the mapping before the script is reused for L1."
+    },
+    {
+      "id": "B2",
+      "where": "RESULT.md 'Answer' item 3 (lines 23-27), section 4 'Mechanism C' (lines 150-158) and 'What v32 can and cannot change' (lines 204-206); PLAN.md mechanism C bullet and 'What comes next'",
+      "finding": "Mechanism C is presented as a separate source, 'not in the worker at all', caused by the bridge's 10 ms publish callback running late. That location is inferred, not measured, and the corrected data point elsewhere. (i) Every frame the Mac sent reached the bridge and was accepted. In clock04, frames_sent was 79,538: 75,751 complete states accepted plus 3,787 clouds, with 0 telemetry reconnects and 0 io_errors. So the missing poses were superseded inside the bridge. Whether they arrived there late in a burst or the timer ran late is unmeasured. Late arrival could come from the worker's own lite3-telemetry-sender thread under the same host load, from Docker Desktop's host-VM networking, or from the bridge's telemetry thread. (ii) The bridge's simulation_clock_stall_events counter is driven by receipts in the telemetry thread (feedback_health.py), and it fired once in clock04. If that event is this gap, it favours late arrival over a late timer. (iii) Mapped through the clock offset, every backend gap over 150 ms with superseded poses falls in a B-type Mac step: 6 of 6 in clock04 (gaps of 151-297 ms, runnable wait 150-465 ms) and 7 of 7 in clock03 (runnable wait 136-429 ms). Gaps with consecutive stamps instead fall on process-wide stalls: in clock04, the 161 ms and 189 ms gaps match the logged 142.7 ms and 176.0 ms full collections; in clock03 they match the between-step freezes and the 265 ms in-process step. Superseding never occurred without B, which points to a shared host-load cause rather than an independent bridge mechanism.",
+      "evidence": "result.json telemetry_transport; the BRIDGE_DIAGNOSTICS lines in bridge.log; transport.py, whose priority sender thread runs inside the worker; the stall evaluation in feedback_health.py; my mapping of all 8 clock04 and 12 clock03 backend gaps over 150 ms onto steps.npy.",
+      "required_fix": "Relabel C as 'poses superseded at the bridge; where the delay arises is not measured; co-occurs with B in 13 of 13 cases'. Remove 'not in the worker at all' and the late-timer mechanism as statements of fact. For L1, also record per-frame send times from the worker's TelemetryPublisherServer sender (observation only) next to the container offer, take and publish records, so that delays in the worker's sender, the network and the bridge can be told apart."
+    },
+    {
+      "id": "B3",
+      "where": "RESULT.md 'Answer' item 1 (lines 16-19), section 3 'Caveat, since resolved' (line 107) and 'Which source ended which run' (lines 160-168); PLAN.md 'Decision and basis' ('Each mechanism ended a run: B in the v31 trial, A in diag_v31_clock03, C in diag_v31_clock04'); the v32 code comment in scripts/newton_episode.py (line 150)",
+      "finding": "Inferred attributions are stated as measured facts. v31's B is inferred. The trial has no per-step CPU data, and step 836 contains a 78 ms clock-client gap (197.5-275.6 ms) that leaves room for a young-heap full collection of about 70 ms. RESULT section 2 hedges this; the table and PLAN.md do not. For clock03, the process-wide freeze is measured but its GC cause is inferred. clock04's logs show that the mechanism exists; they do not settle what happened in clock03, so 'since resolved' overstates. The Answer's '0.1-0.27 s ... logged directly in diag_v31_clock04' merges the logged range (99-176 ms) with clock03's inferred 262 ms freeze, and the code comment repeats '0.15-0.27 s'. The clock04 attribution is wrong (see B1).",
+      "evidence": "gc_attribution_diag_v31_clock04.json (maximum 176.0 ms); clock_samples.jsonl during v31 step 836; analysis.json; diag_attribution_diag_v31_clock03.json.",
+      "required_fix": "Add a measured/inferred column to the source table. v31: B inferred, an A contribution possible. clock03: process-wide freeze measured, GC cause inferred. clock04: B plus superseding at the bridge. Reword PLAN.md's basis to match, and separate logged from inferred GIL-hold durations in RESULT.md and in the code comment."
+    },
+    {
+      "id": "B4",
+      "where": "versions/v32/PLAN.md 'Why this is enough' ('young-generation collections still run'), 'The known cost' and 'LiDAR kernel rebuild'; RESULT.md 'What v32 can and cannot change'; scripts/newton_episode.py lines 149-152 and 255-257",
+      "finding": "The freeze schedule turns the per-scan kernel garbage into a permanent leak, and PLAN.md describes the effect wrongly. In clock04, over 18,939 steps, middle collections reclaimed 3,103,456 objects (median 4,964 per collection) and young collections 578,251. That is about 970 cyclic objects per scan. They are the temporary Module, Kernel, Adjoint and AST graphs that @wp.kernel(module='unique') builds and discards on every intersect_ray call (warp/_src/context.py 1896-2012); probe_scan_codegen shows none of them when the kernel is built once. In CPython 3.12.13, gc.freeze() resets all generation counters (checked: (452,4,0) -> (0,0,0)). With a freeze every 50 steps, full collections therefore never run and middle collections run at most about once per window. Garbage still pending at each freeze, and graphs still alive at it, are never reclaimed. In a scratch probe with the pinned kernel (launch patched out, 200 constructions), normal GC left 0.0 MB behind. With a freeze every 10 constructions, 163,236 objects were frozen, middle collections reclaimed nothing, and 28.1 MB remained after gc.collect(), about 0.14 MB per scan. At 10 scans per simulated second that is roughly 0.25-0.8 GB over a 390-600 s run. During clock03 the host's free memory had already fallen to about 2.7 GB, with swap-ins. 'The run is bounded, so this is bounded' does not register any bound.",
+      "evidence": "The collected counts in gc_events.npy; probe_scan_codegen.json; a check of gc.get_count() before and after gc.freeze(); the scratch leak probe (tracemalloc); the vm counters in diag_v31_clock03's host.jsonl.",
+      "required_fix": "Before freezing v32, do one of two things. Either call gc.collect() immediately before each gc.freeze(), which then traverses only the objects created since the previous freeze (measure its cost offline, then re-materialize and rerun K1 and K2). Or measure the leak in a worker-sized replay and pre-register an RSS bound and a stop rule. Correct PLAN.md and RESULT.md: full collections stop entirely, middle collections are curtailed, and the kernel rebuild that stays becomes the source of the leak."
+    },
+    {
+      "id": "B5",
+      "where": "versions/v32/PLAN.md K3 row and 'Cost of a full collection' bullet; audits/2026-09-29_wall_clock_chain/probe_gc_freeze.py lines 58-66; the K3 assert in freeze.py; PLAN.md L1 criteria; PHYSICAL_RUN_PLAN.md stop rule",
+      "finding": "Two gates cannot fail. K3 measures gc.collect(2) immediately after gc.freeze(): 0, 1,000 and 28,000 are all multiples of 50, and only 0-1 objects were tracked at the measurement. About 0 ms is guaranteed for any schedule. The worst phase, 49 steps after a freeze with rows, video states, cloud items and scan garbage, is never measured. L1 has no exposure requirement. In clock04 the first full collection came about 20 s into the loop and the next ones every 135-170 s, and under v32 full collections cannot trigger at all because the counters are reset. An L1 run that ends early, for example on a B-type odom_stale, would pass criteria 1 and 2 without having tested the mechanism.",
+      "evidence": "probe_gc_freeze.py and probe_gc_freeze.json (tracked 0-1 at the measurement); the collection start times in gc_attribution (19.6, 154.6, 299.2, 454.0 and 623.9 s into the loop); the gc.freeze counter test.",
+      "required_fix": "Re-measure K3 at the worst phase with realistic per-step allocations, or relabel it as a sanity check that is not evidence. Add an L1 exposure rule with an explicit 'inconclusive' outcome. For example: at least about 7,100 control steps, or about 300 s of loop wall time, in which clock04 had at least two full collections. Report the maximum duration per generation."
+    }
+  ],
+  "non_blocking": [
+    {
+      "id": "N1",
+      "where": "freeze.py (bench depth rule)",
+      "finding": "The condition not (parts[0]=='bench' and len(parts) > 2) excludes bench/b01_alone/summary.json and bench/b02_load4/summary.json, which RESULT section 1 cites as its benchmark evidence.",
+      "suggestion": "Pin the two small summary files."
+    },
+    {
+      "id": "N2",
+      "where": "PLAN.md L1 criteria 1-3",
+      "finding": "Criterion 1 does not say which process it covers; container collections are now recorded and v32 does not change them. Criterion 2 can fail because of B, or because of the per-step ZMQ REQ/REP round trip (100 ms timeout) that runs between steps. Criterion 3's 'process-wide GIL hold' has no operational definition.",
+      "suggestion": "Limit criterion 1 to the Mac worker. State how a between-step gap caused by B will be read. Pre-register numeric thresholds for criterion 3, for example in-process off-CPU over 100 ms with runnable wait under 20 ms, together with a clock-client send gap over 100 ms or a watchdog wake-up more than 100 ms late."
+    },
+    {
+      "id": "N3",
+      "where": "audits/2026-09-29_wall_clock_chain/container_site/sitecustomize.py",
+      "finding": "A daemon thread flushes the records every 2 s, and there is no flush at exit, so the last 2 s or less before teardown are lost. Every container Python process imports the module, and it shadows Ubuntu's own sitecustomize, so L1's Linux side is not the same as clock04's.",
+      "suggestion": "Add a flush on atexit and SIGTERM, and state the difference from clock04. Before L1, run a short smoke check that the bridge patches actually load (module names, Python 3.10 in the pinned image)."
+    },
+    {
+      "id": "N4",
+      "where": "RESULT.md section 3 'Mechanism B'; analyze_diag.py",
+      "finding": "os_part = min(process runnable - process CPU, main-thread off-CPU) compares a sum over about 10 threads with one thread's off-CPU time. It is an upper bound, and it cannot separate a preempted GIL holder from a main thread waiting for a CPU. The external probe that DIAG_RUN_PLAN pre-registered as the discriminator is not reported. It was 10 ms late or less (its own p99) during all four clock03 freezes, which supports in-process holds. During B steps it was mostly 7-16 ms late with some 20-44 ms, so it does not confirm B.",
+      "suggestion": "Label B's attribution as inferred, and report the probe results."
+    },
+    {
+      "id": "N5",
+      "where": "RESULT.md, several places",
+      "finding": "Minor slips. 'Each has three signs': the next step after the 159 ms freeze read 'active'. 'Seven poses' should be six. 'Resumed at their normal pace': the spacing after the gap was 13, 55, 27, 20, 28 and 20 ms, because the Mac was still slow. The E-core share ranged 0.13-0.8, not 0.3-0.8. The v28 row omits a roughly 200 ms between-step gap before step 228 (command 'disconnected', STAND_SETTLING). The v30 row omits a roughly 125 ms between-step gap before step 2917. The replay supports 'physics is not the stall' for v31 only.",
+      "suggestion": "Correct these statements, and limit the replay claim to v31."
+    },
+    {
+      "id": "N6",
+      "where": "RESULT.md section 5, last bullet",
+      "finding": "'Therefore two results of the same starved process' is an inference. The reconnect does not block the physics, but its zero command switches the controller branch to STAND_SETTLING. v31's replay covers that branch at 96 ms or less, so the reading is plausible.",
+      "suggestion": "Label it as inferred."
+    },
+    {
+      "id": "N7",
+      "where": "RESULT.md, alternative explanations",
+      "finding": "Host memory pressure is not discussed. clock03's host samples show free pages falling from 6.3 to 2.7 GB, with 1,056 swap-ins and 6,182 decompressions during the run; the worker itself had 26 page-ins.",
+      "suggestion": "Record this as a residual factor. It matters more if B4's leak stays in v32."
+    },
+    {
+      "id": "N8",
+      "where": "RESULT.md 'For Dr Sun' (gate time base)",
+      "finding": "MuJoCo-Warp's float32 time runs up to 1.78 s ahead of steps x 1 ms by 390 s of simulation.",
+      "suggestion": "State this before proposing a simulation-time gate, and in any analysis that works from stamps."
+    },
+    {
+      "id": "N9",
+      "where": "PLAN.md 'Scope' and 'Claim boundary'; freeze.py manifest 'decisions'",
+      "finding": "'v32 removes mechanism A' and 'L1 can show that the process-wide freezes are gone' state a result that has not been tested. The manifest's 'decisions' field names B and the gate time base as unchanged, but not the superseding on the delivery side.",
+      "suggestion": "Phrase these as the hypothesis L1 tests, or as 'none occurred in L1'. List the superseding as not addressed."
+    },
+    {
+      "id": "N10",
+      "where": "PHYSICAL_RUN_PLAN.md 'Expected signals'",
+      "finding": "L2's gaps are 'attributed ... to A, B or C as in the audit', but from an uninstrumented run such attributions can only be inferences.",
+      "suggestion": "Label them as inferences. Also state in advance that the expected stop at the corridor entry is not evidence for or against v32."
+    },
+    {
+      "id": "N11",
+      "where": "RESULT.md sections 1 and 5",
+      "finding": "Two statements are inferences. 'SCAN ... was executing a curve, not planning' rests on log silence (SCAN logged nothing from Linux 80.7 to 85.2 s). 'The client thread waits on the Mac side' rests on the inflated return leg (median 16.25 ms against 2.73 ms outbound), which could also come from the VM-to-host path.",
+      "suggestion": "Label both as inferences."
+    },
+    {
+      "id": "N12",
+      "where": "The audit directory and versions/v32",
+      "finding": "Files were added while I was reviewing (analyze_linux.py, local_only_inventory.py, PHYSICAL_RUN_PLAN.md), and freeze.py pins whatever exists when it runs.",
+      "suggestion": "Record the hashes of the files reviewed here, and have any later edits reviewed again."
+    }
+  ],
+  "verified": [
+    "v31: step 836 control_wall_s is 346.8 ms (command active, RL). The backend pose gap is 287.5 ms, between consecutive stamps 27.726391 and 27.731388 s. The clock client sent every 22-37 ms during the step, with one 78 ms gap. The concurrent scan's wall_s was 27.8 ms.",
+    "analysis.json table against the raw data: v28 333 steps, 38.6/343.9 ms, 1 step over 250 ms, gap 0.373 s; v29 3,867 steps, 38.2/210.6 ms, 0; v30 3,022 steps, 41.6/348.2 ms, 13, fatal gap 0.264 s; v31 946 steps, 47.1/346.8 ms, 6. TTL windows 2/0/2/3; reconnects 2/0/1/3.",
+    "clock03: between-step gaps of 158.7, 211.1, 199.9 and 261.9 ms, each after a step whose state_sequence is divisible by 5. Clock-client send gaps of 167.8, 213.9, 215.8 and 273.5 ms. The fatal 269.4 ms backend gap overlaps the 261.9 ms gap; the neighbouring steps took 34.7 and 40.9 ms. The in-step freeze: a substep of 223.8 ms wall with 3.0 ms of CPU, 243.8 ms of CPU on other threads, a watchdog 212 ms late, and the scanner thread in Adjoint.extract_function_source -> ast.parse -> compile.",
+    "clock04: 7,218 young, 656 middle and 5 full collections in the loop. The full ones lasted 99.4, 111.8, 127.9, 142.7 and 176.0 ms; 4 ran on ThreadPoolExecutor-1_0, the scanner thread. They match stalls of 102.7 ms (between steps), 156.1, 171.6 and 185.8 ms (in-step) and 180.9 ms (between steps). The other 12 stalls, 151.6-196.3 ms, all had process runnable waits of 150-490 ms.",
+    "Offline: probe_gc_freeze.json gives 69.3-70.4 ms at 910,387 tracked objects and 157.4-161.1 ms at 1,608,339. The 0.0 ms values for 'frozen every 50' were taken with 0-1 objects tracked, that is, right after a freeze.",
+    "Benchmark: alone, median 32.5 ms and maximum 95.6 ms; with load4, 44.3 and 126.7 ms. The largest pose-publish gaps were 58.9 and 90.5 ms, and the worst joint error was 0.0.",
+    "Run records: peak RSS 0.907, 1.703 and 1.350 GB for v31, clock03 and clock04. clock03 ran 28,301 steps in 1,228.6 s, clock04 18,939 steps in 831.9 s, and all three ended on odom_stale. Bridge superseded 16.2, 20.5, 20.0, 11.9, 22.3 and 21.8 % of states (v28-v31, clock03, clock04); its stall counter fired 1, 0, 0, 1, 2 and 1 times. v31's rejected clock samples had median legs of 2.73 ms outbound and 16.25 ms return.",
+    "K1 and K2, checked independently. The preimage has v31's pinned hash, and the working tree (2e93fd5d) matches prepared.json. The diff is exactly the 8 inserted lines, and the other 2,871 v31 source files are unchanged. The AST is equal once the three nodes are removed. executed_newton_episode.py for v31, clock03 and clock04 equals the preimage, and the planner YAMLs are byte-identical to v31's. Both gc.freeze() calls come before the loop's only continue (line 278) and its breaks (lines 261 and 279), so no path skips them.",
+    "Contradicting the record: clock04's fatal gap maps to physics steps 387,640 and 387,675, with a Mac enqueue interval of 278.6 ms (the record says 79.7 ms), inside a 176.8 ms step with 58.3 ms of CPU and 465.5 ms of runnable wait. All 79,538 telemetry frames were accepted by the bridge.",
+    "CPython 3.12.13: gc.freeze() resets gc.get_count() from (452,4,0) to (0,0,0). Under a 50-step freeze schedule, no full collection triggers.",
+    "Scratch probe with the pinned Newton intersect_ray kernel, launch patched out, 200 constructions: normal GC leaves 0.0 MB behind (middle collections reclaim 143,264 objects). With a freeze every 10 constructions, 28.1 MB remains (163,236 objects frozen, none reclaimed by middle collections).",
+    "PLAN.md's claim boundary does not claim the clock fault is fixed, keeps B and C open, and keeps v3 as the last accepted condition. freeze.py writes the status 'frozen_unvalidated'."
+  ]
+}

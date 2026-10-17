@@ -1,0 +1,665 @@
+topic: UAS quadruped source availability and Lite3 integration cost
+date: '2026-10-16'
+origin: ai_only
+reviewed: false
+status: surveyed
+acquisition: pinned read-only source reference; not an adopted baseline
+repositories:
+- name: unified_autonomy_stack
+  canonical_url: https://github.com/ntnu-arl/unified_autonomy_stack
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: root main
+  pinned_commit: cb78bf7f57d074fc0999dd23bb1cfa1b1754d44d
+  commit_date: '2026-06-28T09:18:36+02:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: Container orchestration; delegates planning and robot execution
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/unified_autonomy_stack
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: robot_bringup
+  canonical_url: https://github.com/ntnu-arl/robot_bringup
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: repos/robot_bringup_exact.repos
+  pinned_commit: c08254a2e784a19628e5151a3b6124dec162f01d
+  commit_date: '2025-12-05T02:12:38+01:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: ROS launch/configuration wiring; no matched ANYmal D execution
+    preset identified
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/robot_bringup
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: gbplanner_ros
+  canonical_url: https://github.com/ntnu-arl/gbplanner_ros
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: gbplanner3
+  selection: repos/ws_gbplanner_exact.repos
+  pinned_commit: 7b10f8f49c6064a24909efa9871b51e74ff8d3ed
+  commit_date: '2025-12-04T19:27:24+01:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: PointCloud2 + Odometry/Pose + elevation GridMap -> geometric
+    path/trajectory via PCI
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/gbplanner_ros
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: pci_general
+  canonical_url: https://github.com/ntnu-arl/pci_general
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: repos/ws_gbplanner_exact.repos
+  pinned_commit: 1e5f5c633476737b568dc922c9359e9e872fed0d
+  commit_date: '2025-12-04T02:19:04+01:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: 'UAS branch: nav_msgs/Path and MultiDOFJointTrajectory; default
+    main: PoseArray or generic pathFollowerAction client'
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/pci_general
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: mimosa
+  canonical_url: https://github.com/ntnu-arl/mimosa
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: repos/ws_mimosa_exact.repos
+  pinned_commit: 9df689e01a36f3d138158ed49a8d51c255551d4d
+  commit_date: '2025-12-04T20:48:59+01:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: LiDAR/radar/IMU/odometry -> fused odometry and clouds; robot
+    agnostic estimator
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/mimosa
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: sdf-nmpc
+  canonical_url: https://github.com/ntnu-arl/sdf-nmpc
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: repos/ws_nmpc_exact.repos
+  pinned_commit: 8106cdda989375120cc4859c70af23029ec01257
+  commit_date: '2025-12-03T13:32:16+01:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: Aerial dynamics; 3D acceleration/yaw-rate or thrust/attitude/propeller
+    model
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/sdf-nmpc
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: sdf_nmpc_ros
+  canonical_url: https://github.com/ntnu-arl/sdf_nmpc_ros
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: null
+  default_branch: main
+  selection: repos/ws_nmpc_exact.repos
+  pinned_commit: 28c1c57ecd66bfa49c44d09622fdd9916f2adb30
+  commit_date: '2025-12-03T19:08:47+01:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: Range image and odometry/reference -> MAVROS acceleration
+    PositionTarget on hardware
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/sdf_nmpc_ros
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: rl_nav
+  canonical_url: https://github.com/ntnu-arl/rl_nav
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: repos/ws_rl_exact.repos
+  pinned_commit: 84cb11868a5cfe2e9d711e113bef52185eb3f837
+  commit_date: '2026-05-28T13:27:43+02:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: Aerial Gym policy inference -> body acceleration and yaw rate;
+    aerial checkpoint paths present
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  - https://github.com/ntnu-arl/rl_nav/tree/84cb11868a5cfe2e9d711e113bef52185eb3f837/models
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/rl_nav
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: ugv_gz
+  canonical_url: https://github.com/ntnu-arl/ugv_gz
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: repos/ws_sim_exact.repos
+  pinned_commit: c8b48e97dd4dc8ade46ec39788d3f0a8b3097355
+  commit_date: '2025-12-04T15:37:55+01:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: nav_msgs/Path + Odometry -> XY pure-pursuit Twist -> wheeled
+    Gazebo DiffDrive
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/ugv_gz
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: cbf_pc_selector
+  canonical_url: https://github.com/ntnu-arl/cbf_pc_selector
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: repos/ws_cbf_exact.repos
+  pinned_commit: b2cbee81239e741eb5438b3fd5c03798956eb6d1
+  commit_date: '2025-11-01T01:56:32+01:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: Point-cloud selection for aerial obstacle filter; not foot-support
+    estimation
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/cbf_pc_selector
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: composite_cbf
+  canonical_url: https://github.com/ntnu-arl/composite_cbf
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: repos/ws_cbf_exact.repos
+  pinned_commit: b9228e760c63d3aaab0f22e5ab19a2c2b744aa98
+  commit_date: '2026-05-26T16:39:12+02:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: Obstacle points + body velocity/acceleration -> corrected
+    acceleration, MAVROS wrapper
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/composite_cbf
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: robot_bringup_current
+  canonical_url: https://github.com/ntnu-arl/robot_bringup
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: 'current UAS declared ref: main'
+  pinned_commit: c190215f042da3ffa81ec2a8008e7b93fadc7381
+  commit_date: '2026-05-28T14:46:00+02:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: ROS launch/configuration wiring; no matched ANYmal D execution
+    preset identified
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/robot_bringup_current
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: gbplanner_ros_default
+  canonical_url: https://github.com/ntnu-arl/gbplanner_ros
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: gbplanner3
+  selection: 'upstream default, not selected by UAS: gbplanner3'
+  pinned_commit: f9904bb69392d2d46b2cbe939762f967a65daa14
+  commit_date: '2026-09-13T23:32:59+02:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: PointCloud2 + Odometry/Pose + elevation GridMap -> geometric
+    path/trajectory via PCI
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/gbplanner_ros_default
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: pci_general_default
+  canonical_url: https://github.com/ntnu-arl/pci_general
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-2-Clause
+  default_branch: main
+  selection: 'upstream default, not selected by UAS: main'
+  pinned_commit: 152eb2dfa19180391c7291d02414b1684f8f8198
+  commit_date: '2021-10-27T20:16:29-07:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: 'UAS branch: nav_msgs/Path and MultiDOFJointTrajectory; default
+    main: PoseArray or generic pathFollowerAction client'
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/pci_general_default
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: mimosa_current
+  canonical_url: https://github.com/ntnu-arl/mimosa
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: 'current UAS declared ref: main'
+  pinned_commit: 322b89ef1a6ecb3b29007681ce58529e76a12136
+  commit_date: '2026-08-07T17:55:33+02:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: LiDAR/radar/IMU/odometry -> fused odometry and clouds; robot
+    agnostic estimator
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/mimosa_current
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: rl_nav_current
+  canonical_url: https://github.com/ntnu-arl/rl_nav
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: 'current UAS declared ref: main'
+  pinned_commit: 93ce43eada8ea207b57bca68876214cc83f8e2be
+  commit_date: '2026-05-30T18:03:08+02:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: Aerial Gym policy inference -> body acceleration and yaw rate;
+    aerial checkpoint paths present
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  - https://github.com/ntnu-arl/rl_nav/tree/93ce43eada8ea207b57bca68876214cc83f8e2be/models
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/rl_nav_current
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+- name: cbf_pc_selector_current
+  canonical_url: https://github.com/ntnu-arl/cbf_pc_selector
+  project_page: https://ntnu-arl.github.io/unified_autonomy_stack/
+  license: BSD-3-Clause
+  default_branch: main
+  selection: 'current UAS declared ref: main'
+  pinned_commit: bff402bfc7b84e7e05b903a5085a6974c3bc5fe0
+  commit_date: '2026-04-24T15:17:18+02:00'
+  paper: https://arxiv.org/abs/2605.12735
+  robot_platforms:
+  - ANYmal D (original field experiment; external onboard execution)
+  - SMB wheeled rover (public ground demo)
+  - aerial platforms
+  simulator: Gazebo public UGV demo; Aerial Gym for RL training
+  ros_version: ROS 1 Noetic / ROS 2 Humble, component dependent
+  sensors:
+  - PointCloud2
+  - IMU and odometry
+  - elevation map for ground planning
+  - additional radar/vision in original experiment
+  locomotion_interface: Point-cloud selection for aerial obstacle filter; not foot-support
+    estimation
+  dependencies:
+  - See pinned root repos/*_exact.repos and moving_refs.json
+  model_or_dataset_links:
+  - https://huggingface.co/datasets/ntnu-arl/unified_autonomy_stack_datasets
+  original_install_command: ./scripts/import_all_repos.sh --exact; make images (documented,
+    not executed)
+  original_demo_command: make launch DOCKER_COMPOSE_FILE=docker-compose.ugv_sim.yml
+    (wheeled demo, not executed)
+  local_source_path: source/cbf_pc_selector_current
+  reproduction_status: not_run
+  evidence_paths:
+  - comparison.md
+  - source_inventory.json
+  - moving_refs.json
+  notes: Read-only sparse reference; no upstream code executed. Full dependency closure
+    and ANYmal execution not reproduced.
+selection:
+  recommended_first_target: Isolated OmniPlanner route-source comparison, if unknown-space
+    exploration is selected
+  reason: The public UAS distribution does not supply ANYmal perceptive locomotion
+    or a matched quadruped local execution stack. Preserve the existing Lite3 local
+    controller for a controlled comparison.
+  unresolved_questions:
+  - Exact transport and implementation used at the actual ANYmal experiment boundary
+  - Matched multi-floor/stair reliability on Lite3
+  - Whole-stack build feasibility after selecting a public ground-only dependency
+    subset

@@ -1,0 +1,97 @@
+{
+  "label": "container",
+  "python": "3.10.12",
+  "cases": {
+    "C1_wall_equivalence": {
+      "sequences": 20000,
+      "events_each": 200,
+      "first_mismatch": null,
+      "gate_output_reasons": {
+        "identity_mismatch": 169995,
+        "heartbeat_stale": 140215,
+        "map_invalidated": 135317,
+        "transport_loss": 134605,
+        "cancel_identity_mismatch": 90003,
+        "no_owner": 87868,
+        "reason": 44547,
+        "consumer_hold_confirmed": 43396,
+        "odom_stale": 7824,
+        "ok": 1686,
+        "measured_map_mismatch": 1150
+      },
+      "passed": true
+    },
+    "C2_host_stall": {
+      "red": [
+        100.26,
+        "odom_stale"
+      ],
+      "green": null,
+      "passed": true
+    },
+    "C3_lost_poses": {
+      "green": [
+        100.26,
+        "odom_stale"
+      ],
+      "passed": true,
+      "age_probe": {
+        "0.24": "ok",
+        "0.26": "odom_stale"
+      }
+    },
+    "C4_stopped_simulator": {
+      "green": {
+        "1.99": "ok",
+        "2.01": "odom_stale"
+      },
+      "passed": true
+    },
+    "C5_fail_closed": {
+      "green": {
+        "no_sim_clock": "odom_stale",
+        "clock_not_reported": "odom_stale",
+        "pose_without_stamp": "odom_stale",
+        "no_measurement": true
+      },
+      "passed": true
+    },
+    "C6_clock_behind_pose": {
+      "green": "ok",
+      "passed": true
+    },
+    "C7_configuration": {
+      "green": {
+        "default": [
+          "wall",
+          2.0
+        ],
+        "unknown_base": "rejected:invalid_odom_time_base",
+        "backstop_below_stale": "rejected:invalid_odom_wall_backstop_s",
+        "negative_backstop": "rejected:invalid_odom_wall_backstop_s",
+        "backstop_equal_stale": "accepted",
+        "simulation_stale_above_backstop": "rejected:invalid_odom_wall_backstop_s",
+        "wall_stale_above_backstop": "accepted",
+        "wall_backstop_below_stale": "accepted",
+        "red_wall_stale_above_2s": "accepted",
+        "nan_stamp": "rejected:invalid_stamp_s",
+        "native_graph_gate": [
+          "simulation",
+          2.0,
+          0.25,
+          0.2
+        ]
+      },
+      "passed": true
+    },
+    "C8_check_order": {
+      "results": {
+        "wall": "heartbeat_stale",
+        "simulation": "heartbeat_stale",
+        "red": "heartbeat_stale"
+      },
+      "passed": true
+    }
+  },
+  "all_passed": true
+}

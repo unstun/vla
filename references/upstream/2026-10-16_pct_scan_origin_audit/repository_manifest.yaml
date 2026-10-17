@@ -1,0 +1,53 @@
+topic: PCT and SCAN original source versus current Lite3 stair integration
+date: '2026-10-16'
+origin: ai_only
+reviewed: false
+status: surveyed
+source_acquisition: Read-only sparse references; no baseline adoption
+repositories:
+  - name: PCT_planner
+    canonical_url: https://github.com/byangw/PCT_planner
+    project_page: https://byangw.github.io/projects/tmech2024/
+    pinned_commit: 35cd73fd82bcd51bc538429294af7646b2a09815
+    default_branch: main
+    license: GPL-2.0; preserve component notices
+    local_source_path: source/byangw__PCT_planner
+    dependencies: [ROS Noetic, CUDA, CuPy, Open3D, Eigen, GTSAM, OSQP]
+    original_commands: ["cd planner && ./build_thirdparty.sh && ./build.sh", "python3 tomography.py --scene Building", "python3 plan.py --scene Building"]
+    execution_status: not_run
+  - name: SCAN-Planner
+    canonical_url: https://github.com/wuyi2121/SCAN-Planner
+    project_page: https://wuyi2121.github.io/SCAN-Planner/
+    paper: https://arxiv.org/html/2606.19555v1
+    pinned_commit: 348e8a590a50a5a6bbab8d8c6dcfd171f009be26
+    default_branch: main
+    license: Apache-2.0; preserve component notices
+    local_source_path: source/wuyi2121__SCAN-Planner
+    dependencies: [ROS Noetic, PCL, Eigen, Armadillo]
+    original_commands: [catkin_make, "roslaunch scan_planner run.launch"]
+    execution_status: not_run
+  - name: PCT-SCAN-ROS2
+    canonical_url: https://github.com/yagami-light7/PCT-SCAN-ROS2
+    pinned_commit: 1cf45a1c12ca785ce533293302be09d51daf0ccb
+    default_branch: main
+    license: Mixed Apache-2.0 and GPL-2.0-or-later; preserve nested licenses and notices
+    local_source_path: source/yagami-light7__PCT-SCAN-ROS2
+    dependencies: [ROS Humble, PCL, Eigen, GTSAM 4.2, OSQP 1.0, NumPy, SciPy]
+    original_commands: ["./scripts/setup_pct_dependencies.sh", "./scripts/build_workspace.sh", "./scripts/launch_pct_scan_building.sh"]
+    execution_status: not_run
+local_audit:
+  current_source: v219
+  source_files_resolved_to_build_receipt: 136
+  archived_trials_read: [v210, v212, v217, v219]
+  new_physics_runs: 0
+  production_source_changes: none
+  component_replay: Existing 14-test standing-transfer suite against v208 and v216
+  evidence:
+    - source_inventory.json
+    - scan_source_comparison.json
+    - pct_source_comparison.json
+    - initial_import_verification.json
+    - local_source_resolution.json
+    - transfer_replay.json
+    - failure_evidence.json
+    - comparison.md

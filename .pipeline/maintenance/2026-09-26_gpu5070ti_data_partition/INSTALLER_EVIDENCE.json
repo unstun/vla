@@ -1,0 +1,292 @@
+{
+  "storage": {
+    "partitioning_config": {
+      "config": [
+        {
+          "transport": "pcie",
+          "preserve": true,
+          "id": "nvme-controller-nvme1",
+          "type": "nvme_controller"
+        },
+        {
+          "ptable": "gpt",
+          "serial": "KIOXIA-EXCERIA_G3_SSD_YFAKS06KZ3TE_1",
+          "wwn": "eui.00000000000000008ce38e0300b4d92f",
+          "nvme_controller": "nvme-controller-nvme1",
+          "path": "/dev/nvme1n1",
+          "preserve": true,
+          "name": "",
+          "grub_device": false,
+          "id": "disk-nvme1n1",
+          "type": "disk"
+        },
+        {
+          "device": "disk-nvme1n1",
+          "size": 16759808,
+          "flag": "msftres",
+          "number": 1,
+          "preserve": true,
+          "grub_device": false,
+          "offset": 17408,
+          "partition_type": "e3c9e316-0b5c-4db8-817d-f92df00215ae",
+          "path": "/dev/nvme1n1p1",
+          "uuid": "35538b00-92a7-4363-8238-e9f6a0e3e236",
+          "id": "partition-nvme1n1p1",
+          "type": "partition"
+        },
+        {
+          "device": "disk-nvme1n1",
+          "size": 1127219200,
+          "flag": "boot",
+          "number": 2,
+          "preserve": true,
+          "grub_device": true,
+          "offset": 300203114496,
+          "partition_type": "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
+          "path": "/dev/nvme1n1p2",
+          "uuid": "5f87958c-6882-4673-8338-97baecefe462",
+          "id": "partition-nvme1n1p2",
+          "type": "partition"
+        },
+        {
+          "device": "disk-nvme1n1",
+          "size": 72873934848,
+          "wipe": "superblock",
+          "flag": "swap",
+          "number": 3,
+          "preserve": false,
+          "offset": 301330333696,
+          "id": "partition-0",
+          "type": "partition"
+        },
+        {
+          "fstype": "swap",
+          "volume": "partition-0",
+          "preserve": false,
+          "id": "format-0",
+          "type": "format"
+        },
+        {
+          "path": "",
+          "device": "format-0",
+          "id": "mount-0",
+          "type": "mount"
+        },
+        {
+          "device": "disk-nvme1n1",
+          "size": 625998823424,
+          "wipe": "superblock",
+          "number": 4,
+          "preserve": false,
+          "offset": 374204268544,
+          "id": "partition-1",
+          "type": "partition"
+        },
+        {
+          "fstype": "ext4",
+          "volume": "partition-1",
+          "preserve": false,
+          "id": "format-1",
+          "type": "format"
+        },
+        {
+          "path": "/",
+          "device": "format-1",
+          "id": "mount-1",
+          "type": "mount"
+        },
+        {
+          "fstype": "vfat",
+          "volume": "partition-nvme1n1p2",
+          "preserve": true,
+          "id": "format-partition-nvme1n1p2",
+          "type": "format"
+        },
+        {
+          "path": "/boot/efi",
+          "device": "format-partition-nvme1n1p2",
+          "id": "mount-2",
+          "type": "mount"
+        }
+      ],
+      "device_map_path": "/var/log/installer/device-map.json",
+      "version": 2
+    },
+    "grub": null,
+    "probe_top_level_keys": [
+      "nvme",
+      "blockdev",
+      "multipath",
+      "dmcrypt",
+      "lvm",
+      "mount",
+      "dasd",
+      "raid",
+      "bcache",
+      "zfs",
+      "os",
+      "filesystem"
+    ],
+    "probe_section_keys": {
+      "nvme": [
+        "nvme0",
+        "nvme1"
+      ],
+      "blockdev": [
+        "/dev/nvme0n1",
+        "/dev/nvme0n1p1",
+        "/dev/nvme0n1p2",
+        "/dev/nvme0n1p3",
+        "/dev/nvme0n1p4",
+        "/dev/nvme0n1p5",
+        "/dev/nvme0n1p6",
+        "/dev/nvme1n1",
+        "/dev/nvme1n1p1",
+        "/dev/nvme1n1p2",
+        "/dev/sda",
+        "/dev/sda1"
+      ],
+      "multipath": [],
+      "dmcrypt": [],
+      "lvm": [],
+      "dasd": [],
+      "raid": [],
+      "bcache": [
+        "backing",
+        "caching"
+      ],
+      "zfs": [
+        "zpools"
+      ],
+      "os": [
+        "/dev/nvme0n1p1"
+      ],
+      "filesystem": [
+        "/dev/nvme0n1p1",
+        "/dev/nvme0n1p6",
+        "/dev/nvme1n1p2",
+        "/dev/sda1",
+        "/dev/nvme0n1p4",
+        "/dev/nvme0n1p5",
+        "/dev/nvme0n1p3"
+      ]
+    },
+    "curtin_storage_commands": [
+      "Running command ['sfdisk', '--json', '/dev/nvme1n1'] with allowed return codes [0] (capture=True)",
+      "sfdisk input:",
+      "Running command ['sfdisk', '--no-reread', '/dev/nvme1n1'] with allowed return codes [0] (capture=False)",
+      "Running command ['wipefs', '--all', '--force', '/dev/nvme1n1p4'] with allowed return codes [0] (capture=False)",
+      "Running command ['wipefs', '--all', '--force', '/dev/nvme1n1p3'] with allowed return codes [0] (capture=False)",
+      "Running command ['mkfs.ext4', '-F', '-U', '6961a116-7df0-4282-9220-a46dbf555ea0', '/dev/nvme1n1p4'] with allowed return codes [0] (capture=True)",
+      "info[DEVLINKS] = ['/dev/disk/by-partuuid/4db8ef97-c65f-4288-84c6-b8be9ebd31a8', '/dev/disk/by-id/nvme-KIOXIA-EXCERIA_G3_SSD_YFAKS06KZ3TE-part4', '/dev/disk/by-path/pci-0000:10:00.0-nvme-1-part4', '/dev/disk/by-id/nvme-eui.00000000000000008ce38e0300b4d92f-part4', '/dev/disk/by-uuid/6961a116-7df0-4282-9220-a46dbf555ea0', '/dev/disk/by-diskseq/9-part4', '/dev/disk/by-id/nvme-KIOXIA-EXCERIA_G3_SSD_YFAKS06KZ3TE_1-part4']"
+    ],
+    "media_info": "Ubuntu 24.04.3 LTS \"Noble Numbat\" - Release amd64 (20250805.1)"
+  },
+  "timeline": {
+    "installer_probe_kioxia": {
+      "/dev/nvme1n1": {
+        "DEVNAME": "/dev/nvme1n1",
+        "DEVTYPE": "disk",
+        "ID_PART_TABLE_TYPE": "gpt",
+        "ID_PART_TABLE_UUID": "17447da8-7624-4df5-a9cf-53b791270400",
+        "ID_SERIAL": "KIOXIA-EXCERIA_G3_SSD_YFAKS06KZ3TE_1",
+        "ID_SERIAL_SHORT": "YFAKS06KZ3TE",
+        "partitiontable": {
+          "label": "gpt",
+          "id": "17447DA8-7624-4DF5-A9CF-53B791270400",
+          "device": "/dev/nvme1n1",
+          "unit": "sectors",
+          "firstlba": 34,
+          "lastlba": 1953525134,
+          "sectorsize": 512,
+          "partitions": [
+            {
+              "node": "/dev/nvme1n1p1",
+              "start": 34,
+              "size": 32734,
+              "type": "E3C9E316-0B5C-4DB8-817D-F92DF00215AE",
+              "uuid": "35538B00-92A7-4363-8238-E9F6A0E3E236",
+              "name": "Microsoft reserved partition"
+            },
+            {
+              "node": "/dev/nvme1n1p2",
+              "start": 586334208,
+              "size": 2201600,
+              "type": "C12A7328-F81F-11D2-BA4B-00A0C93EC93B",
+              "uuid": "5F87958C-6882-4673-8338-97BAECEFE462"
+            }
+          ]
+        }
+      },
+      "/dev/nvme1n1p1": {
+        "DEVNAME": "/dev/nvme1n1p1",
+        "DEVTYPE": "partition",
+        "ID_PART_ENTRY_DISK": "259:0",
+        "ID_PART_ENTRY_NAME": "Microsoft\\x20reserved\\x20partition",
+        "ID_PART_ENTRY_NUMBER": "1",
+        "ID_PART_ENTRY_OFFSET": "34",
+        "ID_PART_ENTRY_SCHEME": "gpt",
+        "ID_PART_ENTRY_SIZE": "32734",
+        "ID_PART_ENTRY_TYPE": "e3c9e316-0b5c-4db8-817d-f92df00215ae",
+        "ID_PART_ENTRY_UUID": "35538b00-92a7-4363-8238-e9f6a0e3e236",
+        "ID_PART_TABLE_TYPE": "gpt",
+        "ID_PART_TABLE_UUID": "17447da8-7624-4df5-a9cf-53b791270400",
+        "ID_SERIAL": "KIOXIA-EXCERIA_G3_SSD_YFAKS06KZ3TE_1",
+        "ID_SERIAL_SHORT": "YFAKS06KZ3TE"
+      },
+      "/dev/nvme1n1p2": {
+        "DEVNAME": "/dev/nvme1n1p2",
+        "DEVTYPE": "partition",
+        "ID_PART_ENTRY_DISK": "259:0",
+        "ID_PART_ENTRY_NUMBER": "2",
+        "ID_PART_ENTRY_OFFSET": "586334208",
+        "ID_PART_ENTRY_SCHEME": "gpt",
+        "ID_PART_ENTRY_SIZE": "2201600",
+        "ID_PART_ENTRY_TYPE": "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
+        "ID_PART_ENTRY_UUID": "5f87958c-6882-4673-8338-97baecefe462",
+        "ID_PART_TABLE_TYPE": "gpt",
+        "ID_PART_TABLE_UUID": "17447da8-7624-4df5-a9cf-53b791270400",
+        "ID_SERIAL": "KIOXIA-EXCERIA_G3_SSD_YFAKS06KZ3TE_1",
+        "ID_SERIAL_SHORT": "YFAKS06KZ3TE",
+        "partitiontable": {
+          "label": "dos",
+          "id": "0x00000000",
+          "device": "/dev/nvme1n1p2",
+          "unit": "sectors",
+          "sectorsize": 512
+        }
+      }
+    },
+    "installer_sfdisk_input": [
+      "Verifying /dev/nvme1n1p2 partition flag, expecting boot, found boot\nsfdisk input:\n---\nlabel: gpt\nlabel-id: 17447DA8-7624-4DF5-A9CF-53B791270400\nfirst-lba: 34\nlast-lba: 1953525134\n\n1:  start=34 size=32734 type=e3c9e316-0b5c-4db8-817d-f92df00215ae uuid=35538b00-92a7-4363-8238-e9f6a0e3e236 name=\"Microsoft\\x20reserved\\x20partition\"\n2:  start=586334208 size=2201600 type=c12a7328-f81f-11d2-ba4b-00a0c93ec93b uuid=5f87958c-6882-4673-8338-97baecefe462\n3:  start=588535808 size=142331904 type=0657FD6D-A4AB-43C4-84E5-0933C84B4F4F\n4:  start=730867712 size=1222653952\n---\n\nRunning command ['losetup', '--version'] with allowed return codes [0] (capture=True)\nRunning command ['sfdisk', '--no-reread', '/dev/nvme1n1'] with allowed return codes [0] (capture=False)"
+    ],
+    "current_root_superblock_selected": [
+      "Last mounted on:          /",
+      "Filesystem UUID:          6961a116-7df0-4282-9220-a46dbf555ea0",
+      "Filesystem state:         clean",
+      "Filesystem created:       Sun Apr 19 07:09:06 2026",
+      "Last mount time:          Sat Sep 26 07:17:33 2026"
+    ],
+    "installer_file_times": {
+      "block/probe-data.json": {
+        "mtime_epoch": 1776596724.0357509
+      },
+      "curtin-install/subiquity-partitioning.conf": {
+        "mtime_epoch": 1776596944.6371326
+      },
+      "curtin-install.log": {
+        "mtime_epoch": 1776597049.2943938
+      }
+    }
+  },
+  "interpretation": {
+    "confirmed": "The current Ubuntu root filesystem was created by the installer on 2026-04-19 at 07:09:06 according to server-recorded time. The saved pre-install GPT already lacked an entry for the old 279.57 GiB filesystem.",
+    "likely_explanation": "The old partition entry was removed before the saved installation probe; installation then created swap and root partitions later on the same SSD, leaving the former root bytes untouched.",
+    "unknown": [
+      "Who removed the old partition entry",
+      "The exact command or UI operation that removed it",
+      "Why the gap was left unused"
+    ],
+    "current_work": "Only read-only inspection was performed on the old volume. Partition creation and formatting remain blocked pending a decision about its files."
+  }
+}
