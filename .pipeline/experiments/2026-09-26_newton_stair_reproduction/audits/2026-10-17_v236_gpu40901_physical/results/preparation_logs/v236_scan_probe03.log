@@ -1,0 +1,34 @@
+Running scope as unit: v236-probe03.scope
+Warp CUDA error 100: no CUDA-capable device is detected (in function init_cuda_driver, /builds/omniverse/warp/warp/native/cuda_util.cpp:333)
+Warp 1.17.0 initialized:
+   CUDA Toolkit 12.9, CUDA driver not available (NVRTC compilation available)
+   Devices:
+     "cpu"      : "x86_64"
+   Kernel cache:
+     /home/ubuntu/sun/vla_v234_20261017/trials/v235_linux_full_attempt01/runtime/warp-cache/1.17.0
+Module newton._src.geometry.inertia f6b4bd8 load on device 'cpu' took 0.95 ms  (cached)
+Module validate_and_correct_inertia_kernel_1ff2ac62 6ad45b8 load on device 'cpu' took 0.26 ms  (cached)
+Module newton._src.geometry.bvh 4a1c07f load on device 'cpu' took 0.19 ms  (cached)
+Module newton._src.solvers.mujoco.kernels 90c0c67 load on device 'cpu' took 0.37 ms  (cached)
+Module mujoco_warp._src.io 66a94ae load on device 'cpu' took 0.33 ms  (cached)
+Module mujoco_warp._src.smooth 15aab42 load on device 'cpu' took 0.28 ms  (cached)
+Module _tile_cholesky_factorize_block__locals__kernel_b26c508a e2a541f load on device 'cpu' took 0.13 ms  (cached)
+Module _tile_cholesky_solve_block__locals__kernel_fcaeb5dd 60f1c27 load on device 'cpu' took 0.11 ms  (cached)
+Module newton._src.sim.articulation 2e73608 load on device 'cpu' took 0.31 ms  (cached)
+Module intersect_ray__locals___intersect_ray_kernel_962a4840 14d5500 load on device 'cpu' took 0.26 ms  (cached)
+{"cpus": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], "maximum_s": 0.04762327391654253, "mean_s": 0.02558899899944663, "over_100ms": 0}
+{"cpus": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], "maximum_s": 0.05092517472803593, "mean_s": 0.02573088789669176, "over_100ms": 0}
+{"cpus": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], "maximum_s": 0.029210302978754044, "mean_s": 0.02531763482838869, "over_100ms": 0}
+Traceback (most recent call last):
+  File "/home/ubuntu/sun/vla_v234_20261017/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v236/probe_scans.py", line 128, in <module>
+    main()
+  File "/home/ubuntu/sun/vla_v234_20261017/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v236/probe_scans.py", line 118, in main
+    cpu_cgroup=str(cgroup), cpu_max=(cgroup/'cpu.max').read_text().strip(),
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sun/vla_v234_20261017/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sun/vla_v234_20261017/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/v236-probe03.scope/cpu.max'

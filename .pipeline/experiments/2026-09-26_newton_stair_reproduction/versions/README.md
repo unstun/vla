@@ -48,6 +48,17 @@ before sending a navigation goal. Full-route/stair/terminal acceptance remains
 unvalidated on40901; no second physics attempt was launched. See the
 [partial-recording audit](../audits/2026-10-17_v235_gpu40901_physical/RESULTS.md).
 
+## gpu40901 LiDAR repair; physical route still blocked — v236
+
+[v236](v236/RESULTS.md) repairs early native-clock deadline rejection and hot
+fixed-core scheduling while preserving0.1s captures/deadline, RL, endpoints and
+0.35m hard guards. Seven regressions,550 original-ray/catch-up cases, policy
+parity and the actual graph/profile preflight pass. The one new physical
+attempt completes245 scans with0 deadline failures (max46.719ms), sends the
+goal and moves, then stops at35.592s on the unchanged evidence-writer backlog
+bound (>256). Stairs/arrival/PD remain untested; **v232/v233 remains the accepted
+single-route baseline**. See the [four-way comparison and audit](../audits/2026-10-17_v236_gpu40901_physical/RESULTS.md).
+
 | Version | One change | Evidence status |
 |---|---|---|
 | v3 | Registered current empty 12 m PD/RL baseline | One bounded trial validated; not generally stable |
