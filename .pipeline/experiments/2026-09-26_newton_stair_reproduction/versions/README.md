@@ -2,6 +2,31 @@
 
 Dr Sun designated the delivered empty-floor system as v3 on 2026-09-27 and requested one version per change. These version numbers describe this local simulation integration, separately from native SCAN candidate/build numbers.
 
+## Current single-route physical baseline — v232 / v233
+
+Adopted by Dr Sun on 2026-10-17: **v232 is the latest validated navigation
+source; v233 is its execution/display binding.** The one authorized original
+Building route passes the unchanged v219 spatial/terminal gates: FINISHED at
+121.564819 s, measured final PD stand 4.397583 s, XY error 0.141198 m, no
+SIGABRT or fall. The actual v232 native install, launch and long-route driver
+are source-bound; RL, original endpoints and 0.35 m hard guards are unchanged.
+
+Stair [45,55): 273/275 successful rounds (99.27%), no measured low-speed pause
+lasting at least one second, and all 100 body-edge samples at the extra 0.15 m
+score cap. **One successful route only:** no repeated reliability, sustained
+30 Hz, feedback-induced detour, other-map/start, leg-contact or robot claim.
+The original analyzer's `full_qualification=false` and
+`sustained_30hz_validated=false` are preserved; mean successful planning is
+25.44 Hz. This adoption changes mutable selection metadata, not frozen
+manifests or the original acceptance rules.
+
+[Physical results](v233/RESULTS.md),
+[full audit and three-way videos](../audits/2026-10-17_v232_physical_comparison/RESULTS.md),
+[local delivery hashes](../audits/2026-10-17_v232_physical_comparison/LOCAL_DELIVERY.json).
+**v219/v220 remains the preserved comparison source/display pair** (one earlier
+full-route pass); v231's failed v230 execution and all earlier failures remain
+intact. Historical "current" statements below describe their checkpoint only.
+
 | Version | One change | Evidence status |
 |---|---|---|
 | v3 | Registered current empty 12 m PD/RL baseline | One bounded trial validated; not generally stable |
@@ -1112,7 +1137,7 @@ than v210 (56.7% versus 98.8% over 45-55 s). [Results](v219/RESULTS.md).
 v220 displays all recorded v219 states, including pauses and final hold: 3,700
 frames / 123.333 s. Full decode, causal indexing, visual QA and local delivery
 hash pass. [Video](v220/delivered/v219_linux_full_attempt01.mp4). No extra physics.
-Latest validated source is v219; current display is v220. v210 and all failures
+At that checkpoint, latest validated source was v219 and display was v220. v210 and all failures
 remain available. This is one successful condition, not repeated reliability.
 
 ## v221-v224: shared checking, precise floor rejection and environmental preference
@@ -1204,7 +1229,7 @@ SIGABRT (-6) near 46.7 s. It records standing to its original 600000-step bound
 without arrival or terminal notification. Early edge-margin samples improve,
 but 42/42 successful completed stair rounds end at 46.376 s; later planning is
 absent. This is not full-window 100% success or physical promotion.
-[Results](v231/RESULTS.md). Accepted physical source/display remains v219/v220.
+[Results](v231/RESULTS.md). At that failed checkpoint the physical source/display pair remained v219/v220.
 
 ### v232 — native exception containment and critical-process failure closure
 
@@ -1217,4 +1242,23 @@ clock and a real SIGABRT child whose launch parent survives. Original126324+3
 hard verdicts/predicates remain unchanged; installed Building first admission
 has0/3821 rejected and identical v230 route bytes. Actual14-package graph runs
 12s and shuts down cleanly with zero physics. [Results](v232/RESULTS.md).
-Offline gate only; v219/v220 remains the accepted physical source/display pair.
+This frozen v232 record is the offline gate. Its subsequent physical pass and
+user-adopted source/display pair are recorded separately as v232/v233 above.
+
+### v233 — one successful original-route physical execution of frozen v232
+
+After commits1ad1862d (v230/v231 physical audit) andff4cb515 (v232 repair),
+freeze the v232 native install, launch graph and long-route driver under a
+new execution binding. The sole physical attempt passes the original v219
+route/terminal gates, unchanged endpoints/RL/0.35m guards: FINISHED121.565s,
+measured final PD4.398s, XY error0.1412m, no SIGABRT/fall. Source/install and
+shared finish parity pass. Stair45–55s:273/275 successful rounds, no >=1s
+low-speed pause; body edge samples reach the extra0.15m capped target.
+One route only; no repeated reliability, sustained30Hz or physical feedback
+detour claim. [Results](v233/RESULTS.md) and linked three-way comparison.
+Frozen v232's manifest retains its pre-physics status; this separate record
+binds its successful physical execution without rewriting predecessor evidence.
+
+Baseline adoption: Dr Sun approved v232/v233 on 2026-10-17 after reviewing the
+single physical result and videos. v219/v220 remains a comparison, not the
+latest selected pair. The two frozen manifests retain their original status.

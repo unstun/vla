@@ -1,0 +1,3 @@
+# Physical v232 comparison audit
+
+Exactly one actual route under frozen v233 execution, navigation frozen v232. Compare v219 accepted reference and v231 failed v230. Reuse original closed-capture analyzer/full-route verifier, causal recorded-state renderer and installed environmental field. Preserve failed assertions; diagnostic-only analyzer output cannot promote acceptance. No physics is performed by this audit. Heavy capture/renderer/build bytes stay on gpu5070ti; return source, compact evidence, regular videos, hashes and review frames. First two source commits: 1ad1862d audit, ff4cb515 repair. No frozen predecessor is modified.
