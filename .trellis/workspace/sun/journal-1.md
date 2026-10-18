@@ -1323,3 +1323,40 @@ Scanner repair and evidence delivery completed. **Physical route failed; migrati
 ### Next Steps
 
 - Diagnose shared critical-state/bulk-evidence writer queue without relaxing256 bound; offline verification before another separately authorized physical trial. Task stays in_progress.
+
+
+## Session 37: Return to gpu5070ti and validate one v237 original route
+<!-- trellis-session: v=2 fp=2988cc8a904e18c4 -->
+
+**Date**: 2026-10-17
+**Task**: Return to gpu5070ti and validate one v237 original route
+**Branch**: `main`
+
+### Summary
+
+At user direction, return from shared40901 to the original5070Ti environment. v237 combines original v232 native/v233 host binding with the v236 scanner deadline repair. One continuous original route passes FINISHED at124.223358s, final PD4.377594s; all1132 LiDAR jobs meet100ms. Same-host three-way videos and77 declared payloads verified locally.
+
+### Main Changes
+
+- Freeze eight current/source snapshot files and parent diff; verify original317-source/607-installed identities, unchanged RL/endpoints/.35m guards/.1s captures.
+- Preserve first display-layout rejection; adapt only version-relative manifest resolution and retain every current/snapshot hash check. No second physics run or shared job mutation.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6a9e531c` | feat(sim): bind the scanner-repaired original route back to gpu5070ti |
+| `10fe2631` | test(sim): record v237 original-host route pass and same-host comparison videos |
+
+### Testing
+
+- [OK] Seven regressions,250 zero-step ray/catch-up cases, policy golden and actual12s graph/profile pass. Original route/terminal gate passes; XY0.118992m;45–55s296/296 rounds, zero measured pauses>=1s; minimum extra edge margin0.128963m.
+- [OK] 3720 actual video frames,3728 comparison frames,301 stair frames; full decode, causal/source/quality cross-hashes,77 payload hashes/sizes and direct visual checks pass. Sustained30Hz/full qualification remain false.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Human review of v237 candidate; default future execution to gpu5070ti. Preserve v232/v233 accepted selection and unresolved40901 backlog evidence. Migration task remains review, not archived as a40901 physical pass.
