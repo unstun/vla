@@ -22,3 +22,8 @@ workspace/failed evidence; do not edit or stop the existing IsaacLab job.
 2. Red regression at the future/deadline boundary; minimal fix and unchanged-ray checks.
 3. Resource/profile/actual graph preflight, including sustained scanner timing.
 4. One new original-route trial, independent route/terminal gates, immutable replay videos and local returns.
+
+## v237 continuation
+1. Verify original317 sources/607 installed bytes and host resource/peer state.
+2. Bind minimal v237 entry and scanner adapter; run scanner/golden/profile/graph gates.
+3. Freeze identities, run one original route, retain all outcomes and return comparison video.

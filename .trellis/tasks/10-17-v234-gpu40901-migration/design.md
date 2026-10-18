@@ -64,3 +64,8 @@ Reuse the v233 entry with the v234 source/install gates, Docker image and factor
 
 ## v236 diagnosis boundary
 Measure actual scan queue/start/finish, CPU time/runnable wait and wall time to native-next-scan check. Separate scheduler contention from early native-clock catch-up before choosing the smallest fix. Scope is the host/recorder scheduling boundary; ray geometry, point count, capture stamps, native planning and policy remain unchanged.
+
+## v237 original-host return
+Reuse v233's original host paths/images/6-CPU native binding and v236's absolute
+scan deadline. No40901 CPU wrapper, writer fix or native rebuild. New v237
+source/run/ledger identities preserve old evidence and original gates.

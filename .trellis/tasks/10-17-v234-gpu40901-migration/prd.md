@@ -46,3 +46,9 @@ Dr Sun explicitly authorized diagnosis/fix of LiDAR timeout, with emphasis on
 two-CPU affinity/contention, preserving RL, original endpoints,.35m thresholds
 and.1s capture period. Pass regression/profile/actual graph preflight, then run
 one new full-route physical trial and deliver results/comparison video.
+
+## Return to gpu5070ti (authorized2026-10-17)
+Dr Sun selected the original5070Ti for continuation after the one v236 failure.
+Preflight and execute one original-route trial as v237, retaining v232 native
+source/install and v236 scanner repair. Existing constants and peer-isolation
+requirements remain unchanged; no further40901 physical work is planned.
