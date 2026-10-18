@@ -188,3 +188,14 @@ code. Check actual linked core, ABI symbols and source/install inventories.
 v240 passes two live approach repeats and a stair control with zero emergency
 and zero expiry gap. Body follows the old recording; physical pause elimination
 and sustained30Hz remain separate unvalidated claims.
+
+The separately authorized v241 physical execution of frozenv240 passes one
+original route.109–115s contains zero emergency and >=0.5s pauses; actual
+approach has zero cumulative low speed. The same fixed window now includes
+0.271423s normal goal settling after114.668610s. Keep raw fixed-window counts
+and add a named route-relative approach window; do not erase low samples
+merely because they belong to terminal hold. Preserve original arrival/PD
+gates independently.45–55s has zero pauses but only95% of body samples at the
+0.15m capped extra-margin target (minimum0.129810m), versus100% forv237.
+Do not describe capped scores as uncapped measured clearance, or promote a
+single route into repeated reliability/sustained30Hz/baseline adoption.

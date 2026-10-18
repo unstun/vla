@@ -4,7 +4,7 @@ Dr Sun designated the delivered empty-floor system as v3 on 2026-09-27 and reque
 
 ## Current single-route physical baseline — v232 / v233
 
-Adopted by Dr Sun on 2026-10-17: **v232 is the latest validated navigation
+Adopted by Dr Sun on 2026-10-17: **v232 remains the user-selected navigation
 source; v233 is its execution/display binding.** The one authorized original
 Building route passes the unchanged v219 spatial/terminal gates: FINISHED at
 121.564819 s, measured final PD stand 4.397583 s, XY error 0.141198 m, no
@@ -103,6 +103,23 @@ Original source/install hashes remain intact. **Offline native continuity
 only:** recorded body motion cannot establish improved physical pauses,
 stance or arrival. No new physics/video or baseline adoption; RL/endpoints/
 .35m/.1s are unchanged. v232/v233 remains selected.
+
+## v240 physical validation — one original-route pass, execution v241
+
+On2026-10-18 Dr Sun authorized one physical continuation after commits
+b709a7d6/e5f640ba. [v241](v241/RESULTS.md) binds frozenv240 plus the unchanged
+v237 scanner repair to the original route. The sole attempt passes at
+121.424896s with4.357605s measured PD hold; XY error0.115871m, no fall.
+All1104 scans meet100ms, maximum30.465ms.109–115s has zero emergency and
+>=0.5s measured pauses; actual approach cumulative low speed is zero. The
+fixed window retains0.271423s normal near-goal settling.45–55s has273/274
+successful rounds, zero emergency/pause/gap and no negative edge margin.
+Minimum extra margin is0.129810m,95% at the0.15m cap, versus100% forv237.
+
+The [physical audit and full/side-by-side videos](../audits/2026-10-18_v240_gpu5070ti_physical/RESULTS.md)
+retain both the improved approach and smaller stair-margin minimum. This is
+one physical validation; no repeated reliability, sustained30Hz or baseline
+adoption. v232/v233 remains selected; v219/v220 andv237 remain comparisons.
 
 | Version | One change | Evidence status |
 |---|---|---|
