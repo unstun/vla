@@ -1360,3 +1360,28 @@ At user direction, return from shared40901 to the original5070Ti environment. v2
 ### Next Steps
 
 - Human review of v237 candidate; default future execution to gpu5070ti. Preserve v232/v233 accepted selection and unresolved40901 backlog evidence. Migration task remains review, not archived as a40901 physical pass.
+
+
+## Session 38: v240 terminal continuity and one v241 full physical route pass
+<!-- trellis-session: v=2 fp=4c977577cde2cb8c -->
+
+**Date**: 2026-10-18
+**Task**: v240 terminal continuity and one v241 full physical route pass
+**Branch**: `main`
+
+### Summary
+
+Committed v238 attribution, retained rejected v239, froze v240 input-delivery repair. One authorized gpu5070ti v241 original-route run passed at121.424896s with4.357605s measured PD, zero approach emergency/>=0.5s pauses and zero stair pauses. Stair minimum extra margin0.129810m versus v237 capped0.15m;95% at cap. Four source-verified videos returned. RL/endpoints/.35m/.1s/v237 scanner unchanged; no retry, baseline promotion or sustained30Hz claim. Unrelated dirty harness files and v221 preserved.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b709a7d6` | fix(nav): preserve forward reference progress and audit terminal pauses in v238 |
+| `e5f640ba` | fix(nav): deliver queued inputs on stable search snapshots in v240 |
+| `80d4f74a` | feat(sim): bind frozen v240 to one original-host physical trial in v241 |
+| `fe04bd31` | test(sim): validate v240 approach continuity on one full physical route |
+
+### Status
+
+[OK] **Completed**
