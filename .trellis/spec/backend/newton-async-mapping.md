@@ -134,3 +134,57 @@ Wrong: claim that removing 1.5 MB history responses proves every heartbeat fault
 fixed, or that asynchronous enqueue timing is the complete planner solve latency.
 Correct: report the encoder and actual callback tests separately, then validate
 the unchanged physical route and measure completed successful planning rounds.
+
+
+## 9. Continuing-reference search and evidence age (v238 diagnostic)
+
+The v237 recording shows a clear current curve before a final-goal-neighborhood
+search consumes200ms. Planning, safety and sensor subscriptions share a mutually
+exclusive work group while the clock continues. DDS-received clouds are not
+necessarily enqueued, and enqueued clouds are not completed map snapshots.
+The post-search ordered drain/adopt already takes the newest completed map;
+it cannot grant freshness to a queued cloud or a half-built writer state.
+
+Do not classify every binary target rejection as geometric occupancy. The
+original0.35s scan-age bound can expire inside the search/fallback, making all
+candidate points stale and triggering the unchanged safety emergency branch.
+Do not freeze time, restamp evidence, extend the bound or suppress the stop.
+
+A continuing admitted route may first propose a free forward reference
+frontier and retain original seed/whole-spline/dynamic/publication gates. New
+route admission and actual no-progress terminal recovery retain neighborhood
+search. Test all three branches, stale evidence and unchanged goal identity.
+Preserve overload ABI/class layout when loading an isolated native overlay into
+an existing controller binary, and verify the actual linked replacement library.
+
+Ordered-map/fixed-clock replay can establish a removed search call and its
+cost, but cannot establish eliminated physical pauses. Record residual cold
+solve latency and rejected inputs. v238 retains7 approach calls >100ms and is
+only partially qualified; require continuous-clock callback/input replay before
+claiming no avoidable emergency interruptions. See the v237 terminal-approach
+audit and v238 offline gate. STAND_SETTLING is RL ownership; measured velocity
+defines pause duration. Report >=0.5s episodes and cumulative split low time
+without counting the motion gap as stopped time.
+
+v239's adopt-and-cancel attempt eliminates emergency messages but expires an
+active replacement curve for0.184561s. Check the currently owned curve only:
+a shorter new curve retires the old remaining lifetime. Never union historical
+lifetimes to claim coverage. Command coverage is also distinct from motion.
+
+v240 polls the original ordered drain inside A* every20ms without adopting a
+completed async map. The writer processes actual paired inputs while search
+retains its immutable read snapshot. Original caller refresh and publication
+lease then adopt/check completed maps. Held evidence still expires under its
+original source stamp; queued data cannot renew it. Synchronous revision/
+source/origin mutation rejects the search. Do not reenter executor spin from
+a planner callback. Test held digest, real worker completion, stale rejection,
+normal adoption and a background support/obstacle-change rejection through
+the original full-curve/lease primitives. Name component versus full-manager
+and fixed-clock versus live-window evidence accurately.
+
+plan_env, path_searching and bspline_opt are static archives here. Rebuild
+shared/plugin/test consumers: replacing an archive does not replace embedded
+code. Check actual linked core, ABI symbols and source/install inventories.
+v240 passes two live approach repeats and a stair control with zero emergency
+and zero expiry gap. Body follows the old recording; physical pause elimination
+and sustained30Hz remain separate unvalidated claims.

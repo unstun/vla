@@ -1,0 +1,58 @@
+--- v239/src/path_searching/src/dyn_a_star.cpp
++++ v240/src/path_searching/src/dyn_a_star.cpp
+@@ -162,9 +162,10 @@
+ 
+     // Cooperate with the existing mutually exclusive native callback lane.
+     // Queued body/cloud messages must reach the mapper during a long search,
+-    // rather than only after its 200 ms wall budget has expired. A new map
+-    // invalidates this search: the caller's existing retry starts a new round
+-    // and clears the open set. Never continue old scores on new map bytes.
++    // rather than only after its 200 ms wall budget has expired. Hold this
++    // search's immutable read snapshot while the background mapper works;
++    // the caller's original refresh/final validation adopts completed maps.
++    // Synchronous input mutations still invalidate the search below.
+     const bool live_inputs = grid_map_->planningInputsReady();
+     const auto search_revision = grid_map_->mapRevision();
+     const double search_observation = grid_map_->observationStamp();
+@@ -172,7 +173,7 @@
+     auto next_input_poll = time_1 + std::chrono::milliseconds(20);
+     const auto inputs_current = [&]() {
+         if (!live_inputs || std::chrono::steady_clock::now() < next_input_poll) return true;
+-        grid_map_->refreshSensorInputs("astar_search");
++        grid_map_->refreshSensorInputs("astar_search", -1, false);
+         next_input_poll = std::chrono::steady_clock::now() + std::chrono::milliseconds(20);
+         if (!grid_map_->planningInputsReady() || grid_map_->mapRevision() != search_revision ||
+             grid_map_->observationStamp() != search_observation ||
+--- v239/src/plan_env/include/plan_env/grid_map.h
++++ v240/src/plan_env/include/plan_env/grid_map.h
+@@ -326,6 +326,7 @@
+   // the number of FSM body_pose messages the caller applied just before (-1 if
+   // the caller applies none); it is only logged.
+   void refreshSensorInputs(const char *site, int fsm_odometry = -1);
++  void refreshSensorInputs(const char *site, int fsm_odometry, bool adopt_completed_map);
+   double collisionSegmentYaw(const Eigen::Vector3d &from, const Eigen::Vector3d &to) const;
+   bool collisionFreeSegment(const Eigen::Vector3d &from, const Eigen::Vector3d &to,
+                             int *blocked_sample = nullptr);
+--- v239/src/plan_env/src/grid_map.cpp
++++ v240/src/plan_env/src/grid_map.cpp
+@@ -1091,6 +1091,11 @@
+ 
+ void GridMap::refreshSensorInputs(const char *site, int fsm_odometry)
+ {
++  refreshSensorInputs(site, fsm_odometry, true);
++}
++
++void GridMap::refreshSensorInputs(const char *site, int fsm_odometry, bool adopt_completed_map)
++{
+   reactive_stair::PlanningProfile::Scope profile(planning_profile_, reactive_stair::PlanningProfile::Inputs);
+   // Actual occupancy/ground mutations invalidate. An empty input drain does not.
+   // v31: SCAN serves its planning and safety timers and these subscriptions on
+@@ -1158,7 +1163,7 @@
+       slidingMapFrameCallback(input.pose);
+   }
+   applyDueLiveBody();
+-  adoptMappingSnapshot();
++  if (adopt_completed_map) adoptMappingSnapshot();
+   const double cloud_age_after = now - mapState().reactive_cloud_stamp_s_;
+   const double body_age_after = now - reactive_body_stamp_s_;
+   const std::string where(site);

@@ -72,6 +72,38 @@ source remainsv232; accepted selection staysv232/v233 pending separate review.
 40901's writer-backlog failure remains retained and unresolved. See the
 [same-host three-way comparison](../audits/2026-10-17_v237_gpu5070ti_physical/RESULTS.md).
 
+## Terminal-approach repair candidate — v238
+
+[v238](v238/RESULTS.md) removes an avoidable200ms goal-neighborhood search on
+continuing reference rounds, retaining actual terminal recovery and all hard
+gates. The v237 audit attributes both observed stops to search-induced evidence
+expiry followed by explicit emergency Bspline publication. The corrected audit
+finds two>=0.5s measured low-speed episodes, cumulative1.21933s, rather than
+calling their entire cluster stopped time.12 native programs/97 cases,4
+boundary checks and5 metric tests pass; original317 source/607 installed files
+remain unchanged. Ordered replay preserves50/50 staircase and88/91 approach
+complete-plan successes while removing88 unnecessary approach goal searches.
+Seven approach calls still exceed100ms; continuous-clock/no-hesitation and new
+physical execution remain unvalidated. This is a **partial offline candidate**,
+not a baseline promotion; v232/v233 stays selected.
+
+## Real-clock terminal continuity — v239 rejected, v240 passed offline
+
+[v239](v239/RESULTS.md) drains inputs during A* but cancels searches when new
+maps are adopted. It has zero emergency messages but a0.184561s expired-active-
+curve gap; the candidate is rejected.
+
+[v240](v240/RESULTS.md) delivers inputs while holding the search snapshot;
+original caller/final publication gates adopt and check completed maps. Two
+real-clock109–114.5s repeats have155/159 and151/157 successful rounds, zero
+emergency messages and zero expired-active-curve gaps. The45–55s control has
+298/298 successes with zero emergency/gap.97 native cases,4 boundary contracts,
+141 recorded times,10 audit tests and two snapshot/admission contracts pass.
+Original source/install hashes remain intact. **Offline native continuity
+only:** recorded body motion cannot establish improved physical pauses,
+stance or arrival. No new physics/video or baseline adoption; RL/endpoints/
+.35m/.1s are unchanged. v232/v233 remains selected.
+
 | Version | One change | Evidence status |
 |---|---|---|
 | v3 | Registered current empty 12 m PD/RL baseline | One bounded trial validated; not generally stable |
