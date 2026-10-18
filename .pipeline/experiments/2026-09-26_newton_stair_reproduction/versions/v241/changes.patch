@@ -1,0 +1,267 @@
+--- v237/launch.py
++++ v241/launch.py
+@@ -1,4 +1,4 @@
+-"""One original-route physical trial of frozen v232 navigation and v216 locomotion."""
++"""One original-route physical trial of frozen v240 with the v237 scanner repair."""
+ from pathlib import Path
+ import hashlib
+ import importlib.util
+@@ -16,12 +16,12 @@
+ HERE=Path(__file__).resolve().parent
+ ROOT=next(p for p in HERE.parents if (p/'AGENTS.md').is_file())
+ BASE=ROOT/'.pipeline/experiments/2026-09-26_newton_stair_reproduction'
+-VERSIONS=BASE/'versions';V196=VERSIONS/'v196';V198=VERSIONS/'v198';V206=VERSIONS/'v206';V216=VERSIONS/'v216';V219=VERSIONS/'v237'
++VERSIONS=BASE/'versions';V196=VERSIONS/'v196';V198=VERSIONS/'v198';V206=VERSIONS/'v206';V216=VERSIONS/'v216';V219=VERSIONS/'v241'
+ REMOTE=Path('/data/sun/vla_mppi_20261009')
+-TASK=REMOTE/'trials/v237_linux_full_attempt01'
++TASK=REMOTE/'trials/v241_linux_full_attempt01'
+ UNDERLAY=REMOTE
+-WORK=REMOTE/'callback_failure_v232'
+-RUN='v237_linux_full_attempt01';CONTAINER='v237-linux-full-attempt01'
++WORK=REMOTE/'cooperative_search_v240'
++RUN='v241_linux_full_attempt01';CONTAINER='v241-linux-full-attempt01'
+ PYTHON=Path('/home/sun/vla_exec/envs/newton_worker/bin/python')
+ IMAGE='sha256:5a41a25fb20b6e77ce890974cea27ee59d93533346eaf7df83f56e74303b4bd4'
+ sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+@@ -36,10 +36,21 @@
+ def verify_sources():
+     original=module(VERSIONS/'v233/launch.py','v233_original_host')
+     checked=original.verify_sources()
++    frozen=VERSIONS/'v240'
++    manifest=json.loads((frozen/'manifest.json').read_text())
++    assert manifest['frozen'] and manifest['offline_continuity_acceptance_passed']
++    for group in ('files','result_files'):
++        for rel,expected in manifest.get(group,{}).items():assert sha(frozen/rel)==expected,rel
++    for group in ('source_inventory','installed_files'):
++        inventory=json.loads((frozen/'results'/(group+'.json')).read_text())
++        for rel,expected in inventory.items():assert sha(WORK/rel)==expected,rel
++    checked.update(native_source_version='v240',v240_manifest=sha(frozen/'manifest.json'),
++        v240_source_inventory=sha(frozen/'results/source_inventory.json'),
++        v240_installed_inventory=sha(frozen/'results/installed_files.json'))
+     identity=json.loads((HERE/'source_identity.json').read_text())
+     for rel,expected in identity['files'].items():assert sha(HERE/rel)==expected,rel
+     checked.update(execution_source_identity=sha(HERE/'source_identity.json'),
+-        execution='v237',scanner_parent='v236',sensor_period_s=.1)
++        execution='v241',scanner_parent='v237',sensor_period_s=.1)
+     return checked
+ 
+ def supervisor():
+@@ -57,8 +68,8 @@
+     sys.path.insert(0,str(V196))
+     source=(V196/'run_local_episode.py').read_text()
+     changes={
+-      'if integration_version != "v196":':'if integration_version != "v237":',
+-      'This entry point requires frozen integration version v196':'This trial requires frozen integration version v237',
++      'if integration_version != "v196":':'if integration_version != "v241":',
++      'This entry point requires frozen integration version v196':'This trial requires frozen integration version v241',
+       'qualification = json.loads((VERSION / "quality.json").read_text())':'qualification = runtime_qualification()',
+       'shutil.copyfile(VERSION / "long_route_driver.py", out / "executed_long_route_driver.py")':'shutil.copyfile(FROZEN_NAVIGATION / "long_route_driver.py", out / "executed_long_route_driver.py")',
+       'str(VERSION / "native_graph.py")':'str(NAVIGATION_VERSION / "native_graph.py")',
+@@ -78,15 +89,15 @@
+     namespace={'__file__':str(V196/'run_local_episode.py'),'__name__':'trial_episode'}
+     exec(compile(source,str(out/'executed_trial_entry.py'),'exec'),namespace)
+     def version_check(destination,version):
+-        assert version=='v237';write(destination/'source_gate.json',verify_sources())
++        assert version=='v241';write(destination/'source_gate.json',verify_sources())
+         for name in ('native_graph.py','long_route_driver.py'):
+             shutil.copyfile(VERSIONS/'v232'/name,destination/('frozen_v232_'+name))
+-        write(destination/'v232_runtime_binding.json',dict(execution='v237',navigation='v232',install=str(WORK/'install'),
+-            sources={name:sha(VERSIONS/'v232'/name) for name in ('native_graph.py','long_route_driver.py')},offline_gate_sha256=sha(WORK/'offline_gate.json')))
++        write(destination/'v240_runtime_binding.json',dict(execution='v241',navigation='v240',install=str(WORK/'install'),
++            sources={name:sha(VERSIONS/'v232'/name) for name in ('native_graph.py','long_route_driver.py')},offline_gate_sha256=sha(VERSIONS/'v240/results/offline_gate.json')))
+         shutil.copyfile(V219/'manifest.json',destination/'integration_version.json')
+         return version
+     def qualification():
+-        summary=json.loads((WORK/'offline_gate.json').read_text())
++        summary=json.loads((VERSIONS/'v240/results/offline_gate.json').read_text())
+         assert summary['passed']
+         return dict(passed=True,native_packages_available=14,execution_platform='linux/amd64')
+     def actual_source(name):
+@@ -102,13 +113,13 @@
+     sys.argv=[str(HERE/'launch.py'),'--backend-executor','single','--applied-transport','shared',
+         '--geometry-obstacles','--scene','building_full','--building-route','historical_full',
+         '--goal-wall-budget','1500','--startup-mode','factory_pd','--stance-hold',
+-        '--integration-version','v237','--native-build',str(V219),'--real-time-factor','1','--recording-sim-seconds','600']
++        '--integration-version','v241','--native-build',str(V219),'--real-time-factor','1','--recording-sim-seconds','600']
+     namespace['main']()
+ 
+ def graph_probe(env):
+     out=TASK/'graph_probe';out.mkdir()
+     (out/'artifacts/external_episode').mkdir(parents=True)
+-    write(out/'episode_request.json',dict(integration_version='v237',native_variant='candidate',probe=True,
++    write(out/'episode_request.json',dict(integration_version='v241',native_variant='candidate',probe=True,
+         run_epoch_ns=time.time_ns(),scene='building_full',geometry_obstacles=True,applied_transport='shared',
+         building_route_profile='historical_full',goal_wall_budget_s=1500,startup_mode='factory_pd'))
+     shutil.copyfile(V196/'building_planner.yaml',out/'planner.yaml')
+@@ -123,9 +134,9 @@
+                 time.sleep(.5)
+             for log_path in out.glob('*.log'):
+                 assert 'Traceback (most recent call last)' not in log_path.read_text(errors='replace'),log_path
+-            module(VERSIONS/'v233/verify_profile.py','v237_profile_gate').verify(out)
++            module(VERSIONS/'v233/verify_profile.py','v241_profile_gate').verify(out)
+             write(HERE/'graph_preflight.json',dict(passed=True,seconds=12,physics_steps=0,
+-                source='v232 navigation with shared scoring/height/feedback; original v219 physics',output=str(out)))
++                source='v240 native overlay; frozen v232 graph/driver and v237 scanner physics',output=str(out)))
+         finally:
+             subprocess.run(['docker','exec',CONTAINER,'pkill','-TERM','-f',str(V219/'native_graph.py')],env=env,capture_output=True,timeout=10)
+             process.wait(timeout=15)
+@@ -154,14 +165,15 @@
+         '-e','PYTHONDONTWRITEBYTECODE=1','-e','OPENBLAS_NUM_THREADS=1','-e','OMP_NUM_THREADS=1',
+         '-e','ROS_LOG_DIR='+str(TASK/'ros_logs'),'-e','ROS_HOME='+str(TASK/'ros_home'),
+         '--network=host','--add-host','host.docker.internal:127.0.0.1','-v',f'{ROOT}:{ROOT}:ro','-v',f'{ROOT}:/repo:ro',
+-        '-v',f'{UNDERLAY}:/task:ro','-v',f'{WORK}:/work:ro','-v',f'{TASK}:{TASK}:rw',
++        '-v',f'{UNDERLAY}:/task:ro','-v',f'{WORK}:/work:ro',
++        '-v',f'{REMOTE}/callback_failure_v232/fixtures:/work/fixtures:ro','-v',f'{TASK}:{TASK}:rw',
+         '--entrypoint','/bin/bash',IMAGE,'-c','exec sleep infinity']
+     write(HERE/'execution_request.json',dict(run=RUN,source_identity=identity,image=IMAGE,command=command,
+-        raw_root=str(TASK/'runs'/RUN),physics='Linux x86_64 Warp CPU',navigation='v232 shared score + support height + mission feedback',locomotion='v216 supported transfer',integration='v237'))
++        raw_root=str(TASK/'runs'/RUN),physics='Linux x86_64 Warp CPU',navigation='v240 terminal continuity on v232 shared score/height/feedback',locomotion='v216 supported transfer',integration='v241'))
+     started=time.monotonic();code=1
+     try:
+         subprocess.run(command,env=env,check=True,capture_output=True,timeout=30)
+-        shell='source /opt/ros/foxy/setup.bash && source /task/recovery_v188/install/setup.bash && source /task/command_continuity_v206_20261015/install/setup.bash && source /work/install/setup.bash && python3 '+shlex.quote(str(VERSIONS/'v233/preflight.py'))
++        shell='source /opt/ros/foxy/setup.bash && source /task/recovery_v188/install/setup.bash && source /task/command_continuity_v206_20261015/install/setup.bash && source /work/install/setup.bash && python3 '+shlex.quote(str(HERE/'preflight.py'))
+         preflight=subprocess.check_output(['docker','exec',CONTAINER,'/bin/bash','-c',shell],env=env,text=True,timeout=30)
+         (HERE/'native_preflight.json').write_text(preflight)
+         graph_probe(env)
+@@ -171,7 +183,7 @@
+         subprocess.run(['docker','rm','-f',CONTAINER],env=env,check=True,capture_output=True,timeout=30)
+         subprocess.run(command,env=env,check=True,capture_output=True,timeout=30)
+         assert (HERE/'manifest.json').is_file(), 'Freeze execution identity before physics'
+-        with (REMOTE/'evidence/v237_physical_launch_once.json').open('x') as ledger:
++        with (REMOTE/'evidence/v241_physical_launch_once.json').open('x') as ledger:
+             json.dump(dict(run=RUN,authorized_attempts=1,started_ns=time.time_ns()),ledger)
+         os.environ.update(env)
+         sys.path.insert(0,str(VERSIONS/'v51'));import managed_run
+@@ -189,5 +201,5 @@
+     elif '--episode' in sys.argv:episode()
+     else:
+         if '--preflight-only' in sys.argv:
+-            TASK=REMOTE/'trials/v237_linux_preflight01';RUN='v237_linux_preflight01';CONTAINER='v237-linux-preflight01'
++            TASK=REMOTE/'trials/v241_linux_preflight01';RUN='v241_linux_preflight01';CONTAINER='v241-linux-preflight01'
+         launch()
+--- v237/native_graph.py
++++ v241/native_graph.py
+@@ -5,9 +5,9 @@
+ source=FROZEN.read_text()
+ before='request.get("integration_version") != "v232"'
+ assert source.count(before)==1
+-source=source.replace(before,'request.get("integration_version") != "v237"')
+-source=source.replace('v232 execution requires its v230 navigation binding','v237 execution requires its frozen v232 navigation binding')
+-namespace={'__file__':str(FROZEN),'__name__':'v237_frozen_v232_graph'}
++source=source.replace(before,'request.get("integration_version") != "v241"')
++source=source.replace('v232 execution requires its v230 navigation binding','v241 execution requires its frozen v232 navigation binding')
++namespace={'__file__':str(FROZEN),'__name__':'v241_frozen_v232_graph'}
+ exec(compile(source,str(FROZEN),'exec'),namespace)
+ if __name__=='__main__':
+     namespace['main']()
+--- v237/newton_episode.py
++++ v241/newton_episode.py
+@@ -1,61 +1,24 @@
+-"""v198 physics/rays and v216 locomotion; repair only captured-scan scheduling."""
++"""Reuse v237 physics/scanner bytes; update execution metadata only."""
++from pathlib import Path
+ import hashlib
+-import importlib.util
+ import json
+ import os
+-from pathlib import Path
+ import sys
+ 
+ HERE = Path(__file__).resolve().parent
+-VERSIONS = HERE.parent
+-
+-
+-def recorder_source():
+-    frozen = VERSIONS / 'v198/newton_episode.py'
+-    source = frozen.read_text()
+-    changes = {
+-        'future = scanner.submit(lidar.scan, scan_index, actor_time, override_pose=pose, captured_state=captured_state)':
+-            'future = SCAN_DEADLINE.submit(scanner, lidar.scan, scan_index, actor_time, override_pose=pose, captured_state=captured_state)',
+-        'publish_scan(future.result(), index, captured_pose, captured_time)':
+-            'publish_scan(SCAN_DEADLINE.result(future), index, captured_pose, captured_time)',
+-        'publish_scan(future.result(timeout=2.), index, captured_pose, captured_time)':
+-            'publish_scan(SCAN_DEADLINE.result(future), index, captured_pose, captured_time)',
+-        '                        if pending_scan is not None:\n                            raise RuntimeError("Captured scan did not finish before the next sensor period")':
+-            '                        if pending_scan is not None:\n                            future, index, captured_pose, captured_time = pending_scan\n                            publish_scan(SCAN_DEADLINE.result(future), index, captured_pose, captured_time)\n                            pending_scan = None',
+-    }
+-    for before, after in changes.items():
+-        assert source.count(before) == 1, before
+-        source = source.replace(before, after)
+-    return frozen, source, changes
+-
+-
+-def main():
+-    from scan_deadline import ScanDeadline, PERIOD_S
+-    spec = importlib.util.spec_from_file_location('v237_locomotion', VERSIONS / 'v216/activate.py')
+-    locomotion = importlib.util.module_from_spec(spec)
+-    spec.loader.exec_module(locomotion)
+-    adapter = locomotion.install()
++FROZEN = HERE.parent/'v237/newton_episode.py'
++source = FROZEN.read_text()
++before = "integration='v237', navigation='v232'"
++assert source.count(before) == 1
++source = source.replace(before, "integration='v241', navigation='v240'")
++sys.path.insert(0, str(FROZEN.parent))
++namespace = dict(__file__=str(FROZEN), __name__='v241_frozen_v237_recorder')
++exec(compile(source, str(FROZEN), 'exec'), namespace)
++if __name__ == '__main__':
+     out = Path(os.environ['NEWTON_RUN_DIR'])
+-    sources = [HERE / 'scan_deadline.py', Path(__file__), VERSIONS / 'v216/activate.py',
+-               Path(adapter.__file__), adapter.SOURCE, VERSIONS / 'v198/newton_episode.py']
+-    (out / 'locomotion_activation.json').write_text(json.dumps(dict(integration='v237', navigation='v232',
+-        locomotion='v216', adapter_loaded_before_robot_construction=True,
+-        files={str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}), indent=2)+'\n')
+-    frozen, source, changes = recorder_source()
+-    executed = out / 'executed_v237_recorder.py'
+-    executed.write_text(source)
+-    (out / 'v237_recorder_binding.json').write_text(json.dumps(dict(period_s=PERIOD_S,
+-        parent_source_sha256=hashlib.sha256(frozen.read_bytes()).hexdigest(),
+-        executed_source_sha256=hashlib.sha256(source.encode()).hexdigest(), changes=changes,
+-        raycast_or_capture_timestamps_changed=False), indent=2)+'\n')
+-    deadline = ScanDeadline()
+-    namespace = dict(__file__=str(frozen), __name__='v237_original_physical_recorder', SCAN_DEADLINE=deadline)
+-    try:
+-        exec(compile(source, str(executed), 'exec'), namespace)
+-        namespace['main']()
+-    finally:
+-        deadline.save(out / 'scan_timing.jsonl')
+-
+-
+-if __name__ == '__main__':
+-    main()
++    (out/'v241_recorder_adapter.json').write_text(json.dumps(dict(
++        frozen_v237_sha256=hashlib.sha256(FROZEN.read_bytes()).hexdigest(),
++        adapted_source_sha256=hashlib.sha256(source.encode()).hexdigest(),
++        change='Execution metadata only; v237 recorder transformations and scanner deadline unchanged',
++        navigation='v240', execution='v241', physics_steps_before_main=0), indent=2)+'\n')
++    namespace['main']()
+--- v237/preflight_runner.py
++++ v241/preflight_runner.py
+@@ -15,20 +15,20 @@
+     env=os.environ.copy()
+     env.update(PYTHONDONTWRITEBYTECODE='1',OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',
+         PATH=str(HERE.parent/'v233/bin')+':'+env['PATH'],
+-        WARP_CACHE_PATH=str(PREFIX/'v237_scan_probe_cache'))
++        WARP_CACHE_PATH=str(PREFIX/'v241_scan_probe_cache'))
+     commands=[
+-        ('tests01',[sys.executable,str(HERE/'test_scan_deadline.py')]),
+-        ('scan_probe01',[sys.executable,str(HERE/'probe_scans.py'),'--output',str(EVIDENCE/'v237_scan_probe01.json'),'--scans','50','--fixed','--flexible']),
++        ('tests01',[sys.executable,str(HERE.parent/'v237/test_scan_deadline.py')]),
++        ('scan_probe01',[sys.executable,str(HERE.parent/'v237/probe_scans.py'),'--output',str(EVIDENCE/'v241_scan_probe01.json'),'--scans','50','--fixed','--flexible']),
+         ('preflight01',[sys.executable,str(HERE/'launch.py'),'--preflight-only'])]
+     reports=[]
+     for name,command in commands:
+-        with (EVIDENCE/('v237_'+name+'.log')).open('x') as log:
++        with (EVIDENCE/('v241_'+name+'.log')).open('x') as log:
+             started=time.monotonic()
+             result=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=300)
+         reports.append(dict(name=name,command=command,exit_code=result.returncode,wall_s=time.monotonic()-started))
+-        (EVIDENCE/'v237_preflight_steps.json').write_text(json.dumps(reports,indent=2)+'\n')
++        (EVIDENCE/'v241_preflight_steps.json').write_text(json.dumps(reports,indent=2)+'\n')
+         print(json.dumps(reports[-1]),flush=True)
+         if result.returncode:raise SystemExit(result.returncode)
+-    (EVIDENCE/'v237_preflight_passed.json').write_text(json.dumps(dict(passed=True,physics_steps=0,steps=reports),indent=2)+'\n')
++    (EVIDENCE/'v241_preflight_passed.json').write_text(json.dumps(dict(passed=True,physics_steps=0,steps=reports),indent=2)+'\n')
+ 
+ if __name__=='__main__':main()

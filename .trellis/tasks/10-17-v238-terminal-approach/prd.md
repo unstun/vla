@@ -34,3 +34,14 @@ hesitation metrics. No new physical run is requested or authorized here.
  a separately authorized new physical route can validate changed real motion.
 5. Return compact native tests, source/install hashes and exact cause report;
  keep clouds/maps/build caches remote. No physical rerun or shared-job change.
+
+## Authorized physical continuation —2026-10-18
+
+Dr Sun reviewed the offline result and authorized committing v238–v240,
+then one complete original-route physical simulation on gpu5070ti. Use frozen
+v240 with the v237 scanner deadline repair, unchanged RL/.35m/.1s/endpoints.
+Execution binding isv241. No second physical attempt is authorized. Check
+109–115s approach emergency and measured>=0.5s stops,45–55s stairs/stops/edge
+margin, original route/arrival/PD. Return full video and v237 side-by-side.
+Keep all failed evidence, report shifted route-relative approach separately,
+and preserve selectedv232/v233 pending a separate adoption decision.
