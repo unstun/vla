@@ -1,11 +1,11 @@
 {
   "id": "v234-gpu40901-migration",
   "name": "v234-gpu40901-migration",
-  "title": "Migrate frozen v232/v233 to gpu40901 with v234 host binding",
-  "description": "User-authorized migration of the frozen v232/v233 Newton/Foxy runtime to gpu40901. Preserve RL, original endpoints and0.35m hard guards; isolate existing IsaacLab. Stop at offline/source/graph gates and report before any full-route physics.",
-  "status": "in_progress",
+  "title": "Evaluate gpu40901 migration and validate return to gpu5070ti",
+  "description": "Operational offline migration to40901 passed; v235/v236 physical failures are retained. At user direction, return to5070Ti asv237 and validate one original continuous route with v232 native/v236 scanner repair, unchanged RL/endpoints/.35m guards/.1s captures. Route/terminal and local video delivery pass; human review pending.",
+  "status": "review",
   "dev_type": null,
-  "scope": "Newton v234 gpu40901 host binding and offline preparation",
+  "scope": "Newton host migration evaluation and v237 original-host route validation",
   "package": "newton-stair-reproduction",
   "priority": "P2",
   "creator": "sun",
@@ -22,18 +22,24 @@
   "parent": null,
   "relatedFiles": [
     ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v234",
-    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/README.md"
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/README.md",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v237",
+    ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-17_v237_gpu5070ti_physical"
   ],
-  "notes": "v236 fixes early native-clock scan rejection and hot2-CPU scheduling. Seven regression tests and550 zero-step original-ray cases pass; real4-CPU quota verified, policy/ray bytes retained. Exactly one new physical route attempted:245 scans, no LiDAR deadline failure; stops at35.5920677s on original evidence writer backlog>256. Goal sent, route/stairs/terminal still unvalidated. Returning immutable-prefix comparison video; no automatic rerun. Final package check corrects partial-analysis omission: original FAILED finish_request exists (Geometric sensing became unhealthy); result.json remains absent.",
+  "notes": "v236 fixes early native-clock scan rejection and hot2-CPU scheduling. Seven regression tests and550 zero-step original-ray cases pass; real4-CPU quota verified, policy/ray bytes retained. Exactly one new physical route attempted:245 scans, no LiDAR deadline failure; stops at35.5920677s on original evidence writer backlog>256. Goal sent, route/stairs/terminal still unvalidated. Returning immutable-prefix comparison video; no automatic rerun. Final package check corrects partial-analysis omission: original FAILED finish_request exists (Geometric sensing became unhealthy); result.json remains absent. User selects gpu5070ti again; live host/source/install identity passes. v237 owns the original-host continuation;40901 evidence retained. v237 on gpu5070ti passes one original-route/terminal trial:124.223358s, XY0.118992m, PD4.377594s;1132 scans zero deadlines, max30.209ms;45\u201355s296/296 rounds, zero pauses.40901 backlog unresolved; baseline selection unchanged pending review.",
   "meta": {
     "stage": "experiment_and_analysis",
     "external_dependency": null,
     "migration_offline_acceptance": true,
     "historical_audit_pending_optional": true,
-    "next_step": "Diagnose shared execution-state/evidence single-writer queue; preserve256 bound and request a separate new trial only after a verified fix.",
-    "physical_execution_version": "v236",
+    "next_step": "Human review of v237 original-host validation; retain v232/v233 accepted selection until separately adopted. Default further execution to gpu5070ti;40901 writer backlog and sustained30Hz remain unresolved.",
+    "physical_execution_version": "v237",
     "physical_attempts": 1,
-    "physical_acceptance": false,
-    "physical_attempts_v236": 1
+    "physical_acceptance": true,
+    "physical_attempts_v236": 1,
+    "execution_host": "gpu5070ti",
+    "physical_acceptance_host": "gpu5070ti",
+    "gpu40901_physical_acceptance": false,
+    "physical_attempts_v237": 1
   }
 }

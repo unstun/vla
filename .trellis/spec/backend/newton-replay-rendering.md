@@ -267,3 +267,29 @@ from its completed six-run acceptance denominator.
    original spatial profile and execute its complete path continuously. One
    completed episode remains separate from repeated-route reliability and
    earlier corner-only acceptance.
+
+
+## Version-relative source snapshots in the v237 display adapter
+
+1. **Scope:** v237 keeps current files and `source/<name>` snapshots relative
+   to its version directory. The older v220 renderer treats the presence of
+   `snapshot_locations` as a repository-relative layout; that inference fails
+   before rendering (`repo/PLAN.md` missing). Keep the frozen manifest intact.
+2. **Signature:** the audit's `verify_manifest(version)` delegates other versions
+   to the original v220 checker; v237 resolves current/snapshot paths against
+   `BASE/versions/v237` and returns the actual manifest SHA-256.
+3. **Contract:** assert `frozen`, `source_identity_sha256`, every `source_files`
+   current hash and its matching `snapshot_locations` hash. Preserve the failed
+   render root and use `video_v237_render02` for the corrected replay.
+4. **Errors:** missing current/snapshot, changed digest or identity mismatch
+   rejects rendering. A layout mismatch changes path resolution only; it never
+   permits skipping current/snapshot checks or changing the physical manifest.
+5. **Cases:** old repository-relative parents still use their original checker;
+   the version-relative v237 snapshot passes both current and preserved hashes.
+   Treating all snapshots as repository-relative fails the first render.
+6. **Checks:** run actual full recorded-state replay and the original causal
+   frame/overlay/MP4 checker; assert zero physics and unchanged capture hashes.
+   Keep first failed source/logs and the subsequent executed adapter identity.
+7. **Wrong/correct:** do not delete `snapshot_locations` to appease an old
+   consumer. Adapt the declared layout at the display boundary and verify both
+   copies. Evidence:2026-10-17_v237_gpu5070ti_physical/render_run.py.

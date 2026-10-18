@@ -41,3 +41,14 @@ No physical acceptance, no archive/commit, no shared IsaacLab changes.
 - Final61 returned payloads /16,751,665bytes pass local SHA/size checks;1108 partial frames,3708 four-way comparison frames,301 stair-window frames pass full decode; direct25s/tail/stair visual inspection passes. No CMakeFiles, binaries, raw arrays or cache included.
 - Package assertion caught a hardcoded finish-absence report. Corrected analysis02 reads original FAILED finish_request; first-pass reports/sources retained. No raw/source runtime modification.
 - Local11-file v236 frozen source and executed audit source hashes / Python syntax pass. Full-route task remains open; do not archive as accepted.
+
+## v237 original-host continuation
+- User selects gpu5070ti again. Live source gate verifies original317 sources/607 installed files; idle host, no active simulation/training containers. No shared job/package mutation.
+- Seven regressions,250 zero-step original-ray/catch-up cases (max24.203205ms), policy golden and actual12s graph/profile pass. Frozen8-file current/snapshot identity preserved.
+- Exactly one new physics launch: FINISHED at124.223358s, exit0, route gate passes original endpoints/continuity/no-fall/final held pose. XY0.118992m, yaw0.120769rad, height0.001677m; final PD4.377594s/220 samples.
+-1132 completed scans,0 deadline failures, max30.208718ms.45–55s296/296 successful rounds,0 pauses>=1s. ENV225 installed-field probe100 known samples: min extra margin0.128962663m,0 negative,95% at.15m cap.
+- Original archive330,322,822bytes/1136 members verified; SHAfb4d1eab6dfaa92d3d485d8319b4cfa330003a8dd317b24cc76fbdd60f0d92f2. No physical rerun during display work.
+- Full qualification/sustained30Hz remain false. Mean successful local25.591114Hz; max308.107173ms. Single-route acceptance is distinct from reliability/performance targets.
+- First renderer rejected version-relative snapshot paths before frames. Corrected only display path resolution, preserving every hash check and failed root; full recorded-state render/causal-frame checker passes on attempt02.
+- Final77 declared payloads /34,009,167bytes pass local SHA/size verification, with original causal-frame/host/quality supplementary receipts cross-hashed.3720 individual frames,3728 full comparison frames,301 stair frames pass full decode; initial/stair/tail visual inspection passes. No CMakeFiles, binaries, raw arrays or cache returned.
+- Source commit6a9e531c records frozen v237; evaluation is now ready for review. No baseline adoption or claim that40901's queue is repaired. Future execution host follows user selection:gpu5070ti.

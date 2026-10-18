@@ -28,7 +28,7 @@ establishes conventions.
 | [Newton Replay Rendering](./newton-replay-rendering.md) | Authored material, linear color, visibility and immutable-state video | Scoped to the 2026-09-26 local experiment |
 | [Newton Artifact Retention](./newton-artifact-retention.md) | Streaming MP4, bounded post-run retention, verified archives and restoration | Default for new Newton recording/rendering work |
 | [Newton Linux Execution](./newton-linux-execution.md) | gpu5070ti host port, same-host comparison and output ownership | v123/v124 execution scope |
-| [Captured LiDAR Deadline](./newton-lidar-deadline.md) | Absolute100ms scan budget, native-clock catch-up and own CPU quota/affinity | v236 gpu40901 scanner repair |
+| [Captured LiDAR Deadline](./newton-lidar-deadline.md) | Absolute100ms scan budget, native-clock catch-up and own CPU quota/affinity | v236 repair; v237 original-host validation |
 | [Newton Contact Capacity](./newton-contact-capacity.md) | Native capacity estimation, speculative-contact scoring and geometry-only input gates | Scoped to the 2026-09-26 local experiment |
 | [Newton PD Startup](./newton-pd-startup.md) | Pinned SDK crouch/stand control, measured policy handoff and navigation gating | Scoped to the 2026-09-27 flat startup trial |
 | [Newton PD Hold](./newton-stance-hold.md) | Existing PD/RL state machine, measured foot support and long-route execution | Scoped to the 2026-09-27 empty-floor trial |

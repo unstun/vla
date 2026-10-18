@@ -59,6 +59,19 @@ goal and moves, then stops at35.592s on the unchanged evidence-writer backlog
 bound (>256). Stairs/arrival/PD remain untested; **v232/v233 remains the accepted
 single-route baseline**. See the [four-way comparison and audit](../audits/2026-10-17_v236_gpu40901_physical/RESULTS.md).
 
+## Return to gpu5070ti — v237 original route passes once
+
+At Dr Sun's direction, [v237](v237/RESULTS.md) returns to the original5070Ti
+v232 install/v233 host environment with the v236 scanner deadline repair.
+The one new route finishes at124.223358s: XY error0.118992m, final measured PD
+stand4.377594s. All1132 scans meet100ms (max30.209ms);45–55s has296/296 successful
+local rounds and0 pauses >=1s. Original RL/start/goal/.35m guards/.1s captures
+remain unchanged. **One original-route validation only**; the analyzer still
+reports full_qualification=false and sustained_30hz_validated=false. Native
+source remainsv232; accepted selection staysv232/v233 pending separate review.
+40901's writer-backlog failure remains retained and unresolved. See the
+[same-host three-way comparison](../audits/2026-10-17_v237_gpu5070ti_physical/RESULTS.md).
+
 | Version | One change | Evidence status |
 |---|---|---|
 | v3 | Registered current empty 12 m PD/RL baseline | One bounded trial validated; not generally stable |

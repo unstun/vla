@@ -1,0 +1,92 @@
+"""Render retained partial states; missing completion remains missing."""
+from pathlib import Path
+import hashlib
+import importlib.util
+import json
+import os
+import shutil
+import sys
+import types
+
+HERE = Path(__file__).resolve().parent
+BASE = HERE.parents[1]
+PREFIX = Path('/data/sun/vla_mppi_20261009')
+TASK = PREFIX / 'trials/v237_linux_full_attempt01'
+SOURCE = TASK / 'runs/v237_linux_full_attempt01'
+ROOT = TASK / os.environ.get('V237_RENDER_ROOT_NAME', 'video_v237')
+OUT = ROOT / 'runs/full01'
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def main():
+    outcome = json.loads((HERE / 'results/outcome.json').read_text())
+    assert not outcome['result_json_present']
+    assert not (SOURCE / 'result.json').exists()
+    ROOT.mkdir(exist_ok=False)
+    OUT.mkdir(parents=True)
+    (ROOT / 'cache').mkdir()
+    inputs = [SOURCE / name for name in ('video_states.json', 'factory_video_states.json',
+        'initial_state.json', 'episode_request.json', 'inputs/stair_scenario.json',
+        'clock_samples.jsonl', 'backend_states.jsonl', 'telemetry.jsonl', 'run.log', 'process.json')]
+    inputs += [HERE / 'results' / name for name in ('outcome.json', 'full_route_verification.json', 'metrics.json', 'latency.csv')]
+    contract = dict(physical_source_root=str(SOURCE), physical_source_run=SOURCE.name,
+        physical_parent='v237', native_source='v232', locomotion='v216', display_parent='v220',
+        analysis_metrics=str(HERE / 'results/metrics.json'), latency_csv=str(HERE / 'results/latency.csv'),
+        parent_manifests={v: sha(BASE / 'versions' / v / 'manifest.json') for v in ('v219', 'v216', 'v232', 'v237')},
+        input_files={str(p): sha(p) for p in inputs},
+        claim='Partial recorded states only; original result absent; recorded failed finish, if any, remains unchanged. No physics or pose interpolation.')
+    (ROOT / 'display_contract.json').write_text(json.dumps(contract, indent=2) + '\n')
+    code = (BASE / 'versions/v220/render_capture.py').read_text()
+    code = code.replace("data['source_files'].items()", "data.get('source_files',data.get('files')).items()")
+    code = code.replace("'physical_source_version': 'v219'", "'physical_source_version': 'v237'")
+    code = code.replace("'native_source_version': 'Nav2 Foxy linux/amd64 SCAN v206; v208 locomotion; v196 direct Twist recorder'", "'native_source_version': 'v232 navigation; v216 locomotion; v237 scanner adapter'")
+    namespace = {'__file__': str(HERE / 'render_partial.py'), '__name__': 'v237_partial_causal_display'}
+    exec(compile(code, str(HERE / 'render_partial.py'), 'exec'), namespace)
+    original = namespace['adapt_renderer']
+    def adapt(text, source, display):
+        text = original(text, source, display)
+        expression = 'json.loads((source / "result.json").read_text()).get("fallen", False)'
+        assert text.count(expression) == 1
+        text = text.replace(expression, 'False')
+        return text.replace('            caption = (',
+            '            if i == len(rows)-1: status = "FAILED: recorder stopped; see original failure evidence"\n            caption = (')
+    namespace['adapt_renderer'] = adapt
+    os.environ.update(NEWTON_RUN_DIR=str(OUT), V220_RENDER_ROOT=str(ROOT),
+        V220_DISPLAY_CONTRACT=str(ROOT / 'display_contract.json'),
+        WARP_CACHE_PATH=os.environ.get('V237_RENDER_CACHE', str(ROOT / 'cache')),
+        PYOPENGL_PLATFORM='egl', PYGLET_HEADLESS='1', CUDA_VISIBLE_DEVICES='',
+        OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1')
+    sys.path.insert(0, str(BASE / 'versions/v220'))
+    sys.argv = [str(HERE / 'render_partial.py')]
+    spec = importlib.util.spec_from_file_location('v237_render_locomotion', BASE / 'versions/v216/activate.py')
+    locomotion = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(locomotion)
+    locomotion.install()
+    namespace['main']()
+    from full_timeline import load_rows
+    wanted = load_rows(SOURCE)
+    frames = json.loads((OUT / 'frames.json').read_text())
+    assert len(frames) == len(wanted)
+    for frame, row in zip(frames, wanted):
+        assert frame['source_state_index'] == row['source_state_index']
+        assert frame['physics_time_s'] == row['physics_time_s']
+    result = json.loads((OUT / 'result.json').read_text())
+    assert result['render_only_no_physics_steps'] and result['integration_version'] == 'v237'
+    assert not (SOURCE / 'result.json').exists()
+    verification = json.loads((OUT / 'video_verification.json').read_text())
+    assert verification['full_decode_passed']
+    for path, expected in contract['input_files'].items():
+        assert sha(Path(path)) == expected, path
+    proof = dict(passed=True, render_root=str(ROOT), partial_recording=True, frames=len(frames), physics_end_s=frames[-1]['physics_time_s'],
+        full_decode_passed=True, original_result_still_absent=True, goal_sent=outcome['goal_sent'],
+        render_only_no_physics_steps=True, video_sha256=sha(OUT / 'newton_stair_recorded.mp4'))
+    (HERE / 'results/partial_video_verification.json').write_text(json.dumps(proof, indent=2) + '\n')
+    shutil.copyfile(OUT / 'newton_stair_recorded.mp4', HERE / 'delivered/v237_partial_attempt01.mp4')
+    print(json.dumps(proof), flush=True)
+
+
+if __name__ == '__main__':
+    main()
