@@ -1,0 +1,83 @@
+--- a/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ b/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -173,6 +173,8 @@
+     bool adjustGlobalTargetIfOccupied();
+     bool adjustGlobalTargetIfOccupied(const Eigen::Vector3d &query_start,
+         const char **failure_reason = nullptr, int *failure_sample = nullptr);
++    bool adjustGlobalTargetIfOccupied(const Eigen::Vector3d &query_start,
++        const char **failure_reason, int *failure_sample, bool prefer_forward_reference);
+     bool getLocalTarget();
+     void finishProcess();
+     void publishSelfInflationMarker();
+--- a/src/plan_manage/src/scan_replan_fsm.cpp
++++ b/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -415,6 +415,12 @@
+   bool SCANReplanFSM::adjustGlobalTargetIfOccupied(const Eigen::Vector3d &query_start,
+       const char **failure_reason, int *failure_sample)
+   {
++    return adjustGlobalTargetIfOccupied(query_start, failure_reason, failure_sample, false);
++  }
++
++  bool SCANReplanFSM::adjustGlobalTargetIfOccupied(const Eigen::Vector3d &query_start,
++      const char **failure_reason, int *failure_sample, bool prefer_forward_reference)
++  {
+     const auto reject = [&](const char *reason, int sample = -1) {
+       if (failure_reason) *failure_reason = reason;
+       if (failure_sample) *failure_sample = sample;
+@@ -446,6 +452,47 @@
+     if (reference ? final_occ == 0 : final_occ <= 0) {
+       if (reference) reference_frontier_time_ = duration;
+       return true;
++    }
++
++    if (reference && prefer_forward_reference) {
++      // A continuing local round does not need a new path to an occupied final
++      // goal while the admitted reference still offers forward progress. The
++      // old goal-neighborhood search could block this callback for 200 ms,
++      // starving input delivery and expiring otherwise valid cloud evidence.
++      // Route admission and actual terminal-neighbor recovery keep their
++      // original search. This is only a proposal: seed edges, complete spline,
++      // newest-input checks and publication revision gates still decide.
++      if (!map->planningInputsReady()) {
++        RCLCPP_WARN(node_->get_logger(),
++            "reference_inputs_not_ready now=%.9f observation_stamp=%.9f",
++            node_->now().seconds(), map->observationStamp());
++        return reject("planning_inputs_not_ready");
++      }
++      double projection = 0.0;
++      double distance = std::numeric_limits<double>::infinity();
++      for (int i = 0; i <= sample_num; ++i) {
++        const double t = duration * i / sample_num;
++        const Eigen::Vector3d pt = global_data.getPosition(t);
++        if (!pt.allFinite()) return reject("nonfinite_sample_geometry", i);
++        const double d = (pt-query_start).squaredNorm();
++        if (d < distance) { distance = d; projection = t; }
++      }
++      for (int i = sample_num; i >= 0; --i) {
++        const double t = duration * i / sample_num;
++        if (t <= projection) break;
++        const Eigen::Vector3d pt = global_data.getPosition(t);
++        const Eigen::Vector3d prev = global_data.getPosition(duration * std::max(0,i-1) / sample_num);
++        const double yaw = estimateYawFromSegment(prev,pt);
++        if (!pt.allFinite() || !prev.allFinite() || !std::isfinite(yaw))
++          return reject("nonfinite_sample_geometry", i);
++        if (planner_manager_->hasLocalTranslation(query_start,pt) && map->getInflateOccupancy(pt,yaw)==0) {
++          reference_frontier_time_ = t;
++          RCLCPP_INFO(node_->get_logger(),
++              "reference_forward_frontier time=%.12f full_duration=%.12f projection=%.12f xyz=[%.12f,%.12f,%.12f]",
++              t,duration,projection,pt.x(),pt.y(),pt.z());
++          return true;
++        }
++      }
+     }
+ 
+     if (reference) {
+@@ -1682,7 +1729,7 @@
+           !odom_pos_.allFinite() || !end_pt_.allFinite() ||
+           !std::isfinite(max_vel) || max_vel <= 0.0 || !std::isfinite(max_acc) ||
+           !std::isfinite(planning_horizon_) || planning_horizon_ <= 0.0 ||
+-          !adjustGlobalTargetIfOccupied()) {
++          !adjustGlobalTargetIfOccupied(start_pt_, nullptr, nullptr, true)) {
+         feasible_window_.valid = false;
+         return false;
+       }
