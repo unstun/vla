@@ -11,7 +11,6 @@
 3. Please keep VLA maintainable for the long term, historically traceable (record every experiment as thoroughly as possible, since that is critical for future experiments), and efficient. If you find anything in the repository that looks unreasonable or needs updating, please remind Dr Sun.
 4. After completing a clearly defined development task and passing the relevant checks, automatically commit the changes for that task and push the current branch without asking for confirmation again. Before committing, review the file list and file sizes; do not commit model weights, videos, full logs, or large generated data.
 5. Generally work in the main session. Use subagents only when Dr Sun brings up using them; no additional confirmation is needed.
-6. While the 24 research commits are held locally, follow `docs/agents/git-workflow.md`: never push `local/research-unpublished` or merge its history into a published branch; publish only selected task changes from `origin/main`.
 
 <!-- TRELLIS:START -->
 # Trellis Instructions
