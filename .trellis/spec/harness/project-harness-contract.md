@@ -9,7 +9,8 @@ research evidence; a harness change does not authorize research-state edits.
 ## 2. Instruction And Execution Model
 
 - `AGENTS.md` owns project behavior; `CLAUDE.md` is exactly `@AGENTS.md\n`.
-- Keep the 12 installed Trellis core skills, runtime, specs and templates.
+- Keep the 12 Trellis core skills, task runtime and specs. Platform hook
+  templates are intentionally removed in this hook-free project.
 - Project execution defaults to the main session. Subagents require Dr Sun's
   explicit request; `.trellis/config.yaml` keeps `codex.dispatch_mode: inline`.
 - `session_auto_commit: false` remains set. Do not automatically stage or
@@ -20,12 +21,17 @@ research evidence; a harness change does not authorize research-state edits.
   asking again. Exclude unrelated edits and heavy artifacts; verify the remote
   branch contains the resulting commit. This is the agent's completion duty,
   not a blanket Trellis auto-commit hook.
-- Routine prompt/session injection and automatic review-flag mutation are
-  disabled. Load context through Trellis skills. Reset reviewed flags manually
+- All project hook registrations and script directories are removed. Load
+  context through Trellis skills. Reset reviewed flags manually
   when an authorized edit changes a reviewed research document.
-- Retain agent-context hooks for requested delegation and Cursor's shell
-  session bridge. Native session identity or an explicit, stable per-session
-  `TRELLIS_CONTEXT_ID` is needed for task activation outside a bridge.
+- Explicitly requested agents read task artifacts and context manifests
+  directly, using their existing no-hook fallback. Native session identity or
+  an explicit, stable per-session `TRELLIS_CONTEXT_ID` selects active tasks.
+- The reviewed Trellis 0.6.17 runtime has one local task-start patch: honor
+  `codex.dispatch_mode: inline` before enforcing nonempty subagent manifests.
+  Other host directories may seed those manifests; their presence alone does
+  not select delegation. Auto/sub-agent mode retains its context gate and the
+  explicit `--allow-empty-context` override.
 - Framework updates must preserve these project choices. Do not rewrite
   Trellis-managed files or their hash registry merely to silence update diffs.
 
@@ -67,7 +73,10 @@ convention; do not add repository-wide evidence-extension ignores.
 | Generated vendor link exists | Remove the link, never the target checkout. |
 | Removed project skill leaves a generated link | Remove the dangling discovery link. |
 | Real platform directory or custom link exists | Preserve it. |
-| Retained skill or hook target is missing | Fail validation and repair the owned path. |
+| Project hook registration or script directory returns | Fail validation; remove the reintroduced hooks before publication. |
+| A retained skill is missing | Fail validation and repair the owned path. |
+| Inline mode with empty manifests in a multi-host checkout | Task start succeeds without rewriting the manifests. |
+| Auto mode with empty manifests | Task start fails unless the explicit override is supplied. |
 | Trellis CLI/project versions differ | Report it; do not upgrade as a side effect. |
 | Unrelated dirty path exists | Preserve its content and exclude it from staging. |
 
@@ -84,7 +93,7 @@ cat .trellis/.version
 ```
 
 Parse changed JSON/TOML and retained skill frontmatter; check every discovery
-link and registered hook target. Compile applicable Python in a temporary cache
+link and verify hook configurations/directories are absent. Compile Python in a temporary cache
 and check shell syntax. Review the task-owned diff with `git diff --check`.
 Compare pre-edit fingerprints for existing dirty files and protected paths.
 A successful filesystem check does not prove an already-open host refreshed
