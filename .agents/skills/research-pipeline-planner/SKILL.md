@@ -1,35 +1,25 @@
 ---
-id: research-pipeline-planner
-name: Research Pipeline Planner
-description: Define or revise the project-level research pipeline, research brief, stage plan, and task list.
-version: 1.0.0
-stages: [survey, ideation, experiment, publication, promotion]
-tools: [read_file, write_file, update_pipeline]
+name: research-pipeline-planner
+description: Define or revise a VLA research plan, hypothesis, experiment dependencies and acceptance criteria using the project's existing evidence and records.
 ---
 
-# Research Pipeline Planner
+# Research Planning
 
-Use this skill when the user needs to define or revise the project-level research pipeline.
+Read the relevant project status, terminology and existing plan before
+proposing changes. Locate the plan actually used by this project; do not
+create an unrelated template directory or assume an external pipeline tool.
 
-## Goals
+Make the research question, hypothesis, baseline, claimed contribution and
+acceptance criteria concrete. Identify the stage (planning, experiment and
+analysis, or writing), required evidence, dependencies and the next useful
+experiment. Incorporate existing results instead of restarting every stage.
 
-- clarify the research topic, target venue, and expected contribution
-- set or revise the starting stage
-- update `.pipeline/docs/research_brief.json`
-- update `.pipeline/tasks/tasks.json`
+Recommend a direction and explain its tradeoffs. Ask Dr Sun to resolve material
+research choices that remain open. Independent work may proceed in parallel;
+subagents still require an explicit request, and execution needs its own
+applicable authorization.
 
-## Working Rules
-
-1. Read `instance.json`, `.pipeline/docs/research_brief.json`, and `.pipeline/tasks/tasks.json` first if they exist.
-2. Keep the pipeline aligned with the five stages: survey, ideation, experiment, publication, promotion.
-3. When the user already has results or a draft, move the starting stage forward instead of rebuilding earlier stages.
-4. Do not invent citations, datasets, or experimental outcomes.
-5. **When entering ideation stage, use the `research-idea-convergence` skill** to generate candidate directions and let the user choose. Never autonomously decide the research direction.
-6. Ensure every stage transition involves a user checkpoint — do not skip stages or auto-advance without user confirmation.
-7. **严格线性执行**：任务必须按顺序执行，当前任务未完成前不得跳至下一任务。调研未完成 → 不得进入构思；构思未完成 → 不得进入实验。每个阶段的所有任务 done 后才能进入下一阶段。
-
-## Expected Outputs
-
-- a concise research brief with topic, goal, venue, current stage, and stage notes
-- a task list with dependencies, suggested skills, and a concrete `nextActionPrompt`
-- for ideation: candidate directions presented via `research-idea-convergence` before any `publishable_angle.md` is written
+When asked to save or revise the plan, edit its existing project document and
+link implementation work to Trellis tasks. Keep proposed work distinct from
+executed experiments and validated findings. No additional planning skill is
+required.

@@ -2,167 +2,90 @@
 
 ## 1. Scope / Trigger
 
-This contract applies when changing `AGENTS.md`, `.trellis/`, `.codex/`,
-`.claude/`, `.cursor/`, `.agents/skills/`, `.pipeline/`, `bigmemory/`, or the
-skill synchronization scripts.
+Applies to project instructions, skills, discovery synchronization, platform
+configuration and Trellis maintenance. Preserve unrelated dirty files and
+research evidence; a harness change does not authorize research-state edits.
 
-The purpose is to preserve one auditable behavior model across supported AI
-platforms without copying the `machine-dog-nav` baseline project's task,
-experiment, or mutable memory history.
+## 2. Instruction And Execution Model
 
-## 2. Signatures
+- `AGENTS.md` owns project behavior; `CLAUDE.md` is exactly `@AGENTS.md\n`.
+- Keep the 12 installed Trellis core skills, runtime, specs and templates.
+- Project execution defaults to the main session. Subagents require Dr Sun's
+  explicit request; `.trellis/config.yaml` keeps `codex.dispatch_mode: inline`.
+- `session_auto_commit: false` remains set. Do not automatically stage or
+  commit during startup, task archival or journal recording.
+- At completion of an authorized development task, the main session reviews
+  the exact task-owned staged diff, file list and sizes, commits the verified
+  changes, and pushes the current branch to its configured remote without
+  asking again. Exclude unrelated edits and heavy artifacts; verify the remote
+  branch contains the resulting commit. This is the agent's completion duty,
+  not a blanket Trellis auto-commit hook.
+- Routine prompt/session injection and automatic review-flag mutation are
+  disabled. Load context through Trellis skills. Reset reviewed flags manually
+  when an authorized edit changes a reviewed research document.
+- Retain agent-context hooks for requested delegation and Cursor's shell
+  session bridge. Native session identity or an explicit, stable per-session
+  `TRELLIS_CONTEXT_ID` is needed for task activation outside a bridge.
+- Framework updates must preserve these project choices. Do not rewrite
+  Trellis-managed files or their hash registry merely to silence update diffs.
 
-### Trellis initialization
+## 3. Skill Discovery
 
-```bash
-trellis init --cursor --claude --codex --user sun \
-  --skip-existing --no-monorepo --yes --workflow native
-```
+The active catalog is documented in `SKILLS.md`: 12 Trellis core plus nine
+project skills. Canonical project skills are real `.agents/skills/` directories.
+Claude/Cursor mirrors are links unless a real installed directory owns the name.
 
-### Task validation
+`sync-skills.sh` is offline and project-only. It must:
 
-```bash
-python3 ./.trellis/scripts/task.py validate <task-name>
-python3 ./.trellis/scripts/get_context.py --mode packages
-```
+- mirror canonical project skills without replacing real platform directories;
+- preserve unrelated/custom links, including deliberate name overrides;
+- remove only generated links into `../../.skills-upstream/` and dangling
+  generated project links into `../../.agents/skills/`;
+- work with no vendor checkout or lock present and produce the same discovery
+  layout on repeat execution;
+- never fetch, check out or reactivate vendor skills.
 
-### Vendor skill refresh
+`vendor-skills.lock` and any existing ignored vendor checkout retain historical
+provenance only. Global skills, plugins and MCP configuration are outside scope.
 
-```bash
-./sync-skills.sh
-git -C .skills-upstream rev-parse HEAD
-git config -f vendor-skills.lock --get vendor.commit
-```
+## 4. Research Boundaries
 
-### Hook payloads
+The local repository is the VLA source of truth. Siblings and upstream trees
+are references; remotes are execution copies. `.pipeline/` and `bigmemory/`
+retain their research roles. No bulk cleanup, relocation or history rewriting
+is implied by skill maintenance.
 
-- Prompt hooks consume a JSON object on stdin with `prompt`,
-  `user_prompt`, or `message`.
-- Codex hook entry points emit valid JSON on stdout when output is present.
-- Git and hot-zone prompt hooks emit text only when their keyword group matches.
+Research bytes require scoped ignores and tracked hashes/storage/recovery
+information. Preserve the existing per-directory `LOCAL_ONLY_BYTES.sha256`
+convention; do not add repository-wide evidence-extension ignores.
 
-## 3. Contracts
-
-- `AGENTS.md` is the behavior source of truth; `CLAUDE.md` remains
-  `@AGENTS.md`.
-- `.trellis/config.yaml` sets `session_auto_commit: false`.
-- Trellis-generated platform files remain managed by Trellis.
-- Project-owned skills are real tracked directories in `.agents/skills/`.
-- Claude Code and Cursor discover project skills through generated or tracked
-  links in `.claude/skills/` and `.cursor/skills/` unless a Trellis-managed real
-  directory already owns the name.
-- Vendor skills are ignored symlinks into `.skills-upstream/`; their canonical
-  repository and full commit are tracked in `vendor-skills.lock`.
-- `sync-skills.sh` must never replace a real project-owned skill directory.
-- `sync-skills.sh` restores the locked Vendor commit before rebuilding links;
-  wrong-origin and dirty Vendor checkouts fail closed.
-- The project-owned `setup-matt-pocock-skills` override preserves the exact
-  single-line `CLAUDE.md` wrapper and blocks tracker writes until a VLA remote
-  is approved.
-- Repository-wide extension ignores for research evidence are forbidden. Large
-  local-only bytes require a reviewed path-specific rule and tracked manifest.
-  Convention (2026-09-15): each directory holding local-only bytes has one
-  scoped `.gitignore` block (what, provenance, regeneration or why not) and a
-  tracked `LOCAL_ONLY_BYTES.sha256` in `shasum -a 256` format with paths
-  relative to that directory. A new local-only file under an existing rule
-  must be added to that manifest in the same change, or it is silently lost.
-- `.pipeline/` stores reviewed research and experiment state.
-- `bigmemory/` stores current and durable project state.
-- Automatic staging or committing is forbidden.
-- The local repository is the VLA source of truth; `machine-dog-nav`, other
-  upstream repositories, and remote copies are references or execution copies.
-
-Runtime environment:
-
-| Key | Required | Meaning |
-|---|---|---|
-| `TRELLIS_CONTEXT_ID` | Task commands outside a platform hook | Selects the per-session active-task pointer. |
-| `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` | Set by Claude settings | Keeps shell work in the project. |
-
-## 4. Validation & Error Matrix
+## 5. Validation & Error Matrix
 
 | Condition | Required behavior |
 |---|---|
-| `.skills-upstream` missing | `sync-skills.sh` clones the canonical repository and checks out the lock-file commit. |
-| First synchronization after clone | Materialize a clean worktree before the dirty-check; a `--no-checkout` clone appears as a deleted worktree and must not be used here. |
-| Vendor origin differs or checkout is dirty | Abort without replacing links or changing the lock. |
-| Vendor and project skill names collide | Project-owned real directory wins and its platform links are preserved. |
-| A platform Skill path is a real directory | Preserve it; never replace it with a generated link. |
-| Broad PDF/image/video/archive/CAD ignore is proposed | Reject it; use a reviewed path-specific artifact rule. |
-| Hot-zone file missing or older than 24 hours | Hook prints a warning; it does not edit or commit. |
-| AI edits `reviewed: true` trusted Markdown | Post-tool hook resets it to `reviewed: false`. |
-| TOML, JSON, YAML, Python, or shell syntax invalid | Validation fails before staging. |
-| Trellis CLI and project versions differ | Report the mismatch; do not silently update framework files. |
-| Dirty unrelated path exists | Preserve it and exclude it from task staging. |
-
-## 5. Good / Base / Bad Cases
-
-- Good: add a project skill as a real `.agents/skills/<name>/` directory,
-  regenerate Claude/Cursor links, validate discovery, and stage only the real
-  Skill plus intentional tracked Harness paths.
-- Base: run `sync-skills.sh`; the resolved Vendor HEAD equals the tracked lock,
-  all generated links resolve, and no tracked diff is produced.
-- Bad: copy all of `machine-dog-nav/.pipeline`, its Trellis tasks, or experiment
-  memory into this project and present that history as VLA state.
+| Vendor checkout absent or dirty | Sync still works without inspecting or modifying it. |
+| Generated vendor link exists | Remove the link, never the target checkout. |
+| Removed project skill leaves a generated link | Remove the dangling discovery link. |
+| Real platform directory or custom link exists | Preserve it. |
+| Retained skill or hook target is missing | Fail validation and repair the owned path. |
+| Trellis CLI/project versions differ | Report it; do not upgrade as a side effect. |
+| Unrelated dirty path exists | Preserve its content and exclude it from staging. |
 
 ## 6. Tests Required
 
 ```bash
+python3 -m unittest discover -s tools/harness -p 'test_*.py'
+bash -n sync-skills.sh
+./sync-skills.sh
+python3 .trellis/scripts/task.py validate <task-path>
+python3 .trellis/scripts/get_context.py --mode packages
 trellis --version
 cat .trellis/.version
-python3 ./.trellis/scripts/task.py validate <task-name>
-python3 ./.trellis/scripts/get_context.py --mode packages
-python3 -m compileall -q .trellis/scripts .codex/hooks .claude/hooks .cursor/hooks .agents/skills
-./sync-skills.sh
-test "$(git -C .skills-upstream rev-parse HEAD)" = \
-  "$(git config -f vendor-skills.lock --get vendor.commit)"
-find .claude .codex .agents/skills -type f -name '*.sh' -print \
-  | while read -r file; do bash -n "$file"; done
-git diff --check -- . \
-  ':(exclude).agents/skills/trellis-*' \
-  ':(exclude).claude/skills/trellis-*' \
-  ':(exclude).cursor/skills/trellis-*' \
-  ':(exclude).trellis/workspace/**'
-trellis update --dry-run
 ```
 
-Assertion points:
-
-- TOML, JSON, and YAML parse without error.
-- Prompt hooks emit expected keyword-gated output.
-- Codex hook output parses as JSON.
-- Project skill links resolve to `SKILL.md`.
-- Codex, Claude Code, and Cursor discovery directories expose project Skills;
-  generated Vendor links resolve to the locked checkout.
-- A temporary fresh clone with no `.skills-upstream/` can run
-  `./sync-skills.sh`; repeating the test with a wrong origin or dirty Vendor
-  index fails before link regeneration.
-- `CLAUDE.md` is byte-for-byte `@AGENTS.md\n`.
-- Representative `.pdf`, `.png`, `.mp4`, `.zip`, and `.step` evidence paths are
-  not ignored globally.
-- No migrated skill contains a hard-coded `machine-dog-nav` project path.
-- No active VLA Skill or spec references Medical AI, Dr. Claw, or unimported
-  SCAN/Go2/V12/forest runtime contracts.
-- Staged paths exclude `docs/research/` unless that task explicitly owns it.
-- Trellis-managed templates are kept byte-for-byte as installed even when an
-  upstream Markdown template contains trailing-space formatting.
-
-## 7. Wrong vs Correct
-
-### Wrong
-
-```text
-Copy machine-dog-nav/.trellis, .pipeline, and bigmemory recursively.
-Run an auto-backup hook that commits whatever is dirty.
-```
-
-This imports unrelated research truth and can commit user-owned files.
-
-### Correct
-
-```text
-Initialize the same Trellis release in skip-existing mode.
-Adapt reusable behavior.
-Create fresh VLA pipeline and memory state.
-Validate, stage an explicit path list, review, then commit.
-```
+Parse changed JSON/TOML and retained skill frontmatter; check every discovery
+link and registered hook target. Compile applicable Python in a temporary cache
+and check shell syntax. Review the task-owned diff with `git diff --check`.
+Compare pre-edit fingerprints for existing dirty files and protected paths.
+A successful filesystem check does not prove an already-open host refreshed
+its skill catalog; use a new session for discovery after cleanup.
