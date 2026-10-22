@@ -8,6 +8,8 @@
 
 证据等级：**imported（源码已导入）**。检查了源码存在、许可证、Git 提交与本地文件一致性；没有运行上游安装、训练、仿真或真机程序。源码工作区按 sparse 模式跳过媒体、权重、数据和模型资产，子模块没有展开。
 
+按 Dr Sun 随后的要求，本批及既有参考源码已迁至 `/Volumes/ModelArchive/vla-references/`；项目中的 `source` 是外接盘链接，原阅读路径保持可用。见 [迁移核验与路径恢复](../storage/2026-10-22_external/README.md)。
+
 ## 当前项目优先阅读
 
 优先看 ros2_controllers 的停止/控制切换、Quadruped-PyMPC 的模型失配与接触控制、ReTAP 的地形轨迹、RoboGauge 的执行能力评测、MUSE 的实测速度、JEPLO 的 LiDAR 感知控制。SWAGGER 与 DDDMR 可补全路由和完整系统对照。Feetend-Planner 放在补充区，适合研究足端地形与身体轨迹。

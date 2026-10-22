@@ -21,6 +21,16 @@ commit, dependencies, original commands, and evidence status.
 Do not describe a clone as reproduced or integrated until the corresponding
 runtime evidence exists.
 
+## Source storage
+
+Dr Sun selected the external drive on 2026-10-22. Reference source caches live
+under `/Volumes/ModelArchive/vla-references/`, preserving project-relative
+paths; local `source` links keep the catalogue and tools working. Keep new
+reference clones on that drive as well, with a source link in the dated topic.
+Manifests and short evidence stay tracked locally. Two already tracked source
+snapshots retain their local working-tree bytes and have external backups.
+See the [storage inventory and reconnection instructions](storage/2026-10-22_external/README.md).
+
 ## Recent collections
 
 - [2026-10-22: 50 recent repositories and six supplementary references](2026-10-22_recent_navigation_50/comparison.md)
