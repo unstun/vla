@@ -26,3 +26,15 @@ linked here. Their original states are recoverable from the source/evidence
 commit. The accepted baseline stays v232/v233. No push or baseline promotion.
 
 [Project closeout and original-report table](../../../bigmemory/冷区/里程碑/2026-10-22_v242-v290-local-closeout.md).
+
+## 2026-10-22 stop-timeline follow-up
+
+[D07/CD12 recorded-stop analysis](../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v290_stop_timeline/REPORT.md)
+completed the first item in the visual convergence plan. D07 stops through an
+emergency spline while its goal yaw is still wrong; CD12's threshold crossing
+and source call order identify outer Controller braking before continued XY
+centering. Both first geometry crossings precede the all-zero applied command.
+Maximum later XY displacement is 23.87/21.26 cm, with 12.573/4.557 s waiting
+before PD transition. Most displacement occurs during RL-owned STAND_SETTLING,
+not after fixed PD has taken over. Fourteen raw-source identities match.
+No controller modification or new physics run occurred. Keep repair review open.

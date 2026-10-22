@@ -4,8 +4,8 @@ Open [index.html](index.html) directly in a browser. It is a standalone Chinese
 page with no external assets, packages, network requests or experiment runner.
 
 This page saves the plan discussed with Dr Sun on 2026-10-22. It does not report
-new robot experiments or change the accepted v232/v233 baseline. All twelve
-research checklist items initially remain incomplete. The first comparison uses
+new robot experiments or change the accepted v232/v233 baseline. The initial
+delivery had twelve incomplete research checklist items. The first comparison uses
 v290 and one frozen candidate: 4 routes × 3 repeats × 2 versions = 24 runs.
 Only after passing that comparison, run 10 original routes on the candidate and
 4 new routes × 2 repeats × 2 versions = 16 runs. Total: at most 50 full simulation
@@ -46,6 +46,18 @@ updates, reload persistence, evidence notes, numeric threshold boundaries,
 inconsistent score rejection, JSON export/import, unrelated-file rejection,
 and exported HTML restoration in a fresh browser context. Screenshots were
 inspected for desktop and mobile layouts; widths 375, 390, 768 and 1440 px had
-no horizontal overflow. Browser JavaScript errors: zero. The source page still
-starts with all research tasks unchecked and no entered experiment scores.
+no horizontal overflow. Browser JavaScript errors: zero. At initial delivery,
+the source started with all research tasks unchecked and no experiment scores.
 This verification executed zero robot or physics experiments.
+
+## First analysis item completed — 2026-10-22
+
+The page now includes measured D07/CD12 stop timelines and marks only `trace`
+complete, with evidence notes embedded in `plan-state`. Other research steps
+and all future experiment scores remain untouched. The observed browser had no
+user-entered notes, checked items or scores before this update.
+
+[Read the source-backed report](../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v290_stop_timeline/REPORT.md).
+It distinguishes D07's collision emergency stop from CD12's outer terminal
+braking, and measures drift mainly before PD takes control. The analysis ran
+zero new physics steps and did not modify frozen navigation source.
