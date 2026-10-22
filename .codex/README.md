@@ -1,35 +1,20 @@
 # Codex VLA Project Entry
 
-`AGENTS.md` is the cross-CLI behavior source of truth. Project-level Codex
-configuration is loaded only after this repository is trusted.
+Read `AGENTS.md`, the relevant Trellis task and its specs. Load project history
+only when the question needs it; `SKILLS.md` lists the active capabilities.
 
-## Startup order
+Routine prompt/session hooks are disabled. `SubagentStart` supplies context
+only when Dr Sun explicitly requests delegation. The three `trellis-*` agents
+remain installed; other work runs in the main session. Reset reviewed research
+flags manually when editing those documents.
 
-1. Read `AGENTS.md`.
-2. Read the active Trellis task and its planning artifacts.
-3. Read the three `bigmemory/热区/` files when current status matters.
-4. Read `.pipeline/terminology/terminology.md` before research or design prose.
+Use native session identity or a stable per-session `TRELLIS_CONTEXT_ID` with
+Trellis task commands. `session_auto_commit` is false; task archival and journal
+recording must not stage or commit unrelated files. At the end of an authorized
+development task, review the task-owned staged diff and file sizes, commit the
+verified changes, and push the current branch to its configured remote without
+asking again, as required by `AGENTS.md`. Report the commit and push result.
 
-## Hooks
-
-- `UserPromptSubmit`: injects git state and memory freshness only when relevant,
-  then injects the Trellis workflow state.
-- `PostToolUse`: resets `reviewed: true` after AI edits to trusted pipeline or
-  cold-memory Markdown.
-- No hook stages or commits changes automatically.
-
-## Agents
-
-- `conductor`: project status and one-task routing.
-- `memory_retriever`: compact read-only memory lookup.
-- `literature_scout`: primary literature and upstream repository survey.
-- `reviewer`: code, evidence, license, source-sync, and claim review.
-- `harness_explorer` / `harness_reviewer`: settings inspection and review.
-- `trellis-*`: Trellis-managed implementation, research, and checking roles.
-
-## Source boundary
-
-The local `/Users/sun/tongbu/study/phdproject/vla` checkout is the VLA source
-of truth. The local `machine-dog-nav` checkout, upstream clones, and remote
-workspaces are references or execution copies until their pinned source and
-local sync-back evidence are recorded here.
+Project configuration does not declare MCP servers. Global MCP and plugin
+settings remain user-owned. Remote execution copies must return final source
+changes and verified evidence to this local VLA repository.

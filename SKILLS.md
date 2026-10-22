@@ -1,75 +1,52 @@
-# Project And Vendor Skills
+# Project Skills
 
-This repository has two Skill sources:
+The active set contains 12 Trellis core skills and nine project skills.
+Canonical project skills are real directories under `.agents/skills/`.
+Claude Code and Cursor discover them through generated links, except where
+an installed Trellis directory already owns the name.
 
-1. Project-owned Skills are real tracked directories in `.agents/skills/`.
-2. Matt Pocock's promoted Skills come from the ignored checkout
-   `.skills-upstream/` at the exact revision in `vendor-skills.lock`.
+## Trellis Core
 
-`sync-skills.sh` restores the locked Vendor checkout and builds discovery links
-without replacing any real project or platform directory.
+`trellis-start`, `trellis-continue`, `trellis-before-dev`, `trellis-brainstorm`,
+`trellis-check`, `trellis-finish-work`, `trellis-break-loop`,
+`trellis-update-spec`, `trellis-meta`, `trellis-session-insight`,
+`trellis-spec-bootstrap`, `trellis-channel`.
 
-## Discovery Layout
+Keep the installed Trellis templates and runtime intact. Project rules in
+`AGENTS.md` take precedence over generic templates. In particular, subagents
+require an explicit user request and `session_auto_commit` remains false.
 
-| Host | Project Skills | Vendor Skills |
-|---|---|---|
-| Codex and Agent-Skills hosts | `.agents/skills/` real directories | `.agents/skills/` generated links |
-| Claude Code | `.claude/skills/` generated or tracked links | `.claude/skills/` generated links |
-| Cursor | `.cursor/skills/` generated links plus Trellis-managed real directories | `.cursor/skills/` generated links |
+## Project Capabilities
 
-Project-owned Skills always win on a name collision. Claude Code keeps its
-built-in `/code-review`; Codex and Cursor receive the Vendor version.
+| Skill | Purpose |
+|---|---|
+| `project-status` | Read current evidence and explain progress and next steps. |
+| `memory-retrieval` | Retrieve relevant past decisions and evidence, read-only. |
+| `archive` | Save durable findings or synchronize project state when requested. |
+| `research-pipeline-planner` | Plan research stages, dependencies and acceptance criteria. |
+| `literature-survey` | Find and compare primary papers with traceable sources. |
+| `inno-code-survey` | Inspect and acquire pinned upstream implementations. |
+| `paper-analyzer` | Analyze one paper against its actual methods and results. |
+| `fetch-arxiv-md` | Convert arXiv source into local Markdown with existing scripts. |
+| `remote-experiment` | Execute authorized remote work and return reproducible evidence. |
 
-## Fresh Clone Or Repair
+Status questions do not trigger archival. Literature discovery does not require
+extra generic research skills. Dataset discovery uses the same primary-source
+approach; source-code selection belongs to `inno-code-survey`.
 
-Run from the repository root:
+## Synchronization
 
-```bash
-./sync-skills.sh
-```
+Run `./sync-skills.sh` from a checkout to restore project discovery links.
+It runs offline, preserves real platform directories and custom links, and
+removes obsolete generated vendor links and dangling generated project links.
+It does not fetch, check out, or activate a vendor repository.
 
-The script:
+`vendor-skills.lock` and the existing ignored `.skills-upstream/` checkout are
+retained as provenance for earlier adaptations, not as an active skill catalog.
+Retired skills can be recovered selectively from Git history. Do not restore
+all vendor links as part of ordinary synchronization.
 
-- clones the canonical Vendor repository when missing;
-- rejects a wrong origin or dirty Vendor checkout;
-- checks out the full locked commit in detached mode;
-- mirrors project-owned Skills to Claude Code and Cursor;
-- links the promoted Vendor set into all three discovery locations.
-
-Restart the host after synchronization so it re-scans project Skills.
-
-## Updating The Vendor Pin
-
-Do not run `git pull` as an update mechanism. Update only through a reviewed
-Harness change:
-
-1. Fetch and inspect the upstream history:
-
-   ```bash
-   git -C .skills-upstream fetch origin
-   git -C .skills-upstream log --oneline --decorate -20 origin/main
-   ```
-
-2. Review the new promoted manifest and affected Skill content.
-3. Change `vendor.commit` in `vendor-skills.lock` to the selected full commit.
-4. Run `./sync-skills.sh` and the Harness validation suite.
-5. Commit the lock-file change with its review evidence.
-
-## Project Setup Skill
-
-This project provides a safe project-owned `setup-matt-pocock-skills` override.
-It may verify or update `docs/agents/` after Dr Sun approves a tracker change,
-but it must never edit the single-line `CLAUDE.md` wrapper and must not create
-issues or labels while the VLA repository has no approved remote.
-
-The repository is already configured for local use; setup is not a required
-first-run step.
-
-## Notes
-
-- Vendor links and `.skills-upstream/` are generated and intentionally ignored;
-  `vendor-skills.lock` and `sync-skills.sh` are the reproducible source.
-- Skills marked `disable-model-invocation: true` may be human-only in Claude
-  Code; other hosts may not honor that field.
-- Host-level discovery is distinct from file-level readiness. If a host changes
-  its Skill discovery behavior, verify it live before claiming compatibility.
+After a Trellis update, review hook registrations against the harness contract;
+do not silently re-enable routine prompt/session injections. Validate with
+`python3 -m unittest discover -s tools/harness -p 'test_*.py'` and check discovery
+in a new host session. An already-open session may retain its old skill catalog.

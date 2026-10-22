@@ -1,29 +1,5 @@
 {
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.claude/scripts/git-on-prompt.sh\"",
-            "timeout": 10,
-            "statusMessage": "Checking git context"
-          },
-          {
-            "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.claude/scripts/hot-zone-on-prompt.sh\"",
-            "timeout": 10,
-            "statusMessage": "Checking memory freshness"
-          },
-          {
-            "type": "command",
-            "command": "python3 -X utf8 \"$(git rev-parse --show-toplevel)/.codex/hooks/inject-workflow-state.py\"",
-            "timeout": 15,
-            "statusMessage": "Injecting Trellis workflow state"
-          }
-        ]
-      }
-    ],
     "SubagentStart": [
       {
         "matcher": "^(?:trellis-implement|trellis-check|trellis-research)$",
@@ -33,19 +9,6 @@
             "command": "python3 -X utf8 \"$(git rev-parse --show-toplevel)/.codex/hooks/inject-subagent-context.py\"",
             "timeout": 15,
             "statusMessage": "Injecting Trellis subagent context"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|apply_patch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$(git rev-parse --show-toplevel)/.codex/hooks/reset-reviewed-codex.sh\"",
-            "timeout": 15,
-            "statusMessage": "Resetting reviewed metadata"
           }
         ]
       }
