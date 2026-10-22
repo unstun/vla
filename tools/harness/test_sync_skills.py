@@ -114,16 +114,15 @@ class ProjectConfigurationTests(unittest.TestCase):
     def test_claude_wrapper_is_preserved(self):
         self.assertEqual((ROOT / "CLAUDE.md").read_bytes(), b"@AGENTS.md\n")
 
-    def test_only_explicit_agent_and_session_bridge_hooks_remain(self):
-        expected = {
-            ".claude/settings.json": {"PreToolUse"},
-            ".codex/hooks.json": {"SubagentStart"},
-            ".cursor/hooks.json": {"preToolUse", "beforeShellExecution"},
-        }
-        for path, events in expected.items():
+    def test_project_hooks_are_absent(self):
+        data = json.loads((ROOT / ".claude/settings.json").read_text())
+        self.assertNotIn("hooks", data)
+        for path in (
+            ".codex/hooks.json", ".cursor/hooks.json",
+            ".claude/hooks", ".codex/hooks", ".cursor/hooks",
+        ):
             with self.subTest(path=path):
-                data = json.loads((ROOT / path).read_text())
-                self.assertEqual(set(data["hooks"]), events)
+                self.assertFalse((ROOT / path).exists())
 
     def test_active_catalog_and_platform_links_resolve(self):
         expected = {

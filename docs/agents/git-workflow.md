@@ -36,7 +36,8 @@ history. Use a separate checkout for ordinary work on the published baseline.
 
 ## Current Review Boundary
 
-The 50 pre-existing modifications were reviewed separately in task
-`10-22-vla-branch-review`. Reviewing them does not authorize their publication.
-The 45 Trellis update paths and five research/retention paths remain untouched;
-consult the review before adopting the update or packaging research records.
+The 50 pre-existing modifications were reviewed in `10-22-vla-branch-review`.
+The subsequent authorized `10-22-vla-no-hooks` task finalizes the reviewed
+Trellis update with its inline-start repair and removes all project hooks.
+The five research/retention edits and their related untracked evidence remain
+pending; this harness maintenance does not publish them.

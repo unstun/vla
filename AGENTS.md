@@ -58,8 +58,8 @@
   repository's issue tracker.
 
 Load Trellis context through skills as needed for the current task.
-Routine prompt/session hooks are disabled. Agent-context hooks only support
-explicitly requested delegation; Cursor retains its task-session bridge.
+Project hooks are removed. Use native session identity or `TRELLIS_CONTEXT_ID`
+for task commands; explicitly requested agents read their task context directly.
 
 <!-- TRELLIS:START -->
 # Trellis Instructions

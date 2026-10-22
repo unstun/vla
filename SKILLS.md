@@ -12,7 +12,8 @@ an installed Trellis directory already owns the name.
 `trellis-update-spec`, `trellis-meta`, `trellis-session-insight`,
 `trellis-spec-bootstrap`, `trellis-channel`.
 
-Keep the installed Trellis templates and runtime intact. Project rules in
+Keep the Trellis core skills and runtime, with the hook removals and local
+task-start patch documented in the harness specification. Project rules in
 `AGENTS.md` take precedence over generic templates. In particular, subagents
 require an explicit user request and `session_auto_commit` remains false.
 
@@ -46,7 +47,10 @@ retained as provenance for earlier adaptations, not as an active skill catalog.
 Retired skills can be recovered selectively from Git history. Do not restore
 all vendor links as part of ordinary synchronization.
 
-After a Trellis update, review hook registrations against the harness contract;
-do not silently re-enable routine prompt/session injections. Validate with
+Project hooks and their script directories are removed, matching machine-dog.
+Use Trellis skills and direct task-context reads; no automatic injection or
+shell session bridge is required. Native session identity or `TRELLIS_CONTEXT_ID`
+selects the task session. After a Trellis update, remove any reintroduced project
+hooks and check the documented local task-start patch. Validate with
 `python3 -m unittest discover -s tools/harness -p 'test_*.py'` and check discovery
 in a new host session. An already-open session may retain its old skill catalog.
