@@ -11,6 +11,6 @@ in `native_manifest.json`; physical-campaign freezing and held-out route selecti
 remain pending. See [results and limits](RESULTS.md).
 
 [Visual progress](../../../../../docs/research/plans/2026-10-22-convergence/index.html#v291-progress)
-and `.trellis/tasks/10-22-v291-terminal-settling/` record the user's requested scope.
+and `.trellis/tasks/archive/2026-10/10-22-v291-terminal-settling/` record the user's requested scope.
 Keep failed attempts and old recordings. Read `results/retained_evidence.json`
 for remote full-log locations/hashes; only compact evidence belongs in Git.

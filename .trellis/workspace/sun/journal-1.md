@@ -1420,3 +1420,33 @@ Committed versioned source and compact evidence locally; retained all original p
 ### Next Steps
 
 - Review v290 unified terminal centering/braking and scanner deadlines; no new physical run is authorized by housekeeping.
+
+
+## Session 40: v291 terminal control and pre-PD settling qualified offline
+<!-- trellis-session: v=2 fp=f340685cbe08c624 -->
+
+**Date**: 2026-10-22
+**Task**: v291 terminal control and pre-PD settling qualified offline
+**Branch**: `local/research-unpublished`
+
+### Summary
+
+Unified terminal command ownership and added loaded-leg zero-command assistance. Native 14-package suite, 29 Python tests, D07/CD12 recorded replays and strict53 passed: 49/50 legal, 3/3 illegal, 1.421 s median, independent geometry passed. HTML is 4/12 complete. Zero new physics; next select held-out routes and fix paired physical configuration. Local research hold retained.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8ed419314` | feat(research): unify v291 terminal control and qualify settling offline |
+
+### Testing
+
+- [OK] Native components + Python29 + recorded D07/CD12 + strict53 passed; no physics
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Select four unseen routes and freeze physical configuration before 24 paired runs.
