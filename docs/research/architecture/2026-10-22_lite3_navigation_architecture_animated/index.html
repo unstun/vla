@@ -121,7 +121,19 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
 #archSvg .node .s{fill:#8fa1b8}
 #archSvg .edge{transition:opacity .35s}
 #archSvg .edge .ln{fill:none}
-#archSvg .elabel{fill:#8fa1b8;font-size:11px}
+#archSvg .elabel{fill:#8fa1b8;font-size:11px;cursor:pointer}
+#archSvg .elabel:hover{fill:#f8fafc;text-decoration:underline}
+#archSvg .ehit{fill:none;stroke:transparent;stroke-width:14;cursor:pointer;pointer-events:stroke}
+#archSvg .edge.hl .ln{stroke-width:2.6}
+.layer-guide{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.lg-card{border:1px solid rgba(148,163,184,.16);border-left:3px solid var(--c);border-radius:12px;padding:14px 16px;background:rgba(15,23,42,.55);cursor:pointer;transition:transform .2s,border-color .2s,background .2s}
+.lg-card:hover,.lg-card.on{transform:translateY(-2px);background:rgba(30,41,59,.7);border-color:var(--c)}
+.lg-card .lt{color:var(--c);font-weight:700;font-size:13px;letter-spacing:.04em}
+.lg-card .lq{color:#f1f5f9;font-weight:700;margin:4px 0 8px;font-size:15px}
+.lg-card p{margin:0 0 8px;color:#c3cfdf;font-size:13px;line-height:1.65}
+.lg-card .io{font-size:12px;color:#8fa1b8;line-height:1.7}
+.lg-card .io b{color:#cbd5e1;font-weight:600}
+@media (max-width:980px){ .layer-guide{grid-template-columns:1fr} }
 #archSvg.dim .node:not(.hl){opacity:.18}
 #archSvg.dim .edge:not(.hl){opacity:.08}
 #archSvg.dim .elabel:not(.hl){opacity:.1}
@@ -307,7 +319,7 @@ footer{max-width:1240px;margin:60px auto 0;padding:26px 32px 60px;color:var(--mu
 
 <!-- ================= ARCH ================= -->
 <section class="sec" id="arch">
-  <div class="sec-head reveal"><div class="num">02</div><div><h2>全景数据流</h2><p>实线光点是<b>指令流</b>：目标 → 路线 → 轨迹 → 速度 → 关节。青色虚线是<b>感知流</b>：仿真世界 → 点云/位姿 → 三维地图。灰色点线是<b>离线几何输入</b>。鼠标悬停可以高亮上下游，<b>点击模块</b>打开详情，点 <b>▶ 播放一次导航</b>会按时间顺序点亮整条链路。</p></div></div>
+  <div class="sec-head reveal"><div class="num">02</div><div><h2>全景数据流</h2><p>实线光点是<b>指令流</b>：目标 → 路线 → 轨迹 → 速度 → 关节。青色虚线是<b>感知流</b>：仿真世界 → 点云/位姿 → 三维地图。灰色点线是<b>离线几何输入</b>。鼠标悬停可以高亮上下游，<b>点击模块</b>打开详情，<b>点击连线或连线上的文字</b>看“这条线上流过什么”，点 <b>▶ 播放一次导航</b>会按时间顺序点亮整条链路。</p></div></div>
   <div class="panel reveal" style="padding:14px">
     <div class="svgstage" style="border:0;padding:0;background:transparent"><svg id="archSvg" viewBox="0 0 1200 760" role="img" aria-label="Lite3 导航系统全景架构"></svg></div>
     <div class="legend-row">
@@ -323,6 +335,11 @@ footer{max-width:1240px;margin:60px auto 0;padding:26px 32px 60px;color:var(--mu
       </div>
       <div class="jcap" id="jCap"><span class="muted">点击 ▶ 后，这里会逐步解释每个阶段在干什么、用了哪些参数。</span></div>
     </div>
+  </div>
+  <div class="panel reveal" style="margin-top:18px">
+    <h3>逐层读图：每一层管什么、和上下层怎么连</h3>
+    <p class="muted small" style="margin:4px 0 14px">点击下面的卡片，会在上图里高亮这一层的模块和连线。</p>
+    <div class="layer-guide" id="layerGuide"></div>
   </div>
 </section>
 
@@ -737,37 +754,45 @@ const ARCH = (function(){
   };
   // edges: id, from, to, type, d, label, lx, ly
   const E = [
-    ['mb','mission','bt','cmd','M260,77 L318,77','',0,0],
+    ['mb','mission','bt','cmd','M260,77 L318,77','导航目标',267,97],
     ['bp','bt','pct','cmd','M555,106 L555,148','ComputePathToPose',562,131],
     ['pf','pct','fsm','cmd','M470,202 C470,232 425,228 425,254','全局参考路线',478,232],
     ['bc','bt','ctrl','act','M330,106 L330,118 L28,118 L28,537 L38,537','FollowPath 动作',338,116],
     ['fr','fsm','replan','cmd','M320,298 L282,298','触发',288,290],
-    ['gf','grid','fsm','perc2','M580,298 L532,298','',0,0],
+    ['gf','grid','fsm','perc2','M580,298 L532,298','安全巡检',534,316],
     ['gr','grid','replan','cmd','M580,328 C500,360 360,358 282,358','碰撞 / 支撑查询',360,350],
     ['er','env','replan','cmd','M580,412 L282,412','软代价 + 梯度',360,404],
     ['rc','replan','ctrl','cmd','M160,454 L160,504','B 样条轨迹',168,468],
-    ['ct','ctrl','track','cmd','M380,537 L418,537','',0,0],
+    ['ct','ctrl','track','cmd','M380,537 L418,537','参考',388,529],
     ['tr','track','rl','cmd','M520,568 C520,596 300,592 262,616','速度指令（经命令门禁）',300,598],
     ['tp','track','pd','cmd','M700,568 L700,616','停稳后切 PD',708,596],
     ['rn','rl','newton','cmd','M210,674 L210,712 L876,712 L876,668 L898,668','关节目标 → 力矩',560,706],
-    ['pn','pd','newton','cmd','M790,646 L898,646','',0,0],
+    ['pn','pd','newton','cmd','M790,646 L898,646','PD 力矩',818,639],
     ['nl','newton','lidar','perc','M1030,586 L1030,452','几何射线',1038,522],
     ['np','newton','pose','perc','M1160,620 C1192,520 1192,330 1162,280','真值位姿',1120,470],
     ['lg','lidar','grid','perc','M900,410 C850,410 838,322 792,322','/cloud',846,370],
     ['pg','pose','grid','perc','M900,276 L792,276','/body_pose',818,270],
     ['pt','pose','track','perc','M900,298 C852,300 836,488 792,524','位姿',834,470],
-    ['pb','pose','bt','perc','M900,252 C866,252 868,64 792,64','实测停稳证据',796,40],
-    ['op','offline','pct','off','M900,96 C862,96 840,176 792,176','',0,0],
-    ['oe','offline','env','off','M900,120 C872,124 880,404 792,408','',0,0],
+    ['pb','pose','bt','perc','M900,252 C866,252 868,64 792,64','停稳证据',800,40],
+    ['op','offline','pct','off','M900,96 C862,96 840,176 792,176','断层图',800,196],
+    ['oe','offline','env','off','M900,120 C872,124 880,404 792,408','ENV 场',800,432],
   ];
   const style = {cmd:{s:'#94a3b8',w:1.5,da:'',m:'am',pc:'#f8fafc',sp:120,n:3}, act:{s:'#a78bfa',w:1.2,da:'4 4',m:'amv',pc:'#c4b5fd',sp:90,n:3},
                  perc:{s:'#2dd4bf',w:1.5,da:'6 4',m:'amt',pc:'#5eead4',sp:110,n:3}, perc2:{s:'#2dd4bf',w:1.2,da:'6 4',m:'amt',pc:'#5eead4',sp:70,n:1},
                  off:{s:'#64748b',w:1.2,da:'2 4',m:'amo',pc:'#94a3b8',sp:40,n:1}};
-  const gE = el('g', {}, svg), gL = el('g', {}, svg), gP = el('g', {}, svg), gN = el('g', {}, svg);
+  const gE = el('g', {}, svg), gL = el('g', {}, svg), gP = el('g', {}, svg), gH = el('g', {}, svg), gN = el('g', {}, svg);
   const edges = E.map(([id,f,t,type,d,lab,lx,ly]) => {
     const st = style[type]; const g = el('g', {class:'edge'}, gE);
     const p = el('path', {d, class:'ln', stroke:st.s, 'stroke-width':st.w, 'stroke-dasharray':st.da, 'marker-end':`url(#${st.m})`}, g);
     let lt = null; if(lab){ lt = el('text', {x:lx, y:ly, class:'elabel'}, gL); lt.textContent = lab; }
+    // wide invisible hit area: hover highlights the link, click explains it
+    const hit = el('path', {d, class:'ehit'}, gH);
+    const tip = el('title', {}, hit); tip.textContent = (lab || '') + '（点击查看解释）';
+    [hit, lt].filter(Boolean).forEach(o => {
+      o.addEventListener('mouseenter', () => { if(!journeyActive) highlight(new Set([f, t]), new Set([id])); });
+      o.addEventListener('mouseleave', () => { if(!journeyActive) highlight(null); });
+      o.addEventListener('click', () => openEdge(id));
+    });
     const L = p.getTotalLength(); const parts = [];
     for(let i=0;i<st.n;i++) parts.push(el('circle', {r:2.3, fill:st.pc, filter:'url(#pglow)', opacity:.9}, gP));
     return {id, f, t, type, g, p, lt, L, parts, st, phase: Math.random()};
@@ -885,6 +910,95 @@ function openDrawer(k){
 }
 $('#drawerClose').addEventListener('click', () => { $('#drawer').classList.remove('open'); $('#drawer').setAttribute('aria-hidden','true'); });
 document.addEventListener('keydown', e => { if(e.key === 'Escape') $('#drawerClose').click(); });
+
+/* ---------- link details (click an arrow) ---------- */
+// what flows along each arrow; facts taken from the frozen v290 source
+const EDGE_DETAIL = {
+  mb:{t:'导航目标：MissionBridge → BT Navigator', what:'一个 Nav2 动作请求 NavigateToPose（终点 XYZ + 朝向）', plain:'MissionBridge 是“前台”，行为树是“调度员”。前台收到外部的 HTTP 订单后，翻译成 Nav2 能听懂的标准动作发给调度员，然后一直盯着这单的结果，供外部用 GET /state 查询。前台自己不算路、不判断到没到。',
+    kv:[['动作接口','NavigateToPose · /nav2_internal/navigate_to_pose'],['发之前','① 确认 Nav2 各生命周期节点都已激活（5 s 内没激活 → nav2_nodes_not_active）；② 向 PCT 插件做一次 RouteSession BEGIN 握手，登记任务 ID 和目标（只登记，不算路；没给朝向时标记 infer_heading）'],['回来的','动作结果：状态 4 → arrived，5 → cancelled，其余 → failed；被拒 → nav2_goal_rejected'],['单任务','同一时刻只有一个“当前任务”；旧任务迟到的回复会被丢弃；任务结束时发 RouteSession END'],['取消','HTTP POST /cancel → cancel_goal_async()']],
+    src:'lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py'},
+  bp:{t:'ComputePathToPose：BT → PCT', what:'一次“算全局路线”的请求，回来一条带高度的路线', plain:'调度员让 PCT 规划整条路：从当前位置到终点，可能跨楼梯、跨楼层。',
+    kv:[['调用','ComputePathToPose(planner_id = PCT)'],['返回','/pct_path（每个点带 z）'],['任务一致性','PCT 插件用 session epoch 记账，规划过程中如果任务换了，直接报 mission_changed_during_planning']],
+    src:'lite3_nav2_bridge/config/navigate.xml · lite3_nav2_plugins/src/pct_planner.cpp'},
+  pf:{t:'全局参考路线：PCT → SCAN', what:'整条全局路线，SCAN 从中截取前方约 3.5 m 作为局部目标', plain:'全局路线像导航软件里的整条路，SCAN 只关心眼前这一小段，每次重规划都往前截一段当作局部目标。',
+    kv:[['截取范围','planning_horizon 3.5 m'],['路线纪元','每个任务只绑定一条全局路线，中途不换']], src:'plan_manage/src/scan_replan_fsm.cpp'},
+  bc:{t:'FollowPath 动作：BT → Controller Server', what:'“沿着这条路线走”的 Nav2 动作；失败时把原因交回行为树', plain:'调度员把执行交给控制器。控制器走不动或拿不到轨迹时返回失败，调度员再进入恢复流程。',
+    kv:[['调用','FollowPathWithFailure(controller_id = SCAN)'],['失败条件','0.75 s 没有可执行轨迹；10 s 内移动不到 0.5 m'],['之后','行为树先要实测停稳证明，再等 1 s 重试，最多 6 次']], src:'lite3_nav2_bridge/config/navigate.xml · scan_nav2_controller/src/controller.cpp'},
+  fr:{t:'触发：FSM → 重规划流水线', what:'按墙钟约 30 Hz 发出“重算一次”的节拍', plain:'状态机是节拍器，每一拍让流水线重新算一条局部轨迹。',
+    kv:[['频率','fsm.replan_frequency 30 · replan_use_wall_clock true'],['超预算','超过 33.3 ms 记 overrun=1']], src:'plan_manage/src/scan_replan_fsm.cpp'},
+  gf:{t:'安全巡检：GridMap → FSM', what:'当前正在执行的轨迹，在最新地图下还安全吗？', plain:'除了 30 Hz 的重规划，状态机还有一个独立的 50 ms 安全定时器：每次都用最新点云和位姿，把正在执行的整条曲线重新查一遍。发现前方有障碍就尝试从当前轨迹重算，来不及就急停。',
+    kv:[['定时器','50 ms（checkCollisionCallback）'],['检查','checkFullCubicTrajectory：沿剩余曲线逐点查膨胀占据 + 朝向'],['结果','安全 → 继续；能重算 → EXEC_TRAJ；障碍在 emergency_time 1.0 s 以内 → EMERGENCY_STOP；否则 → REPLAN_TRAJ'],['异常','曲线本身无效或时钟倒退 → EMERGENCY_STOP（INVALID_SPLINE_INPUT）']], src:'plan_manage/src/scan_replan_fsm.cpp'},
+  gr:{t:'碰撞 / 支撑查询：GridMap → 流水线', what:'“把身体放在这里、朝这个方向，安全吗？脚下有没有可踩的面？”', plain:'流水线每生成一个候选点都来问地图。只有 Free 才算能走。',
+    kv:[['足迹','双圆柱 r 0.35 m，前后偏移 0.18 m'],['拒绝','障碍、未知、WrongHeight、SupportGap、无效查询']], src:'plan_env/src/grid_map.cpp'},
+  er:{t:'软代价 + 梯度：ENV → 流水线', what:'离台阶边缘 / 实体墙还有多远，以及往哪边推更安全', plain:'硬判定只说“能 / 不能”，优化器还需要知道往哪边挪。ENV 给出代价和梯度，只在回弹阶段使用。',
+    kv:[['代价','edge² + solid² + 0.25·terrain²'],['积分','每段 B 样条 3 个积分点']], src:'plan_env/src/environmental_field.cpp'},
+  rc:{t:'B 样条轨迹：流水线 → Controller', what:'通过终检的局部轨迹（位置随时间变化的光滑曲线）', plain:'只有最后一道“最新输入下全曲线终检”通过的曲线才会发布，否则保留上一条。',
+    kv:[['终检','0.05 m 步长逐点查双圆柱足迹，开启发布租约']], src:'plan_manage/src/planner_manager.cpp'},
+  ct:{t:'参考：Controller → TrackingNode', what:'每 1/30 s 在轨迹上采样的参考点（位置、速度、朝向）', plain:'控制器按当前时间在曲线上取一个“应该在哪”的参考点，交给跟踪器去算速度。',
+    kv:[['频率','controller_frequency 30 Hz'],['状态年龄','执行状态超过 0.25 s 不发指令']], src:'scan_nav2_controller/src/controller.cpp · include/scan_nav2_controller/tracking_node.hpp'},
+  tr:{t:'速度指令：TrackingNode → RL 步态', what:'机体系速度 [vx, vy, ωz]', plain:'跟踪器算出的速度经限幅、斜率限制和命令门禁后交给 RL 策略。',
+    kv:[['上限','vx 1.0 · vy 0.35 m/s · ωz 1.0 rad/s']], src:'scan_nav2_controller/config/controller.yaml'},
+  tp:{t:'停稳后切 PD', what:'指令归零且四只脚受力达标后，从 RL 切到关节 PD', plain:'走路用 RL，站着不动用 PD。切换前这段零命令时间仍由 RL 控制，v290 的漂移就发生在这里。',
+    kv:[['进入条件','每只脚 ≥ 10 N 持续 0.25 s'],['保持','stand_hold_seconds 2.0 · 2 s crossfade']], src:'scripts/factory_navigation_startup.py'},
+  rn:{t:'关节目标 → 力矩：RL → Newton', what:'12 个关节目标，在仿真里换算成力矩驱动腿', plain:'这是唯一真正“动”机器人的出口。', kv:[['物理步频','约 1 kHz']], src:'scripts/newton_episode.py'},
+  pn:{t:'PD 力矩：PD → Newton', what:'站立保持阶段的关节 PD 力矩', plain:'PD 接管后，用“关节弹簧”把姿势锁住。', kv:[['基线','v233 实测 PD 保持 4.398 s']], src:'scripts/factory_navigation_startup.py'},
+  nl:{t:'几何射线：Newton → 雷达', what:'按 MID-360 扫描花样对仿真场景求交', plain:'雷达只看得到它射线打到的东西。', kv:[['时序','周期 0.1 s · 截止 0.1 s']], src:'scripts/geometric_lidar.py'},
+  np:{t:'真值位姿：Newton → body_pose', what:'仿真真值机身位姿，带源时间戳', plain:'仿真里位姿直接取真值；时间戳必须严格递增。', kv:[['v289','迟到旧样本丢弃，不再锁存']], src:'plan_env/include/plan_env/body_time_buffer.h'},
+  lg:{t:'/cloud：雷达 → GridMap', what:'每 0.1 s 一帧点云', plain:'点云融进 0.05 m 的三维占据栅格，太旧的帧不用。', kv:[['新鲜度','观测窗口 0.5 s · 点云最大年龄 0.35 s']], src:'plan_env/src/grid_map.cpp'},
+  pg:{t:'/body_pose：位姿 → GridMap', what:'机身位姿（滑窗跟着狗走，射线从机身位置出发）', plain:'地图需要知道狗在哪，才能把点云放到正确的位置。', kv:[['要求','BodyTimeBuffer 严格递增']], src:'plan_env/include/plan_env/body_time_buffer.h'},
+  pt:{t:'位姿：body_pose → TrackingNode', what:'跟踪器比较“应该在哪”和“实际在哪”', plain:'跟踪律 v = v_ref + 0.8·(p_ref − p)，朝向 ω = clamp(1.5·yaw_err)。', kv:[['终点容差','XY 0.25 m · Z 0.20 m · yaw 0.25 rad']], src:'include/scan_nav2_controller/tracking_node.hpp'},
+  pb:{t:'停稳证据：body_pose → BT', what:'用实测速度证明狗真的停住了，才允许重试', plain:'恢复前先要“连续 1 s 真的不动”，防止在狗还在滑的时候重新出发。',
+    kv:[['条件','连续 1 s：指令范数 < 0.01、水平速度 < 0.1 m/s、偏航角速度 < 0.15 rad/s']], src:'lite3_nav2_plugins/src/recovery_bt.cpp'},
+  op:{t:'断层图：离线输入 → PCT', what:'多层断层图 tomogram + 支撑格 + 实体面', plain:'PCT 在离线生成的多层地图上搜路，和局部共用同一份几何。', kv:[['校验','启动时校验 SHA / FNV']], src:'lite3_nav2_plugins/src/pct_planner.cpp'},
+  oe:{t:'ENV 场：离线输入 → ENV', what:'ENV225 预计算的距离场', plain:'离台阶边缘、离墙有多远，都是离线算好、运行时直接查表。', kv:[['格式','ENV225']], src:'plan_env/src/environmental_field.cpp'},
+};
+function openEdge(id){
+  const d = EDGE_DETAIL[id]; if(!d) return;
+  const kv = d.kv.map(([a,b]) => `<div>${a}</div><div>${b}</div>`).join('');
+  $('#drawerBody').innerHTML = `<span class="tag" style="color:#cbd5e1">连线 · 流过什么</span><h3>${d.t}</h3>
+    <div class="infobox small" style="margin:10px 0"><b>流过的东西：</b>${d.what}</div>
+    <div class="plain"><b>人话：</b>${d.plain}</div><div class="kv">${kv}</div>
+    <div class="muted small" style="margin:14px 0 6px">源码（默认相对冻结 versions/v290/src/；以 scripts/ 开头的相对实验根目录）</div><div class="src">${d.src}</div>`;
+  $('#drawer').classList.add('open'); $('#drawer').setAttribute('aria-hidden','false');
+}
+
+/* ---------- layer guide (visible plain-language explanation under the diagram) ---------- */
+(function(){
+  const LG = [
+    {k:['mission','bt'], c:'#a78bfa', lt:'① 任务层', lq:'管“去哪、失败了怎么办”',
+      p:'<b>MissionBridge</b> 是前台：接外部 HTTP 订单（终点 XYZ + 朝向），翻译成 Nav2 动作 <code>NavigateToPose</code>，然后盯着这单的结果。<b>BT Navigator</b> 是调度员：先让 PCT 算路，再让 SCAN 去走；走失败了先确认狗真的停住，再等 1 s 重试，最多 6 次。',
+      io:'<b>两者之间的箭头</b>：NavigateToPose 动作。发之前先确认 Nav2 节点都已激活，并向 PCT 登记本次任务（RouteSession，只登记不算路）；结果回来映射成 arrived / cancelled / failed。<br><b>向下</b>：ComputePathToPose → PCT；FollowPath → Controller。<br><b>向上</b>：body_pose 提供“实测停稳证据”。'},
+    {k:['pct'], c:'#2dd4bf', lt:'② 全局规划层', lq:'整栋楼的路线 · 约 1 Hz',
+      p:'PCT 在离线生成的多层断层图上搜一条能上下楼梯的路线，相当于导航软件里的“整条路”。全局和局部共用同一份实体几何，保证“全局认为能走，局部也认为能走”。',
+      io:'<b>输入</b>：离线断层图 / 支撑格 / 实体面（启动时校验 SHA/FNV）。<br><b>输出</b>：带高度的 /pct_path → SCAN 状态机。'},
+    {k:['fsm','replan','grid','env'], c:'#60a5fa', lt:'③ 局部规划层 SCAN', lq:'眼前 3.5 m · 30 Hz',
+      p:'状态机按约 30 Hz 触发流水线：种子 → B 样条 → 回弹优化 → 时间重分配 → 用最新地图终检。GridMap 回答“身体放这儿安全吗”，ENV 告诉优化器“往哪边挪更安全”。另有 50 ms 安全巡检随时检查正在执行的轨迹。',
+      io:'<b>输入</b>：全局路线、/cloud、/body_pose、离线 ENV 场。<br><b>输出</b>：通过终检的 B 样条轨迹 → Controller。'},
+    {k:['ctrl','track'], c:'#fbbf24', lt:'④ 执行层', lq:'轨迹 → 速度指令 · 30 Hz',
+      p:'Controller 每 1/30 s 在轨迹上取参考点，TrackingNode 比较“应该在哪”和“实际在哪”算出速度，经限幅和命令门禁输出。进入 0.25 m 终点圈后冻结进度、对准朝向收尾——这是 v287–v290 失败最集中的地方。',
+      io:'<b>输入</b>：B 样条轨迹、body_pose。<br><b>输出</b>：[vx, vy, ωz] → RL；停稳后切 PD。<br><b>失败</b>：0.75 s 没轨迹或 10 s 走不到 0.5 m → 交回行为树。'},
+    {k:['rl','pd'], c:'#4ade80', lt:'⑤ 身体层', lq:'速度指令 → 关节',
+      p:'走路时由冻结的 RL 策略（v216）决定怎么迈腿；停下来后换成关节 PD 把姿势锁住。两者切换前的零命令时间仍由 RL 控制，v290 的 CD12 / D07 漂移就发生在这里。',
+      io:'<b>输入</b>：速度指令 / 停稳信号。<br><b>输出</b>：12 个关节目标或 PD 力矩 → Newton 仿真。'},
+    {k:['newton','lidar','pose','offline'], c:'#94a3b8', lt:'⑥ 世界 · 传感器 · 离线输入', lq:'导航算法看不到“答案”',
+      p:'Newton 模拟楼宇、楼梯和机器狗的身体。导航只能看到雷达点云（每 0.1 s 一帧，截止 0.1 s 绝不放宽）和带时间戳的机身位姿。离线输入是从楼宇网格预先生成的静态几何，全局和局部共用。',
+      io:'<b>输出</b>：/cloud → GridMap；/body_pose → GridMap、TrackingNode、BT；离线几何 → PCT、ENV。'},
+  ];
+  const box = $('#layerGuide'); if(!box) return;
+  box.innerHTML = LG.map((L,i) => `<div class="lg-card" data-i="${i}" style="--c:${L.c}" tabindex="0"><div class="lt">${L.lt}</div><div class="lq">${L.lq}</div><p>${L.p}</p><div class="io">${L.io}</div></div>`).join('');
+  const cards = [...box.children];
+  function pick(i){
+    const L = LG[i]; const ns = new Set(L.k), es = new Set();
+    ARCH.edges.forEach(e => { if(ns.has(e.f) || ns.has(e.t)) es.add(e.id); });
+    const on = cards[i].classList.contains('on');
+    cards.forEach(c => c.classList.remove('on'));
+    if(on){ ARCH.setJourney(null); return; }
+    cards[i].classList.add('on'); ARCH.setJourney({nodes: ns, edges: es});
+    $('#archSvg').scrollIntoView({behavior:'smooth', block:'center'});
+  }
+  cards.forEach((c,i) => { c.addEventListener('click', () => pick(i)); c.addEventListener('keydown', ev => { if(ev.key === 'Enter') pick(i); }); });
+  const rs = $('#jReset'); if(rs) rs.addEventListener('click', () => cards.forEach(c => c.classList.remove('on')));
+})();
 
 /* ---------- journey playback ---------- */
 (function(){
