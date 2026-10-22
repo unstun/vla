@@ -1,5 +1,27 @@
 # Foxy SCAN controller and observation window
 
+## v291 candidate: one terminal-command owner (2026-10-22)
+
+For the v291 child of v290, TrackingNode owns final centering, yaw and braking.
+Controller calls LocalMotion once, consumes `terminalBraking()`, and records
+original pose/stopped/physical-PD completion; it must not replace the command
+with an independent early brake. Enter braking inside the existing 5 cm centering
+deadzone plus half-yaw capture, retain it within original outer XYZ/full-yaw
+acceptance, and resume correction after leaving that band. Full proportional
+correction outside the deadzone remains speed- and slew-bounded. This changes
+brake entry, not final acceptance, and does not revive the older 2 cm mission
+capture rule. Cancellation and collision emergency remain dominant.
+
+An already centered goal before its first spline has a tracker stop-only path:
+no synthesized translation, no ordinary trajectory starvation, and the original
+physical proof/timeout still applies. After an emergency spline, missing
+trajectory must never enter this no-first-spline arrival path.
+
+Native 14-package tests and actual D07/CD12 recorded-controller replay exercise
+this contract. CD12's 6.9 cm off-center pose keeps correction; D07 emergency
+still emits zero without terminal arrival. Physics remains untested. See
+`versions/v291/RESULTS.md`; immutable older snapshots keep their original behavior.
+
 ## Event recovery override (v219)
 
 The authorized v219 implementation supersedes earlier periodic-refresh wording.

@@ -1,0 +1,69 @@
+{
+  "physics_steps": 0,
+  "stage": "passed",
+  "checks": [
+    {
+      "name": "build",
+      "returncode": 0,
+      "wall_s": 45.448011403001146,
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--name",
+        "v291-attempt02-build",
+        "--user",
+        "1000:1000",
+        "--cpus=2",
+        "--memory=6g",
+        "--network=host",
+        "-v",
+        "/home/ubuntu/sun/vla_v291_20261022/native:/work:rw",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/native/component_fixtures03:/work/fixtures:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v291_20261022/evaluation:/evaluation:rw",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v224:/task/source_v224:ro",
+        "--entrypoint",
+        "/bin/bash",
+        "sha256:ec85ad5a21dc2b3441523571d2dc583f22bf08121390081ca780f78e15332343",
+        "-c",
+        "source /opt/ros/foxy/setup.bash && export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONDONTWRITEBYTECODE=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 MAKEFLAGS=-j2 ROS_DOMAIN_ID=161 ROS_LOCALHOST_ONLY=1 ROS_HOME=/work/ros_home ROS_LOG_DIR=/work/ros_logs && export CMAKE_PREFIX_PATH=/work/dependencies/osqp-install:${CMAKE_PREFIX_PATH:-} && cd /work && colcon --log-base logs/v291-attempt02 build --base-paths src --executor sequential --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCMAKE_CXX_FLAGS_RELEASE=\"-O3 -DNDEBUG -g1 -fno-omit-frame-pointer\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DPython3_EXECUTABLE=/usr/bin/python3"
+      ]
+    },
+    {
+      "name": "unit",
+      "returncode": 0,
+      "wall_s": 67.65539128298406,
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--name",
+        "v291-attempt02-unit",
+        "--user",
+        "1000:1000",
+        "--cpus=2",
+        "--memory=6g",
+        "--network=host",
+        "-v",
+        "/home/ubuntu/sun/vla_v291_20261022/native:/work:rw",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/native/component_fixtures03:/work/fixtures:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v291_20261022/evaluation:/evaluation:rw",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v224:/task/source_v224:ro",
+        "--entrypoint",
+        "/bin/bash",
+        "sha256:ec85ad5a21dc2b3441523571d2dc583f22bf08121390081ca780f78e15332343",
+        "-c",
+        "source /opt/ros/foxy/setup.bash && export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONDONTWRITEBYTECODE=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 MAKEFLAGS=-j2 ROS_DOMAIN_ID=161 ROS_LOCALHOST_ONLY=1 ROS_HOME=/work/ros_home ROS_LOG_DIR=/work/ros_logs && source /work/install/setup.bash && export ROUTE_ORACLE=/work/fixtures/route-oracle.yaml PCT_TEST_MAP=/work/fixtures/flat.pct TERRAIN_TEST_MANIFEST=/work/fixtures/building/terrain.json TERRAIN_TEST_DIRECTORY=/work/fixtures/building TERRAIN_NATIVE_CONFIG=/work/fixtures/building_planner.yaml TERRAIN_NATIVE_PROFILE=/work/fixtures/component.scan.yaml TERRAIN_TEST_PROFILE=/work/fixtures/component.yaml FEEDBACK_OUTPUT=/evaluation/feedback_output && cd /work && colcon --log-base logs/v291-test-attempt02 test --base-paths src --executor sequential --event-handlers console_direct+ --return-code-on-test-failure --ctest-args -E \"^(cpplint|uncrustify|xmllint)$\""
+      ]
+    }
+  ],
+  "image": "sha256:ec85ad5a21dc2b3441523571d2dc583f22bf08121390081ca780f78e15332343"
+}

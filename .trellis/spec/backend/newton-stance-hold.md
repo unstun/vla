@@ -20,6 +20,22 @@ stair hold. Final PD remained continuously qualified for 4.338 s. See
 `versions/v216/RESULTS.md` and `versions/v219/results/stair_pd_support.json` in the
 2026-09-26 Newton experiment. All prior versions remain frozen.
 
+## v291 candidate: assistance before formal PD (2026-10-22)
+
+The opt-in v291 child may hold a quiet loaded leg during `STAND_SETTLING`
+using a torque-matched target at unchanged RL gains. Foot order is FL/FR/HL/HR,
+each containing HipX/HipY/Knee. Uncaptured legs retain policy output; captured
+legs release at <=1 N contact, and excessive body motion releases assistance.
+A new command reuses the existing rejoin; partial ownership must write actual
+mixed targets into action history. Keep captured targets in the formal entry
+crossfade's policy component. The v216 four-foot dwell, transition disturbance
+exit and formal PD gains remain authoritative. Default-off behavior matches
+v216. See `versions/v291/RESULTS.md` and its 12 stopping/3 adapter tests.
+
+This is a component/offline candidate, not an accepted physical improvement.
+Recorded-input reductions in target variation must not be reported as reduced
+body drift. Do not apply this override to frozen v216 or adopted v232/v233.
+
 ## 1. Scope / Trigger
 
 Explicit local Newton flat-scene PD/RL switching. The original Isaac stair gate

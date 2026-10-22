@@ -15,17 +15,36 @@
 </style>
 </head>
 <body>
-<header class="topbar"><div class="wrap"><div class="top-inner"><div class="brand"><span class="brand-mark" aria-hidden="true">↗</span> Lite3 · 本轮只做一件事</div><nav class="nav" aria-label="页面导航"><a href="#stop-analysis">分析结果</a><a href="#understand">看懂问题</a><a href="#checklist">逐项完成</a><a href="#results">检查进步</a><a href="#parked">暂时不做</a></nav></div></div></header>
+<header class="topbar"><div class="wrap"><div class="top-inner"><div class="brand"><span class="brand-mark" aria-hidden="true">↗</span> Lite3 · 本轮只做一件事</div><nav class="nav" aria-label="页面导航"><a href="#v291-progress">本次进展</a><a href="#understand">看懂问题</a><a href="#checklist">逐项完成</a><a href="#results">检查进步</a><a href="#parked">暂时不做</a></nav></div></div></header>
 <main class="wrap">
 <section class="hero">
  <div><div class="eyebrow">收敛计划 / 2026.10.22</div><h1>先让机器狗<br><em>稳稳停在终点。</em></h1><p>这轮先解决：走到了，却在转身或站立时滑到边界外。修完再比较，确实变好才往下做。</p><div class="tags"><span class="tag">研究任务尚未完成</span><span class="tag">物理仿真 · 不是上真机</span><span class="tag">保留所有失败记录</span></div></div>
  <aside class="hero-note"><div class="small muted">这一轮要回答</div><div class="big">把“谁说停、何时停”<br>统一起来，会不会更好？</div><div class="three"><div><b>1</b><span>个冻结候选版本</span></div><div><b>5 天</b><span>工作预算，非倒计时</span></div><div><b>≤50</b><span>次完整仿真</span></div></div></aside>
 </section>
-<section class="next" aria-labelledby="next-title"><div><div class="small">现在最值得做的下一步</div><h3 id="next-title">把两条失败路线的“停止过程”排清楚</h3><div id="next-description" class="small">先用 D07 / CD12 旧记录，找出什么时候喊停、狗又滑了多少。</div></div><a class="button" id="next-link" href="#task-trace">去做这一项 <span aria-hidden="true">↗</span></a></section>
+<section class="next" aria-labelledby="next-title"><div><div class="small">现在最值得做的下一步</div><h3 id="next-title">冻结一个候选，并提前定好四条新路线</h3><div id="next-description" class="small">测试开始后不改代码、不改参数、不临时换题。</div></div><a class="button" id="next-link" href="#task-freeze">去做这一项 <span aria-hidden="true">↗</span></a></section>
+
+<!-- V291-PROGRESS:START -->
+<style>
+.repair-flow{display:grid;grid-template-columns:1fr 26px 1fr;gap:10px;align-items:center;margin:18px 0}.repair-state{border:1px solid var(--line);border-radius:13px;padding:15px;background:#f2f3ed}.repair-state.fixed{background:var(--pale);border-color:#c5d8bd}.repair-state b{display:block;font-size:24px;margin:6px 0}.repair-state span{display:block;font-size:13px}.repair-arrow{color:var(--green);text-align:center}.feet-demo{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:300px;margin:18px auto}.foot{border-radius:12px;padding:12px;text-align:center;font-size:13px;background:#eceee6;border:1px dashed #adb9a8}.foot.loaded{background:var(--pale);border:1px solid #b4cdaa;color:var(--green)}.foot b{display:block}.repair-checks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:17px}.repair-check{padding:15px 17px;background:var(--paper);border:1px solid var(--line);border-radius:12px}.repair-check b{display:block;font-size:22px;color:var(--green)}.repair-check span{font-size:13px;color:var(--muted)}@media(max-width:650px){.repair-checks{grid-template-columns:1fr}.repair-flow{gap:7px;grid-template-columns:1fr 20px 1fr}.repair-state{padding:12px}.repair-state b{font-size:21px}}
+</style>
+<section class="section" id="v291-progress">
+<div class="section-head"><div><div class="section-label">本次进展 / v291 候选</div><h2>控制已经接顺，实际少滑多少还要测。</h2><p>统一“何时停”，并让踩稳的腿先稳住。下面是本次已经验证到的地方。</p></div><span class="pill good">组件与离线门槛通过</span></div>
+<div class="explain-grid">
+<article class="panel"><div class="panel-inner"><span class="pill good">✓ 终点控制统一</span><h3 style="margin-top:10px">离中心还差 6.9 厘米时，继续调整。</h3><p class="small muted" style="margin-top:7px">CD12 同一帧旧记录，分别交给新旧控制器。</p>
+<div class="repair-flow"><div class="repair-state"><span>旧版：外层先喊停</span><b>0</b><span>平移命令 · cm/s</span></div><div class="repair-arrow" aria-hidden="true">→</div><div class="repair-state fixed"><span>新版：继续靠近中心</span><b>5.53</b><span>平移命令 · cm/s</span></div></div>
+<p class="small">位置进入原有 <b>5 cm 调整死区</b>、朝向也合格，才开始停住；随后在原有到达容差内保持，避免来回启动。</p><p class="note">这说明提前停止的代码路径已消除。D07 的碰撞急停仍然有效。</p></div></article>
+<article class="panel"><div class="panel-inner"><span class="pill good">✓ 零命令到 PD 之间加上停步辅助</span><h3 style="margin-top:10px">踩稳的腿先保持，没落地的继续落地。</h3><div class="feet-demo" role="img" aria-label="示意：前两条支撑腿保持已有目标；后两条未着地腿继续由走路策略控制。实际按每只脚受力决定。"><div class="foot loaded"><b>左前 · 已支撑</b>先保持目标</div><div class="foot loaded"><b>右前 · 已支撑</b>先保持目标</div><div class="foot"><b>左后 · 未着地</b>继续落地</div><div class="foot"><b>右后 · 未着地</b>继续落地</div></div>
+<p class="small">这是受力示意，实际逐脚判断。沿用走路时的关节增益；四脚都稳定支撑后，再按原流程交给 PD。新移动命令到来时平滑交还。</p><p class="note">旧记录回放中，关节目标累计变化量下降：D07 15.6%，CD12 11.9%。这是指令变化量，<b>不是滑动距离减少</b>。</p></div></article>
+</div>
+<div class="repair-checks"><div class="repair-check"><b>14 个包通过</b><span>原生组件：终点、急停、取消与完成判定</span></div><div class="repair-check"><b>29 项通过</b><span>停步、传感器接口与继承行为检查</span></div><div class="repair-check" id="v291-offline-result"><b>49/50 + 3/3</b><span>合法通过 / 非法拒绝；独立几何通过，中位 1.42 s</span></div></div>
+<div class="finding-correction"><b>当前判断：</b>这两个改动值得进入物理对比，但现在还不能把“少滑了多少”填成成绩。D07 转身时先越界的问题也要在新轨迹中检查。新物理实验目前为 <b>0 次</b>。</div>
+<div class="analysis-links"><a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v291/RESULTS.md">本次修改与验证记录</a><a href="#checklist">看已划掉的任务 ↗</a><a href="#stop-analysis">回看 v290 的实际滑动距离</a></div>
+</section>
+<!-- V291-PROGRESS:END -->
 
 <!-- STOP-ANALYSIS:START -->
 <style>.stop-chart{display:block;width:100%;height:auto;margin:16px 0 8px}.stop-metric{display:flex;gap:22px;align-items:center;margin:19px 0 23px}.stop-metric>b{font-size:43px;line-height:1.2;font-weight:600;color:#23694c}.stop-metric>b>span{font-size:17px;font-weight:400}.stop-metric>span{font-size:13px;color:#65756f}.stop-events{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:14px 0;border-top:1px solid #dce1d7;border-bottom:1px solid #dce1d7}.stop-events b{display:block;font-size:16px}.stop-events span{font-size:12px;color:#65756f}.stop-bottom{margin-top:16px;font-size:14px;line-height:1.8}.legend-dot{display:inline-block;width:10px;height:10px;margin:0 4px 0 7px;border-radius:3px}.waiting{background:#e6c29e}.transfer{background:#a4c59e}.finding-correction{border-left:3px solid #a4522e;padding:12px 17px;margin:18px 0;background:#f5ede0;font-size:14px}.analysis-links{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;margin-top:16px}@media(max-width:650px){.stop-metric>b{font-size:37px}.stop-events{gap:7px}.stop-events b{font-size:14px}.stop-events span{font-size:11px}.stop-card .panel-inner{padding:19px 17px}}</style>
-<section class="section" id="stop-analysis"><div class="section-head"><div><div class="section-label">已完成第一项 / 旧记录实测分析</div><h2>喊停以后，机身仍移动了约 20 多厘米。</h2><p>大幅移动主要发生在站立保持（PD）接管之前。命令虽然已是零，走路策略（RL）仍在控制关节。</p></div><span class="pill good">分析完成 · 未修改控制器</span></div>
+<section class="section" id="stop-analysis"><div class="section-head"><div><div class="section-label">已完成第一项 / 旧记录实测分析</div><h2>喊停以后，机身仍移动了约 20 多厘米。</h2><p>大幅移动主要发生在站立保持（PD）接管之前。命令虽然已是零，走路策略（RL）仍在控制关节。</p></div><span class="pill good">v290 旧记录 · 已完成分析</span></div>
 <div class="explain-grid"><article class="panel stop-card"><div class="panel-inner"><div class="panel-heading"><span class="pill">D07</span><h3>转身先越界，SCAN 随后急停</h3></div><p class="small muted">急停时朝向还差约 65.6°，没有满足“到达终点”的条件。</p>
 <div class="stop-metric"><b>23.9<span> 厘米</span></b><span>收到全零命令后<br>机身最大水平位移</span></div>
 <div class="stop-events"><div><b>107.313 s</b><span>发布停止平移命令</span></div><div><b>107.393 s</b><span>全零命令实际生效</span></div><div><b>119.966 s</b><span>PD 才开始接管</span></div></div>
@@ -4690,7 +4709,7 @@ z
 <p class="stop-bottom">接管前等了 <b>4.56 秒</b>，已净移动 <b>20.2 厘米</b>；接管开始到固定站立，仅再净移动 <b>1.09 厘米</b>。</p></div></article></div>
 <div class="finding-correction"><b>修正之前的判断：</b>D07 不是终点控制器“误判到达”，而是碰撞急停；CD12 确有外层提前结束位置调整的路径。两条路线第一次越界都发生在完全喊停之前，因此下一步还要覆盖转向过程和等待站稳时的偏移。</div>
 <p class="note">“位移”从全零命令实际生效时的机身位置起算，取后续最大水平距离；不是累计路程，也不是越界深度。指标按原始约 50 Hz 遥测计算，图形抽样显示。浅橙色阶段仍由 RL 控制；主要等待条件是四只脚的受力。</p>
-<div class="analysis-links"><a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v290_stop_timeline/REPORT.md">查看完整时间线与归因</a><a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v290_stop_timeline/summary.json">查看数值和原始行号</a><a href="#task-unify">下一步：统一终点控制 ↗</a></div></section>
+<div class="analysis-links"><a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v290_stop_timeline/REPORT.md">查看完整时间线与归因</a><a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v290_stop_timeline/summary.json">查看数值和原始行号</a><a href="#v291-progress">查看这次控制修复 ↗</a></div></section>
 <!-- STOP-ANALYSIS:END -->
 <section class="section" id="understand"><div class="section-head"><div><div class="section-label">01 / 先看懂</div><h2>走到附近，还不等于稳稳站住。</h2><p>先消除两层控制互相抢着喊停的问题。</p></div><span class="small muted">下图是原理示意，不是实测轨迹</span></div>
 <div class="explain-grid">
@@ -4736,7 +4755,7 @@ z
 <footer class="footer"><span>Lite3 VLA · 一轮只验证一个主要判断</span><span>计划保存于 2026-10-22 · 可离线打开 · 无外部依赖</span></footer>
 </main>
 <div id="toast" class="toast" role="status" hidden></div>
-<script id="plan-state" type="application/json">{"schema": 1, "planId": "lite3-convergence-2026-10-22", "updatedAt": "2026-10-22T17:36:03.871Z", "checks": {"trace": true}, "notes": {"trace": "2026-10-22 已完成：14 项旧录制源哈希匹配。D07 为 SCAN 碰撞急停，收到全零命令后最大位移 23.87 cm，等 12.573 s 才由 PD 接管；CD12 外层朝向进入 0.125 rad 后停止 XY，后续最大位移 21.26 cm，等 4.557 s 才接管。大部分位移发生在接管前的 RL settling。证据：.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v290_stop_timeline/REPORT.md"}, "scores": {}, "handoff": "第一项停止分析已完成，未修改控制器、未跑新仿真。下一步统一 Controller/tracker 终点控制；D07 是碰撞急停，需同时考虑终点转向空间；CD12 是外层提前停止位置调整。两者主要漂移发生在 PD 接管前，先处理接近/过渡，不盲调 PD 增益。"}</script>
+<script id="plan-state" type="application/json">{"schema": 1, "planId": "lite3-convergence-2026-10-22", "updatedAt": "2026-10-22T18:28:34.073992+00:00", "checks": {"trace": true, "unify": true, "handoff": true, "component": true}, "notes": {"trace": "2026-10-22 已完成：14 项旧录制源哈希匹配。D07 为 SCAN 碰撞急停，收到全零命令后最大位移 23.87 cm，等 12.573 s 才由 PD 接管；CD12 外层朝向进入 0.125 rad 后停止 XY，后续最大位移 21.26 cm，等 4.557 s 才接管。大部分位移发生在接管前的 RL settling。证据：.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v290_stop_timeline/REPORT.md", "unify": "2026-10-22 v291：终点位置、转向、制动统一由 tracker 决定；沿用原有 5 cm 调整死区与最终到达容差。14 个原生包组件检查通过，包含已在终点、取消、急停、轨迹饥饿与终点滞回。 实际控制器旧记录回放：CD12 距中心 6.9 cm 时，旧版平移命令 0、新版 5.53 cm/s；D07 碰撞急停不变。", "handoff": "2026-10-22 v291：零命令后，已加载的安静支撑腿先保持力矩连续目标，未着地腿仍由策略控制；四脚支撑的正式 PD 门槛不变。12 项新测试与 D07/CD12 旧遥测回放通过。这里只完成实现和回放，真实滑动改善待物理测试。 另有 3 项实际适配器接口检查与 14 项默认关闭时的继承回归通过。", "component": "2026-10-22 v291 已通过：原生 14 包组件；29 项 Python 检查（12 停步 + 3 实际适配器接口 + 14 继承回归）；D07/CD12 控制器和停步回放；strict53 合法 49/50、非法拒绝 3/3，47/49 首次局部求解通过，中位数 1.421 s，独立原始几何审计通过。CS01 失败保留。证据：.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v291/RESULTS.md。新物理仿真 0 次。"}, "scores": {}, "handoff": "v291 实现与组件/离线检查完成，清单前 4 项已划掉。终点控制统一，零命令后的已加载支撑腿先保持；14 包原生组件、29 项 Python、两条旧记录回放和 strict53 全部门槛通过。下一步选定四条新路线，冻结候选物理执行配置，然后按计划做 v291 vs v290 的 24 次同期对照。本轮新物理仿真 0 次；真实漂移改善未测，D07 转向越界仍需重点检查。详见 versions/v291/RESULTS.md。"}</script>
 <script>
 (() => {
 'use strict';
@@ -4746,7 +4765,7 @@ const phases = [
  {title:'先修“谁说停、何时停”',caption:'前两天 · 从旧记录到一个冻结候选',tasks:[
   ['trace','把两条失败路线的“停止过程”排清楚','先用 D07 / CD12 旧记录，找出什么时候喊停、狗又滑了多少。','同一时间线上对齐：进入终点范围、位置与朝向、实际命令、停止时刻、PD 接管时刻和身体漂移。'],
   ['unify','让位置调整和转向由一处协调','消除外层先喊停、内层还没调整完的位置冲突。','修复 Controller 绕过 tracker 的提前停止路径，以及 tracker 朝向达标就停止 XY 的独立出口。'],
-  ['handoff','把“停下来 → 站稳 → 完成”接顺','沿用现有站立控制；把交接过程的滑动一起检查。','保留原到达容差，不引入 2 厘米小圈；不改目标位置、RL 步态或 PD 参数。'],
+  ['handoff','把“停下来 → 站稳 → 完成”接顺','沿用现有站立控制；把交接过程的滑动一起检查。','保留原到达容差与 PD 增益，不改目标位置、不重新训练步态；零命令后增加逐脚停步辅助。'],
   ['component','先通过现有组件测试和 53 例离线检查','先确认代码逻辑真的改到了，再花时间跑整条路线。','确认停止路径、转向与位置调整、取消和交接逻辑；复用现有合法 / 非法案例。录制回放不能代替新的物理仿真。'],
   ['freeze','冻结一个候选，并提前定好四条新路线','测试开始后不改代码、不改参数、不临时换题。','候选由 v290 派生；新路线未参与本次调参，覆盖不同终点空间、终点转角和上下楼方向。']
  ]},

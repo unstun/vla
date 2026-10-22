@@ -38,3 +38,15 @@ Maximum later XY displacement is 23.87/21.26 cm, with 12.573/4.557 s waiting
 before PD transition. Most displacement occurs during RL-owned STAND_SETTLING,
 not after fixed PD has taken over. Fourteen raw-source identities match.
 No controller modification or new physics run occurred. Keep repair review open.
+
+
+## 2026-10-22 v291 component/offline follow-up
+
+The explicitly authorized child [v291](../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v291/RESULTS.md)
+unifies terminal commands and adds loaded-leg settling assistance before the
+unchanged formal PD gate. Native 14-package tests, 29 Python checks, D07/CD12
+recorded replays and strict53 pass (49/50 legal, 3/3 illegal, 1.421 s median,
+independent geometry passed). The HTML now records 4/12 completed. No new physics
+was run; v290's failed physical acceptance and adopted v232/v233 are unchanged.
+Next: held-out route selection and fixed execution configuration, then the
+planned paired physical comparison. D07 pre-stop turning geometry remains open.

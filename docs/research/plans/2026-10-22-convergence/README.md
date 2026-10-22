@@ -33,8 +33,9 @@ a manual progress record, not scientific evidence. Review referenced outputs
 before updating experimental status. The automatic score display checks only
 the numerical decision lines; it cannot validate a trajectory or a report.
 
-The active repair context remains
+The parent failure context remains
 [v290 closeout](../../../../.trellis/tasks/10-21-v290-terrain-terminal/CLOSEOUT.md).
+The active implementation is [v291](../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v291/RESULTS.md).
 The plan is discoverable from the project's hot-zone open decisions. Research
 implementation, simulator execution and publication have not been started by
 creating this page. Preserve the repository's existing local research hold.
@@ -61,3 +62,16 @@ user-entered notes, checked items or scores before this update.
 It distinguishes D07's collision emergency stop from CD12's outer terminal
 braking, and measures drift mainly before PD takes control. The analysis ran
 zero new physics steps and did not modify frozen navigation source.
+
+## v291 implementation and component progress — 2026-10-22
+
+`unify` and `handoff` are now completed with evidence notes: one tracker owns
+terminal commands; loaded quiet legs receive torque-continuous assistance before
+formal PD. The added visual section compares the actual CD12 replay command
+and shows per-foot ownership. No physical scores are filled. The old v290
+23.87/21.26 cm drift remains clearly labeled as historical measured evidence.
+
+Native 14-package suite, 29 Python checks and both recorded controller/stance
+replays passed. `component` is also complete: 49/50 legal, 3/3 illegal refusals, 1.421 s median, independent original-geometry audit passed. The page now shows 4/12 completed. Runtime
+candidate source is frozen, but the plan's broader `freeze` item still needs
+four new physical routes and the paired execution configuration.
