@@ -854,7 +854,7 @@ const ARCH = (function(){
 /* ---------- module details (drawer) ---------- */
 const DETAIL = {
   mission:{layer:['任务层','#a78bfa'], t:'目标入口 MissionBridge', plain:'外部通过 HTTP 发来终点的 XYZ 和朝向，它把目标转成 Nav2 标准动作 NavigateToPose，并记下任务身份，防止旧任务的回复串进来。它不规划路线，也不判断是否到达。',
-    kv:[['入口','HTTP POST 提交 / 取消，GET /state 查询'],['默认地址','127.0.0.1:8785'],['订阅','/quad_0/body_pose'],['平台','ROS 2 Foxy（Ubuntu 20.04）· Nav2 0.4.7 打补丁版 · 目标部署 Jetson ARM64']],
+    kv:[['入口','HTTP POST 提交 / 取消，GET /state 查询'],['为什么用 HTTP','历史接口。来自 2026-09-16 Pi/Cortex HarnessVLN：上层是 Node.js 写的 Pi 智能体工具循环，不装 ROS，所以导航用本机回环 JSON 当“工具”调用，与语言无关。之后的实验驱动脚本（archived_pilot_driver）原样沿用这个约定，v201 精简 MissionBridge 时也保留了提交 / 取消 / 查询。只监听 127.0.0.1；每个任务只走一次，不在实时控制回路里。'],['默认地址','127.0.0.1:8785'],['订阅','/quad_0/body_pose'],['平台','ROS 2 Foxy（Ubuntu 20.04）· Nav2 0.4.7 打补丁版 · 目标部署 Jetson ARM64']],
     src:'lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py'},
   bt:{layer:['任务层','#a78bfa'], t:'Nav2 行为树 BT Navigator', plain:'它是调度员：接单 → 让 PCT 算路 → 让 SCAN 去走 → 失败了先确认狗真的停住了，再重来，最多 6 次。',
     kv:[['结构','RecoveryNode(6) ▸ PipelineSequence[ComputePathToPose(PCT) → FollowPathWithFailure(SCAN)] ▸ 恢复分支[RetryAllowed → Wait 1 s]'],['停稳证明','连续 1 s：指令范数 < 0.01、水平速度 < 0.1 m/s、偏航角速度 < 0.15 rad/s'],['路线纪元','每个任务只保留一个全局路线 epoch，中途不会被换掉'],['健康监测','关键节点失去响应时报 native_node_unresponsive；v289 起生命周期探针放到独立回调组，每节点 5 Hz 请求']],
