@@ -158,6 +158,9 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
 #drawer h3{font-size:22px;margin:10px 0 6px}
 #drawer .kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;font-size:13.5px;margin:12px 0}
 #drawer .kv div:nth-child(odd){color:var(--muted)}
+#drawer .bttree{font:12px/1.65 var(--mono);color:#e2e8f0;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.28);border-radius:10px;padding:10px 12px;margin:12px 0;white-space:pre;overflow-x:auto}
+#drawer .bttree b{color:#c4b5fd;font-weight:700}
+#drawer .bttree i{color:#94a3b8;font-style:normal}
 #drawer .src{font:12px/1.6 var(--mono);color:#a5b4fc;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:10px;padding:10px 12px;word-break:break-all}
 
 /* ---------- replan pipeline ---------- */
@@ -737,7 +740,7 @@ const ARCH = (function(){
   });
   const N = {
     mission:{x:40,y:48,w:220,h:58,c:C.task,t:'目标入口 MissionBridge',s:['HTTP :8785 → NavigateToPose']},
-    bt:{x:320,y:48,w:470,h:58,c:C.task,t:'Nav2 行为树 BT Navigator',s:['算路(PCT) → 跟随(SCAN) → 停稳确认 + 等 1 s 重试（≤6 次）']},
+    bt:{x:320,y:48,w:470,h:58,c:C.task,t:'Nav2 行为树 BT Navigator',s:['算路(PCT) → 跟随(SCAN) → 查失败原因 → 等 1 s 重试（≤6 次）']},
     pct:{x:320,y:150,w:470,h:52,c:C.global,t:'PCT 全局规划（Planner Server 插件）',s:['多层断层图 tomogram 上 A* + 平滑 → /pct_path（含高度）']},
     replan:{x:40,y:256,w:240,h:198,c:C.local,t:'重规划流水线',s:['1 种子：热启动 或 A*','2 B 样条拟合（端点 PVA）','3 L-BFGS 回弹优化','4 时间重分配 + 最低巡航','5 边界与动力学检查','6 最新输入下全曲线终检']},
     fsm:{x:320,y:256,w:210,h:84,c:C.local,t:'重规划状态机 FSM',s:['等目标 / 生成 / 重规划','执行 / 急停 · 30 Hz']},
@@ -773,7 +776,6 @@ const ARCH = (function(){
     ['lg','lidar','grid','perc','M900,410 C850,410 838,322 792,322','/cloud',846,370],
     ['pg','pose','grid','perc','M900,276 L792,276','/body_pose',818,270],
     ['pt','pose','track','perc','M900,298 C852,300 836,488 792,524','位姿',834,470],
-    ['pb','pose','bt','perc','M900,252 C866,252 868,64 792,64','停稳证据',800,40],
     ['op','offline','pct','off','M900,96 C862,96 840,176 792,176','断层图',800,196],
     ['oe','offline','env','off','M900,120 C872,124 880,404 792,408','ENV 场',800,432],
   ];
@@ -856,9 +858,11 @@ const DETAIL = {
   mission:{layer:['任务层','#a78bfa'], t:'目标入口 MissionBridge', plain:'外部通过 HTTP 发来终点的 XYZ 和朝向，它把目标转成 Nav2 标准动作 NavigateToPose，并记下任务身份，防止旧任务的回复串进来。它不规划路线，也不判断是否到达。',
     kv:[['入口','HTTP POST 提交 / 取消，GET /state 查询'],['为什么用 HTTP','历史接口。来自 2026-09-16 Pi/Cortex HarnessVLN：上层是 Node.js 写的 Pi 智能体工具循环，不装 ROS，所以导航用本机回环 JSON 当“工具”调用，与语言无关。之后的实验驱动脚本（archived_pilot_driver）原样沿用这个约定，v201 精简 MissionBridge 时也保留了提交 / 取消 / 查询。只监听 127.0.0.1；每个任务只走一次，不在实时控制回路里。'],['默认地址','127.0.0.1:8785'],['状态怎么拿','<b>轮询</b>，不是推送：实验驱动（long_route_driver.py）每 0.1 s 调一次 GET /state，相当于隔一会儿刷新一次订单页面。返回的是当前快照：各任务状态（pending / running / arrived / failed / cancelled）及原因、当前任务占用者、最近实测机身位姿、已结束任务列表（结束时刻当场记 monotonic_ns）。'],['没有实时反馈','Nav2 的 NavigateToPose 在 ROS 内部会持续发反馈（当前位姿、剩余距离、已用时间、恢复次数），但 MissionBridge 调用 send_goal_async(goal) 时没注册 feedback_callback，这些中间信息到这里就丢了。外部只看得到“进行中”和“结束了、结果是什么”。'],['影响','结束时间是当场记录的，驱动最多晚约 0.1 s 得知，但计时不失真；过程数据由仿真日志和审计单独记录，不依赖这个接口。以后上层接 VLA / 语言智能体、需要“走到哪了、卡住没有”时，再把 Nav2 反馈转发出来或改成推送。'],['订阅','/quad_0/body_pose'],['平台','ROS 2 Foxy（Ubuntu 20.04）· Nav2 0.4.7 打补丁版 · 目标部署 Jetson ARM64']],
     src:'lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py'},
-  bt:{layer:['任务层','#a78bfa'], t:'Nav2 行为树 BT Navigator', plain:'它是调度员：接单 → 让 PCT 算路 → 让 SCAN 去走 → 失败了先确认狗真的停住了，再重来，最多 6 次。',
-    kv:[['结构','RecoveryNode(6) ▸ PipelineSequence[ComputePathToPose(PCT) → FollowPathWithFailure(SCAN)] ▸ 恢复分支[RetryAllowed → Wait 1 s]'],['停稳证明','连续 1 s：指令范数 < 0.01、水平速度 < 0.1 m/s、偏航角速度 < 0.15 rad/s'],['路线纪元','每个任务只保留一个全局路线 epoch，中途不会被换掉'],['健康监测','关键节点失去响应时报 native_node_unresponsive；v289 起生命周期探针放到独立回调组，每节点 5 Hz 请求']],
-    src:'lite3_nav2_bridge/config/navigate.xml · lite3_nav2_plugins/src/recovery_bt.cpp'},
+  bt:{layer:['任务层','#a78bfa'], t:'Nav2 行为树 BT Navigator', plain:'它是调度员：接单 → 让 PCT 算一次路 → 让 SCAN 去走 → 失败了先问清原因：终点附近停不稳就直接判失败；其他失败等 1 s 重来，最多 6 次。树本身确实只有 16 行，这是刻意的：Nav2 默认的原地转圈、倒车、清地图这些“盲动作”在楼梯上很危险，全部拿掉了。复杂的部分藏在 3 个自研节点（下图 ◆）和下层控制器里。',
+    tree:'<b>RecoveryNode</b> <i>最多重试 6 次</i>\n├─ <b>PipelineSequence</b> <i>主分支，每拍两个子节点都 tick</i>\n│   ├─ ◆ <b>PlanOnGoalChange</b> <i>目标不变就不重算</i>\n│   │     └─ ComputePathToPose → PCT\n│   └─ ◆ <b>FollowPathWithFailure</b> <i>失败后按 UUID 查原因</i>\n│         └─ FollowPath → SCAN 控制器\n└─ <b>Sequence</b> <i>恢复分支</i>\n      ├─ ◆ <b>RetryAllowed</b> <i>终点停稳超时 → 不重试</i>\n      └─ Wait 1 s',
+    kv:[['和默认树比','Nav2 默认树：每秒重算一次全局路线（RateController 1 Hz），失败后轮流清代价地图、原地转圈 Spin、倒车 BackUp、等待。这里只留 Wait：台阶上盲转、盲退可能踩空；局部避障和重规划由 SCAN 自己以 30 Hz 完成。'],['◆ PlanOnGoalChange','替代 RateController（v212 起）。PCT 成功一次就缓存这条路线；只有目标的坐标系或位姿真的变了（只刷新时间戳不算）才重算，并先取消旧目标上还在跑的算路。进入恢复重试时分支被重置，也会重算一次。v210 用 1 Hz 时，54 s 内收到 39 次 /pct_path，SCAN 的参考路线被反复替换。'],['◆ FollowPathWithFailure','ROS 2 Foxy 里 FollowPath 的结果是空消息，行为树只知道“失败了”，不知道为什么。这个节点在 on_aborted() 里拿失败目标的 UUID 调 /lite3_nav2/follow_path_failure 问控制器，把“是不是终点停稳超时”写进黑板 terminal_settle_timeout。按 UUID 问，是为了不读到别的目标的失败原因。'],['◆ RetryAllowed','恢复分支的第一个节点。读出并清掉 terminal_settle_timeout：为真 → 返回 FAILURE，整个任务立刻失败，不再重试（狗已经在终点附近，只是停不稳，从头再走一遍只会重复同样的问题）；为假 → 放行到 Wait 1 s。必须在这里清，不能在 FollowPath 的 halt() 里清，因为 RecoveryNode 会先 halt 失败的子节点，再 tick 恢复分支，那时原因就丢了。'],['会重试的失败','0.75 s 拿不到可执行轨迹；10 s 内移动不到 0.5 m；SCAN 计算指令出错等。控制器失败时自己发零速度并取消当前轨迹，行为树不检查实测速度，只等 1 s 后重来。'],['停稳证明在哪','v290 不在行为树里，在 SCAN 的到达判定（GoalChecker）：进入终点容差后，要连续 2.0 s 处于 FIXED_STAND（PD 接管、RL 不控关节）、实测线速度 ≤ 0.03 m/s、角速度 ≤ 0.05 rad/s、实际下发指令为 0；10 s 内凑不齐就抛 TerminalSettleTimeout，也就是 RetryAllowed 拦下的那种失败。数据来自 /quad_0/execution_state。'],['路线纪元','每个任务只保留一个全局路线 epoch，中途不会被换掉'],['健康监测','关键节点失去响应时报 native_node_unresponsive；v289 起生命周期探针放到独立回调组，每节点 5 Hz 请求']],
+    src:'lite3_nav2_bridge/config/navigate.xml · lite3_nav2_plugins/src/recovery_bt.cpp · include/lite3_nav2_plugins/recovery_bt.hpp · include/lite3_nav2_plugins/plan_on_goal_change.hpp · scan_nav2_controller/include/scan_nav2_controller/terminal_completion.hpp',
+    issue:'历史演变（按冻结副本）：v89–v171 主分支里还有 BindScanRoute，恢复分支是 WaitForScanStop（调 /lite3_nav2/wait_stopped，等网关给出实测停稳证据，最多约 10 s）；v170–v171 试过 MeasuredProgressRecovery（走进 ≥ 2 m 的新区域就补满重试次数）。v194 改回原版 RecoveryNode + Wait 1 s；v196–v204 用 RateController 1 Hz 重算；v204 加入 RetryAllowed；v212 用 PlanOnGoalChange 替换 RateController。progress_recovery.hpp 和它的单测还留在 v290 源码里，但没有注册进行为树，也没有被 navigate.xml 使用。'},
   pct:{layer:['全局层','#2dd4bf'], t:'PCT 全局规划', plain:'把整栋楼切成一层层断层图（哪里是地面、哪里是台阶、哪层连着哪层），在上面找一条从起点到终点、能上下楼梯的路线。相当于导航软件里的“整条路”。',
     kv:[['上游','byangw/PCT_planner @35cd73f（固定版本，原生库编译）'],['调用频率','expected_planner_frequency: 1.0'],['静态输入','断层图 tomogram · 支撑格 native.support · 实体面 SURFACE271B'],['v290 离线','合法 49/50 · 非法 3/3 · 中位 1.361 s · P95 2.029 s'],['已知问题','CS01 合法但无路；尾部耗时约 2 s']],
     src:'lite3_nav2_plugins/src/pct_planner.cpp · pct_route_planner.cpp · pct_planner/planner_node.py', issue:'全局和局部从 v266–v272 起绑定同一份实体几何（344 个封闭体 + 3,444 个表面面片），保证“全局认为能走，局部也认为能走”。'},
@@ -875,7 +879,7 @@ const DETAIL = {
     kv:[['代价','edge² + solid² + 0.25·terrain²；edge 饱和，solid 不设上限'],['积分','每段 B 样条固定 3 个积分点'],['权重','lambda_environment 1.0（smooth / collision / fitness 也都是 1.0）'],['阶段','只用于回弹；精修阶段不加环境项']],
     src:'plan_env/src/environmental_field.cpp · bspline_opt/include/bspline_opt/environmental_curve_cost.h', issue:'ENV 只是“软”约束。真正的安全靠 GridMap 硬判定和终检保证；审计里软余量和物理余量分开报告。'},
   ctrl:{layer:['执行层','#fbbf24'], t:'Controller Server + SCAN 控制插件', plain:'每 1/30 秒采样一次当前轨迹，把跟踪器算出的速度指令限幅、加斜率限制、过命令门禁，再交给步态层。拿不到轨迹或走不动就交回行为树。',
-    kv:[['频率','controller_frequency 30 Hz'],['上限','vx 1.0 · vy 0.35 m/s · ωz 1.0 rad/s'],['加 / 减速','线 1.0 / 2.0 m/s² · 角 2.0 / 3.0 rad/s²'],['断供','0.75 s 无可执行轨迹 → “Native SCAN has no executable trajectory”'],['进度','10 s 内需移动 0.5 m'],['状态年龄','execution_max_age_seconds 0.25 s']],
+    kv:[['频率','controller_frequency 30 Hz'],['上限','vx 1.0 · vy 0.35 m/s · ωz 1.0 rad/s'],['加 / 减速','线 1.0 / 2.0 m/s² · 角 2.0 / 3.0 rad/s²'],['断供','0.75 s 无可执行轨迹 → “Native SCAN has no executable trajectory”'],['进度','10 s 内需移动 0.5 m'],['终点到达','进入容差后，从 /quad_0/execution_state 读实测速度、实际指令和站姿：连续 2.0 s PD 站立且 |v| ≤ 0.03 m/s、|ω| ≤ 0.05 rad/s、指令为 0 才算到；10 s 内不满足 → TerminalSettleTimeout'],['失败时','发零速度、取消轨迹，并按目标 UUID 记下失败原因，供行为树查询'],['状态年龄','execution_max_age_seconds 0.25 s']],
     src:'scan_nav2_controller/src/controller.cpp · config/controller.yaml', issue:'v290 发现：外层 goal_braking_ 在 25 cm 容差内直接刹车，绕开了持续归中。v291 把这一步交给 TrackingNode 统一处理。'},
   track:{layer:['执行层','#fbbf24'], t:'TrackingNode 轨迹跟踪 / 终点收尾', plain:'每一拍比较“应该在曲线哪里”和“实际在哪里”，算出速度指令。进入终点圈后冻结进度，对准朝向并收尾。',
     kv:[['跟踪律','v = v_ref + 0.8·(p_ref − p) · ω = clamp(1.5·yaw_err)'],['终点容差','XY 0.25 m · Z 0.20 m · yaw 0.25 rad'],['v290','捕获圈之前按位置比例增益限制接近速度'],['v291 候选','由 TrackingNode 独占终点修正、转向和刹车；5 cm / 0.125 rad 作为内层刹车进入带']],
@@ -903,7 +907,7 @@ function openDrawer(k){
   const d = DETAIL[k]; if(!d) return;
   const kv = d.kv.map(([a,b]) => `<div>${a}</div><div>${b}</div>`).join('');
   $('#drawerBody').innerHTML = `<span class="tag" style="color:${d.layer[1]}">${d.layer[0]}</span><h3>${d.t}</h3>
-    <div class="plain"><b>人话：</b>${d.plain}</div><div class="kv">${kv}</div>
+    <div class="plain"><b>人话：</b>${d.plain}</div>${d.tree ? `<div class="bttree">${d.tree}</div>` : ''}<div class="kv">${kv}</div>
     ${d.issue ? `<div class="warnbox small">${d.issue}</div>` : ''}
     <div class="muted small" style="margin:14px 0 6px">源码（默认相对冻结 versions/v290/src/；以 scripts/、versions/、audits/ 开头的相对实验根目录）</div><div class="src">${d.src}</div>`;
   $('#drawer').classList.add('open'); $('#drawer').setAttribute('aria-hidden','false');
@@ -923,7 +927,7 @@ const EDGE_DETAIL = {
   pf:{t:'全局参考路线：PCT → SCAN', what:'整条全局路线，SCAN 从中截取前方约 3.5 m 作为局部目标', plain:'全局路线像导航软件里的整条路，SCAN 只关心眼前这一小段，每次重规划都往前截一段当作局部目标。',
     kv:[['截取范围','planning_horizon 3.5 m'],['路线纪元','每个任务只绑定一条全局路线，中途不换']], src:'plan_manage/src/scan_replan_fsm.cpp'},
   bc:{t:'FollowPath 动作：BT → Controller Server', what:'“沿着这条路线走”的 Nav2 动作；失败时把原因交回行为树', plain:'调度员把执行交给控制器。控制器走不动或拿不到轨迹时返回失败，调度员再进入恢复流程。',
-    kv:[['调用','FollowPathWithFailure(controller_id = SCAN)'],['失败条件','0.75 s 没有可执行轨迹；10 s 内移动不到 0.5 m'],['之后','行为树先要实测停稳证明，再等 1 s 重试，最多 6 次']], src:'lite3_nav2_bridge/config/navigate.xml · scan_nav2_controller/src/controller.cpp'},
+    kv:[['调用','FollowPathWithFailure(controller_id = SCAN)'],['失败条件','0.75 s 没有可执行轨迹；10 s 内移动不到 0.5 m'],['之后','行为树用失败目标的 UUID 调 /lite3_nav2/follow_path_failure 问原因：终点停稳超时 → 任务直接失败；其他失败 → 等 1 s 重试，最多 6 次。控制器失败时自己发零速度并取消轨迹']], src:'lite3_nav2_bridge/config/navigate.xml · include/lite3_nav2_plugins/recovery_bt.hpp · scan_nav2_controller/src/controller.cpp'},
   fr:{t:'触发：FSM → 重规划流水线', what:'按墙钟约 30 Hz 发出“重算一次”的节拍', plain:'状态机是节拍器，每一拍让流水线重新算一条局部轨迹。',
     kv:[['频率','fsm.replan_frequency 30 · replan_use_wall_clock true'],['超预算','超过 33.3 ms 记 overrun=1']], src:'plan_manage/src/scan_replan_fsm.cpp'},
   gf:{t:'安全巡检：GridMap → FSM', what:'当前正在执行的轨迹，在最新地图下还安全吗？', plain:'除了 30 Hz 的重规划，状态机还有一个独立的 50 ms 安全定时器：每次都用最新点云和位姿，把正在执行的整条曲线重新查一遍。发现前方有障碍就尝试从当前轨迹重算，来不及就急停。',
@@ -947,8 +951,6 @@ const EDGE_DETAIL = {
   lg:{t:'/cloud：雷达 → GridMap', what:'每 0.1 s 一帧点云', plain:'点云融进 0.05 m 的三维占据栅格，太旧的帧不用。', kv:[['新鲜度','观测窗口 0.5 s · 点云最大年龄 0.35 s']], src:'plan_env/src/grid_map.cpp'},
   pg:{t:'/body_pose：位姿 → GridMap', what:'机身位姿（滑窗跟着狗走，射线从机身位置出发）', plain:'地图需要知道狗在哪，才能把点云放到正确的位置。', kv:[['要求','BodyTimeBuffer 严格递增']], src:'plan_env/include/plan_env/body_time_buffer.h'},
   pt:{t:'位姿：body_pose → TrackingNode', what:'跟踪器比较“应该在哪”和“实际在哪”', plain:'跟踪律 v = v_ref + 0.8·(p_ref − p)，朝向 ω = clamp(1.5·yaw_err)。', kv:[['终点容差','XY 0.25 m · Z 0.20 m · yaw 0.25 rad']], src:'include/scan_nav2_controller/tracking_node.hpp'},
-  pb:{t:'停稳证据：body_pose → BT', what:'用实测速度证明狗真的停住了，才允许重试', plain:'恢复前先要“连续 1 s 真的不动”，防止在狗还在滑的时候重新出发。',
-    kv:[['条件','连续 1 s：指令范数 < 0.01、水平速度 < 0.1 m/s、偏航角速度 < 0.15 rad/s']], src:'lite3_nav2_plugins/src/recovery_bt.cpp'},
   op:{t:'断层图：离线输入 → PCT', what:'多层断层图 tomogram + 支撑格 + 实体面', plain:'PCT 在离线生成的多层地图上搜路，和局部共用同一份几何。', kv:[['校验','启动时校验 SHA / FNV']], src:'lite3_nav2_plugins/src/pct_planner.cpp'},
   oe:{t:'ENV 场：离线输入 → ENV', what:'ENV225 预计算的距离场', plain:'离台阶边缘、离墙有多远，都是离线算好、运行时直接查表。', kv:[['格式','ENV225']], src:'plan_env/src/environmental_field.cpp'},
 };
@@ -966,8 +968,8 @@ function openEdge(id){
 (function(){
   const LG = [
     {k:['mission','bt'], c:'#a78bfa', lt:'① 任务层', lq:'管“去哪、失败了怎么办”',
-      p:'<b>MissionBridge</b> 是前台：接外部 HTTP 订单（终点 XYZ + 朝向），翻译成 Nav2 动作 <code>NavigateToPose</code>，然后盯着这单的结果。<b>BT Navigator</b> 是调度员：先让 PCT 算路，再让 SCAN 去走；走失败了先确认狗真的停住，再等 1 s 重试，最多 6 次。',
-      io:'<b>两者之间的箭头</b>：NavigateToPose 动作。发之前先确认 Nav2 节点都已激活，并向 PCT 登记本次任务（RouteSession，只登记不算路）；结果回来映射成 arrived / cancelled / failed。<br><b>向下</b>：ComputePathToPose → PCT；FollowPath → Controller。<br><b>向上</b>：body_pose 提供“实测停稳证据”。'},
+      p:'<b>MissionBridge</b> 是前台：接外部 HTTP 订单（终点 XYZ + 朝向），翻译成 Nav2 动作 <code>NavigateToPose</code>，然后盯着这单的结果。<b>BT Navigator</b> 是调度员：先让 PCT 算路，再让 SCAN 去走；走失败了先问清原因：终点附近停不稳就直接判失败，其他失败等 1 s 重试，最多 6 次。点开它能看到完整的树和 3 个自研节点。',
+      io:'<b>两者之间的箭头</b>：NavigateToPose 动作。发之前先确认 Nav2 节点都已激活，并向 PCT 登记本次任务（RouteSession，只登记不算路）；结果回来映射成 arrived / cancelled / failed。<br><b>向下</b>：ComputePathToPose → PCT；FollowPath → Controller。<br><b>向上</b>：FollowPath 失败后，按任务 UUID 向控制器查失败原因（/lite3_nav2/follow_path_failure）。MissionBridge 另外订阅 body_pose，只用于 GET /state 汇报位置。'},
     {k:['pct'], c:'#2dd4bf', lt:'② 全局规划层', lq:'整栋楼的路线 · 约 1 Hz',
       p:'PCT 在离线生成的多层断层图上搜一条能上下楼梯的路线，相当于导航软件里的“整条路”。全局和局部共用同一份实体几何，保证“全局认为能走，局部也认为能走”。',
       io:'<b>输入</b>：离线断层图 / 支撑格 / 实体面（启动时校验 SHA/FNV）。<br><b>输出</b>：带高度的 /pct_path → SCAN 状态机。'},
@@ -1010,7 +1012,7 @@ function openEdge(id){
     {n:['newton','lidar','pose','grid','offline','env'], e:['nl','np','lg','pg','gf','oe'], t:'边走边建图', d:'雷达每 0.1 s 出一帧点云，融进 0.05 m 的三维占据栅格（滑窗跟着狗走），再结合离线支撑格判断每个位置能不能踩。'},
     {n:['fsm','replan','grid','env'], e:['fr','gr','er'], t:'每秒约 30 次重规划', d:'状态机按墙钟 30 Hz 触发（预算 33.3 ms）：取全局路线前方约 3.5 m 作为局部目标 → 种子 → B 样条 → L-BFGS 回弹 → 时间重分配 → 用<b>最新</b>地图逐点终检，通过了才发布。'},
     {n:['replan','ctrl','track','rl','newton'], e:['rc','ct','tr','rn'], t:'跟踪轨迹', d:'Controller 以 30 Hz 采样轨迹，跟踪器算出 [vx, vy, ωz]，经限幅、斜率限制和命令门禁后交给 RL 步态。0.75 s 内拿不到可执行轨迹就判失败，交回行为树。'},
-    {n:['bt','ctrl','pose'], e:['pb','bc'], t:'出问题时恢复', d:'行为树先要求“实测停稳证明”（连续 1 s 指令 < 0.01、速度 < 0.1 m/s、角速度 < 0.15 rad/s），再等 1 s 重试，整个任务最多 6 次。'},
+    {n:['bt','ctrl'], e:['bc'], t:'出问题时恢复', d:'控制器失败时先发零速度、取消轨迹。行为树按失败目标的 UUID 问原因：终点附近停稳超时（TerminalSettleTimeout）→ 任务直接失败，不重试；其他失败（断供、走不动等）→ 等 1 s 重新算路、重新跟随，整个任务最多 6 次。'},
     {n:['track','pose','ctrl'], e:['pt','ct'], t:'进入终点圈', d:'XY ≤ 0.25 m、高度 ≤ 0.20 m 时冻结轨迹进度，开始收尾、对准最终朝向。<b>这正是 v287–v290 失败最集中的地方</b>（见第 07 节）。'},
     {n:['track','pd','newton'], e:['tp','pn'], t:'站稳、完成', d:'朝向和位置达标、指令归零后交给 PD 站立保持（stand_hold_seconds 2.0），实测站稳后任务记为 FINISHED。'},
   ];
@@ -1653,7 +1655,7 @@ function openEdge(id){
     ['点云最大年龄','0.35 s','reactive 判定','太旧的点云不能用来判安全',false],
     ['执行状态最大年龄','0.25 s','Controller','机身状态太旧就不发指令',false],
     ['轨迹断供','0.75 s','Controller','超时就交回行为树恢复（v290 共 13 次）',false],
-    ['实测停稳证明','连续 1 s','行为树恢复分支','指令 < 0.01、速度 < 0.1 m/s、角速度 < 0.15 rad/s',false],
+    ['终点停稳保持','连续 2.0 s','SCAN 到达判定 GoalChecker','PD 站立、速度 ≤ 0.03 m/s、角速度 ≤ 0.05 rad/s、指令为 0；10 s 内凑不齐 → 终点超时，行为树不再重试',false],
     ['位姿时间戳','严格递增','BodyTimeBuffer','时间不能倒流。v288 在这里出事，v289 修好了',true],
   ];
   $('#gateGrid').innerHTML = G.map(([k,v,w,p,hot],i) => `<div class="gate reveal${hot ? ' hot' : ''}" style="transition-delay:${i*60}ms"><svg class="ring" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="rgba(148,163,184,.15)" stroke-width="3"/><circle cx="20" cy="20" r="16" fill="none" stroke="${hot ? '#f87171' : '#60a5fa'}" stroke-width="3" stroke-linecap="round" stroke-dasharray="30 71" transform="rotate(-90 20 20)"><animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="${3 + i*0.4}s" repeatCount="indefinite"/></circle></svg><div class="k">${k}</div><div class="v">${v}</div><div class="p"><span class="mono" style="color:#a5b4fc">${w}</span><br>${p}</div></div>`).join('');
