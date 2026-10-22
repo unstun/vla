@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lite3 楼宇导航算法架构（截至 v288）</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#fff; --ink:#1f2933; --muted:#5f6b7a; --line:#d9dee5;
+    --blue:#2563eb; --blue-soft:#e8f0ff; --green:#15803d; --green-soft:#e7f6ec;
+    --amber:#b45309; --amber-soft:#fff4e0; --red:#b91c1c; --red-soft:#fdecec;
+    --violet:#6d28d9; --violet-soft:#f1ebff; --teal:#0f766e; --teal-soft:#e3f5f3;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",Segoe UI,Roboto,sans-serif}
+  a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+  code,.mono{font-family:var(--mono);font-size:.88em;background:#eef1f5;padding:1px 5px;border-radius:4px}
+  .layout{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+  nav.toc{position:sticky;top:0;height:100vh;overflow:auto;background:#111827;color:#cbd5e1;padding:22px 16px}
+  nav.toc h2{color:#fff;font-size:15px;margin:0 0 4px}
+  nav.toc .sub{font-size:12px;color:#94a3b8;margin-bottom:16px}
+  nav.toc a{display:block;color:#cbd5e1;padding:5px 8px;border-radius:6px;font-size:13.5px}
+  nav.toc a:hover{background:#1f2937;color:#fff;text-decoration:none}
+  nav.toc .grp{font-size:11px;letter-spacing:.08em;color:#64748b;margin:14px 8px 4px;text-transform:uppercase}
+  main{padding:28px 40px 80px;max-width:1180px}
+  header.hero{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border-radius:16px;padding:28px 32px;margin-bottom:26px}
+  header.hero h1{margin:0 0 8px;font-size:26px}
+  header.hero p{margin:6px 0;color:#dbeafe;max-width:900px}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:600}
+  .b-green{background:var(--green-soft);color:var(--green)} .b-red{background:var(--red-soft);color:var(--red)}
+  .b-amber{background:var(--amber-soft);color:var(--amber)} .b-blue{background:var(--blue-soft);color:var(--blue)}
+  .b-violet{background:var(--violet-soft);color:var(--violet)} .b-gray{background:#eef1f5;color:#475569}
+  section{margin:34px 0}
+  section>h2{font-size:21px;border-left:5px solid var(--blue);padding-left:12px;margin:0 0 14px}
+  h3{font-size:17px;margin:20px 0 8px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 22px;margin:14px 0;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .plain{background:var(--green-soft);border-left:4px solid var(--green);padding:10px 14px;border-radius:8px;margin:10px 0}
+  .plain b.tag{color:var(--green)}
+  .warn{background:var(--amber-soft);border-left:4px solid var(--amber);padding:10px 14px;border-radius:8px;margin:10px 0}
+  .bad{background:var(--red-soft);border-left:4px solid var(--red);padding:10px 14px;border-radius:8px;margin:10px 0}
+  .note{background:var(--blue-soft);border-left:4px solid var(--blue);padding:10px 14px;border-radius:8px;margin:10px 0}
+  details{border:1px solid var(--line);border-radius:10px;margin:10px 0;background:#fbfcfd}
+  details>summary{cursor:pointer;padding:9px 14px;font-weight:600;color:#334155;list-style:none}
+  details>summary::before{content:"▸ ";color:var(--blue)}
+  details[open]>summary::before{content:"▾ "}
+  details>div{padding:4px 16px 14px}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14px;background:#fff}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:#f1f4f8;font-weight:600}
+  td.num{text-align:right;font-family:var(--mono)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .kv{display:grid;grid-template-columns:150px 1fr;gap:4px 12px;font-size:14px}
+  .kv div:nth-child(odd){color:var(--muted)}
+  .modhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .modhead h3{margin:0}
+  .layer-tag{font-size:12px;padding:2px 9px;border-radius:999px;font-weight:600}
+  .lt-task{background:var(--violet-soft);color:var(--violet)} .lt-global{background:var(--teal-soft);color:var(--teal)}
+  .lt-local{background:var(--blue-soft);color:var(--blue)} .lt-exec{background:var(--amber-soft);color:var(--amber)}
+  .lt-body{background:var(--green-soft);color:var(--green)} .lt-sim{background:#eef1f5;color:#475569}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0}
+  .steps li{position:relative;padding:10px 12px 10px 52px;border-bottom:1px dashed var(--line)}
+  .steps li::before{counter-increment:s;content:counter(s);position:absolute;left:10px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .steps li b{color:#0f172a}
+  svg text{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+  .diagram{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;overflow:auto}
+  .clickable{cursor:pointer}
+  .clickable:hover rect{filter:brightness(.95);stroke-width:2.5}
+  .legend{font-size:13px;color:var(--muted);margin-top:6px}
+  .pill{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:12.5px;background:#fff;margin:2px}
+  footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px;margin-top:40px}
+  .formula{font-family:var(--mono);background:#0f172a;color:#e2e8f0;padding:10px 14px;border-radius:8px;overflow:auto;font-size:13px;line-height:1.6}
+  @media(max-width:900px){.layout{grid-template-columns:1fr} nav.toc{position:relative;height:auto} .grid2,.grid3{grid-template-columns:1fr} main{padding:18px}}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <h2>Lite3 导航架构</h2>
+  <div class="sub">截至 v288 · 2026-10-20</div>
+  <div class="grp">先看懂</div>
+  <a href="#tldr">一页总结</a>
+  <a href="#overview">全景图（可点击）</a>
+  <a href="#journey">一次导航的完整过程</a>
+  <div class="grp">逐层拆解</div>
+  <a href="#m-sim">① 物理仿真与雷达</a>
+  <a href="#m-body">② 机器狗身体：RL 步态 + PD 站立</a>
+  <a href="#m-task">③ 任务层：HTTP 入口 + Nav2 行为树</a>
+  <a href="#m-pct">④ 全局规划：PCT</a>
+  <a href="#m-map">⑤ SCAN 三维地图与可通行判定</a>
+  <a href="#m-env">⑥ 环境软代价场 ENV</a>
+  <a href="#m-fsm">⑦ SCAN 局部规划状态机</a>
+  <a href="#m-replan">⑧ 一次局部重规划流水线</a>
+  <a href="#m-exec">⑨ 执行层：跟踪器与命令门禁</a>
+  <a href="#m-terminal">⑩ 终点收尾与站稳</a>
+  <div class="grp">规则与现状</div>
+  <a href="#gates">安全与时间硬门禁</a>
+  <a href="#threads">线程与时间戳（v288 回归点）</a>
+  <a href="#accept">验收体系怎么打分</a>
+  <a href="#history">版本演进与成绩</a>
+  <a href="#issues">当前问题地图</a>
+  <a href="#boundary">证据边界：哪些没被证明</a>
+  <a href="#files">源码与报告索引</a>
+</nav>
+
+<main>
+
+<header class="hero">
+  <h1>Lite3 四足机器狗 · 楼宇（含楼梯）自主导航算法架构</h1>
+  <p>这页把目前仿真里在跑的整条导航链路，从“给一个目标点”一直到“四条腿怎么动、怎么停稳”，按层讲清楚。每一层先用人话说它干什么，再给出真实参数、源码位置和已知失败。</p>
+  <p>所有数字来自本地仓库的冻结源码和审计报告；没有核实过的内容会明确标注。</p>
+  <div class="badges">
+    <span class="badge b-green">已采纳单路线基线：v232 源码 / v233 执行</span>
+    <span class="badge b-red">最新版本 v288：未通过验收（10 条中 1 条到达）</span>
+    <span class="badge b-amber">仅仿真（Newton），无真机运动</span>
+    <span class="badge b-gray">VLA 尚未接入闭环</span>
+  </div>
+</header>
+
+<!-- ============ TLDR ============ -->
+<section id="tldr">
+  <h2>一页总结</h2>
+  <div class="card">
+    <p><b>一句话：</b>机器狗靠“<b>分层</b>”导航——上层 Nav2 管任务和重试，<b>PCT</b> 在整栋楼的多层地图上画出一条全局路线，<b>SCAN</b> 每秒约 30 次根据激光雷达实时建的三维地图，把前方 3.5 m 内的路线优化成一条平滑、不撞墙、踩得到台阶的 B 样条轨迹；跟踪器把轨迹换算成速度指令，交给<b>强化学习（RL）步态策略</b>驱动四条腿；到终点后切换到<b>关节 PD 站立</b>保持不动。</p>
+    <div class="grid3">
+      <div class="plain"><b class="tag">它擅长什么</b><br>原始那一条楼梯路线已在 v233/v237/v241 各单次完整走通：约 121–124 s 到达，PD 站稳约 4.4 s，终点误差约 12–14 cm。</div>
+      <div class="warn"><b>它还不行的</b><br>换起终点（泛化）不稳：最近 7 个版本在固定 10 条路线上“到达+站稳+几何全程不越界”只有 0–5 条。</div>
+      <div class="bad"><b>v288 的新问题</b><br>入口锁引起位姿时间戳倒序，并被永久锁死（6 条），终点 2 cm 居中条件过严导致超时（2 条）。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OVERVIEW SVG ============ -->
+<section id="overview">
+  <h2>全景图：数据怎么流动</h2>
+  <p>从上往下看是“指令流”（目标 → 路线 → 轨迹 → 速度 → 关节），右侧向上的虚线是“感知流”（仿真世界 → 雷达点云 / 机身位姿 → 三维地图）。<b>点击任意方块</b>可以跳到对应章节。</p>
+  <div class="diagram">
+  <svg viewBox="0 0 1080 760" width="100%" role="img" aria-label="architecture">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+      <marker id="arrb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f766e"/></marker>
+    </defs>
+
+    <!-- layer bands -->
+    <rect x="10" y="10" width="760" height="100" rx="12" fill="#f1ebff"/>
+    <text x="22" y="30" font-size="12" fill="#6d28d9" font-weight="700">任务层（管“去哪、失败了怎么办”）</text>
+    <rect x="10" y="120" width="760" height="90" rx="12" fill="#e3f5f3"/>
+    <text x="22" y="140" font-size="12" fill="#0f766e" font-weight="700">全局规划层（整栋楼的路线，约 1 Hz）</text>
+    <rect x="10" y="220" width="760" height="230" rx="12" fill="#e8f0ff"/>
+    <text x="22" y="240" font-size="12" fill="#2563eb" font-weight="700">局部规划层 SCAN（前方 3.5 m 的轨迹，30 Hz 调度）</text>
+    <rect x="10" y="460" width="760" height="110" rx="12" fill="#fff4e0"/>
+    <text x="22" y="480" font-size="12" fill="#b45309" font-weight="700">执行层（轨迹 → 速度指令，30 Hz）</text>
+    <rect x="10" y="580" width="760" height="90" rx="12" fill="#e7f6ec"/>
+    <text x="22" y="600" font-size="12" fill="#15803d" font-weight="700">身体层（速度指令 → 关节力矩）</text>
+    <rect x="790" y="10" width="280" height="740" rx="12" fill="#eef1f5"/>
+    <text x="802" y="30" font-size="12" fill="#475569" font-weight="700">仿真世界 / 传感器</text>
+
+    <!-- task -->
+    <g class="clickable" data-target="m-task"><rect x="40" y="45" width="200" height="52" rx="9" fill="#fff" stroke="#6d28d9" stroke-width="1.5"/>
+      <text x="140" y="67" text-anchor="middle" font-size="14" font-weight="700">目标入口 MissionBridge</text>
+      <text x="140" y="86" text-anchor="middle" font-size="11.5" fill="#5f6b7a">HTTP :8785 → NavigateToPose</text></g>
+    <g class="clickable" data-target="m-task"><rect x="300" y="45" width="440" height="52" rx="9" fill="#fff" stroke="#6d28d9" stroke-width="1.5"/>
+      <text x="520" y="67" text-anchor="middle" font-size="14" font-weight="700">Nav2 行为树 BT Navigator</text>
+      <text x="520" y="86" text-anchor="middle" font-size="11.5" fill="#5f6b7a">算路(PCT) → 跟随(SCAN) → 失败则停稳确认 + 等 1 s 重试（最多 6 次）</text></g>
+    <line x1="240" y1="71" x2="298" y2="71" stroke="#475569" stroke-width="1.6" marker-end="url(#arr)"/>
+
+    <!-- global -->
+    <g class="clickable" data-target="m-pct"><rect x="300" y="152" width="440" height="48" rx="9" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+      <text x="520" y="173" text-anchor="middle" font-size="14" font-weight="700">PCT 全局规划（Planner Server 插件）</text>
+      <text x="520" y="191" text-anchor="middle" font-size="11.5" fill="#5f6b7a">多层断层图 tomogram 上 A* + 平滑 → /pct_path（含高度）</text></g>
+    <line x1="520" y1="97" x2="520" y2="150" stroke="#475569" stroke-width="1.6" marker-end="url(#arr)"/>
+
+    <!-- local: pipeline left, FSM middle, map/ENV right (next to sensors) -->
+    <g class="clickable" data-target="m-replan"><rect x="40" y="255" width="220" height="175" rx="9" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+      <text x="150" y="278" text-anchor="middle" font-size="14" font-weight="700">重规划流水线</text>
+      <text x="150" y="302" text-anchor="middle" font-size="12" fill="#334155">1 种子：热启动 或 A*</text>
+      <text x="150" y="324" text-anchor="middle" font-size="12" fill="#334155">2 B 样条拟合（端点 PVA）</text>
+      <text x="150" y="346" text-anchor="middle" font-size="12" fill="#334155">3 L-BFGS 回弹优化</text>
+      <text x="150" y="368" text-anchor="middle" font-size="12" fill="#334155">4 时间重分配 + 最低巡航</text>
+      <text x="150" y="390" text-anchor="middle" font-size="12" fill="#334155">5 动力学检查</text>
+      <text x="150" y="412" text-anchor="middle" font-size="12" fill="#334155">6 最新输入下全曲线终检</text></g>
+    <g class="clickable" data-target="m-fsm"><rect x="300" y="255" width="200" height="80" rx="9" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+      <text x="400" y="278" text-anchor="middle" font-size="14" font-weight="700">重规划状态机 FSM</text>
+      <text x="400" y="297" text-anchor="middle" font-size="11.5" fill="#5f6b7a">等目标/生成/重规划</text>
+      <text x="400" y="314" text-anchor="middle" font-size="11.5" fill="#5f6b7a">/执行/急停 · 30 Hz</text></g>
+    <g class="clickable" data-target="m-map"><rect x="540" y="255" width="200" height="80" rx="9" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+      <text x="640" y="278" text-anchor="middle" font-size="14" font-weight="700">三维占据地图 GridMap</text>
+      <text x="640" y="297" text-anchor="middle" font-size="11.5" fill="#5f6b7a">0.05 m 体素 · 10×10×5 m 滑窗</text>
+      <text x="640" y="314" text-anchor="middle" font-size="11.5" fill="#5f6b7a">支撑/层/边缘/新鲜度判定</text></g>
+    <g class="clickable" data-target="m-env"><rect x="540" y="350" width="200" height="80" rx="9" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+      <text x="640" y="373" text-anchor="middle" font-size="14" font-weight="700">环境软代价场 ENV</text>
+      <text x="640" y="392" text-anchor="middle" font-size="11.5" fill="#5f6b7a">离台阶边缘 / 实体墙</text>
+      <text x="640" y="409" text-anchor="middle" font-size="11.5" fill="#5f6b7a">还有多远（离线预计算）</text></g>
+    <line x1="300" y1="295" x2="262" y2="295" stroke="#475569" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text x="266" y="287" font-size="10.5" fill="#475569">触发</text>
+    <line x1="540" y1="295" x2="502" y2="295" stroke="#475569" stroke-width="1.4" marker-end="url(#arr)"/>
+    <path d="M540,322 C470,350 330,350 262,350" stroke="#475569" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
+    <text x="330" y="365" font-size="10.5" fill="#475569">碰撞/支撑查询</text>
+    <line x1="540" y1="400" x2="262" y2="400" stroke="#475569" stroke-width="1.2" marker-end="url(#arr)"/>
+    <text x="330" y="415" font-size="10.5" fill="#475569">软代价 + 梯度</text>
+    <line x1="520" y1="200" x2="420" y2="253" stroke="#475569" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text x="440" y="226" font-size="11" fill="#475569">全局参考路线</text>
+
+    <!-- exec -->
+    <g class="clickable" data-target="m-exec"><rect x="40" y="495" width="330" height="62" rx="9" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+      <text x="205" y="518" text-anchor="middle" font-size="14" font-weight="700">Controller Server + SCAN 控制插件</text>
+      <text x="205" y="538" text-anchor="middle" font-size="11.5" fill="#5f6b7a">30 Hz · 进度检查 0.5 m/10 s · 轨迹断供 0.75 s 判失败</text></g>
+    <g class="clickable" data-target="m-terminal"><rect x="400" y="495" width="340" height="62" rx="9" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+      <text x="570" y="518" text-anchor="middle" font-size="14" font-weight="700">TrackingNode 轨迹跟踪 / 终点收尾</text>
+      <text x="570" y="538" text-anchor="middle" font-size="11.5" fill="#5f6b7a">位置 P 0.8 · 偏航 P 1.5 · 斜率限幅 · 0.25 m 终点捕获</text></g>
+    <line x1="150" y1="430" x2="150" y2="493" stroke="#475569" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text x="158" y="446" font-size="11" fill="#475569">B 样条轨迹</text>
+    <line x1="370" y1="526" x2="398" y2="526" stroke="#475569" stroke-width="1.4" marker-end="url(#arr)"/>
+    <path d="M320,97 L320,115 L25,115 L25,526 L38,526" stroke="#6d28d9" stroke-width="1.1" stroke-dasharray="3 3" fill="none" marker-end="url(#arr)"/>
+    <text x="330" y="113" font-size="10.5" fill="#6d28d9">FollowPath 动作</text>
+
+    <!-- body -->
+    <g class="clickable" data-target="m-body"><rect x="40" y="612" width="330" height="48" rx="9" fill="#fff" stroke="#15803d" stroke-width="1.5"/>
+      <text x="205" y="633" text-anchor="middle" font-size="14" font-weight="700">RL 行走策略（冻结 v216）</text>
+      <text x="205" y="651" text-anchor="middle" font-size="11.5" fill="#5f6b7a">输入 [vx, vy, ωz] → 12 个关节目标</text></g>
+    <g class="clickable" data-target="m-body"><rect x="400" y="612" width="340" height="48" rx="9" fill="#fff" stroke="#15803d" stroke-width="1.5"/>
+      <text x="570" y="633" text-anchor="middle" font-size="14" font-weight="700">关节 PD 站立保持</text>
+      <text x="570" y="651" text-anchor="middle" font-size="11.5" fill="#5f6b7a">起立后接管 · 终点停稳后接管</text></g>
+    <line x1="570" y1="557" x2="300" y2="610" stroke="#475569" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text x="400" y="588" font-size="11" fill="#475569">速度指令（经命令门禁）</text>
+
+    <!-- sim -->
+    <g class="clickable" data-target="m-sim"><rect x="810" y="560" width="240" height="100" rx="9" fill="#fff" stroke="#475569" stroke-width="1.5"/>
+      <text x="930" y="585" text-anchor="middle" font-size="14" font-weight="700">Newton 物理仿真</text>
+      <text x="930" y="605" text-anchor="middle" font-size="11.5" fill="#5f6b7a">Building 楼宇模型（含楼梯）</text>
+      <text x="930" y="623" text-anchor="middle" font-size="11.5" fill="#5f6b7a">约 1 kHz 物理步</text>
+      <text x="930" y="641" text-anchor="middle" font-size="11.5" fill="#5f6b7a">Lite3 URDF + 地面接触</text></g>
+    <line x1="740" y1="636" x2="808" y2="620" stroke="#475569" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text x="745" y="610" font-size="11" fill="#475569">关节力矩</text>
+    <g class="clickable" data-target="m-sim"><rect x="810" y="380" width="240" height="80" rx="9" fill="#fff" stroke="#475569" stroke-width="1.5"/>
+      <text x="930" y="404" text-anchor="middle" font-size="14" font-weight="700">Livox MID-360 雷达</text>
+      <text x="930" y="423" text-anchor="middle" font-size="11.5" fill="#5f6b7a">官方扫描模式 CSV · 几何射线</text>
+      <text x="930" y="441" text-anchor="middle" font-size="11.5" fill="#5f6b7a">周期 0.1 s · 截止 0.1 s</text></g>
+    <g class="clickable" data-target="m-sim"><rect x="810" y="250" width="240" height="70" rx="9" fill="#fff" stroke="#475569" stroke-width="1.5"/>
+      <text x="930" y="275" text-anchor="middle" font-size="14" font-weight="700">机身位姿 body_pose</text>
+      <text x="930" y="294" text-anchor="middle" font-size="11.5" fill="#5f6b7a">仿真真值，带源时间戳</text></g>
+    <line x1="930" y1="558" x2="930" y2="462" stroke="#0f766e" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arrb)"/>
+    <path d="M1050,600 C1066,500 1066,330 1052,295" stroke="#0f766e" stroke-width="1.6" stroke-dasharray="6 4" fill="none" marker-end="url(#arrb)"/>
+    <path d="M808,420 C775,420 775,322 742,322" stroke="#0f766e" stroke-width="1.6" stroke-dasharray="6 4" fill="none" marker-end="url(#arrb)"/>
+    <line x1="808" y1="285" x2="742" y2="285" stroke="#0f766e" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arrb)"/>
+    <text x="815" y="342" font-size="11" fill="#0f766e">↖ 点云 /cloud、位姿 /body_pose</text>
+    <text x="815" y="358" font-size="11" fill="#0f766e">　送入 GridMap（时间戳须单调）</text>
+    <path d="M930,250 C930,120 800,70 742,71" stroke="#0f766e" stroke-width="1.3" stroke-dasharray="6 4" fill="none" marker-end="url(#arrb)"/>
+    <text x="850" y="120" font-size="11" fill="#0f766e">实测停稳证据</text>
+
+    <!-- legend -->
+    <line x1="30" y1="700" x2="80" y2="700" stroke="#475569" stroke-width="1.6" marker-end="url(#arr)"/><text x="88" y="704" font-size="12">指令流</text>
+    <line x1="160" y1="700" x2="210" y2="700" stroke="#0f766e" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arrb)"/><text x="218" y="704" font-size="12">感知流</text>
+    <text x="300" y="704" font-size="12" fill="#5f6b7a">离线输入：Building 网格 → 支撑格 native.support、实体面 SURFACE271B、ENV 场、PCT 断层图（均带 SHA/FNV 绑定）</text>
+  </svg>
+  </div>
+  <div class="legend">图中频率/阈值取自 v288 冻结源码与运行配置（<code>scan_nav2_controller/config/controller.yaml</code>、<code>environment_candidate228.scan.yaml</code>、<code>navigate.xml</code>）。</div>
+</section>
+
+<!-- ============ JOURNEY ============ -->
+<section id="journey">
+  <h2>一次导航的完整过程（按时间顺序）</h2>
+  <div class="card">
+  <ol class="steps">
+    <li><b>开机起立。</b>仿真中机器狗先按出厂流程“趴 → 回零 → 准备 → 站起”，当四只脚受力达标后，由关节 PD 接管保持站立（<code>factory_navigation_startup.py</code>，最长等 14 s）。这一段单独审计，不算导航。</li>
+    <li><b>下发目标。</b>外部通过 HTTP 把终点 XYZ + 朝向发给 <code>MissionBridge</code>（默认 127.0.0.1:8785），它转成 Nav2 标准动作 <code>NavigateToPose</code>，并记录任务身份，防止旧任务的回复串进来。</li>
+    <li><b>算全局路线。</b>行为树调用 <code>ComputePathToPose(planner_id=PCT)</code>。PCT 在整栋楼的多层“断层图”上搜索，输出一条带高度的路线（跨楼梯）。离线门禁要求合法例的全局算路中位耗时 ≤ 1.5 s。</li>
+    <li><b>把路线绑给 SCAN。</b>行为树执行 <code>FollowPathWithFailure(controller_id=SCAN)</code>。必须先拿到 SCAN 的“路线绑定确认”，才允许开始跟随；一个任务只保留一个全局路线“纪元”（epoch），不会中途被换掉。</li>
+    <li><b>一边走一边建图。</b>雷达每 0.1 s 出一帧点云，SCAN 把它融合进 0.05 m 分辨率的三维占据栅格（滑动窗口跟着机器狗走），同时结合离线的“哪里能踩”支撑图判断每个位置是否可通行。</li>
+    <li><b>每秒约 30 次重规划。</b>状态机按墙钟 30 Hz 触发重规划（预算 33.3 ms）：取全局路线前方约 3.5 m 处作为局部目标，生成种子路径 → 拟合 B 样条 → 用 L-BFGS 把曲线“推离”障碍并保持平滑 → 调时间满足速度/加速度 → 用<b>最新</b>地图把整条曲线逐点再查一遍，查过了才发布。</li>
+    <li><b>跟踪轨迹。</b>Controller Server 以 30 Hz 采样当前轨迹，跟踪器算出 <code>[vx, vy, ωz]</code>，经过限幅/斜率限制/命令门禁后送给 RL 步态策略。若 0.75 s 内拿不到可执行轨迹，判 “Native SCAN has no executable trajectory”，交回行为树恢复。</li>
+    <li><b>出问题时恢复。</b>行为树先要“实测停稳证明”（连续 1 s：指令范数 &lt; 0.01、水平速度 &lt; 0.1 m/s、偏航角速度 &lt; 0.15 rad/s），再等 1 s 重试；整个任务最多重试 6 次。</li>
+    <li><b>进入终点圈。</b>距离终点 XY ≤ 0.25 m、高度 ≤ 0.20 m 时，跟踪器冻结轨迹进度，开始终点收尾（对准最终朝向；v288 还加了往中心挪的逻辑）。</li>
+    <li><b>站稳、完成。</b>朝向和位置达标、指令归零后，交给 PD 站立保持（配置 <code>stand_hold_seconds: 2.0</code>，最长 10 s），实测站稳后任务记为 <code>FINISHED</code>。</li>
+  </ol>
+  </div>
+</section>
+
+<!-- ============ MODULES ============ -->
+<section id="m-sim">
+  <h2>① 物理仿真与雷达</h2>
+  <div class="card">
+    <div class="modhead"><h3>Newton 物理仿真 + Livox MID-360 几何雷达</h3><span class="layer-tag lt-sim">仿真世界</span></div>
+    <div class="plain"><b class="tag">人话：</b>这是“假世界”。它模拟楼、楼梯、机器狗的身体和地面接触，并按真实 MID-360 雷达的扫描花样往外打射线，生成点云。导航算法只能看到点云和机身位姿，看不到“答案”。</div>
+    <div class="kv">
+      <div>物理引擎</div><div>Newton（GPU/CPU 可选；正式实跑 CPU BVH 射线）</div>
+      <div>物理步频</div><div>约 1 kHz（由实跑步数/时长推算，例如 A04：69 780 步 / 69.75 s）</div>
+      <div>场景</div><div>Building 楼宇网格（含楼梯、走廊、柱子）；起终点来自 50+3 冻结队列</div>
+      <div>雷达模型</div><div>官方 MID-360 扫描模式 <code>inputs/livox_mid360/mid360.csv</code>；只排除雷达自身外壳的自回波，机身其它部分保留</div>
+      <div>雷达时序</div><div>周期 0.1 s，单帧截止 0.1 s；v288 全部 4 620 帧 0 次超时</div>
+      <div>执行主机</div><div>ultra9（v286 起）；早期 gpu5070ti；gpu40901 迁移有单独失败记录</div>
+    </div>
+    <details><summary>技术细节：为什么雷达时序是硬门禁</summary><div>
+      <p>v235 在 gpu40901 上首次实跑就卡在“扫描截止”守卫（12.8 s 停）；v236 修复了原生时钟提前拒绝与固定核调度问题，之后 0.1 s 截止一直保持不变。雷达帧如果晚到，地图就是“旧的”，后面所有安全检查都会失真，所以项目规则是<b>绝不放宽 0.1 s</b>，只能修调度。</p>
+      <p>源码：<code>scripts/geometric_lidar.py</code>、<code>scripts/robot_scene.py</code>、<code>scripts/newton_episode.py</code>（v288 通过 <code>versions/v288/newton_episode.py</code> 复用 v241/v237 冻结版本，只改执行身份）。</p>
+    </div></details>
+  </div>
+</section>
+
+<section id="m-body">
+  <h2>② 机器狗身体：RL 步态 + PD 站立</h2>
+  <div class="card">
+    <div class="modhead"><h3>强化学习行走策略 + 关节 PD 保持</h3><span class="layer-tag lt-body">身体层</span></div>
+    <div class="plain"><b class="tag">人话：</b>导航只告诉狗“往前多快、往侧面多快、转多快”。怎么迈腿由一个训练好的神经网络（RL 策略）决定；停下时换成更稳的“关节弹簧”（PD）把姿势锁住。</div>
+    <div class="kv">
+      <div>行走策略</div><div>冻结 v216 RL locomotion 策略（来自 sibling 仓库 <code>machine-dog</code> 的训练链路）；导航版本迭代中<b>从未改动</b></div>
+      <div>输入</div><div>机体系速度指令 <code>[vx, vy, ωz]</code>；控制器上限 vx 1.0 m/s、vy 0.35 m/s、ωz 1.0 rad/s</div>
+      <div>站立保持</div><div>起立后、终点停稳后由关节 PD 接管；状态 RL → STAND_SETTLING → STAND_TRANSITION → FIXED_STAND，任何非零指令触发 REJOIN 回到 RL</div>
+      <div>终点要求</div><div>实测 PD 保持（v233 基线 4.398 s）；失败路线不计</div>
+    </div>
+    <details><summary>技术细节：为什么步态会影响终点</summary><div>
+      <p>RL 步态即使指令很小也会踏步，机身有厘米级的晃动和静差。v287 在终点“原地纯转向”时，机身实际朝向与曲线切向可差 100° 以上，屁股扫到墙（D07 −1.64 cm、CD12 −4.23 cm）。v288 想用“边转边往中心挪 + 2 cm 才算到”解决，却碰上了踏步晃动本身就有 2–5 cm，导致 S04/CS03 在终点附近超时。</p>
+      <p>术语见 <code>.pipeline/terminology/terminology.md</code> 中的 <i>stance hold</i>、<i>terminal crawl</i>。</p>
+    </div></details>
+  </div>
+</section>
+
+<section id="m-task">
+  <h2>③ 任务层：HTTP 入口 + Nav2 行为树</h2>
+  <div class="card">
+    <div class="modhead"><h3>MissionBridge + Nav2 Foxy BT Navigator</h3><span class="layer-tag lt-task">任务层</span></div>
+    <div class="plain"><b class="tag">人话：</b>这是“调度员”。它不算路也不判断到没到，只负责：接单 → 叫 PCT 算路 → 叫 SCAN 去走 → 走失败了先确认狗真停住了，再重来，最多 6 次。</div>
+    <h3>实际行为树（<code>lite3_nav2_bridge/config/navigate.xml</code>）</h3>
+<pre class="formula">RecoveryNode(重试 6 次)
+ ├─ PipelineSequence
+ │   ├─ PlanOnGoalChange → ComputePathToPose(planner_id = PCT, 超时 1 s)
+ │   └─ FollowPathWithFailure(controller_id = SCAN, 超时 1 s)
+ └─ Sequence（恢复分支）
+     ├─ RetryAllowed        ← 只有拿到“实测停稳证明”才放行
+     └─ Wait 1 s</pre>
+    <div class="kv">
+      <div>入口</div><div><code>mission_bridge.py</code>：HTTP <code>POST</code> 提交/取消，<code>GET /state</code> 查询；监听 <code>/quad_0/body_pose</code>；本身不做规划与到达判定</div>
+      <div>健康监测</div><div>关键节点（controller/planner/recoveries/bt_navigator/lifecycle）失去响应 → <code>native_node_unresponsive</code>（v288 的 G05、CM07 即此类）</div>
+      <div>平台</div><div>ROS 2 Foxy（Ubuntu 20.04），Nav2 0.4.7 打补丁版 ControllerServer；目标部署 Jetson ARM64</div>
+      <div>设计文档</div><div><a href="../../../.pipeline/design/2026-10-08_nav2_foxy/README.zh.md">Nav2 Foxy 接入说明</a> · <a href="../../../.pipeline/design/2026-10-08_nav2_foxy/design.md">技术设计</a></div>
+    </div>
+  </div>
+</section>
+
+<section id="m-pct">
+  <h2>④ 全局规划：PCT</h2>
+  <div class="card">
+    <div class="modhead"><h3>PCT Planner（Nav2 GlobalPlanner 插件 <code>lite3_nav2/PCTPlanner</code>）</h3><span class="layer-tag lt-global">全局层</span></div>
+    <div class="plain"><b class="tag">人话：</b>把整栋楼切成一层一层的“断层图”（哪里是地面、哪里是台阶、哪层连哪层），在上面找一条从起点到终点、能上下楼梯的路线。相当于“导航软件里的整条路”。</div>
+    <div class="kv">
+      <div>上游</div><div><a href="https://github.com/byangw/PCT_planner/tree/35cd73fd82bcd51bc538429294af7646b2a09815">byangw/PCT_planner @35cd73f</a>（固定版本，原生库编译）</div>
+      <div>调用频率</div><div><code>expected_planner_frequency: 1.0</code>；每个任务只保留一个路线纪元</div>
+      <div>静态输入</div><div>断层图 tomogram、支撑格 <code>native.support</code>（FNV64 15212154834549674106）、实体面 <code>SURFACE271B</code>（SHA 校验）</div>
+      <div>插件实现</div><div><code>lite3_nav2_plugins/src/pct_planner.cpp</code>、<code>pct_route_planner.cpp</code>；Python worker <code>pct_planner/planner_node.py</code></div>
+      <div>离线门禁</div><div>50 合法 + 3 非法：合法 ≥ 96% 通过、非法 3/3 拒绝、合法已接纳例全局中位 ≤ 1.5 s（v288：49/50、3/3、1.526 s，<b>耗时未达标</b>）</div>
+    </div>
+    <details><summary>技术细节：全局与局部用的是“同一份几何”</summary><div>
+      <p>从 v266–v272 起，全局（PCT）和局部（SCAN）都绑定到同一份由 Building 网格生成的实体面（区分 344 个封闭体与 3 444 个只有表面的面片），保证“全局认为能走的地方，局部也认为能走”。<code>navigation_physical.launch.py</code> 在启动时同时写入两边配置并校验 SHA/FNV。</p>
+      <p>这一层目前最大的问题是<b>耗时</b>（1.3–1.65 s 区间波动），以及个别起终点（CS01）无法接纳。</p>
+    </div></details>
+  </div>
+</section>
+
+<section id="m-map">
+  <h2>⑤ SCAN 三维地图与可通行判定</h2>
+  <div class="card">
+    <div class="modhead"><h3>GridMap（<code>plan_env</code>）</h3><span class="layer-tag lt-local">局部层</span></div>
+    <div class="plain"><b class="tag">人话：</b>机器狗身边一个 10 m × 10 m × 5 m 的“乐高积木盒”，每块积木 5 cm。雷达打到的地方标“有东西”，射线穿过的地方标“空”。再结合离线的“哪里能踩”信息，回答一个问题：<b>狗的身体放在这个位置、这个朝向，安全吗？</b></div>
+    <div class="grid2">
+    <div>
+    <h3>建图参数（运行配置）</h3>
+    <table>
+      <tr><th>参数</th><th>值</th><th>含义</th></tr>
+      <tr><td>resolution</td><td class="num">0.05 m</td><td>体素边长</td></tr>
+      <tr><td>sliding_map_size</td><td class="num">10×10×5 m</td><td>跟随机身的滑动窗口</td></tr>
+      <tr><td>local_update_range</td><td class="num">5/5/2.5 m</td><td>每帧更新范围</td></tr>
+      <tr><td>p_hit / p_miss</td><td class="num">0.85 / 0.30</td><td>对数几率占据更新</td></tr>
+      <tr><td>p_occ</td><td class="num">0.80</td><td>判为占据的阈值</td></tr>
+      <tr><td>inflation z up / down</td><td class="num">0.55 / 0.35 m</td><td>障碍沿竖直方向膨胀</td></tr>
+      <tr><td>observation_persistence</td><td class="num">0.5 s</td><td>Nav2 风格观测窗口</td></tr>
+      <tr><td>map_update_frequency</td><td class="num">100 Hz</td><td>异步建图线程调度</td></tr>
+      <tr><td>reactive_cloud_max_age</td><td class="num">0.35 s</td><td>点云最大可用年龄</td></tr>
+    </table>
+    </div>
+    <div>
+    <h3>“这里能不能放身体”的判定</h3>
+    <ol>
+      <li><b>机身足迹：</b>双圆柱模型，<code>double_cylinder_radius = 0.35 m</code>（即项目的 <b>0.35 m 硬阈值</b>），<code>offset = 0.18 m</code>。</li>
+      <li><b>障碍层：</b>该体素是否被一个“真实的非地面障碍”膨胀覆盖（v288 起直接看膨胀贡献源）。</li>
+      <li><b>支撑层：</b>脚下有没有可踩的面、是不是对的那一层、离台阶边缘多远、高度对不对（WrongHeight）、有没有悬空（SupportGap）。</li>
+      <li><b>新鲜度：</b>点云和机身位姿都必须足够新，否则一律不放行。</li>
+    </ol>
+    <p>输出一个“裁决”（verdict）：Free 才能走；其余（障碍、未知、高度不对、悬空、无效查询……）都拒绝。</p>
+    </div>
+    </div>
+    <details><summary>技术细节：v286 → v288 在这里改了什么</summary><div>
+      <table>
+        <tr><th>版本</th><th>改动</th><th>效果</th></tr>
+        <tr><td>v286</td><td>未知空气做“两遍判定”，第二遍按 Free 重判；加精确实体网格查询缓存</td><td>inside-obstacle 314→859，断流 20→51</td></tr>
+        <tr><td>v287</td><td>删精确实体查询，恢复“先看 raw Unknown 再看膨胀/贡献源”</td><td>inside-obstacle 降到 0，但 3 例内存崩溃仍在</td></tr>
+        <tr><td>v288</td><td>体素障碍只认“真实非地面贡献源”，否则交给一次完整的支撑/层/边缘/新鲜度判定；删掉 Unknown 豁免分支</td><td>inside-obstacle 13（有回升），端点调整/A* 失败归零</td></tr>
+      </table>
+      <p>源码：<code>plan_env/include/plan_env/scan_reactive_grid_methods.inc</code>、<code>plan_env/src/grid_map.cpp</code>、<code>static_support.h</code>、<code>static_solid.h</code>、<code>body_time_buffer.h</code>。</p>
+    </div></details>
+  </div>
+</section>
+
+<section id="m-env">
+  <h2>⑥ 环境软代价场 ENV</h2>
+  <div class="card">
+    <div class="modhead"><h3>Environmental Field（<code>ENV225</code> 格式）</h3><span class="layer-tag lt-local">局部层</span></div>
+    <div class="plain"><b class="tag">人话：</b>硬判定只会说“能/不能”，优化器需要知道“往哪边挪更安全”。ENV 是一张预先算好的“离台阶边缘还有多远、离墙还有多远”的地图，离得越近罚得越多，并给出往外推的方向（梯度）。</div>
+<pre class="formula">penalty_edge  = clamp((target − edge_margin) / target, 0, 1)        # v288：负余量饱和，梯度置 0
+penalty_solid = max ((target − solid_margin) / target, 0)           # 实体墙：不设上限，穿透仍有推离梯度
+cost          = penalty_edge² + penalty_solid² + 0.25 · terrain²
+曲线代价       = Σ_span Σ_{3 个积分点}  cost(p(t)) · (interval / 3)    # v288：每段固定 3 点</pre>
+    <div class="kv">
+      <div>代价权重</div><div><code>optimization.lambda_environment: 1.0</code>（与 smooth/collision/fitness 同为 1.0，feasibility 0.1）</div>
+      <div>target</div><div>场文件内置的目标余量；审计里“额外余量”以 0.35 m 硬边界为零点，正值饱和于 +0.15 m</div>
+      <div>使用阶段</div><div>仅回弹（rebound）阶段；精修（refine）阶段不加环境项</div>
+      <div>源码</div><div><code>plan_env/src/environmental_field.cpp</code>、<code>bspline_opt/include/bspline_opt/environmental_curve_cost.h</code></div>
+    </div>
+    <div class="warn"><b>注意：</b>ENV 只是“软”的，它让曲线倾向远离危险；真正的安全由 ⑤ 的硬判定和 ⑧ 的终检保证。审计报告里 ENV 软余量与物理支撑余量分开报告，不能混为一谈。</div>
+  </div>
+</section>
+
+<section id="m-fsm">
+  <h2>⑦ SCAN 局部规划状态机</h2>
+  <div class="card">
+    <div class="modhead"><h3>SCANReplanFSM（<code>plan_manage/src/scan_replan_fsm.cpp</code>）</h3><span class="layer-tag lt-local">局部层</span></div>
+    <div class="plain"><b class="tag">人话：</b>它是局部规划的“节拍器”。有目标就生成轨迹；执行中按固定节奏重算；一旦输入异常或前方被挡就急停，等新目标。</div>
+    <div class="diagram">
+    <svg viewBox="0 0 900 265" width="100%">
+      <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker></defs>
+      <g font-size="13" font-weight="700" text-anchor="middle">
+        <rect x="20" y="110" width="90" height="40" rx="8" fill="#eef1f5" stroke="#64748b"/><text x="65" y="135">INIT</text>
+        <rect x="140" y="110" width="130" height="40" rx="8" fill="#f1ebff" stroke="#6d28d9"/><text x="205" y="135">WAIT_TARGET</text>
+        <rect x="310" y="110" width="140" height="40" rx="8" fill="#e8f0ff" stroke="#2563eb"/><text x="380" y="135">GEN_NEW_TRAJ</text>
+        <rect x="500" y="110" width="130" height="40" rx="8" fill="#fff4e0" stroke="#b45309"/><text x="565" y="135">EXEC_TRAJ</text>
+        <rect x="500" y="15" width="130" height="40" rx="8" fill="#e8f0ff" stroke="#2563eb"/><text x="565" y="40">REPLAN_TRAJ</text>
+        <rect x="700" y="110" width="170" height="40" rx="8" fill="#fdecec" stroke="#b91c1c"/><text x="785" y="135">EMERGENCY_STOP</text>
+      </g>
+      <g stroke="#334155" stroke-width="1.5" fill="none">
+        <line x1="110" y1="130" x2="138" y2="130" marker-end="url(#a2)"/>
+        <line x1="270" y1="130" x2="308" y2="130" marker-end="url(#a2)"/>
+        <line x1="450" y1="130" x2="498" y2="130" marker-end="url(#a2)"/>
+        <line x1="550" y1="110" x2="550" y2="57" marker-end="url(#a2)"/>
+        <line x1="580" y1="55" x2="580" y2="108" marker-end="url(#a2)"/>
+        <line x1="630" y1="130" x2="698" y2="130" marker-end="url(#a2)"/>
+        <path d="M750,150 C710,205 430,205 390,152" marker-end="url(#a2)"/>
+        <path d="M820,150 C800,258 240,258 210,152" marker-end="url(#a2)"/>
+      </g>
+      <g font-size="11" fill="#334155" text-anchor="middle">
+        <text x="289" y="104">收到目标</text>
+        <text x="474" y="104">生成成功</text>
+        <text x="545" y="88" text-anchor="end">30 Hz 周期触发</text>
+        <text x="588" y="88" text-anchor="start">重规划成功</text>
+        <text x="664" y="104">障碍/输入失效</text>
+        <text x="570" y="214">急停后重新生成</text>
+        <text x="515" y="250">EMERGENCY_EXIT：放弃当前目标，等待新目标</text>
+      </g>
+    </svg>
+    </div>
+    <div class="kv">
+      <div>重规划频率</div><div><code>fsm.replan_frequency: 30.0</code>，<code>replan_use_wall_clock: true</code>；单轮预算 33.3 ms，超出记 <code>overrun=1</code></div>
+      <div>规划视野</div><div><code>planning_horizon: 3.5 m</code>；<code>emergency_time: 1.0 s</code></div>
+      <div>失败上限</div><div><code>max_replan_fail_count: 1000</code>（v33 曾因耗尽在 459.7 s 停下）</div>
+      <div>回调保护</div><div><code>callbackBoundary</code>：任何异常被捕获并转成 FAILED，不让进程崩（v232 引入）；v288 又在其中加了 GridMap 递归锁</div>
+    </div>
+  </div>
+</section>
+
+<section id="m-replan">
+  <h2>⑧ 一次局部重规划流水线（核心算法）</h2>
+  <div class="card">
+    <div class="modhead"><h3><code>SCANPlannerManager::reboundReplan</code>（<code>plan_manage/src/planner_manager.cpp</code>）</h3><span class="layer-tag lt-local">局部层</span></div>
+    <div class="plain"><b class="tag">人话：</b>先随便找一条能过去的折线（种子），再把它变成一条光滑的曲线，用优化器把曲线“弹”离障碍；然后检查速度、加速度合不合规；最后用<b>最新</b>的地图把整条曲线逐点再查一遍，任何一步不过就不发布。</div>
+    <table>
+      <tr><th style="width:24%">步骤</th><th>做什么</th><th style="width:30%">关键参数 / 失败日志</th></tr>
+      <tr><td>0 刷新输入</td><td><code>refreshSensorInputs("replan_start")</code>：从订阅队列手动取最新点云与位姿</td><td>v31 引入；<b>v288 回归点</b>（见“线程与时间戳”）</td></tr>
+      <tr><td>1a 热启动种子</td><td>如果上一条曲线还有效，直接截取剩余部分做种子（V48 warm start）</td><td>日志 <code>V48_WARM_SEED</code>；失败则回退到图搜索</td></tr>
+      <tr><td>1b A* 种子</td><td><code>dyn_a_star.cpp</code> 地形感知 A*：端点先投影到支撑面；失败则退回上游弦线/平面候选；每条边都做碰撞查询</td><td><code>reactive_stair_seed_search_failed</code>；v288 端点调整/A* 失败均为 0</td></tr>
+      <tr><td>1c 捷径化</td><td>若首尾直连无碰撞则只保留两点（OMPL reduceVertices 思路）</td><td><code>verified_direct_seed_shortcut</code></td></tr>
+      <tr><td>2 拟合 B 样条</td><td>按弧长每 0.2 m 取控制点（至少 7 个），三次 B 样条拟合并锁定起终点位置/速度/加速度（PVA）</td><td><code>control_points_distance 0.2</code>；<code>spline_boundary_fit_failed</code></td></tr>
+      <tr><td>3 回弹优化</td><td>L-BFGS 最小化：平滑 + 碰撞回弹（dist0 0.2）+ 可行性 + 环境 ENV；默认优化高度，失败后用固定高度模式再试一次</td><td>mem 16、迭代 ≤200、g_eps 0.01；v288 加 past 3 / delta 1e-4；<code>-1008</code> = 线搜索失败</td></tr>
+      <tr><td>4 时间重分配</td><td>若超速/超加速度，按比例拉长时间并精修（平滑 + 贴合 + 可行性），最多 3 次；再强制最低巡航速度</td><td>max_vel 1.0、max_acc 0.5、jerk 4.0、<code>min_cruise_speed 0.6</code></td></tr>
+      <tr><td>5 边界与动力学</td><td>检查重分配后端点 PVA 没漂；动力学可行</td><td><code>final_spline_boundary_pva_rejected</code></td></tr>
+      <tr><td>6 终检 + 发布租约</td><td>再次刷新输入，开启“发布租约”，以 0.05 m 步长对整条曲线逐点查双圆柱足迹（按预测朝向）</td><td><code>final_spline_rejected</code>；不过最多回到第 3 步再试 3 次</td></tr>
+    </table>
+    <details><summary>技术细节：失败时的三级退路</summary><div>
+      <ol>
+        <li>热启动被拒 → 清掉热启动，从同一 PVA 走完整图搜索链（<code>V48_WARM_RESULT accepted=0 graph_fallback=1</code>）。</li>
+        <li>三轴优化失败 → 关闭高度优化，固定高度重试（<code>fixed_height_recovery_attempt</code>），因为平滑可能把楼梯曲线“压低”到台阶里。</li>
+        <li>终检不过 → 把实际碰撞样本反馈给同一优化器，最多 3 轮（<code>final_feedback_attempt</code>）。</li>
+      </ol>
+      <p>上游依据：<a href="https://github.com/wuyi2121/SCAN-Planner/tree/348e8a590a50a5a6bbab8d8c6dcfd171f009be26">SCAN-Planner @348e8a5</a>（Apache-2.0），L-BFGS 实现对照 <a href="https://github.com/ZJU-FAST-Lab/GCOPTER/blob/main/gcopter/include/gcopter/lbfgs.hpp">GCOPTER LBFGS-Lite</a>。</p>
+    </div></details>
+    <details><summary>技术细节：v288 对优化器的改动与它的问题</summary><div>
+      <ul>
+        <li>线搜索失败（如 <code>-1008</code>）后，把求解器回滚的“最后接受点”写回控制点；若 <code>iter_num_ &gt; 1</code> 且有限，就交给硬碰撞/动力学检查继续用。</li>
+        <li><b>问题：</b><code>iter_num_</code> 计的是<b>函数评估次数</b>，不是“已接受的下降步数”。初次评估 + 一次失败试探就满足 &gt;1，此时可能一步都没走。</li>
+        <li>按完成规划轮归一化，<code>-1008</code> 从 v287 的 5.04 次/百轮升到 11.71 次/百轮；绝对数下降（674→371）只是因为路线提前死掉，跑的轮数少了。</li>
+      </ul>
+    </div></details>
+  </div>
+</section>
+
+<section id="m-exec">
+  <h2>⑨ 执行层：跟踪器与命令门禁</h2>
+  <div class="card">
+    <div class="modhead"><h3>ControllerServer + <code>scan_nav2_controller/Controller</code> + <code>TrackingNode</code></h3><span class="layer-tag lt-exec">执行层</span></div>
+    <div class="plain"><b class="tag">人话：</b>拿到曲线后，每 1/30 秒看一眼“我现在应该在曲线哪里、实际在哪里”，算出一个速度指令。速度/加速度都有上限和平滑过渡，防止狗被猛拽。</div>
+    <div class="grid2">
+    <table>
+      <tr><th>参数（controller.yaml）</th><th>值</th></tr>
+      <tr><td>controller_frequency</td><td class="num">30 Hz</td></tr>
+      <tr><td>max_vx / max_vy / max_vyaw</td><td class="num">1.0 / 0.35 / 1.0</td></tr>
+      <tr><td>线加速 / 线减速</td><td class="num">1.0 / 2.0 m/s²</td></tr>
+      <tr><td>角加速 / 角减速</td><td class="num">2.0 / 3.0 rad/s²</td></tr>
+      <tr><td>heading_error / resume</td><td class="num">1.0 / 0.6 rad</td></tr>
+      <tr><td>trajectory_starvation_timeout</td><td class="num">0.75 s</td></tr>
+      <tr><td>execution_max_age_seconds</td><td class="num">0.25 s</td></tr>
+      <tr><td>进度检查</td><td class="num">10 s 内需移动 0.5 m</td></tr>
+      <tr><td>goal_xy / z / yaw tolerance</td><td class="num">0.25 m / 0.20 m / 0.25 rad</td></tr>
+    </table>
+    <div>
+      <h3>跟踪律（TrackingNode）</h3>
+<pre class="formula">v_world = v_ref(t) + kp_pos · (p_ref(t) − p_odom)     kp_pos = 0.8
+ω       = clamp(kp_yaw · yaw_err, ±max_vyaw)           kp_yaw = 1.5
+→ 转到机体系 → 斜率限幅（command_slew）→ 命令门禁</pre>
+      <p><b>命令门禁：</b>只有 SCAN 原生 FSM 已接纳的轨迹才能驱动指令；任务结束或重试都要等“控制器保持 + 实测静止”。</p>
+      <p><b>两种典型失败：</b></p>
+      <ul>
+        <li>0.75 s 没有可执行轨迹 → <code>Native SCAN has no executable trajectory</code>（v288 共 38 次）</li>
+        <li>10 s 没走出 0.5 m → <code>Failed to make progress</code>（v288 S04/CS03 各 6 次）</li>
+      </ul>
+    </div>
+    </div>
+  </div>
+</section>
+
+<section id="m-terminal">
+  <h2>⑩ 终点收尾与站稳</h2>
+  <div class="card">
+    <div class="modhead"><h3>终点捕获 → 对准朝向 → PD 站立</h3><span class="layer-tag lt-exec">执行层</span></div>
+    <div class="plain"><b class="tag">人话：</b>快到终点时，狗要“停稳 + 转到指定朝向”。难点是：原地转身时屁股会扫一圈，靠墙就会蹭到；往中心挪又可能因为踏步晃动永远挪不准。</div>
+    <div class="grid3">
+      <div class="card" style="margin:0">
+        <b>v287 及以前</b>
+        <p>进 0.25 m 圈后速度归零，只做原地转向。</p>
+        <div class="bad">D07、CD12 转身时机身越过实体边界（−1.64 / −4.23 cm）。</div>
+      </div>
+      <div class="card" style="margin:0">
+        <b>v288</b>
+        <p>转向同时以 ≤ 0.15 m/s 往中心挪；跟踪器与外层 Controller 共用 <b>2 cm</b> 居中停止条件。</p>
+        <div class="bad">S04 最近 2.4 cm、CS03 最近 1.96 cm，但站不进 2 cm 圈，10 s 进度检查反复失败。</div>
+      </div>
+      <div class="card" style="margin:0">
+        <b>下一步候选（未实现）</b>
+        <p>外层完成条件恢复原容差；只在转向阶段叠加向心速度，或把居中死区放到与步态晃动匹配的量级。</p>
+        <div class="warn">需新版本号 + 单元测试 + 50+3 + 10 条单次实跑后才能下结论。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GATES ============ -->
+<section id="gates">
+  <h2>安全与时间硬门禁（项目规则：不能放宽）</h2>
+  <div class="card">
+    <table>
+      <tr><th>门禁</th><th>数值</th><th>在哪里</th><th>人话</th></tr>
+      <tr><td>机身硬安全半径</td><td class="num">0.35 m</td><td>GridMap 双圆柱足迹、终检</td><td>身体周围 35 cm 内不能有墙/悬空</td></tr>
+      <tr><td>雷达周期 / 截止</td><td class="num">0.1 s / 0.1 s</td><td>仿真扫描器</td><td>每 0.1 s 必须出一帧，晚了就算失败</td></tr>
+      <tr><td>观测窗口</td><td class="num">0.5 s</td><td>建图准入</td><td>只用最近半秒的点云</td></tr>
+      <tr><td>点云最大年龄</td><td class="num">0.35 s</td><td>reactive 判定</td><td>太旧的点云不能用来判安全</td></tr>
+      <tr><td>执行状态最大年龄</td><td class="num">0.25 s</td><td>Controller</td><td>机身状态太旧就不发指令</td></tr>
+      <tr><td>轨迹断供</td><td class="num">0.75 s</td><td>Controller</td><td>超过就交回行为树恢复</td></tr>
+      <tr><td>实测停稳证明</td><td class="num">连续 1 s</td><td>行为树恢复分支</td><td>指令 &lt;0.01、速度 &lt;0.1 m/s、角速度 &lt;0.15 rad/s</td></tr>
+      <tr><td>位姿时间戳单调</td><td class="num">严格递增</td><td><code>BodyTimeBuffer</code></td><td>时间不能倒流（v288 在这里出事）</td></tr>
+    </table>
+    <div class="note">另一条项目纪律：<b>不允许按场景、路线编号或坐标写特判</b>；物理实跑每条只跑一次，失败不重跑挑成功。</div>
+  </div>
+</section>
+
+<!-- ============ THREADS ============ -->
+<section id="threads">
+  <h2>线程与时间戳：v288 为什么 6 条路线锁死</h2>
+  <div class="card">
+    <div class="plain"><b class="tag">人话：</b>v288 给地图加了一把锁，让各个回调排队，解决了 v287 的内存崩溃。但“排队”发生在<b>消息已经被领走之后</b>：拿着旧消息的线程在门外等，屋里的规划线程先拿了新消息登记；旧消息后进门，系统判“时间倒流”，而且一次倒流就把之后所有消息都拒掉。</div>
+    <div class="diagram">
+    <svg viewBox="0 0 980 260" width="100%">
+      <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker></defs>
+      <text x="20" y="30" font-size="13" font-weight="700">回调线程 A</text>
+      <text x="20" y="120" font-size="13" font-weight="700">规划线程 B</text>
+      <text x="20" y="210" font-size="13" font-weight="700">BodyTimeBuffer</text>
+      <line x1="140" y1="25" x2="960" y2="25" stroke="#cbd5e1"/>
+      <line x1="140" y1="115" x2="960" y2="115" stroke="#cbd5e1"/>
+      <line x1="140" y1="205" x2="960" y2="205" stroke="#cbd5e1"/>
+      <rect x="160" y="10" width="150" height="30" rx="6" fill="#e8f0ff" stroke="#2563eb"/><text x="235" y="30" font-size="12" text-anchor="middle">DDS take：旧位姿 t=1</text>
+      <rect x="320" y="10" width="260" height="30" rx="6" fill="#fff4e0" stroke="#b45309"/><text x="450" y="30" font-size="12" text-anchor="middle">在 lockMutex() 外等待……</text>
+      <rect x="160" y="100" width="420" height="30" rx="6" fill="#e7f6ec" stroke="#15803d"/><text x="370" y="120" font-size="12" text-anchor="middle">持锁规划；refreshSensorInputs 手动 take：新位姿 t=2</text>
+      <line x1="470" y1="130" x2="470" y2="188" stroke="#15803d" stroke-width="1.5" marker-end="url(#a3)"/>
+      <rect x="420" y="190" width="110" height="30" rx="6" fill="#e7f6ec" stroke="#15803d"/><text x="475" y="210" font-size="12" text-anchor="middle">接受 t=2</text>
+      <rect x="590" y="10" width="150" height="30" rx="6" fill="#e8f0ff" stroke="#2563eb"/><text x="665" y="30" font-size="12" text-anchor="middle">拿到锁，提交 t=1</text>
+      <line x1="665" y1="40" x2="665" y2="188" stroke="#b91c1c" stroke-width="1.5" marker-end="url(#a3)"/>
+      <rect x="600" y="190" width="140" height="30" rx="6" fill="#fdecec" stroke="#b91c1c"/><text x="670" y="210" font-size="12" text-anchor="middle">拒绝：时间倒流</text>
+      <rect x="760" y="190" width="200" height="30" rx="6" fill="#b91c1c"/><text x="860" y="210" font-size="12" fill="#fff" text-anchor="middle">永久锁存：后续 t=3,4… 全拒</text>
+      <text x="960" y="245" font-size="12" fill="#b91c1c" text-anchor="end">→ 规划器报 reference_inputs_not_ready，或 FSM 因 BODY_TIME_INPUT 急停</text>
+    </svg>
+    </div>
+    <table>
+      <tr><th>证据</th><th>值</th></tr>
+      <tr><td><code>regressed_body_source_stamp</code> 日志命中</td><td>v287：0 → v288：17 669</td></tr>
+      <tr><td>受影响路线</td><td>A04、CU06、D07、CD12、CM02、CM07（GridMap 入口 4 条，FSM 入口 2 条）</td></tr>
+      <tr><td>零物理步复现</td><td>调用冻结的真实 BodyTimeBuffer：push 返回 <code>[1, 0, 0]</code>（新消息接受、旧消息拒绝、之后更新的消息也被拒）</td></tr>
+      <tr><td>边界</td><td>记录下来的传感器流本身是单调的；真实 DDS 的取消息顺序没有记录，不能当作已证实事实</td></tr>
+    </table>
+    <p>证据文件：<a href="../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-20_v288_reentrant_work_terminal/ultra9/evidence/input_order_audit01.json">input_order_audit01.json</a></p>
+  </div>
+</section>
+
+<!-- ============ ACCEPT ============ -->
+<section id="accept">
+  <h2>验收体系怎么打分</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>第一关：50 + 3 离线门禁（不跑物理）</h3>
+      <ul>
+        <li>50 个合法起终点 + 3 个非法对照，冻结后每个只调一次原生规划。</li>
+        <li>通过线：合法 ≥ 48/50（96%）、非法 3/3 拒绝、合法已接纳例全局中位 ≤ 1.5 s。</li>
+        <li>每条结果再做独立几何审计（实体面 + 原始点 + 支撑），所有起点要求额外余量 ≥ 0.10 m。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>第二关：10 条固定路线，各跑一次物理</h3>
+      <ul>
+        <li>A04、G05、CU06、D07、S04、CD12、CM02、CM07、CS03、CE03。</li>
+        <li><b>到达 + PD：</b>原生判到达，且实测 PD 站稳。</li>
+        <li><b>全记录几何：</b>10 Hz 实测机身位姿下，支撑空隙、实体余量、原始点余量全部 ≥ 0（含终点收尾和 PD 尾段）。</li>
+        <li>起立阶段单独审计（1 380 帧）。失败路线的“安全前缀”不算通过。</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note">这是<b>单次</b>试验，不是统计可靠性；采样检查也不等于连续时间或足端接触认证。</div>
+</section>
+
+<!-- ============ HISTORY ============ -->
+<section id="history">
+  <h2>版本演进与成绩</h2>
+  <div class="card">
+    <h3>大阶段</h3>
+    <table>
+      <tr><th>阶段</th><th>版本</th><th>主题</th><th>结论</th></tr>
+      <tr><td>起步</td><td>v3–v36</td><td>空地 12 m → 接入 Building 楼梯；时钟、建图、高度优化等逐个修</td><td>v3 只在空地验证过</td></tr>
+      <tr><td>性能</td><td>v37–v87</td><td>30 Hz 目标、热启动、缓存、异步建图、Nav2 观测窗口</td><td>常见耗时降到几毫秒，长尾仍在</td></tr>
+      <tr><td>Nav2 集成</td><td>v88–v100+</td><td>完整 Nav2 Foxy：PCT 插件、SCAN 控制插件、行为树、停稳证明</td><td>协议层通过</td></tr>
+      <tr><td>原路线打通</td><td>v219/v220 → v232/v233</td><td>支撑判定、共享软代价、GPMP 支撑 Z、异常隔离</td><td><b>采纳为基线</b>：121.565 s FINISHED，PD 4.398 s</td></tr>
+      <tr><td>复验</td><td>v237、v241</td><td>雷达截止修复、终点连续性</td><td>各单次通过原路线</td></tr>
+      <tr><td>泛化</td><td>v242–v288</td><td>换 50+3 起终点、统一实体几何、局部搜索/跟踪/终点</td><td>尚未通过</td></tr>
+    </table>
+    <h3>最近 7 个版本：10 条单次实跑成绩</h3>
+    <div class="diagram">
+    <svg viewBox="0 0 900 300" width="100%">
+      <line x1="60" y1="250" x2="880" y2="250" stroke="#94a3b8"/>
+      <g font-size="11" fill="#64748b" text-anchor="end">
+        <text x="52" y="254">0</text><text x="52" y="204">2</text><text x="52" y="154">4</text><text x="52" y="104">6</text><text x="52" y="54">8</text><text x="52" y="29">10</text>
+      </g>
+      <g stroke="#eef1f5"><line x1="60" y1="200" x2="880" y2="200"/><line x1="60" y1="150" x2="880" y2="150"/><line x1="60" y1="100" x2="880" y2="100"/><line x1="60" y1="50" x2="880" y2="50"/></g>
+      <!-- data: arrival, clean -->
+      <!-- v282 4,2 ; v283 5,2 ; v284 3,1 ; v285 6,5 ; v286 0,0 ; v287 6,4 ; v288 1,1  scale 25px per unit -->
+      <g>
+        <rect x="90"  y="150" width="36" height="100" fill="#93c5fd"/><rect x="128" y="200" width="36" height="50" fill="#15803d"/>
+        <rect x="205" y="125" width="36" height="125" fill="#93c5fd"/><rect x="243" y="200" width="36" height="50" fill="#15803d"/>
+        <rect x="320" y="175" width="36" height="75" fill="#93c5fd"/><rect x="358" y="225" width="36" height="25" fill="#15803d"/>
+        <rect x="435" y="100" width="36" height="150" fill="#93c5fd"/><rect x="473" y="125" width="36" height="125" fill="#15803d"/>
+        <rect x="550" y="248" width="36" height="2" fill="#93c5fd"/><rect x="588" y="248" width="36" height="2" fill="#15803d"/>
+        <rect x="665" y="100" width="36" height="150" fill="#93c5fd"/><rect x="703" y="150" width="36" height="100" fill="#15803d"/>
+        <rect x="780" y="225" width="36" height="25" fill="#ef4444"/><rect x="818" y="225" width="36" height="25" fill="#b91c1c"/>
+      </g>
+      <g font-size="12" text-anchor="middle" fill="#0f172a">
+        <text x="127" y="270">v282</text><text x="242" y="270">v283</text><text x="357" y="270">v284</text><text x="472" y="270">v285</text><text x="587" y="270">v286</text><text x="702" y="270">v287</text><text x="817" y="270">v288</text>
+      </g>
+      <g font-size="11" text-anchor="middle" fill="#334155">
+        <text x="108" y="144">4</text><text x="146" y="194">2</text><text x="223" y="119">5</text><text x="261" y="194">2</text>
+        <text x="338" y="169">3</text><text x="376" y="219">1</text><text x="453" y="94">6</text><text x="491" y="119">5</text>
+        <text x="568" y="242">0</text><text x="606" y="242">0</text><text x="683" y="94">6</text><text x="721" y="144">4</text>
+        <text x="798" y="219">1</text><text x="836" y="219">1</text>
+      </g>
+      <rect x="560" y="12" width="14" height="12" fill="#93c5fd"/><text x="580" y="22" font-size="12">到达 + PD</text>
+      <rect x="670" y="12" width="14" height="12" fill="#15803d"/><text x="690" y="22" font-size="12">到达 + PD + 几何全过</text>
+    </svg>
+    </div>
+    <table>
+      <tr><th>版本</th><th>离线合法</th><th>全局中位 s</th><th>到达+PD</th><th>+几何</th><th>主要现象</th></tr>
+      <tr><td>v282</td><td>—</td><td class="num">—</td><td class="num">4/10</td><td class="num">2/10</td><td>首次 10 条实跑，D07/CD12 有负余量</td></tr>
+      <tr><td>v283</td><td>49/50</td><td class="num">1.301</td><td class="num">5/10</td><td class="num">2/10</td><td>S04 新回归；零/终点偏航指令验证缺口</td></tr>
+      <tr><td>v284</td><td>48/50</td><td class="num">1.649</td><td class="num">3/10</td><td class="num">1/10</td><td>7 条无可执行轨迹</td></tr>
+      <tr><td>v285</td><td>49/50</td><td class="num">1.347</td><td class="num">6/10</td><td class="num">5/10</td><td>目前最好；A* 与 −1008 增多</td></tr>
+      <tr><td>v286</td><td>49/50</td><td class="num">1.321</td><td class="num">0/10</td><td class="num">0/10</td><td>inside-obstacle 859；A04/G05 控制器 −11</td></tr>
+      <tr><td>v287</td><td>49/50</td><td class="num">1.377</td><td class="num">6/10</td><td class="num">4/10</td><td>3 例内存崩溃；终点纯转向越界</td></tr>
+      <tr><td>v288</td><td>49/50</td><td class="num">1.526</td><td class="num">1/10</td><td class="num">1/10</td><td>崩溃清零；时间戳锁死 6 条；终点超时 2 条</td></tr>
+    </table>
+    <p class="legend">数据来自 <a href="../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/README.md">versions/README.md</a> 各版本小节。v282 的离线数据属于 v281 批次，表中留空。</p>
+  </div>
+</section>
+
+<!-- ============ ISSUES ============ -->
+<section id="issues">
+  <h2>当前问题地图（v288 之后）</h2>
+  <div class="card">
+    <table>
+      <tr><th>#</th><th>问题</th><th>影响</th><th>根因（已证实 / 推断）</th><th>修复方向（未实现）</th></tr>
+      <tr><td>1</td><td>位姿时间戳倒序并永久锁存</td><td>6/10 路线锁死</td><td><b>已证实</b>：零物理步探针复现永久锁存；<b>推断</b>：锁外 take 与锁内手动 take 交错</td><td>在执行器层串行化（同一互斥回调组），或旧消息只丢弃不锁存</td></tr>
+      <tr><td>2</td><td>终点 2 cm 居中门槛</td><td>S04、CS03 超时</td><td><b>已观测</b>：最近 2.4 / 1.96 cm，6 次进度失败</td><td>外层完成条件恢复原容差，向心速度只作为转向辅助</td></tr>
+      <tr><td>3</td><td>L-BFGS −1008 频率</td><td>11.71 次/百轮</td><td>线搜索失败；“回滚可用”判据用函数评估次数</td><td>改为“确有已接受下降步”或代价严格下降</td></tr>
+      <tr><td>4</td><td>节点无响应</td><td>G05、CM07</td><td>recoveries_server / bt_navigator 健康超时，原因未定</td><td>先查日志与资源占用</td></tr>
+      <tr><td>5</td><td>全局耗时</td><td>1.526 s &gt; 1.5 s</td><td>PCT 中位耗时波动</td><td>单独性能版本</td></tr>
+      <tr><td>6</td><td>终点纯转向越界</td><td>v287 D07/CD12</td><td>v288 中两条未跑到终点，<b>未被检验</b></td><td>与 #2 一起处理</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============ BOUNDARY ============ -->
+<section id="boundary">
+  <h2>证据边界：哪些还没有被证明</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3 style="color:var(--green)">有直接证据</h3>
+      <ul>
+        <li>原始楼梯路线在 v233 / v237 / v241 各单次完整到达并站稳。</li>
+        <li>Nav2 Foxy 全链路在 ARM64 编译、协议测试通过。</li>
+        <li>v288：178 项原生测试通过，0 信号崩溃，雷达 0 超时。</li>
+        <li>所有实跑视频已回到本地，SHA 与全片解码核对过。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--red)">没有证明</h3>
+      <ul>
+        <li>重复可靠性（每条都只跑过一次）。</li>
+        <li>持续 30 Hz（基线平均成功 25.44 Hz）。</li>
+        <li>其他起终点的泛化能力（最近版本最高 5/10）。</li>
+        <li>逐脚接触 / 腿摆动几何（目前只用机身双圆柱）。</li>
+        <li>Jetson 真机、真机运动、VLA 闭环——<b>全部未开始</b>。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FILES ============ -->
+<section id="files">
+  <h2>源码与报告索引</h2>
+  <div class="card">
+    <p>v288 冻结源码根目录：<code>.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v288/src/</code>（329 个文件，清单 SHA <code>e8935ba2…010af</code>）</p>
+    <table>
+      <tr><th>模块</th><th>源码</th></tr>
+      <tr><td>任务入口 / 行为树</td><td><code>lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py</code>、<code>lite3_nav2_bridge/config/navigate.xml</code>、<code>lite3_nav2_plugins/src/recovery_bt.cpp</code></td></tr>
+      <tr><td>PCT 全局规划</td><td><code>lite3_nav2_plugins/src/pct_planner.cpp</code>、<code>pct_route_planner.cpp</code>、<code>pct_planner/</code></td></tr>
+      <tr><td>三维地图 / 可通行</td><td><code>plan_env/src/grid_map.cpp</code>、<code>plan_env/include/plan_env/scan_reactive_grid_methods.inc</code>、<code>body_time_buffer.h</code></td></tr>
+      <tr><td>环境代价</td><td><code>plan_env/src/environmental_field.cpp</code>、<code>bspline_opt/include/bspline_opt/environmental_curve_cost.h</code></td></tr>
+      <tr><td>状态机 / 规划管理</td><td><code>plan_manage/src/scan_replan_fsm.cpp</code>、<code>plan_manage/src/planner_manager.cpp</code></td></tr>
+      <tr><td>A* / 优化器</td><td><code>path_searching/src/dyn_a_star.cpp</code>、<code>bspline_opt/src/bspline_optimizer.cpp</code></td></tr>
+      <tr><td>执行 / 终点</td><td><code>scan_nav2_controller/src/controller.cpp</code>、<code>include/scan_nav2_controller/tracking_node.hpp</code>、<code>config/controller.yaml</code></td></tr>
+      <tr><td>仿真 / 雷达 / 起立</td><td><code>scripts/newton_episode.py</code>、<code>scripts/geometric_lidar.py</code>、<code>scripts/factory_navigation_startup.py</code></td></tr>
+    </table>
+    <p>报告：
+      <a href="../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-20_v288_reentrant_work_terminal/ultra9/RESULTS_zh.md">v288 中文报告</a> ·
+      <a href="../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-20_v288_reentrant_work_terminal/ultra9/delivered/README.md">v288 十条视频</a> ·
+      <a href="../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-20_v287_local_cost_crash/ultra9/RESULTS_zh.md">v287 中文报告</a> ·
+      <a href="../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v288/changes.patch">v288 相对 v287 的补丁</a> ·
+      <a href="../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/README.md">版本总索引</a>
+    </p>
+  </div>
+</section>
+
+<footer>
+  生成于 2026-10-20，依据本地仓库 v288 冻结源码、运行配置与审计报告整理。页面本身不是实验证据；数字以链接的原始报告为准。
+  未核实的内容（例如 RL 策略的控制频率、ENV 场 target 的确切数值）在正文中没有给出具体数字。
+</footer>
+
+</main>
+</div>
+<script>
+  document.querySelectorAll('.clickable').forEach(function(g){
+    g.addEventListener('click',function(){
+      var id=g.getAttribute('data-target'); var el=document.getElementById(id);
+      if(el){el.scrollIntoView({behavior:'smooth',block:'start'}); el.querySelector('.card') && (el.querySelector('.card').style.outline='3px solid #2563eb', setTimeout(function(){el.querySelector('.card').style.outline='none'},1400));}
+    });
+  });
+</script>
+</body>
+</html>
