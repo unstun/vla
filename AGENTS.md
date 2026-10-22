@@ -17,6 +17,9 @@
   configured remote without asking again. Review the exact staged diff, file
   list and sizes; exclude unrelated edits, model weights, videos, full logs and
   large generated data. Report the commit and verified push result.
+- Follow `docs/agents/git-workflow.md` while the 24 research commits are held
+  locally. Never push `local/research-unpublished` or merge its history into
+  a published branch; publish selected task changes from `origin/main` instead.
 
 ## Research And Execution
 

@@ -1,0 +1,67 @@
+{
+  "source": "/Users/sun/tongbu/study/phdproject/vla",
+  "probes": [
+    {
+      "name": "create_requires_description",
+      "status": "pass",
+      "detail": "Missing description rejected without a task directory."
+    },
+    {
+      "name": "task_context_lifecycle",
+      "status": "pass",
+      "detail": "Curate, validate, activate and finish succeed."
+    },
+    {
+      "name": "inline_empty_manifest_contract",
+      "status": "fail",
+      "detail": "dispatch_mode:inline still rejects empty manifests: \u001b[0;31mError: implement.jsonl and check.jsonl have no curated entries\u001b[0m\nSub-agents (implement/check) would run with zero spec context.\n  Curate:  python3 .trellis/scripts/task.py add-context /var/folders/2m/t9f1q0291ll3q63fq0wm56l00000gn/T/vla trellis review ghtu_2hq/.trellis/tasks/10-22-sample implement <path> \"<why>\"\n  Verify:  python3 .trellis/scripts/task.py validate /var/folders/2m/t9f1q0291ll3q63fq0wm56l00000gn/T/vla trellis review ghtu_2hq/.trellis/tasks/10-22-sample\n  Intentionally empty? Re-run start with --allow-empty-context"
+    },
+    {
+      "name": "codex_only_inline",
+      "status": "pass",
+      "detail": "Codex-only inline fixture starts without JSONL manifests."
+    },
+    {
+      "name": "explicit_empty_override",
+      "status": "pass",
+      "detail": "Documented explicit empty-context override works."
+    },
+    {
+      "name": "invalid_manifest_handling",
+      "status": "pass",
+      "detail": "Invalid manifest is a validation error, not a traceback."
+    },
+    {
+      "name": "malformed_task_archive",
+      "status": "pass",
+      "detail": "Malformed task archival warns explicitly and preserves the original bytes."
+    },
+    {
+      "name": "archive_collision",
+      "status": "pass",
+      "detail": "Archive collision leaves source state and destination intact."
+    },
+    {
+      "name": "archive_no_auto_commit",
+      "status": "pass",
+      "detail": "Archive honors session_auto_commit:false; no index/commit mutation."
+    },
+    {
+      "name": "rename_references",
+      "status": "pass",
+      "detail": "Rename updates parent link and active-session reference."
+    },
+    {
+      "name": "journal_idempotency",
+      "status": "pass",
+      "detail": "Identical retry does not duplicate a pending or committed keyed journal."
+    },
+    {
+      "name": "invalid_journal_commit",
+      "status": "pass",
+      "detail": "Invalid commit evidence is rejected before journal writes."
+    }
+  ],
+  "passed": 11,
+  "failed": 1
+}
