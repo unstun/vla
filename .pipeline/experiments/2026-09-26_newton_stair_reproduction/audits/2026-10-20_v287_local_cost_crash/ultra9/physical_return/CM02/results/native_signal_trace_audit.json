@@ -1,0 +1,46 @@
+{
+  "case_id": "CM02",
+  "physics_steps": 0,
+  "trace_files": 6,
+  "faults": [
+    {
+      "signal": "SIGABRT",
+      "log_file": "native_backtraces/controller_server-107.log",
+      "fault_instruction": "rip            0x74dba000300b      0x74dba000300b <raise+203>",
+      "fault_thread_frames": [
+        "#0  0x000074dba000300b in raise () from /lib/x86_64-linux-gnu/libc.so.6",
+        "#1  0x000074db9ffe2859 in abort () from /lib/x86_64-linux-gnu/libc.so.6",
+        "#2  0x000074dba004d266 in ?? () from /lib/x86_64-linux-gnu/libc.so.6",
+        "#3  0x000074dba00552fc in ?? () from /lib/x86_64-linux-gnu/libc.so.6",
+        "#4  0x000074dba0056fa0 in ?? () from /lib/x86_64-linux-gnu/libc.so.6",
+        "#5  0x000074db7a5af927 in __gnu_cxx::new_allocator<OpenSetEntry>::deallocate () at /usr/include/c++/9/ext/new_allocator.h:128",
+        "#6  std::allocator_traits<std::allocator<OpenSetEntry> >::deallocate () at /usr/include/c++/9/bits/alloc_traits.h:469",
+        "#7  std::_Vector_base<OpenSetEntry, std::allocator<OpenSetEntry> >::_M_deallocate () at /usr/include/c++/9/bits/stl_vector.h:351",
+        "#8  std::vector<OpenSetEntry, std::allocator<OpenSetEntry> >::_M_realloc_insert<GridNode*&> () at /usr/include/c++/9/bits/vector.tcc:500",
+        "#9  0x000074db7a5afaad in std::vector<OpenSetEntry, std::allocator<OpenSetEntry> >::emplace_back<GridNode*&> () at /usr/include/c++/9/bits/vector.tcc:121",
+        "#10 std::priority_queue<OpenSetEntry, std::vector<OpenSetEntry, std::allocator<OpenSetEntry> >, NodeComparator>::emplace<GridNode*&> () at /usr/include/c++/9/bits/stl_queue.h:645",
+        "#11 0x000074db7a5ac6f9 in AStar::AstarSearch () at /work/src/path_searching/src/dyn_a_star.cpp:490",
+        "#12 0x000074db7a568d44 in scan_planner::SCANPlannerManager::reboundReplanAttempt () at /work/src/plan_manage/src/planner_manager.cpp:353",
+        "#13 0x000074db7a56f7b9 in scan_planner::SCANPlannerManager::reboundReplan () at /work/src/plan_manage/src/planner_manager.cpp:279",
+        "#14 0x000074db7a508df9 in scan_planner::SCANReplanFSM::callReboundReplan () at /work/src/plan_manage/src/scan_replan_fsm.cpp:1427",
+        "#15 0x000074db7a50a533 in scan_planner::SCANReplanFSM::planFromCurrentTraj () at /work/src/plan_manage/src/scan_replan_fsm.cpp:1194",
+        "#16 0x000074db7a50ac60 in scan_planner::SCANReplanFSM::performNominalReplan () at /work/src/plan_manage/src/scan_replan_fsm.cpp:864",
+        "#17 0x000074db7a50fd18 in scan_planner::SCANReplanFSM::execFSMCallback () at /work/src/plan_manage/src/scan_replan_fsm.cpp:1094",
+        "#18 0x000074db7a510569 in operator() () at /work/src/plan_manage/src/scan_replan_fsm.cpp:144",
+        "#19 callbackBoundary<scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()>, scan_planner::SCANReplanFSM::callbackBoundary(char const*, Work&&) [with Work = scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()>]::<lambda()> > () at /work/install/plan_env/include/plan_env/callback_exception.h:20",
+        "#20 callbackBoundary<scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()> > () at /work/src/plan_manage/include/plan_manage/scan_replan_fsm.h:44",
+        "#21 operator() () at /work/src/plan_manage/src/scan_replan_fsm.cpp:144",
+        "#22 execute_callback_delegate<> () at /opt/ros/foxy/include/rclcpp/timer.hpp:223",
+        "#23 execute_callback () at /opt/ros/foxy/include/rclcpp/timer.hpp:209",
+        "#24 0x000074dba095e62d in rclcpp::Executor::execute_any_executable(rclcpp::AnyExecutable&) () from /opt/ros/foxy/lib/librclcpp.so",
+        "#25 0x000074dba09625f8 in rclcpp::executors::MultiThreadedExecutor::run(unsigned long) () from /opt/ros/foxy/lib/librclcpp.so",
+        "#26 0x000074dba03f2df4 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6",
+        "#27 0x000074dba050e609 in start_thread () from /lib/x86_64-linux-gnu/libpthread.so.0",
+        "#28 0x000074dba00df353 in clone () from /lib/x86_64-linux-gnu/libc.so.6"
+      ],
+      "allocator_messages": [
+        "[controller_server-3] double free or corruption (out)"
+      ]
+    }
+  ]
+}

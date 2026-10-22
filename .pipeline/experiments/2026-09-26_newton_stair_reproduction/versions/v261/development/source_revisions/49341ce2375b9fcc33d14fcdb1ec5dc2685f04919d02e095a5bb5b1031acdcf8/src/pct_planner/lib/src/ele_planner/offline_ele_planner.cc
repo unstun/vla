@@ -1,0 +1,76 @@
+#include "ele_planner/offline_ele_planner.h"
+
+// void OfflineElePlanner::InitMap(
+//     const double a_start_cost_threshold, const double safe_cost_margin,
+//     const double resolution, const int num_layers, const double step_cost_weight,
+//     const Eigen::MatrixXd& cost_map, const Eigen::MatrixXd& height_map,
+//     const Eigen::MatrixXd& ceiling, const Eigen::MatrixXd& ele_map,
+//     const Eigen::MatrixXd& grad_x, const Eigen::MatrixXd& grad_y) {
+
+void OfflineElePlanner::InitMap(
+    const double a_start_cost_threshold,
+    const double safe_cost_margin,
+    const double resolution,
+    const int num_layers,
+    const double step_cost_weight,
+    const Eigen::Ref<const Eigen::MatrixXd> &cost_map,
+    const Eigen::Ref<const Eigen::MatrixXd> &height_map,
+    const Eigen::Ref<const Eigen::MatrixXd> &ceiling,
+    const Eigen::Ref<const Eigen::MatrixXd> &ele_map,
+    const Eigen::Ref<const Eigen::MatrixXd> &grad_x,
+    const Eigen::Ref<const Eigen::MatrixXd> &grad_y)
+{
+  path_finder_.Init(a_start_cost_threshold, num_layers, resolution, step_cost_weight, cost_map,
+                    height_map, ele_map);
+  map_ = std::make_shared<DenseElevationMap>();
+  map_->Init(resolution, num_layers, cost_map, ele_map, height_map, ceiling,
+             grad_x, grad_y);
+  trajectory_optimizer_ = GPMPOptimizerWnoa(safe_cost_margin, map_);
+  trajectory_optimizer_wnoj_ =
+      GPMPOptimizer(safe_cost_margin, max_heading_rate_, map_);
+}
+
+// bool OfflineElePlanner::Plan(const Eigen::Vector3i& start,
+//                              const Eigen::Vector3i& goal, const bool optimize) {
+
+bool OfflineElePlanner::Plan(
+    Eigen::Ref<const Eigen::Vector3i> &start,
+    Eigen::Ref<const Eigen::Vector3i> &goal,
+    const bool optimize)
+{
+  if (!path_finder_.Search(start, goal))
+  {
+    printf("A star Failed!\n");
+    return false;
+  }
+
+  path_ = path_finder_.GetPathPoints();
+  const auto control_path=path_;
+  if(path_transform_)path_transform_(path_);
+  if (optimize) {
+    // A singleton A* route has no optimizable interval. Preserve no-route semantics.
+    if (path_.size() < 2) return false;
+    path_.front().ref_v = 1;
+    path_.back().ref_v = 1;
+
+    // In-place pose turns are retained in the raw executable reference. GPMP
+    // smooths the translational route; its dense result is independently checked.
+    auto optimization_path=control_path;
+    optimization_path.clear();
+    for(const auto &p:control_path) {
+      if(!optimization_path.empty()&&std::hypot(p.x-optimization_path.back().x,p.y-optimization_path.back().y)<1e-10&&std::abs(p.height-optimization_path.back().height)<1e-10)optimization_path.back().heading=p.heading;
+      else optimization_path.push_back(p);
+    }
+    if(optimization_path.size()<2)return false;
+    bool success = false;
+    if (use_quintic_) {
+      success = trajectory_optimizer_wnoj_.GenerateTrajectory(optimization_path, 200);
+    } else {
+      success = trajectory_optimizer_.GenerateTrajectory(optimization_path, 200);
+    }
+
+    return success;
+  }
+
+  return true;
+}

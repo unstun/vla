@@ -1,0 +1,64 @@
+请在本地主仓 `/Users/sun/tongbu/study/phdproject/vla` 基于冻结的 `v288` 创建并实施整数新版本 `v289`（远端在 `ultra9` 的独立新目录 `/home/ubuntu/sun/vla_v289_20261020` 验证），目标是：**完整保留 `v288` 已验证有效的修复（0 原生信号崩溃、0 局部 A* 端点/搜索失败、常数 3 点环境代价积分），精准修复 `v288` 引入的两项致命回归（`regressed_body_source_stamp` 永久锁死、终点 `2 cm` 强迫症居中超时）以及两项遗留缺陷（`reactive_known_trunk_enabled_` 误删导致的 `inside_obstacle`、L-BFGS `-1008` 伪迭代计数放行与节点无响应）**，并完成 `50+3` 离线门禁与 `ultra9` 十条正式路线各跑一次的一锤定音验收。
+
+### 一、 绝对红线与硬门禁（严禁触碰或退化）
+1. **安全包络与传感器周期不变**：双圆柱硬安全半径保持 `0.35 m`（`double_cylinder_radius: 0.35`, `offset: 0.18`），LiDAR 周期与 deadline 保持 `0.1 s`（`100 ms`），点云新鲜度门禁保持 `0.35 s`。
+2. **版本纪律**：严禁覆盖或修改已冻结的 `v288` 快照与审计证据；所有代码与配置修改落在 `v289`（`.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v289/`），本地主仓为唯一真源，远端 `ultra9` 仅作受控构建与执行副本。
+3. **架构与公平性不变量**：
+   - 严禁按路线名、坐标框、场景 ID 或案例写任何特判（No case/coordinate/scene hacks）；
+   - 全局参考几何全任务周期只生成一次（`global_reference_epochs == 1`），局部 `GridMap` / L-BFGS / `TrackingNode` 严禁越权改写全局参考帧；
+   - 保持出厂起立与 `v216` 强化学习步态策略不变；
+   - 严禁对已进入物理仿真的失败尝试（`physics_step_count > 0`）重跑挑成功，10 条正式物理路线必须每条只跑一次（`attempts == 1`）。
+
+### 二、 必须保留的 `v288` 有效成果（严禁回退）
+1. **回调串行化防崩溃**：保留 `GridMap` 与 `SCANReplanFSM` 的递归互斥保护（`v288` 已将 `SIGSEGV/SIGABRT` 原生崩溃从 3 次降为 0 次）。
+2. **局部 A* 端点单点支撑对齐投影**：保留 `src/path_searching/src/dyn_a_star.cpp` 中已简化的端点投影与弦线/平面回退逻辑（`v288` 已将 `endpoint_adjustment_failed` 和 `astar_optimization_failed` 全部降为 0）。
+3. **常数 3 点环境代价求积与非正边缘梯度裁剪**：保留 `src/bspline_opt/include/bspline_opt/environmental_curve_cost.h` 与 `src/plan_env/src/environmental_field.cpp` 的 3 点求积与单边推力梯度裁剪（保持优化器 p95 耗时在 `10~21 ms`）。
+
+### 三、 `v289` 必须完成的 4 项核心修复
+
+#### 修复 1：消除并发抢读导致的 `regressed_body_source_stamp` 永久锁死（`v288` 头号回归，导致 6/10 路线锁死）
+- **根因定位**：
+  - 在 `v288` 中，ROS2 订阅回调（如 `bodyPoseCallback`）在进入 `lockMutex()` **之前**，已由 Executor 从 DDS `take` 出了较早的位姿消息 $t_1$。当该线程在 `lockMutex()` 外等待时，持有锁的规划线程调用 `refreshSensorInputs("replan_start" / "final_check")`，直接在锁内从底层订阅 `take` 出了更新的位姿消息 $t_2 > t_1$ 并写入 `BodyTimeBuffer`。随后等待的订阅回调获得锁并推入 $t_1$，触发 $t_1 < t_2$ 时间戳倒退。
+  - 更致命的是，`src/plan_env/include/plan_env/body_time_buffer.h`（以及 `FSM` 侧机身时间状态）一旦见到单次 $t_1 < t_2$，就将 `regressed_source_stamp_` **永久锁死为 `true`**，无条件拒绝后续所有正常递增的新消息 $t_3, t_4, \dots$，导致规划器永久失明（`17,669` 次 `regressed_body_source_stamp` / `reference_inputs_not_ready`）。
+- **修复要求**：
+  1. **收口取数顺序**：统一 `GridMap` 订阅/定时器与手动 `refreshSensorInputs` 的取数互斥关系（例如使用共享 `MutuallyExclusive` 回调组或避免锁外预取与锁内手动 `take` 乱序交错）。
+  2. **幂等丢弃迟到旧样本而非永久自锁**：在 `BodyTimeBuffer::recordBodyPose`（及 `SCANReplanFSM` 对应的机身时间戳准入逻辑）中，若新到达样本的 `source_stamp` 早于当前已接纳的最新样本 `last_source_stamp_`（因跨路径重入/并发抢读产生的迟到旧样本），应将其记为 `superseded / ignored_older_sample` 并丢弃，**保留缓冲区内已有的更新有效状态**，严禁因为一个迟到的旧样本把后续所有正常递增的新样本永久拉黑。真正的时钟停滞或断流仍由 `freshness`（`0.35 s`）门禁严格拦截。
+  3. **单测覆盖**：修改并扩充 `src/plan_env/test/test_body_time_buffer.cpp` 与 `src/plan_manage/test/test_replan_fsm_Safety.cpp`，显式覆盖“锁内 `refreshSensorInputs` 先读入 $t_2$，随后挂起回调送入迟到 $t_1$，再送入正常 $t_3 > t_2$”的并发交错场景，验证 $t_1$ 被安全忽略且 $t_3$ 正常通过、不触发永久锁死。
+
+#### 修复 2：修复终点 `2 cm` 强迫症居中死锁，实现“转身期间平滑向心拉回 + 步态兼容容差切 PD”（解决 `S04/CS03` 超时并防 `D07/CD12` 蹭墙）
+- **根因定位**：
+  - `v288` 将 `Controller::withinGoalPosition`（`src/scan_nav2_controller/src/controller.cpp`）硬改为 `std::min(state_->xy_tolerance, TrackingNode::kGoalCenterTolerance)`（`0.02 m`），且在 `TrackingNode`（`src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp`）要求 `centered (<= 0.02 m) && abs(yaw_error) <= goal_yaw_tolerance_`。
+  - 四足 RL 踏步存在 `2~5 cm` 的自然机身摆动（`S04` 已达 `2.395 cm`，`CS03` 已达 `1.960 cm` 且 660/693 帧在 `25 cm` 内），`2 cm` 硬门槛导致机器狗在终点附近反复微调超过 60 秒，被 Nav2 `progress_checker` 判 `Failed to make progress`。
+- **修复要求**：
+  1. **恢复外层 `Controller::withinGoalPosition` 的正常终点容差**：外层完成判定恢复使用 `state_->xy_tolerance`（`0.25 m`），不要在外层用 `2 cm` 阻塞 `goal_reached` 与终端 PD 站立切换。
+  2. **内层 `TrackingNode` 终点捕获区的协同控制**：
+     - 当进入终点捕获区（`within_xy && within_z`）且 **朝向尚未对齐（`std::abs(yaw_error) > goal_yaw_tolerance_`）** 时：若水平距离超出四足步态自然摆动死区（例如 `0.05~0.06 m`），在转向的同时叠加平滑受限的机身系向心拉回线速度（幅值 $\le 0.15\text{ m/s}$，随距离平滑衰减），把狗从走廊壁/台阶边缘拉向终点中心（解决 `v287` 中 `D07/CD12` 偏心纯原地转圈蹭墙问题）；
+     - 一旦 **朝向已对齐（`std::abs(yaw_error) <= goal_yaw_tolerance_`）** 且位于合法终点容差内（或已拉回至安全死区内），立即输出零速（`publishStop()`），让外层 `Controller` 顺畅切入终端 PD 站立，绝不在终点原地磨蹭超时。
+  3. **单测覆盖**：更新 `src/scan_nav2_controller/test/test_velocity_safety.cpp`，验证：① 在终点圈内偏心且 `yaw` 未对齐时，同时输出有界向心拉回速度与转向角速度；② 在步态摆动范围（如 `2.4 cm` / `5 cm`）且 `yaw` 对齐时，外层 `withinGoalPosition` 与内层停止逻辑立即收敛，不发生死锁。
+
+#### 修复 3：恢复 `reactive_known_trunk_enabled_` 自轮廓内部豁免 + 修正 L-BFGS `-1008` 回滚判据
+1. **恢复机身自轮廓内部豁免（消除 `D07/S04` 的 13 次 `inside_obstacle`）**：
+   - `v288` 在 `src/plan_env/include/plan_env/scan_reactive_grid_methods.inc` 中删掉了 `reactive_known_trunk_enabled_`（`measuredTrunkQuery` 已知机身包络内自遮挡豁免），导致 `D07`（3 次）和 `S04`（9 次）起点种子贴近近体膨胀体素时误报 `The robot is inside an obstacle`。
+   - 在保留 `v288` 简化的空气/障碍贡献者分类的前提下，恢复 `reactive_known_trunk_enabled_` 对已知机身轮廓内部体素的自遮挡豁免，确保近体自滤波噪声不会把机身起点判为障碍内部。
+2. **修正 `BsplineOptimizer` 中 `-1008`（`LBFGSERR_ROUNDING_ERROR`）的回滚与放行条件**：
+   - 在 `src/bspline_opt/src/bspline_optimizer.cpp` 中，`iter_num_` 在每次 `costFunction` 评估时递增，并非 L-BFGS 真实接纳的步数（初始评估 + 1 次失败线搜索试探即会使 `iter_num_ == 2 > 1`）。
+   - 修改回滚与放行判据：记录初始代价 `initial_cost` 与最优控制点快照 `best_q` / `best_cost`；当 L-BFGS 返回负值（如 `-1008`）时，先把 `best_q` 完整写回 `q` 和 `cps_.points`，且**仅当真实发生有效下降（`best_cost < initial_cost`）并完整通过后续 `check_collision_and_rebound()` 与动力学硬检验时**才可视为可用轨迹；同时检查梯度/步长缩放是否导致早熟舍入误差，把 `-1008` 触发率压回低位。
+
+#### 修复 4：消除 `G05/CM07` 节点心跳无响应并保障离线 `1.5 s` 门禁
+- 审计 `v288` 中 `G05`（`/recoveries_server`）与 `CM07`（`/nav2_internal/bt_navigator`）出现 `native_node_unresponsive` 的原因（检查是否有长耗时地图更新或锁竞争阻塞了单线程/默认执行器的服务与心跳响应），确保生命周期心跳与 Action/Service 回调不被长时间饿死。
+- 在 `ultra9` 执行 `50+3` 离线门禁时，确保机器无并发后台重负载干扰，使合法准入路线的 `global_median_s <= 1.5 s`（`v285~v287` 同二进制均为 `1.32~1.38 s`）。
+
+### 四、 验证、执行与交付要求（按顺序严格执行）
+1. **本地/远端单测与探针回归**：
+   - 运行全部相关 `ctest` / `gtest`（含 `plan_env`, `path_searching`, `bspline_opt`, `plan_manage`, `scan_nav2_controller`），确保 100% 通过。
+2. **`ultra9` 离线 `50+3` 门禁 + 独立几何审计**：
+   - 50 条合法路线准入率 $\ge 96\%$（至少 `48/50`），3 条非法用例 `3/3` 拒绝，`admitted_global_median_s <= 1.5 s`，独立几何审计通过。
+3. **`ultra9` 十条正式路线物理实跑（每条只跑一次，`attempts == 1`）**：
+   - 路线：`A04, G05, CU06, D07, S04, CD12, CM02, CM07, CS03, CE03`。
+   - 统计并核验：`goal_reached`、`pd_activated`、独立采样安全审计（`0.35 m` 硬包络）、`native_signal_crash_routes == 0`、`native_node_unresponsive_routes == 0`、`deadline_miss_count == 0`、`regressed_body_source_stamp == 0`。
+4. **本地同步与交付产物**：
+   - 将 `v289` 源码快照、`changes.patch`、完整证据链与十条普通 MP4 视频拉回本地：
+     - 版本目录：`/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v289/`
+     - 审计与报告目录：`/Users/sun/tongbu/study/phdproject/vla/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-20_v289_<slug>/ultra9/`
+   - 完成十条 MP4 视频的 SHA-256 校验、全片 `ffmpeg` 解码无报错核验与抽帧目检。
+   - 产出一份说人话、数据与日志行号齐全的中文总结报告 `RESULTS_zh.md` 及视频索引 `delivered/README.md`，并更新 `versions/README.md`。

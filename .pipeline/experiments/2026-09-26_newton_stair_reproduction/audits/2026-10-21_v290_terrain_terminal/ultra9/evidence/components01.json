@@ -1,0 +1,51 @@
+{
+  "physics_steps": 0,
+  "checks": [
+    {
+      "name": "build",
+      "passed": false,
+      "returncode": 1,
+      "expected_failure": false,
+      "wall_s": 3.4956674029963324,
+      "log": "/home/ubuntu/sun/vla_v290_20261021/evidence/components01_build.log",
+      "sha256": "8c431afe22372b1d2ffb50c16a361f64ff884f49f146d5786dbf9db2bd0b1c61",
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--name",
+        "v290-01-build",
+        "--user",
+        "1000:1000",
+        "--cpus=2",
+        "--memory=6g",
+        "--network=host",
+        "-e",
+        "ROS_HOME=/evaluation/ros_home",
+        "-e",
+        "ROS_LOG_DIR=/evaluation/ros_logs",
+        "-v",
+        "/home/ubuntu/sun/vla_v290_20261021/native:/work:rw",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020:/parent:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v290_20261021/source:/source:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v290_20261021/evaluation:/evaluation:rw",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v224:/task/source_v224:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/native/component_fixtures03:/work/fixtures:ro",
+        "--entrypoint",
+        "/bin/bash",
+        "sha256:ec85ad5a21dc2b3441523571d2dc583f22bf08121390081ca780f78e15332343",
+        "-c",
+        "source /opt/ros/foxy/setup.bash && source /work/install/setup.bash && export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 ROS_DOMAIN_ID=155 ROS_LOCALHOST_ONLY=1 ROUTE_ORACLE=/work/fixtures/route-oracle.yaml PCT_TEST_MAP=/work/fixtures/flat.pct PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 TERRAIN_TEST_MANIFEST=/work/fixtures/building/terrain.json TERRAIN_TEST_DIRECTORY=/work/fixtures/building TERRAIN_NATIVE_CONFIG=/work/fixtures/building_planner.yaml TERRAIN_NATIVE_PROFILE=/work/fixtures/component.scan.yaml TERRAIN_TEST_PROFILE=/work/fixtures/component.yaml FEEDBACK_OUTPUT=/evaluation/feedback_output && cmake -S /source -B /evaluation/build -DCMAKE_BUILD_TYPE=Release -DVERSIONS_ROOT=/parent/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions && cmake --build /evaluation/build -j2 --target terrain_search_probe repair_probe captured_search_probe tracking_probe"
+      ]
+    }
+  ],
+  "stage": "failed",
+  "source_inventory_sha256": "97d4e4ae6778e398203ebe531d37c9525747c5e2f882d332b64730142e16f1d6",
+  "image": "sha256:ec85ad5a21dc2b3441523571d2dc583f22bf08121390081ca780f78e15332343"
+}

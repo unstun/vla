@@ -121,6 +121,20 @@ retain both the improved approach and smaller stair-margin minimum. This is
 one physical validation; no repeated reliability, sustained30Hz or baseline
 adoption. v232/v233 remains selected; v219/v220 andv237 remain comparisons.
 
+## Building endpoint coverage fails offline — v242; v243 not run
+
+[v242](v242/RESULTS.md) freezes12 new endpoint pairs and executes five fresh
+installed-native calls per pair. Only A02 passes5/5 global/GPMP/static/first-SCAN
+chains;55/60 calls fail PCT graph search before GPMP/SCAN. Boundary-neighborhood
+coverage is unmet. Actual native attribution separates15 high-cost-goal rejects,
+20 start-only searches and20 exhausted searches. All failures are retained.
+
+Only one physical representative is eligible. The approved minimum is two,
+so **v243 remains unfrozen preparation, with zero physical attempts/videos**;
+its entry rejects this failed selection. [Full audit/matrix and delivery status](../audits/2026-10-18_v242_building_generalization/RESULTS.md).
+RL/.35m/.1s/v237 scanner remain unchanged; v241 is the reused historical
+control and v232/v233 remains the selected single-route baseline.
+
 | Version | One change | Evidence status |
 |---|---|---|
 | v3 | Registered current empty 12 m PD/RL baseline | One bounded trial validated; not generally stable |
@@ -1356,3 +1370,409 @@ binds its successful physical execution without rewriting predecessor evidence.
 Baseline adoption: Dr Sun approved v232/v233 on 2026-10-17 after reviewing the
 single physical result and videos. v219/v220 remains a comparison, not the
 latest selected pair. The two frozen manifests retain their original status.
+
+### v247 / v248 — simplified physical support, incomplete generalization
+
+Frozen native v247starts from v240: native original PCT map, shared0.35m
+support helper, physical-floor association and symmetric adjacency. ENV225
+is the sole clearance/terrain soft field. The v1350.53m cost50mask and v244
+anchor/component treatment are absent from this execution composition.
+Strict mask removal alone still leaves1337states isolated and only1/12routes.
+
+The frozen12x5component matrix admits55/60; B09remains0/5, GPMP first passes
+0/60and all55admissions use graph fallback. B08's raw-solid reference margin
+is negative; component admission does not establish full-route clearance.
+Fresh historical H00component control passes, without a new historical physics run.
+
+v248passes25ROS tests and three zero-step configuration/scanner/process gates,
+then observes ACTIVE before actual goal dispatch. Three serial single physical
+attempts: A02fails at post-PD SupportGap, G07fails on the middle platform,
+R11passes full descending route and terminal PD at133.520s. R11has4>=1swhole-
+navigation pauses, including2in the full floor-transition interval. Its raw
+45–55/109–115swindows havezero>=0.5spauses. No retries or case substitutions.
+
+Complete A02/G07/R11recordings and the historical v246startup-failure prefix
+are regular MP4s in audits/2026-10-18_v247_physical_traversability/delivered/,
+with local/remote decode/hash/causal checks. Full metrics/failure boundaries:
+audits/2026-10-18_v247_physical_traversability/RESULTS.md.
+These results do not validate broad generalization or physical slopes.
+Selected source/display baseline remains v232/v233; v219/v220and v241controls
+remain unchanged. Task remains open for remaining seed/connection diagnosis,
+GPMP fallback and actual post-PD pose coverage; no current commit is made.
+
+### v249 / v250 / v251 — generic mechanism repairs; offline qualification
+
+Three separately frozen repairs follow v247: v249 uses continuous native floor
+association and immutable GPMP height hints; v250 removes duplicate target-cell
+gap inflation while preserving original source-square uncertainty and radius;
+v251 shares oriented gap feasibility and the existing ENV225 edge evidence
+across GPMP, PCT search and SCAN. No scenario branches or endpoint snaps.
+
+The unchanged 12 x 5 matrix remains 55/60, now **55 first-GPMP passes** and zero
+graph fallbacks among admitted calls. B09 remains 0/5 no-route. H00 first GPMP,
+static review and cold local publication pass. Native 97, PCT/physical-factor
+43 and support-parity 10855 queries pass; the two support mismatch counts are
+zero. Hard radius 0.35 m, offset 0.18 m, RL policy, requested endpoints and
+0.1 s scan period/deadline are unchanged. Source, installation, actual runtime
+fixtures and evaluator binaries are SHA-bound.
+
+The G07 saved published-cloud prefix reproduces the first sample-0 SupportGap
+seed failure, then produces a clear full local curve after repair. The original
+later global request was not captured: 164 recorded-body reconstructions each
+produce two old refusals; all 328 same poses pass after repair. These are
+reconstructed candidates, not claimed original service-request coordinates.
+A02's original mesh/PCD establish duplicate quantization as a false positive:
+actual rear-disc clearance is 0.378376919 m, with 0.028376919 m spare above 0.35 m.
+
+B08 still has a negative independent raw-solid reference margin. Offline
+admission does not prove new physical completion, slopes, future foot coverage
+or real-time scheduling. No new physics, video, commit, archive or baseline
+promotion in this follow-up. Selected physical baseline remains v232/v233;
+v248 R11's single physical pass stays separate. See the
+[combined audit](../audits/2026-10-18_v249_generic_mechanism_repairs/RESULTS.md) and
+[v251 qualification](v251/results/acceptance_receipt.json).
+
+### v252 — frozen v251 three-route physical cohort
+
+Dr Sun authorized one formal attempt each for A02, G07 and R11. Frozen v252
+changes execution binding only: v251 native installation, unchanged v248
+bridge and original v241/v237 recorder/scanner. Original scenarios, RL,
+0.35 m hard radius and 0.1 s scan/deadline remain unchanged.
+
+Physical outcomes are **2/3 full-route passes**: G07 reaches its new upstairs
+goal and closes measured PD at recording end 137.810 s; R11 completes reverse
+descent/PD at 119.506 s. Both have zero >=0.5 s / >=1 s pauses throughout the
+full floor transition. Local success is 3263/3294 and 2695/2709. All 2439 scan
+jobs complete without deadline failure. No sustained-30-Hz or reliability claim.
+
+A02 fails before movement with PCT no-route. Its actual post-PD body support
+now passes; the rounded PCT start center has SupportGap at the measured
+heading, and a fresh native search reaches only 18 unique grid nodes. This
+does not establish a physical escape path. No start snap or threshold change
+is applied and no formal attempt is repeated.
+
+Three complete recordings, including A02's failed prefix, are returned under
+[delivered](../audits/2026-10-18_v251_physical_generalization/delivered/README.md).
+Full original gates, source/linkage, pause and margin metrics, final PD,
+independent raw-cloud comparison and local video verification are in the
+[physical report](../audits/2026-10-18_v251_physical_generalization/RESULTS.md).
+Task remains open for A02 review; selected baseline remains v232/v233.
+No commit, archive or baseline promotion in this follow-up.
+
+### v253 / v254 / v255 — continuous endpoint attachment; A02 physical pass
+
+v253 attaches actual continuous start/goal nodes to the ordinary one-cell PCT
+neighbourhood. Dense native 0.35 m swept support, legal floor transitions,
+ENV225 integration and both GPMP boundary anchors use the actual coordinates.
+No endpoint substitution, scene branch, component exception or radius change.
+v254 preserves legacy floating-point diagonal distance and adds its regression;
+all 55 admitted physical-mode route CSVs remain byte-identical to v253.
+
+Final v254: 48 PCT cases, 97 native regressions, 10855 zero-mismatch support
+queries, exact recorded A02 request and historical H00 pass. The unchanged
+12x5 matrix remains 55/60, now all 55 first-GPMP admissions with no graph
+fallback; B09 remains 0/5. B08's negative independent raw-solid reference
+margin remains explicit and does not become a physical-clearance claim.
+
+Execution-only v255 binds frozen v254 and the unchanged v248 bridge. Its single
+A02 physical attempt passes arrival/PD: FINISHED112.589752s, XY0.108795m,
+height0.006334m, measured PD4.397583s. Full cross-floor21.000088–98.897278s
+has0>=0.5s/1spauses,2144/2162local success and780/780native body Free.
+All1016scans complete without deadline failure; period remains0.1s.
+Whole-navigation2long low-speed intervals remain (startup and terminal settle).
+Successful local wall frequency24.355Hz does not validate sustained30Hz.
+
+[Full report](../audits/2026-10-18_v253_continuous_endpoints/RESULTS.md),
+[complete A02 video](../audits/2026-10-18_v253_continuous_endpoints/delivered/v255_A02_full_attempt01.mp4)
+and [old/new comparison](../audits/2026-10-18_v253_continuous_endpoints/delivered/v252_vs_v255_A02_side_by_side.mp4).
+G07/R11 retain v252 physical controls; they are not new v254 runs. Original
+A02 endpoints, RL,0.35m and0.1s remain unchanged. No retry, commit, archive or
+baseline promotion; selected source/display baseline remains v232/v233.
+
+### v256 / v257 — hard static solids and 52 distinct spatial cases
+
+Frozen v256 repairs B08's missing non-ground hard collision predicate. Original
+v254 admitted a pose with a genuine vertical-wall intrusion. Graph edges,
+GPMP feasibility and final static review now share the pinned 0.35 m oriented
+solid-body field, reusing v224 geometry. Source material annotations preserve
+the old floor-volume exemption and add original pure-upward floor evidence;
+all point positions, support/height rules, ENV225 objective, RL and scanner
+contracts remain unchanged. The original B08 unsafe pose is StaticObstacle(7),
+independent margin -0.183233718 m. 61 plugin tests and 97 native regressions
+pass (10 overlap), with zero mismatches over 10,928 independent solid poses.
+
+Frozen v257 scores **52 distinct spatial pairs once each**, with 52 different
+starts, 52 different goals and explicit start/goal headings: 17 ascent,
+15 descent, 8 intermediate, 6 same-floor and 6 boundary/control. **The expanded
+physical gate fails:** 34/49 predeclared positives pass full global/static/SCAN
+(69.39%, required >=90%); 3/3 illegal controls refuse. All 34 admissions are
+first-GPMP, with no negative independent global/local solid margin. Admitted
+global wall median is 16.4555 s at two CPUs; first SCAN publication median is
+32.6909 ms, maximum 439.9019 ms. Report both denominators and the latency cost.
+
+All fifteen failed positives and original labels remain. Independent original
+mesh diagnosis establishes five wall-disconnected ground endpoints under the
+standing/step contract; other failures expose unresolved support coverage or
+approach/yaw feasibility. No coordinate rules or post-score case substitution.
+The conditional ten-route v258 binding is **unfrozen, not run**; no new physical
+videos exist. Selected baseline stays v232/v233. No commit/archive/promotion.
+
+[Full report](../audits/2026-10-18_v256_static_solids_and_space_coverage/RESULTS.md),
+[52 exact requests and scores](../audits/2026-10-18_v256_static_solids_and_space_coverage/ALL_CASES.md),
+[CSV](../audits/2026-10-18_v256_static_solids_and_space_coverage/ALL_CASES.csv),
+[native receipt](v256/results/acceptance_receipt.json),
+[original failed gate](v257/results/compact/offline_gate.json).
+
+### v259 / v260 — exact solid acceleration and original floor completeness
+
+v259 is an exact-equivalent accelerator: 70,928 full pose queries and 5,000
+sampled edges have zero differences from frozen v256; all 52 original outcomes,
+all static-query CSVs and all 34 admitted route CSVs remain identical. Two-CPU
+global median falls from 16.4555 s to 1.4689 s (max 1.9099 s). Initialization
+is separately reported. This does not change the failed original coverage gate.
+
+v260 restores missing finite original-mesh floors and native-to-PCT floor
+association. 12,219 fresh native/shared queries have zero differences; 62 plugin
+tests and 97 native regressions pass. A04/G05 retain first-GPMP admission. Six
+east cases now connect under support-only diagnosis but remain blocked by real
+solids; their original labels are retained. Endpoint-yaw repair and the new
+mesh-certified benchmark remain in progress. No new physics or video exists.
+
+[Equivalent accelerator evidence](v259/RESULTS.md),
+[finite floor evidence](v260/RESULTS.md). Selected baseline remains v232/v233.
+
+
+### v261 — Actual endpoint yaw in the physical search
+
+Frozen native v261 passes74plugin +97inherited tests,70928solid values and
+5000edges identical to v256,70928support values identical to v260, and70928
+scalar ENV comparisons identical to full assessment. Six heading controls,
+H00full-chain and unchanged measured A02firstGPMP pass. A04/G05global times
+are1.636/1.580s onCPU2; full-matrix median acceptance is not yet claimed.
+The costly capsule precheck and ineffective auxiliary ENV heuristic were
+removed. [Component evidence](v261/RESULTS.md).
+
+Frozen v262 scored50distinct original-mesh-certified positives plus3illegal
+controls once each:42/50as scored,43/50global,38/43first GPMP;3/3illegal
+controls refused. Median global time1.5927s. The gate failed; no v263physics.
+The unchanged original52ledger reached38/49positive full admissions,36/38
+first GPMP,3/3illegal refusals and median1.5514s.
+
+v264replays81saved published curves without planning:all old0.1s samples
+reproduce exactly;all native0.8s-heading samples pass. CM02is therefore an
+evaluator heading-protocol mismatch; derived43/50does not replace42/50as
+scored and still fails the gate. Seven endpoint refusals remain under the
+old solid/support model; exact occupied voxel boxes still reject all seven.
+
+Dr Sun authorized independent source-surface validation. v265passed equivalence
+but regressed all six timing controls and is rejected. Frozen v266passes7304
+FCL comparisons,400height translations,4ramp-band and14geometry controls; all
+7fixed endpoints are source-surface free while B08remains a true wall collision.
+This is component evidence only. v267C++port/raw-point auditing is in progress;
+no PCT/SCAN integration or new benchmark/physics pass is claimed.
+[Independent model evidence](v266/RESULTS.md). Selected baseline remains v232/v233.
+
+
+### v268 / v269 — Correct source semantics before native adoption
+
+v267topology audit found1,414unbalanced oriented edges. v266global ray filling
+is not valid for this open asset and is not adopted; v267also fails strict
+0.26m step contact. Their tested arithmetic and old ledgers remain preserved.
+
+The corrected v268uses existing Trimesh5.1.0 to distinguish344certified closed
+volumes from3,444surface-only faces, retaining every vertex and face connection.
+Only6face windings change.14controls,6open/inverted counterexamples,3strict
+step controls and4,000independent filled-FCL comparisons pass with0differences.
+All7fixed source endpoints stay free; B08remains a real wall collision.
+This is independent component evidence. v269native source component is being
+tested; PCT/SCAN integration, new50-case gate and physical runs remain pending.
+Selected physical/display baseline stays v232/v233; no new videos or commits.
+
+### v270 / v271 — Qualified source component and native integration candidate
+
+[v270 independent comparison](v270/RESULTS.md) passes all512fixed source queries
+and14physical counterexamples:0binary differences, maximum margin error1.11e-16m.
+Strict3Dbounding-box recall resolves the reference shared-edge and pathological
+fragmentation defects; interrupted logs and all452earlier completed values remain.
+The26-file frozen return verifies with0SHA mismatches. This is source-component
+qualification, not benchmark or physics acceptance.
+
+v271 composes frozen nativev261 with the source field through the existing
+StaticSolidField interface. Legacy voxel loading/equality controls and every
+old ledger remain. Separate pinned descriptors bind PCT/SCAN, without changing
+support/.35m/ENV/RL/endpoints/scans. Its isolated native build/tests are underway;
+original52andfixed50+3are not yet rerun. No new physical attempts/videos.
+
+v271 is now frozen and native-qualified ([results](v271/RESULTS.md)): 74 + 97
+tests pass; 70,928 old full solid values and 5,000 edges remain bit-identical;
+support/ENV and 512 independent-source values agree. All 89,965 source cache
+and swept samples pass. Six controls, H00 cold full chain and measured A02
+first GPMP pass. A04/G05/D07 still take 2.929/2.969/3.184 s on CPU2; full
+benchmark and timing acceptance remain pending. v272 precomputes immutable
+triangle height/area/cap data and compares with the frozen v271 kernel.
+Neither matrix nor new physical routes/videos have been completed yet.
+
+
+### v272–v278 — Full source-model comparison and remaining offline gates
+
+Frozen v272 passes 90,477 full source-query comparisons bit-for-bit, all legacy,
+support/ENV parity and 74 + 97 existing tests. Frozen v273 executes exactly 105
+calls: unchanged original52 and fixed50+3. Its original full scores (8/49 and
+11/50) remain preserved with all failed raw-point witnesses.
+
+[v276](v276/RESULTS.md) completes an independently frozen 3D source-material
+registration audit of all 86 admitted saved global/local curve pairs. Raw XYZ
+is unchanged, B08 remains -0.133302 m, and no admitted audited curve retains a
+negative raw margin. Derived full scores are 38/49 original positives and 48/50
+fixed positives; each cohort rejects 3/3 illegal controls. The original v273
+score is not overwritten. The physical gate still fails: fixed50 first GPMP
+43/48 (89.58%) and median global time 2.743627 s.
+
+v274 endpoint-cost-only treatment fails all six targeted first-pass cases and
+is retained as rejected evidence. v277 exact GTSAM boundary constraints are
+under regression: CU13/CE04 WNOJ improve, but CU08 and CU13 WNOA still reject.
+v278 conservative source free-space indexing is under equivalence/timing tests;
+its first implementation passed parity but brought no material timing gain.
+No new physical attempt/video, commit, archive or selected-baseline change.
+The selected physical/display baseline remains v232/v233.
+
+
+### v279 / v280 / v281 — Equivalent cache and fixed GPMP boundary validation
+
+[v279](v279/RESULTS.md) is frozen: 114,477 full source values are bit-identical,
+24,000 height-boundary checks and all 74 + 97 tests pass. It provides conservative
+positive freedom proofs over true height intervals; negative bounds never reject
+an actual pose. Old model and source-query values remain intact.
+
+[v280](v280/RESULTS.md) combines that cache with GTSAM exact boundary states and
+uses the existing per-plan cache inside GPMP. The boundary assertion is 0/6 on
+actual frozen v272 and 6/6 on v280; intermediate trajectory failures remain
+honestly recorded (3/6 targeted first admissions). A04/G05 are 1.385/1.427 s,
+D07 1.639 s on CPU2; H00 full and measured A02 first admission pass. All source,
+legacy, support, ENV and native regressions pass.
+
+[v281](v281/RESULTS.md) completes all 105 once-only calls and independent v276
+audits. Original52: 38/49 positives, 38/38 first GPMP, CPU2 median 1.255811 s.
+Fixed50+3: 48/50 positives, 44/48 first GPMP (44/50 across all positives), median
+1.336759 s; all illegal controls refused and no admitted negative raw margin.
+The prospective clean physical gate passes. CU08/CU11/CS02/CE01 retain first-pass
+failures; CM01/CS01 remain unadmitted. ENV soft-atlas negative proxies at CE03/E03
+remain explicitly separated from Free native 0.35 m physical support.
+
+[v282](v282/RESULTS.md) completes all ten once-only formal attempts with unchanged
+RL/endpoints/headings/0.35m/0.1s. Four reach the goal and pass terminal PD:
+D07,S04,CD12,CM07. Six fail: A04,G05,CU06,CM02,CS03,CE03. D07/CD12 nevertheless
+have negative measured solid margins; CD12 also has four SupportGap samples.
+Only S04/CM07 combine arrival/PD with no sampled geometric refusal or negative
+margin. This is not a continuous-time or foot-contact guarantee. Cross-floor
+pauses >=0.5s are zero for D07/CD12/CM07; all6236scans meet deadline, with no
+native process crash. A04 retains its observed external-IsaacLab overlap.
+
+All ten real full MP4s (72,466,870bytes) and462compact result files
+(9,426,541bytes) returned with zero SHA mismatches. Full decode/causal-state
+verification and20local visual frames pass. Raw/builds stay on gpu5070ti.
+[Complete report and table](../audits/2026-10-19_v280_source_generalization/RESULTS.md)
+and [video index](../audits/2026-10-19_v280_source_generalization/delivered/README.md)
+preserve every failure. Heartbeat paused after delivery; no more formal runs.
+Selected physical/display baseline remainsv232/v233. No commit or task archive
+was performed; generalization failures remain for human review.
+
+
+[v283](v283/RESULTS.md) completes the updated50+3 offline cohort and ten fixed
+once-only Newton physical attempts. All50 starts meet both extra margins>=0.10m;
+eight replacements include G05/CM02. Offline49/50 legal (98%) and3/3 illegal
+controls pass, CPU2 global median1.301129s. The0.35m radius and0.1s scanner remain
+unchanged. Five pre-simulator disk-gate launch rejections are preserved outside
+the physical denominator after a hash-verified lossless archive relocation.
+
+Physical goal/PD passes5/10; only CD12/CM07 also clear sampled geometry (2/10).
+CD12 has0SupportGap samples, minimum source-solid+.015583m and physical-gap
++.114431m. G05 post-PD shift.096744m retains+.073256m support margin. D07/S04/CE03
+still have negative source-solid margins (-.002732/-.130589/-.011862m); S04 is a
+new regression. A04/G05/CU06 retain WrongHeight samples. There is one endpoint
+rejection with support10,solid0,repair0,live_hint0 and no static-Free endpoint
+mis-abort in this sample. Other progress/trajectory/settling failures remain.
+All14881scans meet0.1s deadlines, with no native process crash.
+
+All ten real MP4s (171510095bytes),465primary compact files (20481372bytes),
+source/state hashes, full decode, and local visual checks are complete. CM07
+camera-only revision03 fixes terminal pillar occlusion with identical2951source
+indices/times; original views remain archived and no physics is repeated.
+[Full report](../audits/2026-10-19_v283_navigation_geometry/RESULTS.md),
+[all50 start table](../audits/2026-10-19_v283_navigation_geometry/all50_start_audit.csv)
+and [ten videos](../audits/2026-10-19_v283_navigation_geometry/delivered/README.md)
+preserve all failures. Actual zero/terminal-yaw commands expose a remaining
+measured-body command-validation gap despite clear reconstructed splines.
+Physical acceptance AC6 fails; selected baselinev232/v233 remains unchanged.
+The task remains in_progress for repair review; no commit or archive performed.
+
+
+## v284 static mission continuity (frozen; acceptance unmet)
+
+[Full result](v284/RESULTS.md): exact 50+3 and ten single physical attempts are
+complete, with full local videos and recorded failure evidence. Legal offline
+passes 48/50; illegal refusals 3/3. Global median 1.649325 s: timing unmet under
+explicit user continuation. Actual goal/PD 3/10; goal/PD plus sampled geometry
+1/10 (CM07). S04/CS03 still violate source solids by 5.155/3.465 cm; seven routes
+terminate with no executable SCAN trajectory. No endpoint/shared-no-route
+rejection, and every reference keeps one epoch/original geometry. Exact 0.35 m,
+0.1 s and frozen native/execution files remain unchanged. No physical retry,
+scene rule, commit, baseline promotion or successful-repair claim.
+
+
+## v285 local terrain search and tracking phase (frozen; acceptance unmet)
+
+[Full result](v285/RESULTS.md): all 53 offline calls and ten single physical attempts are complete. Offline: 49/50 legal cases pass (98%), 3/3 illegal controls refused; admitted global median 1.346993 s (all 50 legal calls: 1.359352 s). All 50 starts keep >=0.10 m extra margins. Physical goal/PD: 6/10; with sampled physical geometry: 5/10 (D07, S04, CM07, CS03, CE03). CD12 reaches but source-solid margin is -0.018423 m; A04, G05, CU06 and CM02 fail. Pool/no-executable mentions decrease, but A-star and -1008 mentions increase (44→279 and 664→4915). The requested physical repair is not validated. All 7080 scans meet 0.1 s, with no native process failure. Every route retains one global epoch and its original geometry; endpoint-rejection log lines: zero.
+
+All ten regular MP4s (85,926,567 bytes) and 480 primary compact files (13,099,513 bytes) are locally hash-verified. All videos fully decode and twenty temporal samples are visually inspected. Frozen 0.35 m / 0.1 s and native/execution sources stay unchanged; no actual retry, baseline promotion, commit or archive. [Complete report](../audits/2026-10-19_v285_local_search_tracking/RESULTS.md), [ten videos](../audits/2026-10-19_v285_local_search_tracking/delivered/README.md).
+
+
+## v286 supported air and local refinement (frozen; physical acceptance failed)
+
+[Complete result](../audits/2026-10-19_v286_supported_air_refinement/migration_ultra9/RESULTS.md): the original 9700x evidence became inaccessible after the GPU exchange. Frozen v286 source was recovered and rebuilt on ultra9, with identical core geometry and fresh captures of the same 53 requests. The complete new-host offline gate passes 49/50 legal cases, 3/3 illegal controls, admitted global median 1.321080 s (all fifty legal calls: 1.355365 s). All fifty starts pass the uniform admission audit.
+
+Ten single physical attempts record 590,340 steps but achieve 0/10 arrival/PD acceptance; A04/G05 exit controller -11, and eight fail through Nav2. Pool/endpoint-adjustment/A-star mentions decrease 23→0, 218→0, 279→6 and -1008 decreases 4915→84, while inside-obstacle/no-executable mentions increase 314→859 and 20→51. Physical repair is not validated. All 4,796 scans meet 0.1 s; local rounds can still reach 3317 ms. The original global reference geometry remains preserved in all ten.
+
+All recorded sensor prefixes have nonnegative sampled geometry, but incomplete routes cannot certify passage of their former risk regions. A separate 1,380-factory-frame audit confirms sampled startup geometry for all ten; G05 retains 0.048217 m extra gap after roughly 0.122 m PD drift. Ten actual regular MP4s (45,132,111 bytes), compact evidence and twenty visually reviewed temporal samples are returned locally. [Ten videos](../audits/2026-10-19_v286_supported_air_refinement/migration_ultra9/delivered/README.md). No 0.35 m/0.1 s relaxation, scenario/coordinate navigation branch, physical retry, source overwrite, baseline promotion, commit or archive.
+
+
+## v287 constant-time local costs and native crash diagnostics (frozen; physical acceptance failed)
+
+[完整中文报告](../audits/2026-10-20_v287_local_cost_crash/ultra9/RESULTS_zh.md), [English technical report](../audits/2026-10-20_v287_local_cost_crash/ultra9/RESULTS.md): full53 gate passes49/50 legal,3/3 illegal, admitted global median1.376954s. All53 independent audits and all50 uniform starts pass. Geometry/captured inputs are reused byte-exact from v286 ultra9; every v287 planner call is new.
+
+The fixed ten routes each run once, recording639120 physical steps. Arrival/PD passes6/10; complete recorded support/source/raw envelope plus arrival passes4/10 (S04,CM07,CS03,CE03). D07/CD12 arrive but source margins reach-0.016354/-0.042260m. Their first recorded crossings occur during terminal pure yaw near the goal; CD12's worst is in stand transition. Clear planned-heading curve geometry does not certify the measured intermediate body heading.
+
+Pool/endpoint/A-star/inside/-1008/no-executable mentions are0/27/25/0/674/9 (v286:0/0/6/859/84/51). Common optimizer times drop to a few milliseconds but tails remain. A04/CU06 SIGSEGV and CM02 allocator SIGABRT persist; full actual fault stacks/registers are returned. These are observed container/heap fault sites, not a proven first invalid write or release. The complete physical repair is not validated.
+
+All5287 scans meet the unchanged0.1s timing gate. Hard radius stays0.35m. Every route retains its original global geometry, and a separate1380-frame startup audit passes all ten. Ten regular MP4s (78148869bytes),794 compact evidence files, source/execution identities and20 visually reviewed samples are locally verified. [All ten videos](../audits/2026-10-20_v287_local_cost_crash/ultra9/delivered/README.md). No source overwrite, scene/coordinate branch, physical success retry, baseline promotion, commit or task archive.
+
+
+## v288 serialized work, direct air admission and terminal centering (frozen; acceptance failed)
+
+[Chinese report](../audits/2026-10-20_v288_reentrant_work_terminal/ultra9/RESULTS_zh.md), [ten complete local videos](../audits/2026-10-20_v288_reentrant_work_terminal/ultra9/delivered/README.md). The178 native executions, full53 calls and independent geometry audits finish:49/50legal,3/3illegalrefusals. Admitted global median1.526134s exceeds1.5s; the user explicitly authorized continuing ten while preserving this timing failure and every non-timing gate. Native source manifest remains e8935ba2b1d1ba3d8931641afda7eec0e951ef66805e49a7f6be7ab8233010af.
+
+Ten once-only Newton physical recordings total572560steps. Arrival/PD and complete recorded geometry pass1/10 (CE03). All ten recorded prefixes and1380startup poses retain nonnegative support/source/raw margins, but nine incomplete routes do not certify their unvisited risk regions. No fatal signal is recorded; G05/CM07 terminate on node-unresponsive health evidence. All4620 scans meet0.1s; hard radius stays0.35m. No scene/coordinate navigation rule or source change after freeze.
+
+Pool/endpoint-adjustment/A-star mentions are0/0/0, but inside-obstacle/no-executable are13/38 and -1008 remains371. Completed local rounds decrease13366->3168 versusv287; -1008 mentions per100rounds rise5.043->11.711, so the lower absolute total is not validation of convergence. A04/CU06/D07/CD12/CM02/CM07 encounter17669 total body-source timestamp-regression mentions (v287:0). A zero-physics actual-BodyTimeBuffer probe reproduces [newer accepted, waiting older rejected, all subsequent newer rejected] under the proposed entry lock. Callback serialization does not serialize an executor take before the guard against refreshSensorInputs manual takes. S04/CS03 instead stall near the goal and fail progress under the2cm center stopping contract; terminal convergence is not validated.
+
+All ten regular MP4s (39968063bytes),788compact evidence files, source/execution identities, local full decode and20visually reviewed frames are verified. Old versions and all failed records remain. No physical retry, baseline promotion, commit or archive. The task staysin_progress for repair review; this version must not replace the accepted baseline.
+
+
+## v289 monotone body inputs and gait-compatible capture — evaluation complete, physical acceptance failed
+
+[Complete Chinese report](../audits/2026-10-20_v289_ordered_input_terminal/ultra9/RESULTS_zh.md), [ten complete local videos](../audits/2026-10-20_v289_ordered_input_terminal/ultra9/delivered/README.md), [version result](v289/RESULTS.md). Source manifest `5406c3d4930c29d4bb4a456c43874963c236ab9de2ef7fc9ae2c27a60b5f1d06` preserves v288 A-star, constant quadrature and recursive work guards. Late body samples no longer poison newer state; terminal capture restores the original mission tolerance; negative solver recovery requires a lower finite candidate cost and existing hard validators. The effective v248 ACTIVE admission is retained in the single tested main bridge, removing the runtime override.
+
+Fourteen-package build, functional package suites and probes pass. The49 returned test XML records cover364 functional executions (including repeated regressions) plus14 successful static checks; three inherited Nav2 style/XML lint failures remain separately recorded. All50 uniform starts pass, with minimum extra support/solid margins0.1500/0.1442m. The complete53 gate passes49/50 legal,3/3 illegal refusals, admitted global median1.430741857s; all53 independent audits finish successfully. Timing uses the original2CPU quota under the existing CARLA/ROS workload at the user's direction, without a timing exception or an idle-host claim.
+
+Ten single physical attempts finish:6/10 arrival+PD,5/10 also pass sampled factory and full-recording geometry. A04,G05,CU06,CM02 still fail; CD12 reaches but source-solid margin is-0.046221m. All6130 scans meet100ms. Native signal crashes, native node unresponsive routes and regressed-body-stamp errors are zero. All10 preserve one global epoch and original geometry. Remaining26 endpoint failures,58 A-star failures,48 inside-obstacle messages and410 actual-1008 returns prevent an overall repair claim. The original v288 manifests,0.35m radius,0.1s period, factory policy and cohort remain unchanged. All10 ordinary MP4s are local, SHA-verified, fully decoded and visually sampled; no positive-step attempt was repeated. Selected baseline remains unchanged.
+
+
+## v290 terrain-continuous local search and terminal approach (closed cohort; physical acceptance failed)
+
+Immutable parentv289 and all378declared files remain unchanged. Exact endpoint admission is decoupled from terrain-aligned interior heights; obstacle retreat never switches back to the sloped-plane mode. Selected-riser/subfloor contributor classification preserves raw obstacle history. Terminal approach uses the existing position gain with matched phase; radius0.35m,scan/deadline0.1s and all53inputs are unchanged.
+
+Native14-package qualification passes256functional tests plus14static checks. The exact-hill probe improves0/2 to2/2 and the same captured requests0/8 to8/8; neither is new physics. Strict53 passes49/50legal,3/3illegal refusal,median1.361381101s under the original2CPU shared-host policy. All50legal starts pass the uniform margin audit.
+
+Ten distinct once-only physical attempts are closed:6/10arrival+measuredPD,4/10also clear sampled factory and recorded physical support/source/raw geometry. A04/CU06/CM02 now arrive safely; no native signal crashes or body-stamp regression errors. G05/CS03 abort on100ms scanner deadlines and remain consumed failures. D07/CD12 fail near the terminal; D07,S04,CD12,CS03,CE03 have measured source-solid excursions. CD12 worsens to-13.77cm,D07to-27.60cm. The early-speed-cap hypothesis is insufficient; duplicate outer Controller braking bypasses centering and static final-yaw admission does not certify an arbitrary yaw sweep. Do not mark terminal repair validated or promote the baseline.
+
+All10ordinary complete-recorded MP4s are locally returned, SHA-verified, fully decoded and visually sampled. The offline HTML has static data/JS checks; automatic browser preview is blocked by its file-protocol policy. Source freezing and raw records are preserved. Detailed Chinese report and videos: audits/2026-10-21_v290_terrain_terminal/ultra9/RESULTS_zh.md and delivered/index.html.

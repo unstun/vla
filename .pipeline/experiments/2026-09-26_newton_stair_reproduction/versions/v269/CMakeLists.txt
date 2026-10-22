@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.10)
+project(finite_surface_component LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+find_package(Boost REQUIRED)
+add_executable(surface_probe source_surface.cpp)
+target_include_directories(surface_probe PRIVATE ${Boost_INCLUDE_DIRS})
+target_compile_options(surface_probe PRIVATE -O3 -Wall -Wextra -Wpedantic)

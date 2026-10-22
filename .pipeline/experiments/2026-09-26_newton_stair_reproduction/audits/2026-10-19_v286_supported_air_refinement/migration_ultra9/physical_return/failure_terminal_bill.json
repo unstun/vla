@@ -1,0 +1,991 @@
+{
+  "physics_steps": 0,
+  "actual_attempts": 10,
+  "extraction_source_sha256": "51ff67fae057b62af1efeaf460f52e26962c4efbe03777ac56440b171fe54ad7",
+  "execution_manifest_sha256": "5381e00b41df419696f58c8d42a95e650999f69c0c8373dd26ff7dd7fbd3e741",
+  "cases": [
+    {
+      "case_id": "A04",
+      "physics_steps": 56380,
+      "physics_duration_s": 56.360652923583984,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v286_A04_attempt01",
+        "request_id": "v286_A04_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792492487132441438,
+        "requested_at_monotonic_ns": 7419256421983,
+        "backend_terminal_status": "FAILED",
+        "note": "native_process_exit:controller_server:exit_code=-11",
+        "native_failure": {
+          "run_id": "v286_A04_attempt01",
+          "run_epoch_ns": 1792492487132441438,
+          "component": "controller_server",
+          "exit_code": -11,
+          "cause": "native_process_exit",
+          "monotonic_ns": 7419192601074
+        }
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 19,
+        "lbfgs_minus1008": 14,
+        "no_executable_trajectory": 1
+      },
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 9
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 13,
+        "refine_minus1008": 1,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "The robot is inside an obstacle": {
+          "one_based_line": 3014,
+          "context": [
+            "[controller_server-3] [INFO] [1792492534.468135632] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792492534.468255295] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=71 clouds=72 cloud_stamp=19.021175385 mapping_ms=25.440 copy_ms=6.670 reduced=0 max_queue=3",
+            "[controller_server-3] [ERROR] [1792492534.491266390] [bspline_opt]: The robot is inside an obstacle",
+            "[controller_server-3] [WARN] [1792492534.491341189] [bspline_opt]: Trajectory terminal point is in an obstacle; skip this plan",
+            "[controller_server-3] [INFO] [1792492534.491364184] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 6294,
+          "context": [
+            "[controller_server-3] [INFO] [1792492539.523950186] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792492539.523999737] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=127 clouds=123 cloud_stamp=24.118373871 mapping_ms=13.352 copy_ms=7.352 reduced=0 max_queue=3",
+            "[controller_server-3] [WARN] [1792492539.628370575] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792492539.628387467] [quad_0.scan_planner_node]: fixed_height_recovery_attempt; full planning gates retained",
+            "[controller_server-3] [INFO] [1792492539.628440014] [quad_0.scan_planner_node]: input_refresh site=replan_start sensor_poses=1 clouds=1 body_poses=5 fsm_odom=-1 cloud_age=0.2898->0.1899 body_age=0.1299->0.0000 cloud_ready=1"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 23313,
+          "context": [
+            "[controller_server-3] [INFO] [1792492561.998189503] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1799->0.1799 body_age=0.0000->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792492562.000635063] [controller_server]: local_trajectory_starvation elapsed_s=0.769577 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792492562.000726792] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792492562.000792209] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[controller_server-3] \u001b[32miter(+1)=16,time(ms)=12.381,total_t(ms)=12.390,cost=1.838"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792492542.110129244] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492543.590067948] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492544.891347117] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492544.989458204] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492561.191695044] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492561.887760127] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492561.991758621] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492562.000726792] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792492563.487819666] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492563.593077476] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492567.782986861] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492567.983701653] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492568.094009903] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492570.527528249] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[ERROR] [controller_server-3]: process has died [pid 107, exit code -11, cmd '/work/install/nav2_controller/lib/nav2_controller/controller_server --ros-args -r __node:=controller_server --params-file /home/ubuntu/sun/vla_v286_20261020/physical_runs/v286_A04_attempt01/runs/v286_A04_attempt01/nav2_params.yaml -r cmd_vel:=/quad_0/cmd_vel'].",
+        "[bt_navigator-6] [ERROR] [1792492571.631595124] [nav2_internal.bt_navigator_rclcpp_node]: Failed to cancel action server for /follow_path"
+      ],
+      "measured_seed_fallback": {
+        "count": 19,
+        "distance_triggered": 11,
+        "occupancy_triggered": 8,
+        "maximum_predicted_distance_before_fallback_m": 0.261189
+      },
+      "snapshot_manifest_sha256": "a7c62bf7542ebcbf79628522a60bed94f8b8a1561a4dc5a880b10faa8cbadb3c",
+      "sources": {
+        "result.json": {
+          "sha256": "1bd83ba0798ac47c1f95ef6ab3c46463f548d4669c3908e06109072438e8b174",
+          "bytes": 5259
+        },
+        "nav2.log": {
+          "sha256": "dd1a80525005bf65f64a7af9fbad1e130445cf93e8279a818766e1aba5fe5dd5",
+          "bytes": 7988996
+        }
+      }
+    },
+    {
+      "case_id": "G05",
+      "physics_steps": 50760,
+      "physics_duration_s": 50.74374008178711,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v286_G05_attempt01",
+        "request_id": "v286_G05_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792492593310013508,
+        "requested_at_monotonic_ns": 7520108989071,
+        "backend_terminal_status": "FAILED",
+        "note": "native_process_exit:controller_server:exit_code=-11"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 4,
+        "lbfgs_minus1008": 25,
+        "no_executable_trajectory": 0
+      },
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 11
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 25,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "The robot is inside an obstacle": {
+          "one_based_line": 1444,
+          "context": [
+            "[controller_server-3] [INFO] [1792492639.272592692] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=1 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792492639.272665532] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=47 clouds=52 cloud_stamp=17.422054291 mapping_ms=27.618 copy_ms=6.819 reduced=0 max_queue=3",
+            "[controller_server-3] [ERROR] [1792492639.293894613] [bspline_opt]: The robot is inside an obstacle",
+            "[controller_server-3] [WARN] [1792492639.293910679] [bspline_opt]: Trajectory terminal point is in an obstacle; skip this plan",
+            "[controller_server-3] [INFO] [1792492639.293922565] [quad_0.scan_planner_node]: fixed_height_recovery_attempt; full planning gates retained"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 3984,
+          "context": [
+            "[controller_server-3] [INFO] [1792492642.170281297] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=1 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792492642.170358775] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=83 clouds=81 cloud_stamp=20.320461273 mapping_ms=11.753 copy_ms=7.271 reduced=0 max_queue=3",
+            "[controller_server-3] [WARN] [1792492642.229791623] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] first_optimize_step_success=0",
+            "[controller_server-3] [INFO] [1792492642.230051574] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792492639.293894613] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492642.995869905] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492648.510357335] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492651.832816920] [bspline_opt]: The robot is inside an obstacle",
+        "[ERROR] [controller_server-3]: process has died [pid 106, exit code -11, cmd '/work/install/nav2_controller/lib/nav2_controller/controller_server --ros-args -r __node:=controller_server --params-file /home/ubuntu/sun/vla_v286_20261020/physical_runs/v286_G05_attempt01/runs/v286_G05_attempt01/nav2_params.yaml -r cmd_vel:=/quad_0/cmd_vel'].",
+        "[bt_navigator-6] [ERROR] [1792492672.532988980] [nav2_internal.bt_navigator_rclcpp_node]: Failed to cancel action server for /follow_path"
+      ],
+      "measured_seed_fallback": {
+        "count": 6,
+        "distance_triggered": 6,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.255423
+      },
+      "snapshot_manifest_sha256": "ecf59ab5184de82ca5d0779e63ff59e01768db7f641449992cfde253d156024d",
+      "sources": {
+        "result.json": {
+          "sha256": "52e456fc7327467e23b41f889c788d3376035abe9b26d58d3512ea0851fe0b4a",
+          "bytes": 4989
+        },
+        "nav2.log": {
+          "sha256": "12ac99b98e60c032a5967d2d838f9d8dd90e922a58f7c6d7239c1af681f1e7c9",
+          "bytes": 7274342
+        }
+      }
+    },
+    {
+      "case_id": "CU06",
+      "physics_steps": 93960,
+      "physics_duration_s": 93.92001342773438,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v286_CU06_attempt01",
+        "request_id": "v286_CU06_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792492694105058212,
+        "requested_at_monotonic_ns": 7663912189260,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v286_CU06_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 7663859921033, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 101,
+        "lbfgs_minus1008": 37,
+        "no_executable_trajectory": 6
+      },
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 0,
+          "mentions": 1
+        },
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 42
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 35,
+        "refine_minus1008": 1,
+        "failed_to_make_progress": 1
+      },
+      "first_target_error_contexts": {
+        "The robot is inside an obstacle": {
+          "one_based_line": 5709,
+          "context": [
+            "[controller_server-3] [INFO] [1792492743.043893460] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792492743.043942763] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=98 clouds=88 cloud_stamp=20.420406342 mapping_ms=7.616 copy_ms=6.907 reduced=0 max_queue=3",
+            "[controller_server-3] [ERROR] [1792492743.132919663] [bspline_opt]: The robot is inside an obstacle",
+            "[controller_server-3] [WARN] [1792492743.133025720] [bspline_opt]: Trajectory terminal point is in an obstacle; skip this plan",
+            "[controller_server-3] [INFO] [1792492743.133047652] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 4249,
+          "context": [
+            "[controller_server-3] [INFO] [1792492741.221151654] [quad_0.scan_planner_node]: spline_geometry_initialized samples=37 interval=0.108328267601 duration=3.899817633642",
+            "[controller_server-3] [INFO] [1792492741.221584047] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=1 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.1449->0.1449 body_age=0.0050->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792492741.277758788] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] first_optimize_step_success=0",
+            "[controller_server-3] [INFO] [1792492741.278212947] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 31762,
+          "context": [
+            "[controller_server-3] [INFO] [1792492783.777237790] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.3298->0.3298 body_age=0.0000->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792492783.807843814] [controller_server]: local_trajectory_starvation elapsed_s=0.754585 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792492783.807945781] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792492783.808024312] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[controller_server-3] [INFO] [1792492783.826237315] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792492809.402291646] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492810.602724354] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492811.014508070] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492811.410299702] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492811.803628069] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492812.197946718] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492812.600941056] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492812.998758084] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492813.398547413] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492813.804084495] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492814.198538417] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492814.605895820] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492814.998428412] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492815.257034687] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792492815.285828951] [nav2_internal.bt_navigator]: Navigation failed",
+        "[controller_server-3] [ERROR] [1792492815.407620140] [bspline_opt]: The robot is inside an obstacle"
+      ],
+      "measured_seed_fallback": {
+        "count": 12,
+        "distance_triggered": 11,
+        "occupancy_triggered": 1,
+        "maximum_predicted_distance_before_fallback_m": 0.288516
+      },
+      "snapshot_manifest_sha256": "e9fd10776c5cf53ad42c8849d927dafaa57c6bbae446f623c78c911880bcfedb",
+      "sources": {
+        "result.json": {
+          "sha256": "fe0ad1068532f394c923586e8b274551e32a980b870b14014901f41db210f58f",
+          "bytes": 4966
+        },
+        "nav2.log": {
+          "sha256": "2dc2a2e72824b72df3c3f2ebf95b039a54732cf4f1dd5a5edce9b9ba0cf3af16",
+          "bytes": 10121475
+        }
+      }
+    },
+    {
+      "case_id": "D07",
+      "physics_steps": 66920,
+      "physics_duration_s": 66.89486694335938,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v286_D07_attempt01",
+        "request_id": "v286_D07_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792492838234233815,
+        "requested_at_monotonic_ns": 7782433739166,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v286_D07_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 7782329731498, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 2,
+        "inside_obstacle": 96,
+        "lbfgs_minus1008": 1,
+        "no_executable_trajectory": 7
+      },
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 18
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 1,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "A-star failed": {
+          "one_based_line": 12268,
+          "context": [
+            "[controller_server-3] [INFO] [1792492910.958958795] [quad_0.scan_planner_node]: spline_seed_capture {\"interval\":0.24000000000000005,\"velocity_limit\":1,\"acceleration_limit\":0.5,\"tolerance\":0.5,\"points\":[[7.0423984527587891,6.4301390647888184,4.8255476951599121],[7.2423984527587892,6.4301390647888184,4.8255476951599121],[7.4423984527587894,6.4301390647888184,4.8255476951599121],[7.6277537918181162,6.4301390647888184,4.7901923561005848],[7.7984644699367713,6.3740730476108372,4.7755476951599123],[7.9398858261740806,6.2326516913735261,4.7755476951599114],[8.0813071824113898,6.0912303351362178,4.7755476951599114],[8.211491295079119,5.9610462224684877,4.7255476951599116],[8.35291265131643,5.8196248662311785,4.7255476951599125],[8.4423984527587894,5.6566910988284302,4.7255476951599116],[8.4923984527587884,5.4932936392068727,4.6755476951599118],[8.4923984527587884,5.2932936392068726,4.6755476951599118],[8.4923984527587884,5.0932936392068724,4.6755476951599118],[8.4923984527587884,4.8932936392068722,4.6755476951599118],[8.4923984527587884,4.693293639206872,4.6755476951599118],[8.4923984527587884,4.4932936392068719,4.6755476951599118],[8.4923984527587884,4.2932936392068717,4.6755476951599118],[8.5423984527587891,4.129896179585316,4.6255476951599119],[8.5425489275069193,3.9300484856082485,4.6253799275101599],[8.6007761825383025,3.8949982388849729,4.5604610633850093]],\"derivatives\":[[-0.0071204710691210185,-0.0012071726565786704,-0.00088539570191819737],[0.020308781892143826,-0.99979375542061533,0],[0,0,0],[0,0,0]]}",
+            "[controller_server-3] [INFO] [1792492910.959753983] [quad_0.scan_planner_node]: spline_geometry_initialized samples=20 interval=0.240000000000 duration=4.560000000000",
+            "[controller_server-3] [ERROR] [1792492910.960822098] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792492910.960837571] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.1399->0.1399 body_age=0.0100->0.0000 cloud_ready=1",
+            "[controller_server-3] iter=8,time(ms)=89.5,rebound."
+          ]
+        },
+        "The robot is inside an obstacle": {
+          "one_based_line": 585,
+          "context": [
+            "[controller_server-3] [INFO] [1792492882.400689531] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792492882.400715067] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=35 clouds=35 cloud_stamp=15.422602654 mapping_ms=44.777 copy_ms=7.060 reduced=0 max_queue=3",
+            "[controller_server-3] [ERROR] [1792492882.447078010] [bspline_opt]: The robot is inside an obstacle",
+            "[controller_server-3] [WARN] [1792492882.447106528] [bspline_opt]: Trajectory terminal point is in an obstacle; skip this plan",
+            "[controller_server-3] [INFO] [1792492882.447132876] [quad_0.scan_planner_node]: fixed_height_recovery_attempt; full planning gates retained"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 12507,
+          "context": [
+            "[controller_server-3] [INFO] [1792492912.519277046] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792492912.519360419] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=282 clouds=324 cloud_stamp=44.407222748 mapping_ms=31.043 copy_ms=8.297 reduced=0 max_queue=5",
+            "[controller_server-3] [WARN] [1792492912.564777381] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792492912.564793544] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1",
+            "[controller_server-3] [INFO] [1792492912.564822743] [quad_0.scan_planner_node]: input_refresh site=replan_start sensor_poses=1 clouds=0 body_poses=5 fsm_odom=-1 cloud_age=0.2449->0.1449 body_age=0.0750->0.0000 cloud_ready=1"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 8160,
+          "context": [
+            "[controller_server-3] [INFO] [1792492894.214126624] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.1699->0.1699 body_age=0.0100->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792492894.220266797] [controller_server]: local_trajectory_starvation elapsed_s=0.774574 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792492894.220358368] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792492894.220462800] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[recoveries_server-5] [INFO] [1792492894.234845189] [recoveries_server]: Attempting wait"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792492921.668367787] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792492921.754237867] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492922.915964281] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492923.019297986] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492928.277362971] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492928.965345440] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492929.049069278] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792492930.344814366] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492930.720992963] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492931.013439792] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492931.110760723] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492933.449207438] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492933.728468924] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792492933.753897895] [nav2_internal.bt_navigator]: Navigation failed",
+        "[controller_server-3] [ERROR] [1792492933.764197326] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792492933.863451041] [bspline_opt]: The robot is inside an obstacle"
+      ],
+      "measured_seed_fallback": {
+        "count": 28,
+        "distance_triggered": 8,
+        "occupancy_triggered": 23,
+        "maximum_predicted_distance_before_fallback_m": 0.352432
+      },
+      "snapshot_manifest_sha256": "6ebde9236408e2ebdf1aae9b60b9f4137d35e96e77bf48e36df8206e58126639",
+      "sources": {
+        "result.json": {
+          "sha256": "4b7ba2564cb56de6633f860585dedc906f7681f11c2fdb6bafb467330c7ff138",
+          "bytes": 4926
+        },
+        "nav2.log": {
+          "sha256": "20da80894013098e0954ced2d66a66b00f641ed78eafc27fdf0e143dc7f096c6",
+          "bytes": 5456229
+        }
+      }
+    },
+    {
+      "case_id": "S04",
+      "physics_steps": 51400,
+      "physics_duration_s": 51.38338851928711,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v286_S04_attempt01",
+        "request_id": "v286_S04_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792492956587066619,
+        "requested_at_monotonic_ns": 7883690174528,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v286_S04_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 7883650096671, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 42,
+        "lbfgs_minus1008": 0,
+        "no_executable_trajectory": 6
+      },
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 24
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "The robot is inside an obstacle": {
+          "one_based_line": 421,
+          "context": [
+            "[planner_server-4] [WARN] [1792492999.822796778] [nav2_costmap_2d]: Robot is out of bounds of the costmap!",
+            "[controller_server-3] [WARN] [1792493000.196477168] [nav2_costmap_2d]: Robot is out of bounds of the costmap!",
+            "[controller_server-3] [ERROR] [1792493000.379201654] [bspline_opt]: The robot is inside an obstacle",
+            "[controller_server-3] [WARN] [1792493000.379229996] [bspline_opt]: Trajectory terminal point is in an obstacle; skip this plan",
+            "[controller_server-3] [INFO] [1792493000.379253957] [quad_0.scan_planner_node]: fixed_height_recovery_attempt; full planning gates retained"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 1059,
+          "context": [
+            "[controller_server-3] [INFO] [1792493004.534576327] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=42 clouds=69 cloud_stamp=19.620845795 mapping_ms=67.723 copy_ms=6.359 reduced=0 max_queue=5",
+            "[controller_server-3] [WARN] [1792493004.767306408] [controller_server]: local_trajectory_starvation elapsed_s=5.003206 limit_s=5.000000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792493004.767396263] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792493004.767464427] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[recoveries_server-5] [INFO] [1792493004.786360709] [recoveries_server]: Attempting wait"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792493025.375890803] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493026.183754263] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493026.938582158] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493027.739935052] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493028.545881601] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493028.999589505] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792493029.360141057] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493030.635552876] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493031.394330306] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493032.191957767] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493032.991840524] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493033.751065551] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493034.562308800] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493035.046110360] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792493035.075304458] [nav2_internal.bt_navigator]: Navigation failed",
+        "[controller_server-3] [ERROR] [1792493035.404641002] [bspline_opt]: The robot is inside an obstacle"
+      ],
+      "measured_seed_fallback": {
+        "count": 0,
+        "distance_triggered": 0,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": null
+      },
+      "snapshot_manifest_sha256": "485fa144a52da0c3b42f173486035c33050f08218fd6f64ecfaa06a8a5c43136",
+      "sources": {
+        "result.json": {
+          "sha256": "d424dd94f24c247c4a89035d60b31437a4988e17009cf8faf94329bfd04c5982",
+          "bytes": 4898
+        },
+        "nav2.log": {
+          "sha256": "1dfb1f797039144bf2de4dbcf2d0a8e7c8ce305611847d941f26e1efa9eb4243",
+          "bytes": 914553
+        }
+      }
+    },
+    {
+      "case_id": "CD12",
+      "physics_steps": 54680,
+      "physics_duration_s": 54.66158676147461,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v286_CD12_attempt01",
+        "request_id": "v286_CD12_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792493057678010531,
+        "requested_at_monotonic_ns": 7989057316815,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v286_CD12_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 7989039179483, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 218,
+        "lbfgs_minus1008": 0,
+        "no_executable_trajectory": 7
+      },
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 1
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "The robot is inside an obstacle": {
+          "one_based_line": 595,
+          "context": [
+            "[controller_server-3] [INFO] [1792493102.026028821] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=1 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792493102.026056380] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=33 clouds=37 cloud_stamp=15.322562218 mapping_ms=26.931 copy_ms=6.830 reduced=0 max_queue=4",
+            "[controller_server-3] [ERROR] [1792493102.123064104] [bspline_opt]: The robot is inside an obstacle",
+            "[controller_server-3] [WARN] [1792493102.123196372] [bspline_opt]: Trajectory terminal point is in an obstacle; skip this plan",
+            "[controller_server-3] [INFO] [1792493102.123224588] [quad_0.scan_planner_node]: fixed_height_recovery_attempt; full planning gates retained"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 1596,
+          "context": [
+            "[controller_server-3] [INFO] [1792493104.477517174] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=52 clouds=62 cloud_stamp=17.821834564 mapping_ms=29.013 copy_ms=7.626 reduced=0 max_queue=4",
+            "[controller_server-3] [WARN] [1792493104.527490015] [controller_server]: local_trajectory_starvation elapsed_s=0.754585 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792493104.527589096] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792493104.527672931] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[recoveries_server-5] [INFO] [1792493104.545723300] [recoveries_server]: Attempting wait"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792493139.542895913] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493139.641068579] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493139.846354476] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493139.957551781] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493140.131235660] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493140.236241615] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493140.435884016] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792493140.437984457] [bspline_opt]: The robot is inside an obstacle",
+        "[bt_navigator-6] [ERROR] [1792493140.464602743] [nav2_internal.bt_navigator]: Navigation failed",
+        "[controller_server-3] [ERROR] [1792493140.548200083] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493140.742123250] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493140.843348151] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493141.042261754] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493141.137648504] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493141.335256068] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493141.440145624] [bspline_opt]: The robot is inside an obstacle"
+      ],
+      "measured_seed_fallback": {
+        "count": 5,
+        "distance_triggered": 0,
+        "occupancy_triggered": 5,
+        "maximum_predicted_distance_before_fallback_m": 0.023898
+      },
+      "snapshot_manifest_sha256": "bce0645a144e028a772b7378f42c64401f28c2f73aa0349b686c358234341e19",
+      "sources": {
+        "result.json": {
+          "sha256": "1f184a26db5d3cbd4d305131ade9dbd5ce340c9ffb79fdb0cda5c0d22a2eb3e7",
+          "bytes": 4947
+        },
+        "nav2.log": {
+          "sha256": "e4a6cf1645f15d7048b9a9865c08760bc48651e9b6ae57aef50635701f14cab5",
+          "bytes": 1449645
+        }
+      }
+    },
+    {
+      "case_id": "CM02",
+      "physics_steps": 49500,
+      "physics_duration_s": 49.484432220458984,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v286_CM02_attempt01",
+        "request_id": "v286_CM02_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792493163138731627,
+        "requested_at_monotonic_ns": 8089562763081,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v286_CM02_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 8089518157906, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 140,
+        "lbfgs_minus1008": 1,
+        "no_executable_trajectory": 6
+      },
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 16
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 1,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "The robot is inside an obstacle": {
+          "one_based_line": 506,
+          "context": [
+            "[controller_server-3] [INFO] [1792493208.015479252] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792493208.015596626] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=38 clouds=38 cloud_stamp=15.722723961 mapping_ms=20.390 copy_ms=7.652 reduced=0 max_queue=3",
+            "[controller_server-3] [ERROR] [1792493208.171752158] [bspline_opt]: The robot is inside an obstacle",
+            "[controller_server-3] [WARN] [1792493208.171779812] [bspline_opt]: Trajectory terminal point is in an obstacle; skip this plan",
+            "[controller_server-3] [INFO] [1792493208.171805805] [quad_0.scan_planner_node]: fixed_height_recovery_attempt; full planning gates retained"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 1433,
+          "context": [
+            "[controller_server-3] [INFO] [1792493209.522006697] [quad_0.scan_planner_node]: spline_geometry_initialized samples=9 interval=0.288169308381 duration=2.305354467044",
+            "[controller_server-3] [INFO] [1792493209.522043554] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1199->0.1199 body_age=0.0000->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792493209.618484389] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792493209.618515373] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1",
+            "[controller_server-3] first_optimize_step_success=0"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 2113,
+          "context": [
+            "[controller_server-3] [WARN] [1792493211.912084947] [controller_server]: local_replan_request failed_rounds=7 ros_s=19.720790863; retaining current trajectory",
+            "[controller_server-3] [WARN] [1792493212.145241168] [controller_server]: local_trajectory_starvation elapsed_s=0.759583 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792493212.145330233] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792493212.145394888] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[recoveries_server-5] [INFO] [1792493212.164299268] [recoveries_server]: Attempting wait"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792493239.675291349] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493239.788749441] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493239.983710855] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493240.087458826] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493240.309187464] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493240.485542129] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493240.816134878] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493240.921313156] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792493240.943427510] [nav2_internal.bt_navigator]: Navigation failed",
+        "[controller_server-3] [ERROR] [1792493241.122471696] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493241.233210778] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493241.430235776] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493241.537178753] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493241.747501242] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493241.860305667] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493242.060486563] [bspline_opt]: The robot is inside an obstacle"
+      ],
+      "measured_seed_fallback": {
+        "count": 4,
+        "distance_triggered": 0,
+        "occupancy_triggered": 4,
+        "maximum_predicted_distance_before_fallback_m": 0.07578
+      },
+      "snapshot_manifest_sha256": "2e52dadb1bedf44f0e95303a16848170c23c756872bfd18578c034d8223d229a",
+      "sources": {
+        "result.json": {
+          "sha256": "adcccf2c37adebdd0b103b415c3d5984d72f605203cfd7613739e06616b48ff3",
+          "bytes": 4986
+        },
+        "nav2.log": {
+          "sha256": "c30905d1b948e01afa48a79514ccadc35e96d2d59d567f54092e20d3062a6015",
+          "bytes": 1181210
+        }
+      }
+    },
+    {
+      "case_id": "CM07",
+      "physics_steps": 57760,
+      "physics_duration_s": 57.73989486694336,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v286_CM07_attempt01",
+        "request_id": "v286_CM07_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792493263862548806,
+        "requested_at_monotonic_ns": 8199154865089,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v286_CM07_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 8199120975768, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 4,
+        "inside_obstacle": 71,
+        "lbfgs_minus1008": 0,
+        "no_executable_trajectory": 6
+      },
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 23
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "A-star failed": {
+          "one_based_line": 15938,
+          "context": [
+            "[controller_server-3] [INFO] [1792493339.422845995] [quad_0.scan_planner_node]: spline_seed_capture {\"interval\":0.24000000000000005,\"velocity_limit\":1,\"acceleration_limit\":0.5,\"tolerance\":0.5,\"points\":[[6.8568425178527832,6.3163394927978516,4.8363170623779297],[7.0568425178527834,6.3163394927978525,4.8363170623779306],[7.215421161615474,6.4163394927978521,4.8363170623779297],[7.4154211616154742,6.4163394927978521,4.8363170623779306],[7.5947104834968187,6.4163394927978512,4.7863170623779299],[7.7836192131494197,6.3895627975012141,4.7863170623779299],[7.925040569386729,6.2481414412639049,4.7863170623779299],[8.0555215604549488,6.1176604501956851,4.7376380197757637],[8.1966460382917692,5.9765359723588656,4.73631706237793],[8.3380673945290766,5.8351146161215564,4.73631706237793],[8.4068425178527821,5.6636022049561161,4.73631706237793],[8.4068425178527821,5.4636022049561159,4.73631706237793],[8.4068425178527821,5.2636022049561157,4.73631706237793],[8.4084228917250581,5.0647591189255756,4.7347366885056541],[8.4568425178527828,4.9002047453345599,4.6863170623779302],[8.4568425178527828,4.7002047453345597,4.6863170623779302],[8.4568425178527828,4.5002047453345595,4.6863170623779302],[8.5068425178527836,4.3368072857130038,4.6363170623779304],[8.5068425178527836,4.1368072857130036,4.6363170623779304],[8.5657609217755866,4.0674686638789073,4.5916344734986385]],\"derivatives\":[[0.0043714092643416065,0.0024643595360387175,-0.00123694982757723],[0.030475049781167631,-0.96164230337471446,-0.27260842191870938],[0,0,0],[0,0,0]]}",
+            "[controller_server-3] [INFO] [1792493339.422880276] [quad_0.scan_planner_node]: spline_geometry_initialized samples=20 interval=0.240000000000 duration=4.560000000000",
+            "[controller_server-3] [ERROR] [1792493339.423939822] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792493339.423962952] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=3 fsm_odom=-1 cloud_age=0.1949->0.1949 body_age=0.0500->0.0000 cloud_ready=1",
+            "[controller_server-3] [INFO] [1792493339.458219903] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000"
+          ]
+        },
+        "The robot is inside an obstacle": {
+          "one_based_line": 471,
+          "context": [
+            "[controller_server-3] [INFO] [1792493307.607652219] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792493307.607685348] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=31 clouds=35 cloud_stamp=15.522643089 mapping_ms=46.170 copy_ms=7.182 reduced=0 max_queue=4",
+            "[controller_server-3] [ERROR] [1792493307.647638574] [bspline_opt]: The robot is inside an obstacle",
+            "[controller_server-3] [WARN] [1792493307.647664552] [bspline_opt]: Trajectory terminal point is in an obstacle; skip this plan",
+            "[controller_server-3] [INFO] [1792493307.647688480] [quad_0.scan_planner_node]: fixed_height_recovery_attempt; full planning gates retained"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 10033,
+          "context": [
+            "[controller_server-3] [INFO] [1792493319.527467054] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=165 clouds=155 cloud_stamp=27.516506195 mapping_ms=37.817 copy_ms=8.814 reduced=0 max_queue=4",
+            "[controller_server-3] [WARN] [1792493319.646392559] [controller_server]: local_trajectory_starvation elapsed_s=0.774574 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792493319.647239236] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792493319.647311036] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[controller_server-3] [ERROR] [1792493319.650161847] [bspline_opt]: The robot is inside an obstacle"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792493345.717956051] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493345.820254123] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493346.338768138] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493346.756697536] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493347.159820771] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493347.552844720] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493347.945621503] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493348.363756098] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493348.757985529] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493349.162736141] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493349.564823770] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493349.973509508] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493350.375409962] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493350.522813093] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792493350.545089727] [nav2_internal.bt_navigator]: Navigation failed",
+        "[controller_server-3] [ERROR] [1792493350.764278812] [bspline_opt]: The robot is inside an obstacle"
+      ],
+      "measured_seed_fallback": {
+        "count": 21,
+        "distance_triggered": 6,
+        "occupancy_triggered": 17,
+        "maximum_predicted_distance_before_fallback_m": 0.170081
+      },
+      "snapshot_manifest_sha256": "9e73cd328b2e8ac397ddf568f012c9853d32bf259c4d850a5aa66e04679ce65d",
+      "sources": {
+        "result.json": {
+          "sha256": "9ac6446ee6d2ae837ebf728c3711466ba1b511b3a61b70e917d0fe1b83acf282",
+          "bytes": 4919
+        },
+        "nav2.log": {
+          "sha256": "ca84b48e81c95c89d075ca207610f680c8cc50bba280b54895f7c1cf1bf1035a",
+          "bytes": 4292014
+        }
+      }
+    },
+    {
+      "case_id": "CS03",
+      "physics_steps": 51480,
+      "physics_duration_s": 51.46334457397461,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v286_CS03_attempt01",
+        "request_id": "v286_CS03_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792493373311356966,
+        "requested_at_monotonic_ns": 8300420341075,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v286_CS03_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 8300400668581, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 37,
+        "lbfgs_minus1008": 0,
+        "no_executable_trajectory": 6
+      },
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 0,
+          "mentions": 19
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "The robot is inside an obstacle": {
+          "one_based_line": 430,
+          "context": [
+            "[controller_server-3] [INFO] [1792493416.564344391] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=31 clouds=32 cloud_stamp=15.022440910 mapping_ms=41.991 copy_ms=7.194 reduced=0 max_queue=3",
+            "[controller_server-3] [WARN] [1792493416.887887601] [nav2_costmap_2d]: Robot is out of bounds of the costmap!",
+            "[controller_server-3] [ERROR] [1792493417.110813077] [bspline_opt]: The robot is inside an obstacle",
+            "[controller_server-3] [WARN] [1792493417.110838791] [bspline_opt]: Trajectory terminal point is in an obstacle; skip this plan",
+            "[controller_server-3] [INFO] [1792493417.110861175] [quad_0.scan_planner_node]: fixed_height_recovery_attempt; full planning gates retained"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 1135,
+          "context": [
+            "[planner_server-4] [WARN] [1792493421.512516975] [nav2_costmap_2d]: Robot is out of bounds of the costmap!",
+            "[controller_server-3] [WARN] [1792493421.519015450] [controller_server]: local_trajectory_starvation elapsed_s=5.033128 limit_s=5.000000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792493421.519122751] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792493421.519204124] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[controller_server-3] [INFO] [1792493421.525910901] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=4 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792493440.158279225] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493441.362388802] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493442.316989165] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493443.157884446] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493444.084492153] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493444.996354533] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493445.745936441] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792493445.846085643] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493447.402786006] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493448.280785255] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493449.177894080] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493449.981443439] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493450.781685046] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493451.625436320] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493451.797372851] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792493451.824822963] [nav2_internal.bt_navigator]: Navigation failed"
+      ],
+      "measured_seed_fallback": {
+        "count": 0,
+        "distance_triggered": 0,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": null
+      },
+      "snapshot_manifest_sha256": "95100c84c0f77a5db378952a2b231f4f5a47f911fd26c8308d940227e9e0fbe6",
+      "sources": {
+        "result.json": {
+          "sha256": "c9e9791ad23ca9e759c20d6429ae39052912e6ddd76f24f5730b9decd006a4d7",
+          "bytes": 4927
+        },
+        "nav2.log": {
+          "sha256": "cdf6840adfe9a788fc098d098123d3f6a66e8606aaee669c002f5da2169200e2",
+          "bytes": 960339
+        }
+      }
+    },
+    {
+      "case_id": "CE03",
+      "physics_steps": 57500,
+      "physics_duration_s": 57.480037689208984,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v286_CE03_attempt01",
+        "request_id": "v286_CE03_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792493474634572793,
+        "requested_at_monotonic_ns": 8407767663165,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v286_CE03_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 8407750722665, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 131,
+        "lbfgs_minus1008": 6,
+        "no_executable_trajectory": 6
+      },
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 33
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 4,
+        "refine_minus1008": 2,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "The robot is inside an obstacle": {
+          "one_based_line": 425,
+          "context": [
+            "[controller_server-3] [INFO] [1792493518.201303685] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792493518.201329753] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=35 clouds=35 cloud_stamp=15.222521782 mapping_ms=41.684 copy_ms=6.906 reduced=0 max_queue=3",
+            "[controller_server-3] [ERROR] [1792493518.324546995] [bspline_opt]: The robot is inside an obstacle",
+            "[controller_server-3] [WARN] [1792493518.324608831] [bspline_opt]: Trajectory terminal point is in an obstacle; skip this plan",
+            "[controller_server-3] [INFO] [1792493518.324632104] [quad_0.scan_planner_node]: fixed_height_recovery_attempt; full planning gates retained"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 2066,
+          "context": [
+            "[controller_server-3] [INFO] [1792493520.504415921] [quad_0.scan_planner_node]: spline_geometry_initialized samples=12 interval=0.223801170093 duration=2.461812871021",
+            "[controller_server-3] [INFO] [1792493520.504491643] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.2349->0.1349 body_age=0.0150->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792493520.576531543] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792493520.576561680] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1",
+            "[controller_server-3] [INFO] [1792493520.576629078] [quad_0.scan_planner_node]: input_refresh site=replan_start sensor_poses=1 clouds=1 body_poses=5 fsm_odom=-1 cloud_age=0.1999->0.1999 body_age=0.0650->0.0000 cloud_ready=1"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 3738,
+          "context": [
+            "[controller_server-3] [INFO] [1792493526.581057506] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=99 clouds=119 cloud_stamp=23.618648529 mapping_ms=39.500 copy_ms=9.106 reduced=0 max_queue=3",
+            "[controller_server-3] [WARN] [1792493526.612696630] [controller_server]: local_trajectory_starvation elapsed_s=0.759583 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792493526.612783800] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792493526.612855575] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[recoveries_server-5] [INFO] [1792493526.625824136] [recoveries_server]: Attempting wait"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792493557.159160219] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493557.395124177] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493557.550799180] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493557.703423367] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493557.761170056] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792493557.938861000] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493558.082907484] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493558.315838846] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493558.551494665] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493558.704698222] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493558.859716204] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493558.984857950] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493559.137841222] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792493559.149042569] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792493559.174758717] [nav2_internal.bt_navigator]: Navigation failed",
+        "[controller_server-3] [ERROR] [1792493559.418501423] [bspline_opt]: The robot is inside an obstacle"
+      ],
+      "measured_seed_fallback": {
+        "count": 14,
+        "distance_triggered": 0,
+        "occupancy_triggered": 14,
+        "maximum_predicted_distance_before_fallback_m": 0.106031
+      },
+      "snapshot_manifest_sha256": "2ca692936d8aa2217d264af57f8a36293eae667224e987e00dc9f197ac672432",
+      "sources": {
+        "result.json": {
+          "sha256": "41d51a34907d18eb2398ab8c3dfd6125cdcc7a5a1d75790a0ab2c0180a610932",
+          "bytes": 4928
+        },
+        "nav2.log": {
+          "sha256": "cdfd228399bd27420da4ff95014e80f43c409705b82c8ca93e03de629752c225",
+          "bytes": 2002417
+        }
+      }
+    }
+  ]
+}

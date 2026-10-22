@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(raw_pose_probe)
+set(CMAKE_CXX_STANDARD 17)
+find_package(PCL REQUIRED COMPONENTS common kdtree)
+add_executable(raw_pose raw_pose.cpp)
+target_include_directories(raw_pose PRIVATE ${VERSIONS_ROOT} ${PCL_INCLUDE_DIRS})
+target_link_libraries(raw_pose ${RAW_ARCHIVE} ${PCL_LIBRARIES})

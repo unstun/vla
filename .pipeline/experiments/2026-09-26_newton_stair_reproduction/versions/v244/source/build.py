@@ -1,0 +1,9 @@
+"""Build only PCT/plugin consumers; all SCAN/RL/sensor implementations inherit v240."""
+from pathlib import Path
+import os,subprocess
+BASE=Path('/data/sun/vla_mppi_20261009');WORK=BASE/'endpoint_connectivity_v244/native'
+shell='source /opt/ros/foxy/setup.bash && source /task/recovery_v188/install/setup.bash && source /task/command_continuity_v206_20261015/install/setup.bash && source /task/callback_failure_v232/install/setup.bash && source /task/cooperative_search_v240/install/setup.bash'
+shell+=' && export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MAKEFLAGS=-j2 && cd /work && colcon --log-base build_logs build --base-paths src --packages-select lite3_nav2_plugins --executor sequential --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DPython3_EXECUTABLE=/usr/bin/python3'
+subprocess.run(['docker','run','--rm','--pull=never','--user',f'{os.getuid()}:{os.getgid()}',
+ '--cpus=6','--memory=6g','-v',str(BASE)+':/task:ro','-v',str(WORK)+':/work:rw',
+ '--entrypoint','/bin/bash','sha256:5a41a25fb20b6e77ce890974cea27ee59d93533346eaf7df83f56e74303b4bd4','-c',shell],check=True)

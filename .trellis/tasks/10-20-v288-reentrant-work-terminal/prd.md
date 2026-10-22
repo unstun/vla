@@ -1,0 +1,13 @@
+# v288 native work serialization and terminal centering
+
+Dr Sun explicitly authorizes implementation, full offline validation and ten single physical attempts on ultra9. No subagents. Preserve frozen v287 and all original evidence. Local repository is source of truth.
+
+Serialize shared GridMap/FSM work callbacks with a recursive per-map lock, leaving clock and snapshot query groups independent. Correct inflated terrain-air contributor classification without exact source mesh queries. Couple terminal yaw alignment with smooth bounded XY centering. Freeze environmental quadrature per optimization, suppress discontinuous nonpositive edge soft costs while retaining solid penetration gradients, and validate restored accepted optimizer iterates after recoverable line-search failure.
+
+Keep 0.35m hard geometry, 0.1s scanner cycle/deadline, freshness, factory policy, global reference ownership and cohort unchanged. No scene/coordinate navigation branches. Unit tests plus complete 50 legal+3 illegal: legal >=96%, illegal3/3, admitted global median <=1.5s. Then A04/G05/CU06/D07/S04/CD12/CM02/CM07/CS03/CE03 each once. Deliver Chinese report, actual crash/arrival/full-recording geometry outcomes and ten complete regular MP4s returned locally. Never retry a positive-step attempt to obtain success.
+
+## Latest authorized extension
+Compare pinned author SCAN348e8a590a50a5a6bbab8d8c6dcfd171f009be26 and PCT35cd73fd82bcd51bc538429294af7646b2a09815 source archives. Simplify terrain endpoint projection to one support-aligned candidate with safe heading, then permit the inherited chord/plane proposal fallback within pool bounds and unchanged full edge/trajectory checks. Keep terrain-aware search when projection succeeds. Enable past3/delta1e-6 function-decrease stopping in both optimizer stages, without replacing LBFGS or changing hard acceptance. Requalify affected binaries and all native tests before any scored freeze.
+
+## Final steering before source freeze
+Use lockMutex(), constant3 samples per span with no partition cache/state, past3/delta1e-4 in the existing solver, saturated edge cost and zero negative-edge gradient (raw diagnostic margins remain visible), restored variables plus unchanged hard review. Terminal XY speed cap0.15m/s, shared2cm center threshold in tracker and Controller braking so aligned-but-offset robots keep centering. Outer mission tolerances remain unchanged. Fresh full14-package build after final header/layout simplification. Native return codes remain logged even when restored candidates continue to validation, so -1008 accounting cannot improve merely by suppressing warnings.

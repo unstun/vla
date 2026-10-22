@@ -1,0 +1,58 @@
+{
+  "passed": true,
+  "rows": [
+    {
+      "name": "parent",
+      "returncode": 1,
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--cpus=1",
+        "--memory=1g",
+        "--user",
+        "1000:1000",
+        "-v",
+        "/home/ubuntu/sun/vla_v288_20261020/native/src/plan_env/include:/include:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v289:/source:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/body_order_control:/out:rw",
+        "--entrypoint",
+        "/bin/bash",
+        "sha256:ec85ad5a21dc2b3441523571d2dc583f22bf08121390081ca780f78e15332343",
+        "-c",
+        "g++ -std=c++17 -pthread -I/include -I/opt/ros/foxy/include /source/src/plan_env/test/test_body_time_buffer.cpp -lgtest_main -lgtest -o /out/parent && /out/parent --gtest_output=xml:/out/parent.xml"
+      ],
+      "log_sha256": "28235fb53ae21ab04f16ad74bb71d5dbc4d7d963f8fe3504800e2a06478da167"
+    },
+    {
+      "name": "candidate",
+      "returncode": 0,
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--cpus=1",
+        "--memory=1g",
+        "--user",
+        "1000:1000",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v289/src/plan_env/include:/include:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v289:/source:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/body_order_control:/out:rw",
+        "--entrypoint",
+        "/bin/bash",
+        "sha256:ec85ad5a21dc2b3441523571d2dc583f22bf08121390081ca780f78e15332343",
+        "-c",
+        "g++ -std=c++17 -pthread -I/include -I/opt/ros/foxy/include /source/src/plan_env/test/test_body_time_buffer.cpp -lgtest_main -lgtest -o /out/candidate && /out/candidate --gtest_output=xml:/out/candidate.xml"
+      ],
+      "log_sha256": "25ac64e9937a24bb2d7fd4e374e35a05af3b9fd14af965bd3e2037c8430c8ba4"
+    }
+  ],
+  "physics_steps": 0
+}

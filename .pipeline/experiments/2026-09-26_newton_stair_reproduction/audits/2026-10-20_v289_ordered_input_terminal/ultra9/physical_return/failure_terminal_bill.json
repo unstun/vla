@@ -1,0 +1,1200 @@
+{
+  "physics_steps": 0,
+  "actual_attempts": 10,
+  "extraction_source_sha256": "be110c23892e13c999de610d5c424dde84aa7a80611543e01d1a459afdf5b3ab",
+  "execution_manifest_sha256": "87b1dc3baedb4f90664e1b24c0873b3fcec51f441af0070ea7bbba0a0e3c350e",
+  "cases": [
+    {
+      "case_id": "A04",
+      "physics_steps": 86840,
+      "physics_duration_s": 86.80392456054688,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v289_A04_attempt01",
+        "request_id": "v289_A04_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792563567119721735,
+        "requested_at_monotonic_ns": 78544248036152,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v289_A04_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 78544183982880, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 3,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 9,
+        "minus1008_raw_substring_mentions": 10,
+        "no_executable_trajectory": 7
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 3,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 9,
+        "minus1008_raw_substring_mentions": 10,
+        "no_executable_trajectory": 7
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 41
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "A-star failed": {
+          "one_based_line": 18497,
+          "context": [
+            "[controller_server-3] [INFO] [1792563635.293954533] [quad_0.scan_planner_node]: spline_seed_capture {\"interval\":0.24000000000000005,\"velocity_limit\":1,\"acceleration_limit\":0.5,\"tolerance\":0.5,\"points\":[[-5.044111482672446,-3.2528951492330123,1.7544143219091253],[-4.9139273700047168,-3.3830792619007428,1.8044143219091255],[-4.7725060137674067,-3.5245006181380516,1.8044143219091251],[-4.7371506747080794,-3.7098559571973793,1.8044143219091255],[-4.5957293184707693,-3.8512773134346889,1.8044143219091253],[-4.45430796223346,-3.9926986696719982,1.8044143219091253],[-4.3128866059961508,-4.1341200259093078,1.8044143219091253],[-4.1714652497588416,-4.2755413821466171,1.8044143219091253],[-4.0326253442288289,-4.4143812876766297,1.8159004603527427],[-3.8608194476837747,-4.4528951492330124,1.8544143219091254],[-3.6608194476837745,-4.4528951492330124,1.8544143219091251],[-3.4619022625239024,-4.4407710213423401,1.8600899485717033],[-3.4503977172262235,-4.4390743433023214,1.8608842086791992]],\"derivatives\":[[0.12706909910364769,-0.97461735958789597,0.088270423350548979],[0,0,0],[0.20000122234029161,0.37387032732407854,0.090769003285213562],[0,0,0]]}",
+            "[controller_server-3] [INFO] [1792563635.293992489] [quad_0.scan_planner_node]: spline_geometry_initialized samples=13 interval=0.240000000000 duration=2.880000000000",
+            "[controller_server-3] [ERROR] [1792563635.298309191] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792563635.298356060] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.1099->0.1099 body_age=0.0100->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] iter=5,time(ms)=0.722,rebound."
+          ]
+        },
+        "-1008": {
+          "one_based_line": 3385,
+          "context": [
+            "[controller_server-3] [INFO] [1792563620.972508028] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=65 clouds=61 cloud_stamp=17.721889496 mapping_ms=12.212 copy_ms=6.317 reduced=0 max_queue=3",
+            "[controller_server-3] [INFO] [1792563620.982563540] [scan_nav2_tracking]: Received trajectory 83, duration 3.637s",
+            "[controller_server-3] [INFO] [1792563620.983738379] [bspline_opt]: LBFGS_RESTORED stage=rebound return=-1008 initial_cost=0.0298808601775 best_cost=0.00447012831503; hard validation pending",
+            "[controller_server-3] \u001b[32miter(+1)=162,time(ms)=12.410,total_t(ms)=12.443,cost=0.004",
+            "[controller_server-3] \u001b[0mfirst_optimize_step_success=1"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 39471,
+          "context": [
+            "[controller_server-3] [FSM]: from REPLAN_TRAJ to REPLAN_TRAJ",
+            "[controller_server-3] [WARN] [1792563655.582490653] [controller_server]: local_trajectory_starvation elapsed_s=0.754585 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792563655.582627909] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792563655.582721569] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[recoveries_server-5] [INFO] [1792563655.600322249] [recoveries_server]: Attempting wait"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792563635.298309191] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792563635.611948275] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792563635.793126101] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792563655.582627909] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563662.062906336] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563668.476325503] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563675.023112799] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563681.502578358] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563688.383301087] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563695.566246336] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792563695.597845257] [nav2_internal.bt_navigator]: Navigation failed"
+      ],
+      "measured_seed_fallback": {
+        "count": 11,
+        "distance_triggered": 11,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.176763
+      },
+      "snapshot_manifest_sha256": "fb2b6dffb82ed2edf36846651c590a7fe208949fed83514378e5f6512087e01d",
+      "sources": {
+        "result.json": {
+          "sha256": "90943d5b39e01c9f39551b22a7b2e8396b6bfa9b4b681f54b6ac90925d86130f",
+          "bytes": 4941
+        },
+        "nav2.log": {
+          "sha256": "708a3d34a889bfb10387bb6a1c76092cdebf17003b87df95786452f62dca0536",
+          "bytes": 18849071
+        },
+        "native_backtraces/bt_navigator-110.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-104.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-104.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-112.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-106.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-108.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "G05",
+      "physics_steps": 89360,
+      "physics_duration_s": 89.32254028320312,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v289_G05_attempt01",
+        "request_id": "v289_G05_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792563718130439235,
+        "requested_at_monotonic_ns": 78702007598899,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v289_G05_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 78701958354260, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 0,
+        "minus1008_raw_substring_mentions": 1,
+        "no_executable_trajectory": 7
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 0,
+        "minus1008_raw_substring_mentions": 1,
+        "no_executable_trajectory": 7
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 46
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 44898,
+          "context": [
+            "[controller_server-3] [INFO] [1792563814.555924381] [quad_0.scan_planner_node]: input_refresh site=reference_prefix sensor_poses=0 clouds=0 body_poses=0 fsm_odom=0 cloud_age=0.1199->0.1199 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=2",
+            "[controller_server-3] [WARN] [1792563814.555944547] [controller_server]: local_trajectory_starvation elapsed_s=0.754585 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792563814.556085973] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792563814.556177495] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[controller_server-3] [WARN] [1792563814.556637244] [quad_0.scan_planner_node]: [DEBUG-prefix-01] candidate t=27.890625000000 xyz=[8.522259633779,-1.698414942805,2.202412026405] yaw=1.563945661683 occ=1"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792563804.247069502] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792563804.446009570] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792563814.556085973] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563821.240865675] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563828.086585799] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563834.575522257] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563840.926422385] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563847.275191971] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563853.359802257] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792563853.383679528] [nav2_internal.bt_navigator]: Navigation failed"
+      ],
+      "measured_seed_fallback": {
+        "count": 15,
+        "distance_triggered": 15,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.161323
+      },
+      "snapshot_manifest_sha256": "f5439cda6866d7d850cbcebc3545b370f69fc1e66d2e891499c912ef487d8e3a",
+      "sources": {
+        "result.json": {
+          "sha256": "f31cedee5194dabc4b0c05e622a41254f8c9cb9c24a7a4b072db3f0aca35c612",
+          "bytes": 4920
+        },
+        "nav2.log": {
+          "sha256": "bd30e6b35b82c87f6074c35c932bb6e5267de070caa5cbcda3df148076b1bcdf",
+          "bytes": 21412536
+        },
+        "native_backtraces/bt_navigator-110.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-104.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-104.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-112.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-106.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-108.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CU06",
+      "physics_steps": 85160,
+      "physics_duration_s": 85.12484741210938,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v289_CU06_attempt01",
+        "request_id": "v289_CU06_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792563875164426474,
+        "requested_at_monotonic_ns": 78844567027184,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v289_CU06_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 78844542564382, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 1,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 0,
+        "minus1008_raw_substring_mentions": 1,
+        "no_executable_trajectory": 6
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 1,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 0,
+        "minus1008_raw_substring_mentions": 1,
+        "no_executable_trajectory": 6
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 39
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "A-star failed": {
+          "one_based_line": 19499,
+          "context": [
+            "[controller_server-3] [INFO] [1792563942.126194946] [quad_0.scan_planner_node]: spline_geometry_initialized samples=19 interval=0.240000000000 duration=4.320000000000",
+            "[controller_server-3] [WARN] [1792563942.126298134] [quad_0.scan_planner_node]: physical_floor_edge_clearance floor_z=1.570734234 square_gap_m=0.316227766 guard_radius_m=0.350000000 witness=(-4.145314598,-3.586810875) witness_kind=1; selected_surface_rejected",
+            "[controller_server-3] [ERROR] [1792563942.132267494] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792563942.132317269] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=1 body_poses=1 fsm_odom=-1 cloud_age=0.1699->0.1699 body_age=0.0200->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [INFO] [1792563942.135558916] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 41267,
+          "context": [
+            "[controller_server-3] [INFO] [1792563963.603276529] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=556 clouds=418 cloud_stamp=54.001949310 mapping_ms=15.485 copy_ms=7.697 reduced=0 max_queue=4",
+            "[controller_server-3] [WARN] [1792563963.604642860] [controller_server]: local_trajectory_starvation elapsed_s=0.754585 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792563963.604758054] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792563963.604843999] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[recoveries_server-5] [INFO] [1792563963.619599316] [recoveries_server]: Attempting wait"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792563942.132267494] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792563963.604758054] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563970.083714731] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563976.596721604] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563983.040060080] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563989.489974205] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792563995.939991695] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792563995.968442143] [nav2_internal.bt_navigator]: Navigation failed"
+      ],
+      "measured_seed_fallback": {
+        "count": 11,
+        "distance_triggered": 11,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.168267
+      },
+      "snapshot_manifest_sha256": "cae1e95478b4852e154bb788f7f0efbf2f0bfe35ca72c658a93c077ea2d2f39f",
+      "sources": {
+        "result.json": {
+          "sha256": "2ece4780f9662d88a3f24b127db8db7d6e4add02f8da9ac069e71720132acc58",
+          "bytes": 4951
+        },
+        "nav2.log": {
+          "sha256": "2fea94a081aec25261b74f0726db2d00595078baf9a706a97e9109109e86bd57",
+          "bytes": 17347220
+        },
+        "native_backtraces/bt_navigator-110.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-104.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-104.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-112.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-106.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-108.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "D07",
+      "physics_steps": 118520,
+      "physics_duration_s": 118.46652221679688,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v289_D07_attempt01",
+        "request_id": "v289_D07_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792564017623921899,
+        "requested_at_monotonic_ns": 79020097374345,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 2,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 31,
+        "minus1008_raw_substring_mentions": 32,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 2,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 31,
+        "minus1008_raw_substring_mentions": 32,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 18
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "A-star failed": {
+          "one_based_line": 42569,
+          "context": [
+            "[controller_server-3] [INFO] [1792564104.500038880] [quad_0.scan_planner_node]: input_refresh site=astar_search sensor_poses=0 clouds=0 body_poses=2 fsm_odom=-1 cloud_age=0.3298->0.3298 body_age=0.0200->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [WARN] [1792564104.501818214] [path_searching]: A-star path search took 0.163s, iter=6097",
+            "[controller_server-3] [ERROR] [1792564104.501824412] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] \u001b[32miter(+1)=18,time(ms)=0.529,keep optimizing",
+            "[controller_server-3] \u001b[0m\u001b[32miter(+1)=73,time(ms)=3.516,keep optimizing"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 6909,
+          "context": [
+            "[controller_server-3] [INFO] [1792564070.825310825] [quad_0.scan_planner_node]: spline_geometry_initialized samples=22 interval=0.127263235143 duration=2.672527938000",
+            "[controller_server-3] [INFO] [1792564070.825429991] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1899->0.1899 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [INFO] [1792564070.829243091] [bspline_opt]: LBFGS_RESTORED stage=rebound return=-1008 initial_cost=16.8311551718 best_cost=0.035626775542; hard validation pending",
+            "[controller_server-3] [INFO] [1792564070.830234403] [scan_nav2_tracking]: Received trajectory 180, duration 2.368s",
+            "[controller_server-3] \u001b[32miter(+1)=69,time(ms)=3.816,total_t(ms)=3.827,cost=0.036"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792564104.501824412] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564137.252567436] [bspline_opt]: A-star failed; aborting optimization"
+      ],
+      "measured_seed_fallback": {
+        "count": 27,
+        "distance_triggered": 22,
+        "occupancy_triggered": 5,
+        "maximum_predicted_distance_before_fallback_m": 0.164382
+      },
+      "snapshot_manifest_sha256": "07b005e7383890fbe3b75274120bdeb62b214bc33d1edd8fed8b9e3e2f34cdc4",
+      "sources": {
+        "result.json": {
+          "sha256": "4c992855ade69694f8a3c4fdffe0d14fddeceb09c93d0649640920ef9ad12f3f",
+          "bytes": 4797
+        },
+        "nav2.log": {
+          "sha256": "66a9a002fa0a1d0da5a0a0280b5748cae5bf1b7562240bf19c2fde87942bc790",
+          "bytes": 33751245
+        },
+        "native_backtraces/bt_navigator-110.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-104.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-104.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-112.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-106.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/planner_server-106.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-108.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "S04",
+      "physics_steps": 30900,
+      "physics_duration_s": 30.894649505615234,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v289_S04_attempt01",
+        "request_id": "v289_S04_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792564192313657355,
+        "requested_at_monotonic_ns": 79104720936802,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 1,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 69,
+        "minus1008_raw_substring_mentions": 69,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 1,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 69,
+        "minus1008_raw_substring_mentions": 69,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 3
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "A-star failed": {
+          "one_based_line": 2272,
+          "context": [
+            "[controller_server-3] [INFO] [1792564242.242993143] [quad_0.scan_planner_node]: spline_seed_capture {\"interval\":0.24000000000000005,\"velocity_limit\":1,\"acceleration_limit\":0.5,\"tolerance\":0.5,\"points\":[[4.2244248390197754,5.1696152687072754,4.8394317626953125],[4.3658461952570846,5.3110366249445846,4.8394317626953125],[4.5415821265451566,5.3696152687072747,4.8394317626953125],[4.7415821265451568,5.3696152687072747,4.8394317626953125],[4.9365568733757392,5.3817473030632392,4.8394317626953125],[5.0779782296130493,5.5231686593005493,4.8394317626953125],[5.2193995858503586,5.6645900155378586,4.8394317626953125],[5.3608209420876687,5.8060113717751687,4.8394317626953125],[5.5022422983249779,5.947432728012477,4.8394317626953125],[5.6436636545622871,6.0888540842497871,4.8394317626953125],[5.7850850107995964,6.2302754404870964,4.8394317626953125],[5.9265063670369056,6.3716967967244065,4.8394317626953125],[6.0679277232742148,6.5131181529617148,4.8394317626953125],[6.209349079511524,6.654539509199024,4.8394317626953125],[6.3507704357488342,6.7959608654363342,4.8394317626953125],[6.5409724611041673,6.8196152687072757,4.8394317626953125],[6.7409724611041675,6.8196152687072757,4.8394317626953125],[6.9409724611041677,6.8196152687072757,4.8394317626953125],[7.1409724611041678,6.8196152687072757,4.8394317626953125],[7.3274411983338741,6.8167675689020104,4.8395155117459119]],\"derivatives\":[[0.13616779657332162,-0.060951584189404412,-0.075956709280158075],[0,0,0],[0,0,0],[0,0,0]]}",
+            "[controller_server-3] [INFO] [1792564242.243034227] [quad_0.scan_planner_node]: spline_geometry_initialized samples=20 interval=0.240000000000 duration=4.560000000000",
+            "[controller_server-3] [ERROR] [1792564242.243986313] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792564242.244007954] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.2399->0.1399 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [INFO] [1792564242.245068576] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=0 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 4314,
+          "context": [
+            "[controller_server-3] [INFO] [1792564244.316088056] [quad_0.scan_planner_node]: spline_geometry_initialized samples=27 interval=0.158246269351 duration=4.114403003126",
+            "[controller_server-3] [INFO] [1792564244.316343131] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.1199->0.1199 body_age=0.0150->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [INFO] [1792564244.317505284] [bspline_opt]: LBFGS_RESTORED stage=rebound return=-1008 initial_cost=0.20437477907 best_cost=0.20437444547; hard validation pending",
+            "[controller_server-3] \u001b[32miter(+1)=10,time(ms)=1.163,total_t(ms)=1.187,cost=0.204",
+            "[controller_server-3] \u001b[0mfirst_optimize_step_success=1"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792564242.243986313] [bspline_opt]: A-star failed; aborting optimization"
+      ],
+      "measured_seed_fallback": {
+        "count": 4,
+        "distance_triggered": 4,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.159375
+      },
+      "snapshot_manifest_sha256": "ccf4eb4acd0d05a4b5e324fcdca51eb028446820720b298d0bc62f1e40f5c726",
+      "sources": {
+        "result.json": {
+          "sha256": "b575636ce1c9e70394ef4336e8ee40c84e202bc6f224f3fa70d8b4995cf0f5f4",
+          "bytes": 4752
+        },
+        "nav2.log": {
+          "sha256": "ee5f9cd427e46b6c36b791a3a6d7debddfc9065fdfa4e873b715f2ccd0b90619",
+          "bytes": 2838537
+        },
+        "native_backtraces/bt_navigator-110.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-104.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-104.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-112.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-106.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/planner_server-106.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-108.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CD12",
+      "physics_steps": 123160,
+      "physics_duration_s": 123.10397338867188,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v289_CD12_attempt01",
+        "request_id": "v289_CD12_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792564276488724214,
+        "requested_at_monotonic_ns": 79282833597500,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 14,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 76,
+        "minus1008_raw_substring_mentions": 77,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 14,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 76,
+        "minus1008_raw_substring_mentions": 77,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 18
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "A-star failed": {
+          "one_based_line": 19695,
+          "context": [
+            "[controller_server-3] [INFO] [1792564344.600933177] [quad_0.scan_planner_node]: spline_seed_capture {\"interval\":0.24000000000000005,\"velocity_limit\":1,\"acceleration_limit\":0.5,\"tolerance\":0.5,\"points\":[[7.4846092315287605,6.5447220001830182,4.8392113378401209],[7.6699645705880881,6.5093666611236909,4.8392113378401209],[7.8001486832558182,6.3791825484559599,4.7892113378401211],[7.9415700394931275,6.2377611922186524,4.7892113378401211],[8.0829913957304385,6.0963398359813423,4.7892113378401211],[8.1346092315287599,5.933612505889144,4.7392113378401204],[8.1424648302795113,5.7368664014322661,4.7392113378401204],[8.2079334989224648,5.5713977327893138,4.7158870704464153],[8.2346092315287613,5.3909257243862445,4.6892113378401206],[8.2346092315287613,5.1909257243862443,4.6892113378401206],[8.2846092315287603,5.0275282647646868,4.6392113378401207],[8.2846092315287603,4.8275282647646867,4.6392113378401207],[8.2846092315287603,4.6275282647646865,4.6392113378401207],[8.2846092315287603,4.4275282647646863,4.6392113378401207],[8.2846092315287603,4.2325641932747882,4.6270535309318905],[8.2846092315287603,4.0482389428833407,4.5892113378401209],[8.2846092315287603,3.8482389428833406,4.5892113378401209],[8.2846092315287603,3.6689496210019952,4.5392113378401211],[8.2846092315287585,3.468949621001995,4.5392113378401211],[8.2846092315287603,3.2764981760968057,4.5209875137539086],[8.3588990727929549,3.120432158918824,4.4892113378401204],[8.4142294378553295,3.0724339260142899,4.4296075050265209]],\"derivatives\":[[0.30303089952300066,-0.003975095765093634,-0.0031081877298475761],[-0.048911991696674324,-0.96236414391819558,-0.26732540389731552],[0.22680117313905865,-0.44002122812712274,-0.027932763912537045],[0,0,0]]}",
+            "[controller_server-3] [INFO] [1792564344.600973021] [quad_0.scan_planner_node]: spline_geometry_initialized samples=22 interval=0.240000000000 duration=5.040000000000",
+            "[controller_server-3] [ERROR] [1792564344.601655751] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792564344.601683511] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.2349->0.1349 body_age=0.0100->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [INFO] [1792564344.616616938] [bspline_opt]: V139_SAMPLED_REBOUND t=4.175714851 constraints=4"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 15279,
+          "context": [
+            "[controller_server-3] [INFO] [1792564341.114579284] [quad_0.scan_planner_node]: spline_geometry_initialized samples=28 interval=0.106842874681 duration=2.884757616378",
+            "[controller_server-3] [INFO] [1792564341.114760127] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.2199->0.2199 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [INFO] [1792564341.123458255] [bspline_opt]: LBFGS_RESTORED stage=rebound return=-1008 initial_cost=19.7007647001 best_cost=0.00721419891712; hard validation pending",
+            "[controller_server-3] \u001b[32miter(+1)=132,time(ms)=8.709,total_t(ms)=8.722,cost=0.007",
+            "[controller_server-3] \u001b[0mfirst_optimize_step_success=1"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792564344.601655751] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564344.643970176] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564344.664481196] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564348.765702301] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792564348.983152682] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564349.065789082] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564349.480957328] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564349.486069901] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564349.488987415] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564349.490492049] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564349.559104690] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564349.572135627] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564349.577088329] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564349.579084766] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564373.918852569] [bspline_opt]: A-star failed; aborting optimization"
+      ],
+      "measured_seed_fallback": {
+        "count": 17,
+        "distance_triggered": 17,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.156679
+      },
+      "snapshot_manifest_sha256": "32e48f565fb89e1681fe968869dfc4c910e52b169b11a88e5f912c06ebacabf2",
+      "sources": {
+        "result.json": {
+          "sha256": "32aecebf67802fdd6ff47d0b30b4c594dfc64cf4a8094f019ba3e61b7324203f",
+          "bytes": 4777
+        },
+        "nav2.log": {
+          "sha256": "dbab1f56e83447f5fd994fd0f1bb8072c910dc3506b517bf2508929387b3ec79",
+          "bytes": 35756330
+        },
+        "native_backtraces/bt_navigator-110.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-104.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-104.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-112.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-106.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/planner_server-106.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-108.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CM02",
+      "physics_steps": 72860,
+      "physics_duration_s": 72.83160400390625,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v289_CM02_attempt01",
+        "request_id": "v289_CM02_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792564454799873703,
+        "requested_at_monotonic_ns": 79415588286820,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v289_CM02_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 79415571846765, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 26,
+        "astar_optimization_failed": 36,
+        "inside_obstacle": 48,
+        "lbfgs_minus1008": 16,
+        "minus1008_raw_substring_mentions": 17,
+        "no_executable_trajectory": 6
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 26,
+        "astar_optimization_failed": 36,
+        "inside_obstacle": 48,
+        "lbfgs_minus1008": 16,
+        "minus1008_raw_substring_mentions": 17,
+        "no_executable_trajectory": 6
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 46
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "Unable to handle the initial or end point": {
+          "one_based_line": 27692,
+          "context": [
+            "[controller_server-3] [INFO] [1792564533.669032387] [quad_0.scan_planner_node]: spline_seed_capture {\"interval\":0.24000000000000005,\"velocity_limit\":1,\"acceleration_limit\":0.5,\"tolerance\":0.5,\"points\":[[8.5544424057006836,-2.2492899894714355,3.6131472587585449],[8.6958637619379928,-2.1578686332341261,3.6631472587585447],[8.8260478746057238,-2.0276845205663956,3.7131472587585446],[8.9044424057006832,-1.8601565985618074,3.7131472587585446],[8.9044424057006832,-1.680867276680462,3.7631472587585448],[8.9044424057006832,-1.480867276680462,3.7631472587585453],[8.8544424057006843,-1.3174698170589052,3.8131472587585447],[8.8360710205926498,-1.130918604363401,3.8315186438665791],[8.8044424057006836,-0.95407235743734975,3.8631472587585449],[8.7783359936736858,-0.77318357744443866,3.8892536707855418],[8.7544424057006829,-0.59067489781579374,3.9131472587585443],[8.7544424057006829,-0.39067489781579351,3.9131472587585443],[8.7494684802142046,-0.19431606398495671,3.9181211842450234],[8.7044424057006839,-0.027277438194234987,3.9631472587585446],[8.6917334532952424,0.16341896293400682,3.975856211163987],[8.6544424057006832,0.33612002142732189,4.0131472587585444],[8.605130912916799,0.50002150331245121,4.0624587515424322],[8.6044424057006825,0.69951748104887912,4.0631472587585451],[8.5544424057006836,0.86291494067043528,4.1131472587585449],[8.5544424057006836,1.0629149406704361,4.1131472587585449],[8.557656953762919,1.2418474243747277,4.1675236515392946],[8.560823966586721,1.2823765173192132,4.1718353282634535]],\"derivatives\":[[0.055129553222519445,0.95803850548774172,-0.030820541840155105],[0,0,0],[0,0,0],[0,0,0]]}",
+            "[controller_server-3] [INFO] [1792564533.669069123] [quad_0.scan_planner_node]: spline_geometry_initialized samples=22 interval=0.240000000000 duration=5.040000000000",
+            "[controller_server-3] [ERROR] [1792564533.670143607] [path_searching]: Unable to handle the initial or end point, force return!",
+            "[controller_server-3] [ERROR] [1792564533.670148766] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792564533.670157727] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1399->0.1399 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=0"
+          ]
+        },
+        "A-star failed": {
+          "one_based_line": 25096,
+          "context": [
+            "[controller_server-3] iter=40,time(ms)=3.2,rebound.",
+            "[controller_server-3] [INFO] [1792564530.812763126] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1799->0.1799 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [ERROR] [1792564530.814444253] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792564530.814452832] [quad_0.scan_planner_node]: fixed_height_recovery_attempt; full planning gates retained",
+            "[controller_server-3] [INFO] [1792564530.814462513] [quad_0.scan_planner_node]: input_refresh site=replan_start sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.1849->0.1849 body_age=0.0050->0.0000 cloud_ready=1 ignored_older_body=0"
+          ]
+        },
+        "The robot is inside an obstacle": {
+          "one_based_line": 27786,
+          "context": [
+            "[controller_server-3] [ERROR] [1792564533.833634363] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792564533.833648681] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=2 fsm_odom=-1 cloud_age=0.1199->0.1199 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [ERROR] [1792564533.833794482] [bspline_opt]: The robot is inside an obstacle",
+            "[controller_server-3] iter=5,time(ms)=1.15,rebound.",
+            "[controller_server-3] [INFO] [1792564533.834813593] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=1 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1199->0.1199 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=0"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 7167,
+          "context": [
+            "[controller_server-3] [INFO] [1792564513.794514054] [quad_0.scan_planner_node]: spline_curve_capture {\"stage\":\"optimized\",\"controls\":[[5.7024680082535042,2.9944521149428232,3.3548765068314483],[5.6908583556435293,2.894283116757995,3.3575165133692],[5.6797047598089492,2.7939990013400822,3.3588197214143034],[5.6690798968967764,2.6939769816272934,3.3589337229843577],[5.6589682439133329,2.5937655788220053,3.3581919626895651],[5.6492389856557086,2.4932823822177039,3.3570052537304926],[5.6396322575567535,2.3929573014537606,3.3557858256009157],[5.6297648857451721,2.2926602546545394,3.354852983014569],[5.6191512332384086,2.1924009263839004,3.3543957985453599],[5.6072460043999586,2.0918880110372604,3.354465150390185],[5.5935303932480442,1.9913680317354023,3.3550008946081413],[5.5776496039295616,1.8908555076582882,3.3558801455449481],[5.5595624156630565,1.7903723460192049,3.3569286692761628],[5.5396388745198255,1.6899256406379606,3.3579781317842246],[5.5186865557334714,1.5894104073617503,3.3589122977987098],[5.4978919621954248,1.488894674023582,3.3596629959389293],[5.4786212113865416,1.3887843876640018,3.3602070232314927],[5.4621249796310645,1.2883489839671931,3.3605606466756366],[5.4493147616611335,1.1878740531802436,3.3607633419987524],[5.4406504414189412,1.0892242694527794,3.3608610515272983],[5.4360468413239911,0.99538426668382995,3.3608946724875013],[5.4348350421873981,0.89962386746557166,3.3608955373378064],[5.4359091888069919,0.79905704946635148,3.3608855470693135],[5.4380561304205584,0.6984928658420978,3.3608774630189888],[5.4403411984124572,0.59871114184203877,3.3608751218749036],[5.4423783518121933,0.50402307062624585,3.3608766087542059],[5.4442395286574117,0.41446429981296512,3.3608791594840781],[5.4460208508172379,0.33003214482071547,3.3608815054151622],[5.4475929497722229,0.25071883875758688,3.3608832406703772],[5.4488173061632903,0.17653789737050093,3.3608840671649221],[5.4498072400937367,0.10747351412411767,3.3608840464532084],[5.4508671295431999,0.0435015356117332,3.3608837199727764],[5.4520972166411523,-0.0155633333863817,3.3608835620925022],[5.4531489931578125,-0.069896173367536077,3.3608836029852602],[5.454208281227527,-0.12905607121151327,3.3608836743117867],[5.456216966862657,-0.19322384939129181,3.3608837139747121],[5.4589934428884206,-0.26245488128919708,3.3608837417539821],[5.4614264396540628,-0.3368014693268454,3.3608837557591471],[5.4627207438262753,-0.41628417225470288,3.3608837469709671],[5.463306269329359,-0.50095669733898296,3.3608837312750302],[5.4645963296715081,-0.59082983201201456,3.3608837271904517],[5.4671695134591261,-0.6859489106235338,3.360883731842041],[5.470771147428918,-0.78636646262009202,3.360883731842041],[5.47437278139871,-0.88678401461665024,3.360883731842041]],\"knots\":[-0.30144636114258289,-0.20096424076172192,-0.10048212038086096,0,0.10048212038086096,0.20096424076172192,0.30144636114258289,0.40192848152344385,0.50241060190430487,0.60289272228516588,0.7033748426660269,0.80385696304688792,0.90433908342774894,1.00482120380861,1.105303324189471,1.205785444570332,1.306267564951193,1.406749685332054,1.507231805712915,1.6077139260937761,1.7081960464746371,1.8086781668554981,1.9091602872363591,2.0096424076172199,2.1101245279980807,2.2106066483789415,2.3110887687598023,2.4115708891406631,2.5120530095215239,2.6125351299023847,2.7130172502832455,2.8134993706641063,2.9139814910449671,3.0144636114258279,3.1149457318066887,3.2154278521875495,3.3159099725684102,3.416392092949271,3.5168742133301318,3.6173563337109926,3.7178384540918534,3.8183205744727142,3.918802694853575,4.0192848152344363,4.1197669356152975,4.2202490559961587,4.32073117637702,4.4212132967578812]}",
+            "[controller_server-3] [INFO] [1792564513.794639676] [quad_0.scan_planner_node]: minimum_cruise_check attempt=0 valid=1 passed=0 samples=413 min=0.552827837 requested=0.600000000 length=3.699854733 entry=0.000000000 exit=0.000000000 dt=0.009999434",
+            "[controller_server-3] [INFO] [1792564513.795161052] [bspline_opt]: LBFGS_RESTORED stage=refine return=-1008 initial_cost=2.52244387164 best_cost=0.0236765341698; hard validation pending",
+            "[controller_server-3] [INFO] [1792564513.795358655] [quad_0.scan_planner_node]: minimum_cruise_check attempt=1 valid=1 passed=1 samples=377 min=0.835375594 requested=0.600000000 length=3.701282498 entry=0.000000000 exit=0.000000000 dt=0.009997230",
+            "[controller_server-3] [INFO] [1792564513.795399618] [quad_0.scan_planner_node]: spline_curve_capture {\"stage\":\"minimum_cruise_checked\",\"controls\":[[5.7014457465405988,2.98568072196572,3.3551238129352092],[5.6908710864186212,2.8942799032730022,3.3574791967852327],[5.680676098421487,2.8027832482571564,3.3587216816464145],[5.6706353377786636,2.7126270553483254,3.3589340837847721],[5.6607568887083639,2.6226259032213424,3.3583369269361079],[5.6510930787015843,2.5330205987072754,3.3572505865194939],[5.6415447266306114,2.4413927940736717,3.3560337942241381],[5.6318262569467654,2.3498460004483293,3.3550201927925793],[5.621490068448769,2.2582550178958622,3.3544455077698245],[5.6100027309724485,2.166642920210236,3.3544021653448302],[5.5968323096351771,2.0749432848133571,3.354849748824682],[5.5815492296768303,1.9830991151693573,3.3556588543608163],[5.5640744005926424,1.8912345956790586,3.3566700411630563],[5.5446944612058404,1.7992237320765401,3.3577244560326718],[5.5240358393962836,1.7071997685788005,3.3586901754676202],[5.5032353718174507,1.6152509135727675,3.359484896151641],[5.4836547777186295,1.5233318580311437,3.360076728077884],[5.4665104254527623,1.4313914116899247,3.3604754377608597],[5.4527717733116008,1.3395079089331157,3.3607151624937321],[5.4429685161143491,1.2476568654885063,3.3608382062685509],[5.4372104633843659,1.1558045060252837,3.360886774978765],[5.4349469592742921,1.0640300991197105,3.3608955981930562],[5.4353469326527124,0.97222908265174068,3.3608884321867563],[5.4371980689243014,0.88048320428714655,3.3608794400546049],[5.4394882907527373,0.78873272520812432,3.3608748722925825],[5.4416752820225938,0.69722499783691949,3.3608751413791369],[5.4436443840128685,0.60543347469310438,3.3608779511652664],[5.4453935146601173,0.51375643642547342,3.3608809431244597],[5.4469785235458739,0.42201697214833434,3.3608829251909684],[5.4484383300133929,0.33039660351795747,3.360883826450328],[5.449699024434385,0.23892320351995242,3.3608840221781393],[5.4507675601138033,0.14727297774814249,3.3608838649826236],[5.4518079191108066,0.055790505809028196,3.3608836410772263],[5.4530997419787051,-0.031504422579876241,3.360883554105528],[5.4548984137212555,-0.11450797275835477,3.3608836244341704],[5.4571806725122176,-0.19337529254490524,3.3608837287219333],[5.4595347951302706,-0.26921850708009559,3.3608837691714615],[5.461429228153496,-0.3477272996086756,3.3608837547234307],[5.4627259286885934,-0.43022555891954789,3.3608837370914739],[5.4637774491961846,-0.51573485031827426,3.3608837343738656],[5.4651713566252376,-0.60536432739767831,3.3608837345313027],[5.4674849437753128,-0.69474345788808556,3.3608837318420415],[5.470771147428918,-0.78636646262008947,3.3608837318420415],[5.4740573510825232,-0.87798946735209338,3.3608837318420415]],\"knots\":[-0.27504575469394915,-0.18336383646263277,-0.091681918231316384,0,0.091681918231316384,0.18336383646263277,0.27504575469394915,0.36672767292526554,0.45840959115658192,0.5500915093878983,0.64177342761921463,0.73345534585053107,0.82513726408184751,0.91681918231316395,1.0085011005444804,1.1001830187757968,1.1918649370071133,1.2835468552384297,1.3752287734697461,1.4669106917010626,1.558592609932379,1.6502745281636955,1.7419564463950119,1.8336383646263283,1.9253202828576448,2.0170022010889612,2.1086841193202774,2.2003660375515937,2.2920479557829099,2.3837298740142261,2.4754117922455423,2.5670937104768585,2.6587756287081747,2.750457546939491,2.8421394651708072,2.9338213834021234,3.0255033016334396,3.1171852198647558,3.208867138096072,3.3005490563273883,3.3922309745587045,3.4839128927900207,3.5755948110213369,3.6672767292526531,3.7589586474839694,3.8506405657152856,3.9423224839466018,4.034004402177918]}"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 29421,
+          "context": [
+            "[controller_server-3] [FSM]: from EMERGENCY_STOP to GEN_NEW_TRAJ",
+            "[controller_server-3] [WARN] [1792564534.357596199] [controller_server]: local_trajectory_starvation elapsed_s=0.754585 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792564534.357729959] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792564534.357818288] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[controller_server-3] [INFO] [1792564534.369005408] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=1 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792564533.997200710] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792564534.009037564] [path_searching]: Unable to handle the initial or end point, force return!",
+        "[controller_server-3] [ERROR] [1792564534.009042799] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792564534.009167824] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792564534.009893642] [bspline_opt]: The robot is inside an obstacle",
+        "[controller_server-3] [ERROR] [1792564534.012248690] [path_searching]: Unable to handle the initial or end point, force return!",
+        "[controller_server-3] [ERROR] [1792564534.012254795] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792564534.012533869] [path_searching]: Unable to handle the initial or end point, force return!",
+        "[controller_server-3] [ERROR] [1792564534.012537718] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792564534.357729959] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792564540.208478377] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792564546.025898893] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792564553.067426282] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792564560.086089034] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792564566.970725207] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792564566.996060140] [nav2_internal.bt_navigator]: Navigation failed"
+      ],
+      "measured_seed_fallback": {
+        "count": 2,
+        "distance_triggered": 2,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.150477
+      },
+      "snapshot_manifest_sha256": "949b82e848773d175a9a72c4bbf8c007d572e06fc3cc0985613293c24b68db27",
+      "sources": {
+        "result.json": {
+          "sha256": "d7f0b1d0dbc4fe5be1a675872b457105d4a087e1d415468264ac7c92c2e14ba8",
+          "bytes": 4952
+        },
+        "nav2.log": {
+          "sha256": "9e2d473683c141fec474313f30c6077ebda191569afb63c6a2534ea5bf8ca202",
+          "bytes": 15414917
+        },
+        "native_backtraces/bt_navigator-110.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-104.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-104.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-112.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-106.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-108.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CM07",
+      "physics_steps": 54020,
+      "physics_duration_s": 54.001949310302734,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v289_CM07_attempt01",
+        "request_id": "v289_CM07_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792564588583680925,
+        "requested_at_monotonic_ns": 79527573410650,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 1,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 4,
+        "minus1008_raw_substring_mentions": 4,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 1,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 4,
+        "minus1008_raw_substring_mentions": 4,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 5
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "A-star failed": {
+          "one_based_line": 10670,
+          "context": [
+            "[controller_server-3] [INFO] [1792564648.534038717] [quad_0.scan_planner_node]: input_refresh site=astar_search sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.3398->0.3398 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [WARN] [1792564648.543588105] [path_searching]: A-star path search took 0.130s, iter=4760",
+            "[controller_server-3] [ERROR] [1792564648.543598723] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792564648.543769816] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=1 body_poses=0 fsm_odom=-1 cloud_age=0.3798->0.1799 body_age=0.0400->0.0400 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] iter=7,time(ms)=3.4,rebound."
+          ]
+        },
+        "-1008": {
+          "one_based_line": 10530,
+          "context": [
+            "[controller_server-3] [INFO] [1792564648.207235849] [quad_0.scan_planner_node]: spline_geometry_initialized samples=21 interval=0.226507415750 duration=4.530148315000",
+            "[controller_server-3] [INFO] [1792564648.208028188] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.2349->0.2349 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [INFO] [1792564648.209032332] [bspline_opt]: LBFGS_RESTORED stage=rebound return=-1008 initial_cost=0.189053968596 best_cost=0.188857336891; hard validation pending",
+            "[controller_server-3] \u001b[32miter(+1)=20,time(ms)=0.999,total_t(ms)=1.018,cost=0.189",
+            "[controller_server-3] \u001b[0mfirst_optimize_step_success=1"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792564648.543598723] [bspline_opt]: A-star failed; aborting optimization"
+      ],
+      "measured_seed_fallback": {
+        "count": 12,
+        "distance_triggered": 10,
+        "occupancy_triggered": 2,
+        "maximum_predicted_distance_before_fallback_m": 0.169748
+      },
+      "snapshot_manifest_sha256": "39be5a65d0cad709964733de7487ec46c8ed21eaa422b6f679a03c20567bef63",
+      "sources": {
+        "result.json": {
+          "sha256": "674a85081b4f290b31efa138f08b3e73bb8dd0fd2915d17450ff3763c5d10221",
+          "bytes": 4767
+        },
+        "nav2.log": {
+          "sha256": "bdc5ee42c80e70912d204998fbfa877a146e6a2e6973e2d0d18e0a0acad7120e",
+          "bytes": 11357579
+        },
+        "native_backtraces/bt_navigator-110.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-104.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-104.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-112.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-106.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-108.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CS03",
+      "physics_steps": 29880,
+      "physics_duration_s": 29.87520980834961,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v289_CS03_attempt01",
+        "request_id": "v289_CS03_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792564699222337884,
+        "requested_at_monotonic_ns": 79612154647504,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 133,
+        "minus1008_raw_substring_mentions": 133,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 133,
+        "minus1008_raw_substring_mentions": 133,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 3
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "-1008": {
+          "one_based_line": 2913,
+          "context": [
+            "[controller_server-3] [INFO] [1792564749.334064229] [quad_0.scan_planner_node]: spline_geometry_initialized samples=25 interval=0.193080458723 duration=4.633931009356",
+            "[controller_server-3] [INFO] [1792564749.334390522] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1399->0.1399 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [INFO] [1792564749.334973744] [bspline_opt]: LBFGS_RESTORED stage=rebound return=-1008 initial_cost=0.151359667037 best_cost=0.151288771847; hard validation pending",
+            "[controller_server-3] \u001b[32miter(+1)=14,time(ms)=0.578,total_t(ms)=0.590,cost=0.151",
+            "[controller_server-3] \u001b[0mfirst_optimize_step_success=1"
+          ]
+        }
+      },
+      "final_error_lines": [],
+      "measured_seed_fallback": {
+        "count": 1,
+        "distance_triggered": 1,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.153779
+      },
+      "snapshot_manifest_sha256": "e7d4b4359e45ed19c9f707fddf5464fff6795eb113a843a1e76e0c818d0d4eef",
+      "sources": {
+        "result.json": {
+          "sha256": "d309a0ba35ce6928796fa3d8d5a174b9ac0905154fa64443868bccb05175bf1d",
+          "bytes": 4756
+        },
+        "nav2.log": {
+          "sha256": "8dc725b90edda0379dfdad1b224ce0251079a0eb814e4f9a36d4a44fa22b677d",
+          "bytes": 3091709
+        },
+        "native_backtraces/bt_navigator-110.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-104.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-104.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-112.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-106.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/planner_server-106.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-108.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CE03",
+      "physics_steps": 32900,
+      "physics_duration_s": 32.893550872802734,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v289_CE03_attempt01",
+        "request_id": "v289_CE03_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792564783929417897,
+        "requested_at_monotonic_ns": 79697080158225,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 72,
+        "minus1008_raw_substring_mentions": 72,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 72,
+        "minus1008_raw_substring_mentions": 72,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 4
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "-1008": {
+          "one_based_line": 475,
+          "context": [
+            "[controller_server-3] [INFO] [1792564831.101592840] [quad_0.scan_planner_node]: spline_geometry_initialized samples=12 interval=0.367577873868 duration=4.043356612543",
+            "[controller_server-3] [INFO] [1792564831.101702335] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.3301->0.3301 body_age=0.0000->0.0000 cloud_ready=1 ignored_older_body=0",
+            "[controller_server-3] [INFO] [1792564831.104141344] [bspline_opt]: LBFGS_RESTORED stage=rebound return=-1008 initial_cost=3.06959727442 best_cost=2.50086550307; hard validation pending",
+            "[controller_server-3] \u001b[32miter(+1)=51,time(ms)=2.437,total_t(ms)=2.457,cost=2.501",
+            "[controller_server-3] \u001b[0mfirst_optimize_step_success=1"
+          ]
+        }
+      },
+      "final_error_lines": [],
+      "measured_seed_fallback": {
+        "count": 1,
+        "distance_triggered": 0,
+        "occupancy_triggered": 1,
+        "maximum_predicted_distance_before_fallback_m": 3.7e-05
+      },
+      "snapshot_manifest_sha256": "6979a4c3076792203c681003cded928915fd29476e375c46075df96eece1faad",
+      "sources": {
+        "result.json": {
+          "sha256": "b15db0cfe82170e9d046ef680d18c1cf579ae6a5fe9c3cdb3998e76d6a43586f",
+          "bytes": 4774
+        },
+        "nav2.log": {
+          "sha256": "b0124fb8978bbba07ced8aabd20122c5e2ad446d736bc2b082bce65727449f2c",
+          "bytes": 1583107
+        },
+        "native_backtraces/bt_navigator-110.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-104.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-104.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-112.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-106.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/planner_server-106.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-108.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    }
+  ]
+}

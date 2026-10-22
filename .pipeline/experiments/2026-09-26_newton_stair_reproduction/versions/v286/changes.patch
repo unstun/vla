@@ -1,0 +1,267 @@
+--- v285/src/bspline_opt/src/bspline_optimizer.cpp
++++ v286/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -1225,8 +1225,8 @@
+ 
+   double BsplineOptimizer::calcEnvironmentalCost(const Eigen::MatrixXd &q,Eigen::MatrixXd &gradient) const {
+     gradient=Eigen::MatrixXd::Zero(3,q.cols());
+-    if(lambda_environment_==0. || !grid_map_->hasEnvironmentalField())return 0.;
+-    const auto score=[this](const Eigen::Vector3d &p,double yaw,Eigen::Vector4d &g){return grid_map_->environmentalCostGradient(p,yaw,g);};
++    if(lambda_environment_==0. || !grid_map_->hasReboundEnvironmentalField())return 0.;
++    const auto score=[this](const Eigen::Vector3d &p,double yaw,Eigen::Vector4d &g){return grid_map_->reboundEnvironmentalCostGradient(p,yaw,g);};
+     const auto heading=[this](const Eigen::Vector3d &p,const Eigen::Vector3d &a,const Eigen::Vector3d &v){return grid_map_->collisionTrajectoryYaw(p,a,v);};
+     return environmentalCurveCost(q,bspline_interval_,GridMap::collision_heading_lookahead_s,score,heading,gradient,
+       grid_map_->measuredBodyYaw());
+@@ -1288,9 +1288,7 @@
+ 
+     Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + lambda4_ * g_fitness +
+                               lambda3_ * g_feasibility;
+-    Eigen::MatrixXd environmental_gradient;
+-    f_combine+=lambda_environment_*calcEnvironmentalCost(cps_.points,environmental_gradient);
+-    grad_3D+=lambda_environment_*environmental_gradient;
++    // Refinement retimes/fits the rebound result; geometry is reviewed afterward.
+     if (!optimize_height_) grad_3D.row(2).setZero();
+     memcpy(grad, grad_3D.data() + 3 * order_, n * sizeof(grad[0]));
+   }
+--- v285/src/path_searching/include/path_searching/dyn_a_star.h
++++ v286/src/path_searching/include/path_searching/dyn_a_star.h
+@@ -84,7 +84,7 @@
+ 	double getEuclHeu(GridNodePtr node1, GridNodePtr node2);
+ 	inline double getHeu(GridNodePtr node1, GridNodePtr node2);
+ 
+-	bool ConvertToIndexAndAdjustStartEndPoints(const Eigen::Vector3d start_pt, const Eigen::Vector3d end_pt, Eigen::Vector3i &start_idx, Eigen::Vector3i &end_idx);
++	bool ConvertToIndexAndAdjustStartEndPoints(const Eigen::Vector3d start_pt, const Eigen::Vector3d end_pt, Eigen::Vector3i &start_idx, Eigen::Vector3i &end_idx, double goal_tolerance=0.0);
+ 
+ 	inline Eigen::Vector3d Index2Coord(const Eigen::Vector3i &index) const;
+ 	inline bool Coord2Index(const Eigen::Vector3d &pt, Eigen::Vector3i &idx) const;
+--- v285/src/path_searching/src/dyn_a_star.cpp
++++ v286/src/path_searching/src/dyn_a_star.cpp
+@@ -92,7 +92,7 @@
+     return path;
+ }
+ 
+-bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d end_pt, Vector3i &start_idx, Vector3i &end_idx)
++bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector3d start_pt, Vector3d end_pt, Vector3i &start_idx, Vector3i &end_idx, double goal_tolerance)
+ {
+     if (!Coord2Index(start_pt, start_idx) || !Coord2Index(end_pt, end_idx))
+         return false;
+@@ -112,20 +112,24 @@
+           candidate.z()=reactive_stair::nearestGridOffset((projected.z()-center_.z())*inv_step_size_)+CENTER_IDX_.z();
+           if(candidate.z()<1 || candidate.z()>=POOL_SIZE_.z()-1)continue;
+           bool clear=false;
+-          if((projected-point).norm()>1e-6)
+-            clear=start ? grid_map_->collisionFreeSegment(point,projected) : grid_map_->collisionFreeSegment(projected,point);
+-          else {
+-            // Zero-length endpoints have no chord tangent. A legal outgoing
+-            // heading may enter the search; every actual edge is still checked.
+-            for(int heading=0;heading<8&&!clear;++heading)
+-              clear=checkOccupancy(projected,heading*M_PI/4.)==0;
++          // Quantization is not a physical connector. Use an actual adjacent
++          // support edge to determine a feasible arrival/departure tangent.
++          for(int dx=-1;dx<=1&&!clear;++dx)for(int dy=-1;dy<=1&&!clear;++dy) {
++            if(dx==0&&dy==0)continue;
++            Vector3d adjacent=projected+step_size_*Vector3d(dx,dy,0);
++            if(!grid_map_->terrainSupportHeight(adjacent,adjacent.z()))continue;
++            clear=start ? grid_map_->collisionFreeSegment(projected,adjacent) :
++                grid_map_->collisionFreeSegment(adjacent,projected);
+           }
+           if(!clear)continue;
+           index=candidate;terrain_points_[terrainKey(index)]=projected;return true;
+         }
+         return false;
+       };
+-      return adjust(start_pt,start_idx,true) && adjust(end_pt,end_idx,false);
++      // A goal region may contain a valid reached neighbor even if its center
++      // is occupied. Keep the original center/tolerance; search certifies it.
++      return adjust(start_pt,start_idx,true) &&
++          (goal_tolerance>0. || adjust(end_pt,end_idx,false));
+     }
+ 
+     Eigen::Vector3d start_to_end = end_pt - start_pt;
+@@ -186,7 +190,7 @@
+     gridPath_.clear();
+     has_exact_goal_ = false;
+     if (!std::isfinite(goal_tolerance) || goal_tolerance < 0.0 ||
+-        (!exact_endpoint && goal_tolerance != 0.0) ||
++        (!exact_endpoint && goal_tolerance != 0.0 && !grid_map_->hasTerrainSupport()) ||
+         !std::isfinite(step_size) || step_size <= 0.0 ||
+         !std::isfinite(1.0 / step_size) || !start_pt.allFinite() || !end_pt.allFinite())
+       return ASTAR_RET::INIT_ERR;
+@@ -237,7 +241,7 @@
+     const bool endpoints_valid = exact_endpoint
+         ? (Coord2Index(start_pt, start_idx) && Coord2Index(end_pt, end_idx) &&
+            (Index2Coord(start_idx) - start_pt).norm() <= 1e-6)
+-        : ConvertToIndexAndAdjustStartEndPoints(start_pt, end_pt, start_idx, end_idx);
++        : ConvertToIndexAndAdjustStartEndPoints(start_pt, end_pt, start_idx, end_idx, goal_tolerance);
+     if (!endpoints_valid)
+     {
+         RCLCPP_ERROR(rclcpp::get_logger("path_searching"),
+@@ -356,7 +360,7 @@
+         if (goal_tolerance > 0.0 && current->cameFrom != nullptr &&
+             (Index2Coord(current->index) - end_pt).norm() <= goal_tolerance) {
+             const Eigen::Vector3d proposal = Index2Coord(current->index);
+-            const Eigen::Vector3d direction = proposal - start_pt;
++            const Eigen::Vector3d direction = proposal - Index2Coord(current->cameFrom->index);
+             const double selection_yaw = std::atan2(direction.y(), direction.x());
+             const double stopped_yaw = grid_map_->collisionTrajectoryYaw(
+                 proposal, proposal, Eigen::Vector3d::Zero());
+@@ -398,7 +402,8 @@
+             // A rejected connector, including one at the snapped goal node,
+             // does not finish the search. Other approach directions can work.
+         }
+-        if (!exact_endpoint && current->index(0) == endPtr->index(0) && current->index(1) == endPtr->index(1) && current->index(2) == endPtr->index(2))
++        if (!exact_endpoint && current->index(0) == endPtr->index(0) && current->index(1) == endPtr->index(1) && current->index(2) == endPtr->index(2) &&
++            (goal_tolerance==0. || (Index2Coord(current->index)-end_pt).norm()<=goal_tolerance))
+         {
+             // ros::Time time_2 = ros::Time::now();
+             // printf("\033[34mA star iter:%d, time:%.3f\033[0m\n",num_iter, (time_2 - time_1).toSec()*1000);
+--- v285/src/plan_env/include/plan_env/grid_map.h
++++ v286/src/plan_env/include/plan_env/grid_map.h
+@@ -344,6 +344,25 @@
+     gradient.setZero();return 0.;
+   }
+   bool hasEnvironmentalField() const {return bool(supportState().environmental_field_);}
++  bool hasReboundEnvironmentalField() const {
++    return hasEnvironmentalField() || bool(supportState().static_solid_);
++  }
++  double reboundEnvironmentalCostGradient(const Eigen::Vector3d &p,double yaw,Eigen::Vector4d &gradient) const {
++    double cost=environmentalCostGradient(p,yaw,gradient);
++    const auto source=supportState().static_solid_;
++    if(source) {
++      // Local rebound only: a C2 hinge outside the unchanged 0.35 m envelope.
++      // Keep exact source geometry separate from the approximate ENV225 atlas.
++      constexpr double buffer=.055;
++      const auto assessment=source->assess(p,yaw);
++      const double u=std::max(0.,(buffer-assessment.margin)/buffer);
++      if(u>0.) {
++        cost+=u*u*u*u;
++        gradient-=(4.*u*u*u/buffer)*assessment.gradient;
++      }
++    }
++    return cost;
++  }
+   bool hasTerrainSupport() const {return !supportState().reactive_ground_.cells.empty();}
+   // Associate the nearest raw layer first; never skip unsupported terrain for
+   // another floor. This proposes a search height, not a collision exemption.
+@@ -431,6 +450,7 @@
+   };
+   std::shared_ptr<AsyncMapping> async_mapping_;
+   std::shared_ptr<AsyncMapping> query_context_; // Health only; never owns/join-stops the writer.
++  reactive_stair::StaticSolidQueryCache supported_air_source_cache_; // This query shell owns its immutable-source proofs.
+   uint64_t map_revision_ = 0;
+   bool last_fusion_fixed_point_ = false;
+   void enqueueMapping(MappingInput input);
+--- v285/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v286/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -395,6 +395,10 @@
+           supportState().reactive_parameters_.body_height_tolerance_m, body_ground) ||
+       !associated_height(query.x_m, query.y_m, body_ground, step, footprint_ground)) return Verdict::UnknownSupport;
+   if (std::abs(footprint_ground-body_ground)>=step) return Verdict::UnsupportedTerrain;
++  if(mapState().mp_.support_gap_mask_ &&
++      (mapState().mp_.support_gap_mask_->blocks(body_query.x_m,body_query.y_m,body_ground) ||
++       mapState().mp_.support_gap_mask_->blocks(query.x_m,query.y_m,footprint_ground)))
++    return Verdict::SupportGap;
+   // Only the support-layer height changes; do not move the robot, spline,
+   // obstacle query, map-boundary query or retained measured LiDAR evidence.
+   query.z_m = footprint_ground + supportState().reactive_parameters_.body_clearance_m;
+@@ -552,16 +556,18 @@
+   obstacle.frame = mapState().mp_.frame_id_;
+   obstacle.stamp_s = mapState().reactive_cloud_stamp_s_;
+   if (mapState().reactive_cloud_ready_) obstacle.source_id = "scan_lidar_cloud";
++  bool uninflated_air=false;
+   if (query.in_map) {
+     Eigen::Vector3i query_id;
+     posToIndex(point, query_id);
+     const int address = toAddress(query_id);
+-    if (mapState().md_.occupancy_buffer_[address] < mapState().mp_.clamp_min_log_ - 1e-3) {
++    uninflated_air=mapState().md_.occupancy_buffer_inflate_[address]==0;
++    if (!uninflated_air) {
++      obstacle.occupancy = rawContributorOccupancy(query_id);
++    } else if (mapState().md_.occupancy_buffer_[address] < mapState().mp_.clamp_min_log_ - 1e-3) {
+       obstacle.occupancy = reactive_stair::Occupancy::Unknown;
+-    } else if (mapState().md_.occupancy_buffer_inflate_[address] == 0) {
++    } else {
+       obstacle.occupancy = reactive_stair::Occupancy::Free;
+-    } else {
+-      obstacle.occupancy = rawContributorOccupancy(query_id);
+     }
+   }
+   if (mapState().reactive_known_trunk_enabled_ && query.in_map && reactive_body_stamp_s_ > 0.0) {
+@@ -590,8 +596,24 @@
+     }
+   }
+   reactive_stair::Cell2 support_cell;
+-  const auto verdict = supportQueryCell(query.x_m,query.y_m,support_cell) ?
++  auto verdict = supportQueryCell(query.x_m,query.y_m,support_cell) ?
+       supportState().reactive_decision_.decide(query,obstacle,&support_cell) : reactive_stair::Verdict::InvalidQuery;
++  if(verdict==reactive_stair::Verdict::UnknownObstacle && query.in_map && uninflated_air &&
++      supportState().static_solid_) {
++    // Ray history describes observation, not whether supported source-free air
++    // exists. Re-run the full support/freshness decision; never waive a hit,
++    // support gap, unsupported nearest layer or stale observation.
++    auto air=obstacle;air.occupancy=reactive_stair::Occupancy::Free;
++    verdict=supportState().reactive_decision_.decide(query,air,&support_cell);
++    if(verdict==reactive_stair::Verdict::Free) {
++      const Eigen::Vector3d body=body_reference ? *body_reference : point;
++      const Eigen::Vector3d direction=point-body;
++      const double yaw=direction.head<2>().squaredNorm()>1e-12 ?
++          std::atan2(direction.y(),direction.x()) : measuredBodyYaw();
++      if(supportState().static_solid_->collides(body,yaw,supported_air_source_cache_))
++        verdict=reactive_stair::Verdict::StaticObstacle;
++    }
++  }
+   if(typed)*typed=verdict;
+   // Controller query views never share the native logger throttles or diagnostic set.
+   if (query_context_) return verdict == reactive_stair::Verdict::Free ? 0 : 1;
+--- v285/src/plan_manage/src/planner_manager.cpp
++++ v286/src/plan_manage/src/planner_manager.cpp
+@@ -610,11 +610,17 @@
+ 
+   std::vector<Eigen::Vector3d> SCANPlannerManager::findGoalNeighborhoodPath(
+       const Eigen::Vector3d &start, const Eigen::Vector3d &goal, double tolerance) {
++    if (!grid_map_ || !bspline_optimizer_rebound_ || !bspline_optimizer_rebound_->a_star_) return {};
+     reactive_stair::PlanningProfile::Scope profile(grid_map_->planning_profile_, reactive_stair::PlanningProfile::GoalSearch);
+-    if (!grid_map_ || !bspline_optimizer_rebound_ || !bspline_optimizer_rebound_->a_star_) return {};
++    // A local sliding map cannot search to a remote global endpoint. The FSM
++    // already selects a checked forward reference frontier for that case.
++    if(!grid_map_->isInMap(start)||!grid_map_->isInMap(goal))return {};
+     const auto search = bspline_optimizer_rebound_->a_star_;
+-    if (search->AstarSearch(grid_map_->getResolution(), start, goal, true, tolerance) != ASTAR_RET::SUCCESS) return {};
+-    return search->getPath();
++    if (search->AstarSearch(grid_map_->getResolution(), start, goal,
++        !(grid_map_->hasTerrainSupport() && tolerance>0.), tolerance) != ASTAR_RET::SUCCESS) return {};
++    auto path=search->getPath();
++    if(path.empty() || (path.back()-goal).norm()>tolerance+1e-10)return {};
++    return path;
+   }
+ 
+   bool SCANPlannerManager::EmergencyStop(Eigen::Vector3d stop_pos)
+--- v285/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
++++ v286/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
+@@ -335,7 +335,7 @@
+     // travel ratio so a turning robot does not chase a full-speed future point.
+     const double u=std::clamp((heading_error-heading_resume_threshold_) /
+         (heading_error_threshold_-heading_resume_threshold_),0.0,1.0);
+-    const double translation_scale=0.2+0.8*(1.0-u*u*(3.0-2.0*u));
++    const double translation_scale=0.5+0.5*(1.0-u*u*(3.0-2.0*u));
+     turning_in_place_=false;
+     publishExecutionFrozen(false);
+     exec_time_ = std::min(traj_duration_, exec_time_ + dt*translation_scale);
+--- v285/src/scan_nav2_controller/test/test_tracking_behavior.cpp
++++ v286/src/scan_nav2_controller/test/test_tracking_behavior.cpp
+@@ -154,7 +154,7 @@
+ 
+ TEST_F(TrackingBehavior, HeadingSlowsTranslationAndPhaseWithoutTravelLock) {
+   for(int i=0;i<60;++i)tick(-1.6);
+-  EXPECT_NEAR(node->exec_time_,.24,1e-8);
++  EXPECT_NEAR(node->exec_time_,.6,1e-8);
+   EXPECT_GT(std::hypot(node->sampled_command_.linear.x,node->sampled_command_.linear.y),.01);
+   EXPECT_GT(std::abs(node->sampled_command_.angular.z),.1);
+   EXPECT_FALSE(node->executionFrozen());EXPECT_FALSE(node->turning_in_place_);
+@@ -166,6 +166,6 @@
+   for(double heading:{.59,.6,.61,.7,.8,.9,.99,1.,1.6,3.1}) {
+     replace();tick(-heading);
+     const double ratio=node->exec_time_/.02;
+-    EXPECT_GE(ratio,.2-1e-9);EXPECT_LE(ratio,previous+1e-9);previous=ratio;
++    EXPECT_GE(ratio,.5-1e-9);EXPECT_LE(ratio,previous+1e-9);previous=ratio;
+   }
+ }

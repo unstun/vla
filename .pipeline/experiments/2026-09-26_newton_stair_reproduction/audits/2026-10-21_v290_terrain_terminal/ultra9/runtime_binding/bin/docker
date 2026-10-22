@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Task-local factory entry adapter; native Docker commands pass through."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import sys
+
+HERE = Path('/home/ubuntu/sun/vla_v290_20261021/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v234')
+BINDING = json.loads((HERE / 'binding.json').read_text())
+PREFIX = Path(BINDING['remote_root'])
+IDENTITY = json.loads((HERE / 'factory_adapter.json').read_text())
+args = sys.argv[1:]
+image = IDENTITY['image']
+if args and args[0] == 'create' and image in args:
+    original = list(args)
+    name = args[args.index('--name') + 1]
+    assert name.startswith('vla-factory-algorithm-'), name
+    compiler = ('g++ -std=c++17 -O2 -Wall -Wextra -Werror /actor.cpp '
+                '-Wl,--no-as-needed -pthread -lpthread -ldl -o /tmp/actor '
+                '&& exec /tmp/actor /snapshot/algorithm_input/motion_config.bin '
+                '/snapshot/algorithm_input/identity.txt')
+    index = args.index(image)
+    assert args[index + 1:] == ['-c', compiler], 'Factory command drift'
+    entry = args.index('--entrypoint') + 1
+    assert args[entry] == '/bin/sh'
+    emulator = PREFIX / 'bootstrap/qemu/extracted/usr/bin/qemu-aarch64-static'
+    actor = PREFIX / 'bootstrap/factory_actor'
+    root = next(p for p in HERE.parents if (p / 'AGENTS.md').is_file())
+    source = root / '.pipeline/experiments/2026-09-27_lite3_factory_runtime_audit/factory_actor.cpp'
+    for path, key in ((emulator, 'emulator_sha256'), (actor, 'actor_sha256'),
+                      (source, 'actor_source_sha256')):
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == IDENTITY[key], path
+    args[entry] = '/v234/qemu-aarch64-static'
+    args[index + 1:] = ['/v234/factory_actor', '/snapshot/algorithm_input/motion_config.bin',
+                        '/snapshot/algorithm_input/identity.txt']
+    args[index:index] = ['--platform', 'linux/arm64', '--mount',
+        f'type=bind,src={emulator},dst=/v234/qemu-aarch64-static,readonly', '--mount',
+        f'type=bind,src={actor},dst=/v234/factory_actor,readonly']
+    record = dict(original_command=original, adapted_command=args, identity=IDENTITY,
+                  global_binfmt_changed=False, algorithm_or_protocol_changed=False)
+    (Path('/home/ubuntu/sun/vla_v290_20261021/evidence') / (name + '_adapter.json')).write_text(json.dumps(record, indent=2) + '\n')
+os.execv('/usr/bin/docker', ['docker', *args])

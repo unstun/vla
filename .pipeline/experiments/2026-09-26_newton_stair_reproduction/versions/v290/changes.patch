@@ -1,0 +1,258 @@
+--- v289/src/path_searching/include/path_searching/dyn_a_star.h
++++ v290/src/path_searching/include/path_searching/dyn_a_star.h
+@@ -127,6 +127,7 @@
+ 
+ 	void initGridMap(GridMap::Ptr occ_map, const Eigen::Vector3i pool_size);
+ 
++    // Terrain support selects interior heights independently of exact mode.
+     // Exact mode preserves the requested endpoints and checks a terminal edge
+     // from a popped lattice node within two cells (3D Euclidean distance).
+     // After queue exhaustion only, longer checked edges can recover a result
+--- v289/src/path_searching/src/dyn_a_star.cpp
++++ v290/src/path_searching/src/dyn_a_star.cpp
+@@ -100,9 +100,11 @@
+     if(terrain_search_) {
+       // Prefer one support-aligned endpoint. Endpoint quantization need not
+       // prove an extra adjacent edge: the actual search edges do that below.
+-      const auto project=[&](const Vector3d &point,Vector3i &index) {
++      const auto project=[&](Vector3d &point,Vector3i &index) {
+         Vector3d p=latticeCoord(index);p.z()=point.z();
+         if(!grid_map_->terrainSupportHeight(p,p.z()) || !Coord2Index(p,index) || !poolIndexValid(index,true))return false;
++        // Keep the next retreat associated with this tread, even if occupied.
++        point.z()=p.z();
+         for(int dx=-1;dx<=1;++dx)for(int dy=-1;dy<=1;++dy) {
+           if((dx||dy) && checkOccupancy(p,std::atan2(double(dy),double(dx)))==0) {
+             terrain_points_[terrainKey(index)]=p;return true;
+@@ -110,11 +112,20 @@
+         }
+         return false;
+       };
+-      if(project(start_pt,start_idx) && (goal_tolerance>0. || project(end_pt,end_idx)))return true;
+-      // SCAN's original chord/plane representation is a proposal fallback,
+-      // subject to the same occupancy, support, edge and downstream curve checks.
+-      terrain_search_=false;terrain_points_.clear();
+-      if(!Coord2Index(start_pt,start_idx) || !Coord2Index(end_pt,end_idx))return false;
++      const Vector2d direction=(end_pt-start_pt).head<2>();
++      const auto adjust=[&](Vector3d point,Vector3i &index,double sign) {
++        for(int attempt=0;attempt<=POOL_SIZE_.maxCoeff();++attempt) {
++          if(!Coord2Index(point,index) || !poolIndexValid(index,true))return false;
++          if(project(point,index))return true;
++          if(direction.norm()<1e-6)return false;
++          // Retreat in XY and re-associate Z on every proposal. An obstacle
++          // cannot silently change the search back to a sloped chord plane.
++          point.head<2>()+=sign*step_size_*direction.normalized();
++        }
++        return false;
++      };
++      return adjust(start_pt,start_idx,-1.) &&
++          (goal_tolerance>0. || adjust(end_pt,end_idx,1.));
+     }
+ 
+     Eigen::Vector3d start_to_end = end_pt - start_pt;
+@@ -220,9 +231,9 @@
+     };
+ 
+     terrain_points_.clear();
+-    // Exact endpoint search keeps its existing contract; local repair searches
+-    // follow the available support surface instead of a start/end sloped plane.
+-    terrain_search_=!exact_endpoint && grid_map_->hasTerrainSupport();
++    // Exact endpoint admission and interior height representation are separate.
++    // Terrain chooses interior heights; exact start/terminal connectors stay exact.
++    terrain_search_=grid_map_->hasTerrainSupport();
+     step_size_ = step_size;
+     inv_step_size_ = 1 / step_size;
+     for (int axis = 0; axis < 3; ++axis)
+@@ -233,18 +244,20 @@
+         ? (Coord2Index(start_pt, start_idx) && Coord2Index(end_pt, end_idx) &&
+            (Index2Coord(start_idx) - start_pt).norm() <= 1e-6)
+         : ConvertToIndexAndAdjustStartEndPoints(start_pt, end_pt, start_idx, end_idx, goal_tolerance);
+-    if (!endpoints_valid || !poolIndexValid(start_idx, terrain_search_) ||
+-        !poolIndexValid(end_idx, terrain_search_))
++    if (!endpoints_valid || !poolIndexValid(start_idx, terrain_search_ && !exact_endpoint) ||
++        !poolIndexValid(end_idx, terrain_search_ && !exact_endpoint))
+     {
+         RCLCPP_ERROR(rclcpp::get_logger("path_searching"),
+                      "Unable to handle the initial or end point, force return!");
+         return ASTAR_RET::INIT_ERR;
+     }
++    if(terrain_search_ && exact_endpoint)
++      terrain_points_.emplace(terrainKey(start_idx),start_pt);
+ 
+     // if ( start_pt(0) > -1 && start_pt(0) < 0 )
+     //     cout << "start_pt=" << start_pt.transpose() << " end_pt=" << end_pt.transpose() << endl;
+ 
+-    if (goal_region_precheck_enabled && exact_endpoint && goal_tolerance > 0.0) {
++    if (goal_region_precheck_enabled && exact_endpoint && !terrain_search_ && goal_tolerance > 0.0) {
+         reactive_stair::PlanningProfile::Scope proof(grid_map_->planning_profile_, reactive_stair::PlanningProfile::GoalProof);
+         Eigen::Vector3d lower, upper;
+         if (grid_map_->bodyCenterBounds(lower, upper) &&
+@@ -256,7 +269,7 @@
+         }
+     }
+ 
+-    if (goal_endpoint_evidence_enabled && exact_endpoint && goal_tolerance > 0.0 && use_upstream_search_plane) {
++    if (goal_endpoint_evidence_enabled && exact_endpoint && !terrain_search_ && goal_tolerance > 0.0 && use_upstream_search_plane) {
+         reactive_stair::PlanningProfile::Scope proof(grid_map_->planning_profile_, reactive_stair::PlanningProfile::GoalProof);
+         Eigen::Vector3d lower, upper;
+         if (grid_map_->bodyCenterBounds(lower, upper) &&
+--- v289/src/plan_env/include/plan_env/raw_return_classification.h
++++ v290/src/plan_env/include/plan_env/raw_return_classification.h
+@@ -28,29 +28,33 @@
+     if ((surface.support == Support::Flat || surface.support == Support::Stair) &&
+         std::abs(z_m - surface.elevation_m) <= band_m) return true;
+   if (!allow_risers) return false;
+-  // Ground-relative height is signed. A mapped riser lies below its upper
+-  // tread and above an associated lower neighbor; it is not an object above
+-  // that floor. Reuse the existing ETH layer association and step capability.
++  // A mapped riser lies between adjacent selected treads. Its measured XY
++  // may belong to either tread's cell; use the same interval from both sides.
+   const StepScoreParameters parameters;
+   if (std::abs(terrain.resolution_m - parameters.expected_resolution_m) > 1e-6 ||
+       ix <= std::numeric_limits<int>::min() || ix >= std::numeric_limits<int>::max() ||
+       iy <= std::numeric_limits<int>::min() || iy >= std::numeric_limits<int>::max()) return false;
+   const int layer = nearestSurface(found->second, z_m, parameters.critical_height_m);
+   if (layer < 0) return false;
+-  const double upper = found->second[layer].elevation_m;
+-  if (z_m >= upper) return false; // Above-ground obstacles never use this extension.
+-  double lower = upper;
++  const auto &central=found->second[layer];
++  if(central.support!=Support::Flat && central.support!=Support::Stair)return false;
++  const double reference=central.elevation_m;
+   for (int dx = -1; dx <= 1; ++dx) {
+     for (int dy = -1; dy <= 1; ++dy) {
+       if ((dx * dx + dy * dy) * terrain.resolution_m * terrain.resolution_m >
+           parameters.first_radius_m * parameters.first_radius_m) continue;
+       const auto neighbor = terrain.cells.find({static_cast<int>(ix) + dx, static_cast<int>(iy) + dy});
+       if (neighbor == terrain.cells.end()) continue;
+-      const int associated = nearestSurface(neighbor->second, upper, parameters.critical_height_m);
+-      if (associated >= 0) lower = std::min(lower, neighbor->second[associated].elevation_m);
++      const int associated = nearestSurface(neighbor->second, reference, parameters.critical_height_m);
++      if(associated<0)continue;
++      const auto &surface=neighbor->second[associated];
++      if(surface.support!=Support::Flat && surface.support!=Support::Stair)continue;
++      const double lower=std::min(reference,surface.elevation_m),upper=std::max(reference,surface.elevation_m);
++      if(upper>lower && upper-lower<parameters.critical_height_m &&
++          z_m>=lower-band_m && z_m<=upper+band_m)return true;
+     }
+   }
+-  return upper - lower < parameters.critical_height_m && z_m >= lower - band_m;
++  return false;
+ }
+ 
+ inline bool mayWaiveRawContributor(bool confirmed_terrain_return,
+--- v289/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v290/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -440,6 +440,8 @@
+       // return, even at a supported XY, keeps the result occupied.
+       bool contributor = false;
+       bool unclassified = false;
++      Eigen::Vector3d query_center;
++      indexToPos(id,query_center);
+       for (const auto &offset : mapState().md_.inflate_offsets_) {
+         const Eigen::Vector3i source = id - offset;
+         if (!isInMap(source) || mapState().md_.occupancy_buffer_[toAddress(source)] <= mapState().mp_.min_occupancy_log_)
+@@ -450,6 +452,15 @@
+                 mapState().reactive_terrain_hits_.count(key) != 0,
+                 mapState().reactive_nonterrain_hits_.count(key) != 0,
+                 mapState().reactive_nonterrain_history_.count(key) != 0)) {
++          // A voxel entirely below this query's associated support surface
++          // cannot inflate through that surface into the supported body layer.
++          // Keep raw occupancy/history, and retain every above-floor contributor.
++          Eigen::Vector3d source_center;indexToPos(source,source_center);
++          Eigen::Vector3d support_at(source_center.x(),source_center.y(),query_center.z());
++          double support_z;
++          if(terrainSupportHeight(support_at,support_z) &&
++              source_center.z()+0.5*mapState().mp_.resolution_ <=
++                support_z-supportState().reactive_parameters_.body_clearance_m)continue;
+           unclassified = true;
+           break;
+         }
+--- v289/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
++++ v290/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
+@@ -348,14 +348,24 @@
+     const double translation_scale=0.5+0.5*(1.0-u*u*(3.0-2.0*u));
+     turning_in_place_=false;
+     publishExecutionFrozen(false);
+-    exec_time_ = std::min(traj_duration_, exec_time_ + dt*translation_scale);
++    // Approach the unchanged capture band with the existing position gain,
++    // rather than arriving at cruise speed and asking PD to absorb the stop.
++    double speed_limit=std::max(max_vx_,max_vy_);
++    if(goal_pose_valid_ && !reverse_motion_ &&
++        std::abs(goal_pos_.z()-odom_pos_.z())<=goal_z_tolerance_)
++      speed_limit=std::min(speed_limit,kp_pos_*(goal_pos_-odom_pos_).head<2>().norm());
++    const Eigen::Vector2d requested_velocity=traj_[1].evaluateDeBoorT(t_eval).head<2>()+
++        kp_pos_*(pos_des-odom_pos_).head<2>();
++    const double approach_scale=speed_limit<std::max(max_vx_,max_vy_) && requested_velocity.norm()>speed_limit ?
++        speed_limit/requested_velocity.norm() : 1.0;
++    exec_time_ = std::min(traj_duration_, exec_time_ + dt*translation_scale*approach_scale);
+     last_update_time_ = current_time;
+     pos_des = traj_[0].evaluateDeBoorT(exec_time_);
+     const Eigen::Vector3d vel_des = traj_[1].evaluateDeBoorT(exec_time_);
+     const Eigen::Vector2d pos_error(pos_des.x() - odom_pos_.x(), pos_des.y() - odom_pos_.y());
+     const Eigen::Vector2d vel_world = clampNorm(
+         Eigen::Vector2d(vel_des.x(), vel_des.y()) + kp_pos_ * pos_error,
+-        std::max(max_vx_, max_vy_));
++        speed_limit);
+     const double c = std::cos(odom_yaw_);
+     const double s = std::sin(odom_yaw_);
+     geometry_msgs::msg::Twist command;
+--- v289/src/scan_nav2_controller/test/test_shared_support.cpp
++++ v290/src/scan_nav2_controller/test/test_shared_support.cpp
+@@ -1,5 +1,6 @@
+ #include <gtest/gtest.h>
+ #include <plan_env/grid_map.h>
++#include <plan_env/raw_return_classification.h>
+ #include <fstream>
+ #include <filesystem>
+ 
+@@ -41,7 +42,12 @@
+     auto footprint=q;footprint.x_m+=.18;
+     EXPECT_EQ(map.footprintSupportVerdict({1.,1.,.35},obstacle,footprint,false),Verdict::Free);
+     EXPECT_DOUBLE_EQ(footprint.x_m,1.18);EXPECT_DOUBLE_EQ(footprint.y_m,1.); // No query XY movement.
+-    EXPECT_FALSE(map.reactiveTerrainReturn({1.,1.,0.})); // Original classifier grid and heights remain.
++    // Exact tread classification retains its own source grid and heights.
++    EXPECT_FALSE(selectedGroundReturn(support->reactive_surface_ground_,1.,1.,0.,.03,false));
++    // The neighbouring selected upper tread now brackets this known riser
++    // from either cell. That must not admit an object above both treads.
++    EXPECT_TRUE(map.reactiveTerrainReturn({1.,1.,0.}));
++    EXPECT_FALSE(map.reactiveTerrainReturn({1.,1.,.08}));
+     EXPECT_DOUBLE_EQ(support->reactive_ground_.cells.at({9,9})[0].elevation_m,-.15);
+     state.physical_floor_navigation_source_id_="different-source";
+     ASSERT_TRUE(map.supportQueryCell(1.,1.,cell));EXPECT_EQ(cell.x,9);EXPECT_EQ(cell.y,9);
+--- v289/src/scan_nav2_controller/test/test_tracking_behavior.cpp
++++ v290/src/scan_nav2_controller/test/test_tracking_behavior.cpp
+@@ -221,3 +221,34 @@
+     }
+   }
+ }
++
++TEST_F(TrackingBehavior, TerminalApproachSlowsBeforeOriginalCaptureWithMatchedPhase) {
++  for(double distance:{.8,.5,.28}) {
++    node->clearTrajectory();replace();body.pose.position.x=50.-distance;body.pose.position.y=0.;
++    const double initial_phase=node->exec_time_;
++    tick();tick();
++    EXPECT_GT(node->exec_time_,initial_phase);
++    EXPECT_LT(node->exec_time_-initial_phase,.04);
++    geometry_msgs::msg::Twist previous=node->sampled_command_;
++    for(int i=0;i<60;++i) {
++      const auto cmd=tick();
++      EXPECT_LE(std::abs(cmd.linear.x-previous.linear.x),.04+1e-8);
++      previous=cmd;
++    }
++    EXPECT_LE(std::hypot(previous.linear.x,previous.linear.y),node->kp_pos_*distance+1e-8);
++    EXPECT_FALSE(node->goal_position_latched_);
++    EXPECT_FALSE(node->expired_braking_);
++  }
++  body.pose.position.x=49.76;
++  for(int i=0;i<60;++i)tick();
++  EXPECT_TRUE(node->goal_position_latched_);
++  EXPECT_EQ(node->sampled_command_,geometry_msgs::msg::Twist());
++  EXPECT_DOUBLE_EQ(node->goal_xy_tolerance_,.25);
++}
++
++TEST_F(TrackingBehavior, OverlappingOtherFloorDoesNotApplyTerminalSlowdown) {
++  node->clearTrajectory();replace();body.pose.position.x=49.5;body.pose.position.z=2.;
++  tick();tick();
++  EXPECT_NEAR(node->exec_time_,.04,1e-8);
++  EXPECT_FALSE(node->goal_position_latched_);
++}

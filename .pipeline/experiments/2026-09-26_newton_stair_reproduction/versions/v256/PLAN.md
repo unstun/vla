@@ -1,0 +1,22 @@
+# v256 — Shared immutable solid-body hard constraint
+
+Stage: experiment and analysis. Parent: frozen v254. Status: development.
+
+Reproduce B08 unchanged, identify its original-cloud witness, then reuse the v224 exact finite-cylinder / voxel uncertainty distance and floor-specific exclusion in one immutable runtime solid field. Keep radius 0.35 m, offset 0.18 m, up/down 0.55/0.35 m, support geometry, ENV225 soft objective, RL and scanner unchanged. Bind original solid evidence by FNV and SHA to both PCT and SCAN. Apply the same solid domain to graph edges, GPMP feasibility and dense static review; retain live observation freshness and unknown-space behavior. No coordinates or endpoint movements in runtime code.
+
+Regression gates: synthetic walls/pillars/railings, oriented front/rear shape, same-floor material exclusion versus another floor and mixed returns, identity/nonfinite failures, hard residual derivatives, B08 original witness and installed service, original twelve distinct routes, H00 and measured A02 continuous endpoints. Preserve failed development receipts. Do not rewrite predecessors.
+
+Next benchmark (separate frozen evaluator): 50 spatially distinct start-goal pairs, each with explicit start and goal headings, one scored call each: 15 up, 15 down, 8 intermediate, 6 same-floor constrictions, 6 boundary/control. Freeze manifest and expected legal/illegal labels before scoring. Original twelve controls are additional and do not inflate fifty. No scored substitutions or retries.
+
+Prospective offline physical-admission gate: zero admitted negative original-cloud solid margin; all predeclared illegal controls rejected; at least 90 percent of predeclared legal cases pass full global/static/cold SCAN admission and at least 90 percent first-GPMP among global admits. Exact requested endpoint positions and terminal heading preserved. All five strata must have qualified representatives. Select 8–10 distinct hardest eligible cases, including A04/G05, backward start, intermediate platform and descent. If a named route is genuinely physically invalid, report that limit rather than move it. No physical execution before this gate qualifies.
+
+Local repository is source of truth. Sync only owned source/evaluator/manifest files to gpu5070ti; verify hashes before build and before scored execution. Heavy point clouds, build objects and raw physics remain remote. Return compact logs, manifests, statistical tables and every full physical video to the audit delivered directory. No automatic commit or baseline promotion.
+
+
+Source-material audit before freeze: the legacy -0.1869 m minimum voxel contains three original horizontal floor points. Its 4.533–5.098 labels are nearest-overlying-floor associations, not material height extents. A distinct original vertical point still intrudes by 0.1333 m without voxel padding, proving B08 is invalid. Before hardening the legacy reference, correct only voxels whose ALL original source normals face upward, assigning their actual source Z range for same-floor exclusion. Keep mixed/vertical/downward/unclassified voxels unchanged. Point positions, floor channel, envelope, .26 m association and all support gates are unchanged. Preserve both original and corrected source identities and report legacy raw margins separately. This prevents turning the old soft export's pure-floor annotation artifact into a new hard floor obstacle.
+
+
+The final source encoding retains two independent evidence bands per voxel: original below-floor volume association OR actual pure-upward surface height. The attempted replacement-only annotation is retained as unqualified development evidence: it revoked valid below-floor volume exemptions and failed original controls. Final union semantics must be monotone: no old material exemption or old hard-free pose is lost. Independent unpartitioned SciPy/Numpy geometry checks this on 10,928 poses and every returned route; all original support and solid shape parameters stay fixed.
+
+
+Final performance seam: hard graph/static predicates use a short-circuit collision query over the unchanged zero-margin domain. GPMP asks for the full signed gradient only after an actual violation; ENV225 remains the positive-margin objective. Float query-centre compensation expands only KD broad-phase recall, never the geometric envelope or signed-distance threshold. Full-vs-binary static admission parity is required on the independent 10,928-pose corpus.

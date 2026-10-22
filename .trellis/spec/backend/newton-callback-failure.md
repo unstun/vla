@@ -1,5 +1,36 @@
 # Native optimization and process-failure boundaries
 
+## v289 ordered-input and recovery contract
+
+The shared recursive work lock serializes callback bodies, including manual
+sensor refresh. It cannot undo an Executor's earlier DDS take outside the
+lock. Merge both body-pose delivery paths through the same monotone buffer:
+ignore and count a source stamp older than the accepted high-water mark,
+preserve the newer valid state, and do not enqueue the discarded mapper pose.
+Invalid messages, bounded future queues and original freshness checks retain
+their refusal semantics. Test refresh(t2), delayed callback(t1), then t3>t2
+against the actual GridMap/FSM buffers; callback-entry serialization alone is
+not an ordering proof.
+
+Negative L-BFGS return recovery requires a finite initial objective and a
+strictly smaller finite candidate with finite gradient. Restore that complete
+candidate before the existing collision and dynamics checks. Function-call
+counts are not accepted descent steps; a best evaluated candidate need not
+satisfy Wolfe. Cancellation remains a refusal. Twelve-digit cost logs can
+round a real double-precision descent to equality.
+
+Lifecycle probes use an independent callback group and at most5Hz requests
+per node, while50Hz steady timeout checks and the original1s limit remain.
+Test the actual installed bridge while its default group is busy, plus real
+missing-node refusal. Verify the loaded module: sourcing an older overlay
+after the tested main installation can silently replace the implementation.
+
+Count solver code -1008 with a numeric-code boundary, excluding a dashed
+replan counter such as `---1008`; retain legacy substring mentions separately.
+Wrapper retention errors after process exit are distinct from navigation
+terminal status. Preserve originals, verify a non-pruning snapshot, and never
+repeat positive physics to repair an archive or video.
+
 ## 1. Scope and trigger
 
 v232 repairs the failure class observed in v231 near46.686s, on frozen v230

@@ -1,0 +1,25 @@
+# Building solid-body constraint and spatial generalization protocol
+
+Stage: experiment and analysis. Local repository is source of truth. Native treatment v256, evaluated with v257. Formal matrix and physical results are recorded separately; source/build qualification alone does not establish those claims.
+
+## Mechanism and source evidence
+
+Frozen v254 admitted B08 twice with no static rejected poses, while its original raw-cloud reference minimum was -0.186928809 m. The old static predicate checked support only. The minimum voxel contains three actual upward-facing horizontal floor points; the 4.533–5.098 labels are overlying-floor associations, not voxel height extents. A separate original point on a vertical face at (-6.4347811,-3.2528491,4.9316163), normal (1,0,0), intrudes by 0.133301882 m even without voxel padding at the original returned body pose/yaw. Thus the returned B08 pose is a genuine body-geometry violation, while the legacy minimum alone must not be described as wall penetration depth.
+
+v256 reuses the v224 finite-cylinder signed distance, PCL KD trees and source voxel uncertainty. Physical support, step transition, body shape and ENV225 soft objective remain unchanged. Global edges, GPMP feasibility and static review share the immutable solid predicate. The source export preserves every original point and original below-floor-volume association, adding a second actual-height material band only where all original source normals face upward. Either floor-material evidence may exempt the voxel for that queried floor. Mixed/vertical/downward material gets no new exemption. Independent unpartitioned SciPy/Numpy checks value parity and that no original floor-volume exemption is revoked. The failed replacement-only source treatment and all its control failures remain as unqualified development evidence remotely.
+
+Hard predicates test zero signed margin; the existing target positive margin remains soft. Binary broad-phase rounding allowance affects candidate recall only. No XY/Z endpoint move, coordinate condition, connected-component exception or endpoint snapping is added. The original 0.35 m radius, 0.18 m centres, 0.55/0.35 m vertical envelope and .26 m association/transition rules are preserved.
+
+## Distinct cases and scoring
+
+The pre-score manifest contains 52 unique four-tuples, 52 different spatial start-goal pairs, 52 distinct start positions and 52 distinct goal positions. Strata are 17 ascents (15 planned plus two explicit near-stair 180/90 degree controls), 15 descents, 8 intermediate starts/goals, 6 same-floor constrictions and 6 boundary/control routes. Of these 49 are predeclared positive and 3 are expected illegal refusals. The original fifty-case construction and all captures are retained; two controls were added before any route score. A04/G05 retain original coordinates; E04 retains B08 with an explicitly requested illegal terminal orientation. A position is not declared illegal at all headings merely because one heading collides.
+
+All requested terminal headings go through the existing RouteSession API with inference disabled. Each case receives one cold installed C++ PCT+ENV225+GPMP/static+SCAN invocation. Internal inherited two-smooth/one-graph attempts are separately counted, not new case repetitions. Every failure stays in the denominator. Six original geometric LiDAR scans are captured at each case's own unmodified nominal pose with zero physics steps, .1 s period/deadline and unchanged RL policy. This does not reproduce physical post-PD drift or real-time scheduling.
+
+Report global admission, first-GPMP static acceptance, first SCAN spline publication wall time, exact request position/terminal-heading errors, native typed/static failures, ENV edge margin, independent corrected raw-solid margin, legacy raw-solid margin and local curve raw-solid margin. Margins cap at 0.15 m. The original map has open halls, wing openings, pillars and corridor turns; no absent separate-room or door-leaf coverage is claimed. Coverage plots show requested poses/headings, not invented routes.
+
+## Prospective physical admission
+
+Require at least 90% positive full-chain passes, at least 90% first-GPMP among global admissions, all three illegal controls rejected, zero admitted negative independent raw-solid margins and exact requested endpoints/headings. Select ten distinct eligible routes: A04, G05, near-stair backward U14, two descents, an intermediate start, an intermediate goal, two same-floor constrictions and one legal boundary. Remaining choices rank by smallest edge/solid margin, then largest actual departure-heading difference. Do not replace or repeat scored cases after seeing results.
+
+No physics starts unless this gate qualifies. Then freeze one execution binding for all ten, use one formal attempt per route, preserve RL/original requested poses/.35 m/.1 s/v237 deadline semantics, and return every full actual video locally under delivered/. Report failed attempts and single-attempt scope without baseline promotion or automatic commits.

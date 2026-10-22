@@ -1,0 +1,550 @@
+--- v283/src/lite3_nav2_plugins/test/test_route_policy.cpp
++++ v284/src/lite3_nav2_plugins/test/test_route_policy.cpp
+@@ -100,3 +100,30 @@
+   EXPECT_THROW(policy.plan(start,goal,[]{return rclcpp::Time(2);},solve,[]{return std::vector<double>(3,0.);}),std::runtime_error);
+   EXPECT_NO_THROW(policy.plan(start,goal,[]{return rclcpp::Time(3);},solve,[]{return std::vector<double>(3,M_PI/2);}));
+ }
++
++TEST(RoutePolicy, StaticContinuationTrimsPrefixWithoutMovingStartSearchOrNewEpoch) {
++  for(int rotation=0;rotation<4;++rotation) {
++    RoutePolicy policy;const double angle=rotation*M_PI/2.;
++    const Eigen::Vector3d axis(std::cos(angle),std::sin(angle),0.);
++    const Eigen::Vector3d shift(.37*rotation,-.29*rotation,.3);
++    auto start=pose(YAML::Load("[0,0,0.3]")),goal=start;
++    const auto set=[](auto &p,const Eigen::Vector3d &v){p.pose.position.x=v.x();p.pose.position.y=v.y();p.pose.position.z=v.z();};
++    set(start,shift);set(goal,shift+4*axis);policy.begin("mission",goal,false);
++    EXPECT_FALSE(policy.retainedStatic(start,goal));
++    int calls=0;
++    const auto original=policy.plan(start,goal,[]{return rclcpp::Time(100);},[&]{
++      ++calls;std::vector<Eigen::Vector3d> points;for(int i=0;i<5;++i)points.push_back(shift+i*axis);return points;});
++    set(start,shift+2*axis+Eigen::Vector3d(0,0,.18)); // Moving stair-height excursion.
++    start.pose.orientation.z=std::sin(1.6);start.pose.orientation.w=std::cos(1.6);
++    for(int i=0;i<100;++i) {
++      const auto retained=policy.retainedStatic(start,goal);ASSERT_TRUE(retained);
++      EXPECT_EQ(retained->poses.size(),3u);EXPECT_EQ(retained->header.stamp,original.header.stamp);
++      EXPECT_EQ(retained->poses.back(),original.poses.back());
++    }
++    EXPECT_EQ(calls,1);
++    auto changed=goal;changed.pose.orientation.z=1.;changed.pose.orientation.w=0.;
++    EXPECT_THROW(policy.retainedStatic(start,changed),std::runtime_error);
++    policy.end("mission");EXPECT_FALSE(policy.retainedStatic(start,goal));
++    policy.begin("new",goal,false);EXPECT_FALSE(policy.retainedStatic(start,goal));
++  }
++}
+--- v283/src/lite3_nav2_plugins/src/pct_planner.cpp
++++ v284/src/lite3_nav2_plugins/src/pct_planner.cpp
+@@ -20,6 +20,7 @@
+   std::unique_ptr<PCTRoutePlanner> planner_;
+   std::string frame_;
+   bool active_{false};
++  bool static_reference_{false};
+   RoutePolicy policy_;
+   BlockedFeedback feedback_;
+   std::atomic<uint64_t> session_epoch_{0};
+@@ -59,6 +60,7 @@
+       if(support->radius()!=.35||support->offset()!=.18)throw std::runtime_error("Native support shape mismatch");
+       planner_->setStaticSupport(support);
+     }
++    static_reference_=!support_path.empty();
+     const auto solid_path=parameter(name+".static_solid_path",std::string(""));
+     const auto solid_fnv=parameter(name+".static_solid_fnv64",std::string(""));
+     if(!support_path.empty()&&solid_path.empty())throw std::runtime_error("Physical support mode requires pinned static solids");
+@@ -102,11 +104,18 @@
+     if (!active_ || !planner_ || !valid(start) || !valid(goal))
+       throw nav2_core::PlannerException("Inactive PCT planner or invalid world pose");
+     try {
++      const auto epoch=session_epoch_.load();
++      if(static_reference_) {
++        const auto retained=policy_.retainedStatic(start,goal);
++        if(retained) {
++          if(session_epoch_.load()!=epoch)throw std::runtime_error("mission_changed_during_planning");
++          path_pub_->publish(*retained);return *retained;
++        }
++      }
+       const auto xyz=[](const geometry_msgs::msg::PoseStamped &p) {
+         return Eigen::Vector3d(p.pose.position.x,p.pose.position.y,p.pose.position.z);
+       };
+       planner_->setRequestEndpoints(xyz(start),xyz(goal));
+-      const auto epoch=session_epoch_.load();
+       const auto context=policy_.context();
+       const std::string session=context ? context->id+"/"+std::to_string(epoch) : "";
+       const auto same_session=[&] {
+@@ -115,6 +124,7 @@
+             (current&&current->id!=context->id))throw std::runtime_error("mission_changed_during_feedback");
+       };
+       const auto refresh=[&](const nav_msgs::msg::Path &reference) {
++        if(static_reference_) {same_session();planner_->setFeedbackConstraints({});return;}
+         feedback_.bind(session,BlockedFeedback::Clock::now());
+         if(traversability_ && context) {
+           const auto poses=localFeedbackSamples(reference,start,feedback_.witnesses());
+--- v283/src/lite3_nav2_plugins/src/pct_route_planner.cpp
++++ v284/src/lite3_nav2_plugins/src/pct_route_planner.cpp
+@@ -345,8 +345,14 @@
+       return 2.*total/steps*(to-from).norm()/resolution_;
+     },[this](double x,double y,double height,double yaw,Eigen::Vector4d *gradient) {
+       const Eigen::Vector3d p((y-nx_/2)*resolution_+cx_,(x-ny_/2)*resolution_+cy_,height+reference_height_);
+-      if(!gradient)return environment_->cost(p,yaw,support_?support_->gapMask():nullptr);
+-      Eigen::Vector4d world;const double cost=environment_->costGradient(p,yaw,world,support_?support_->gapMask():nullptr);
++      Eigen::Vector4d world=Eigen::Vector4d::Zero();
++      double cost=gradient ? environment_->costGradient(p,yaw,world,support_?support_->gapMask():nullptr) :
++          environment_->cost(p,yaw,support_?support_->gapMask():nullptr);
++      if(solid_) {
++        Eigen::Vector4d repulsion;cost+=solid_->repulsionCost(p,yaw,gradient?&repulsion:nullptr,&solid_query_cache_);
++        if(gradient)world+=repulsion;
++      }
++      if(!gradient)return cost;
+       *gradient<<world.y()*resolution_,world.x()*resolution_,world.z(),world(3);return cost;
+     });
+   else planner_.SetEnvironmentalCost({},{});
+--- v283/src/lite3_nav2_plugins/include/lite3_nav2_plugins/route_policy.hpp
++++ v284/src/lite3_nav2_plugins/include/lite3_nav2_plugins/route_policy.hpp
+@@ -52,6 +52,27 @@
+   }
+   void measured(const geometry_msgs::msg::PoseStamped &body) {
+     std::lock_guard<std::mutex> lock(mutex_);measured_=body;
++  }
++  // Static mission continuation: the admitted reference survives moving-start
++  // height/yaw fluctuations. Only remove a prefix; never re-search or re-score.
++  std::optional<nav_msgs::msg::Path> retainedStatic(const geometry_msgs::msg::PoseStamped &start,
++      const geometry_msgs::msg::PoseStamped &goal) {
++    std::lock_guard<std::mutex> lock(mutex_);
++    if(!context_ || context_->cached.poses.size()<2)return {};
++    if(goal.header.frame_id!=context_->requested.header.frame_id ||
++        (goal.pose!=context_->requested.pose && (!context_->canonical || goal.pose!=*context_->canonical)))
++      throw std::runtime_error("mission_changed_during_planning");
++    auto &poses=context_->cached.poses;
++    const auto distance=[&](const auto &pose) {
++      const auto &a=pose.pose.position,&b=start.pose.position;
++      return (a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+(a.z-b.z)*(a.z-b.z);
++    };
++    const auto nearest=std::min_element(poses.begin(),poses.end(),[&](const auto &a,const auto &b){return distance(a)<distance(b);});
++    poses.erase(poses.begin(),std::min(nearest,poses.end()-2));
++    // Preserve the original reference epoch: local owners must not treat reuse
++    // as a new curve or lose warm-start continuity.
++    context_->refresh_status="static_reference_retained";++context_->retained_count;
++    return context_->cached;
+   }
+   nav_msgs::msg::Path plan(const geometry_msgs::msg::PoseStamped &start,
+       const geometry_msgs::msg::PoseStamped &goal,const Clock &now,const Solver &solve,
+--- v283/src/lite3_nav2_plugins/include/lite3_nav2_plugins/plan_on_goal_change.hpp
++++ v284/src/lite3_nav2_plugins/include/lite3_nav2_plugins/plan_on_goal_change.hpp
+@@ -16,13 +16,7 @@
+ public:
+   PlanOnGoalChange(const std::string &name, const BT::NodeConfiguration &config)
+   : BT::DecoratorNode(name, config) {
+-    // Foxy cannot attach one callback group to a private executor. Keep this
+-    // event listener separate from the BT action client's shared node.
+-    rclcpp::NodeOptions options;options.use_global_arguments(false);
+-    node_=std::make_shared<rclcpp::Node>("scan_replan_event_listener",options);
+-    request_=node_->create_subscription<std_msgs::msg::Header>("/scan/replan_request",rclcpp::QoS(1).reliable(),
+-      [this](std_msgs::msg::Header::ConstSharedPtr msg) {pending_=*msg;});
+-    executor_.add_node(node_);
++
+   }
+ 
+   static BT::PortsList providedPorts() {
+@@ -30,10 +24,6 @@
+   }
+ 
+   BT::NodeStatus tick() override {
+-    executor_.spin_some();
+-    // PipelineSequence resets successful children to IDLE without calling halt.
+-    // Recovery must invalidate that completed plan as well as running actions.
+-    if (status() == BT::NodeStatus::IDLE) { requested_.reset(); planned_ = false; }
+     const auto input = getInput<geometry_msgs::msg::PoseStamped>("goal");
+     if (!input) throw std::runtime_error("PlanOnGoalChange requires a goal");
+     const auto &goal = input.value();
+@@ -43,15 +33,6 @@
+       resetChild(); // Cancels an in-flight old-goal action before replacement.
+       requested_ = goal;
+       planned_ = false;
+-      pending_.reset();
+-    }
+-    if (planned_ && pending_) {
+-      const auto path=getInput<nav_msgs::msg::Path>("reference");
+-      if (path && pending_->frame_id==path.value().header.frame_id && pending_->stamp==path.value().header.stamp) {
+-        // PipelineSequence keeps FollowPath running while this child replans.
+-        resetChild();planned_=false;
+-      }
+-      pending_.reset();
+     }
+     if (planned_) return BT::NodeStatus::SUCCESS;
+     const auto result = child_node_->executeTick();
+@@ -64,16 +45,11 @@
+   void halt() override {
+     requested_.reset();
+     planned_ = false;
+-    pending_.reset();
+     BT::DecoratorNode::halt();
+   }
+ 
+ private:
+   std::optional<geometry_msgs::msg::PoseStamped> requested_;
+   bool planned_{false};
+-  rclcpp::Node::SharedPtr node_;
+-  rclcpp::Subscription<std_msgs::msg::Header>::SharedPtr request_;
+-  rclcpp::executors::SingleThreadedExecutor executor_;
+-  std::optional<std_msgs::msg::Header> pending_;
+ };
+ }
+--- v283/src/bspline_opt/src/bspline_optimizer.cpp
++++ v284/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -1228,8 +1228,16 @@
+     if(lambda_environment_==0. || !grid_map_->hasEnvironmentalField())return 0.;
+     const auto score=[this](const Eigen::Vector3d &p,double yaw,Eigen::Vector4d &g){return grid_map_->environmentalCostGradient(p,yaw,g);};
+     const auto heading=[this](const Eigen::Vector3d &p,const Eigen::Vector3d &a,const Eigen::Vector3d &v){return grid_map_->collisionTrajectoryYaw(p,a,v);};
+-    return environmentalCurveCost(q,bspline_interval_,GridMap::collision_heading_lookahead_s,score,heading,gradient,
++    const double base=environmentalCurveCost(q,bspline_interval_,GridMap::collision_heading_lookahead_s,score,heading,gradient,
+       grid_map_->measuredBodyYaw());
++    if(!grid_map_->hasSourceSolidField())return base;
++    const auto source=[this](const Eigen::Vector3d &p,double yaw,Eigen::Vector4d &g){return grid_map_->sourceSolidCostGradient(p,yaw,g);};
++    Eigen::MatrixXd source_gradient;
++    // Integrate the exact source-wall soft field at map-resolution quadrature.
++    // Legacy atlas quadrature and all native hard validators stay unchanged.
++    const double wall=environmentalCurveCost(q,bspline_interval_,GridMap::collision_heading_lookahead_s,source,heading,source_gradient,
++      grid_map_->measuredBodyYaw(),grid_map_->getResolution(),2);
++    gradient+=source_gradient;return base+wall;
+   }
+ 
+   void BsplineOptimizer::combineCostRebound(const double *x, double *grad, double &f_combine, const int n)
+--- v283/src/bspline_opt/include/bspline_opt/environmental_curve_cost.h
++++ v284/src/bspline_opt/include/bspline_opt/environmental_curve_cost.h
+@@ -11,10 +11,11 @@
+ template<class Cost,class Heading>
+ double environmentalCurveCost(const Eigen::MatrixXd &q,double interval,double lookahead,
+     Cost score,Heading heading,Eigen::MatrixXd &gradient,
+-    double measured_yaw=std::numeric_limits<double>::quiet_NaN()) {
++    double measured_yaw=std::numeric_limits<double>::quiet_NaN(),
++    double spatial_step=.025,int minimum_samples=10) {
+   gradient=Eigen::MatrixXd::Zero(3,q.cols());
+   if(q.rows()!=3 || !q.allFinite() || !std::isfinite(interval) || interval<=0 ||
+-      !std::isfinite(lookahead) || lookahead<0)
++      !std::isfinite(lookahead) || lookahead<0 || !std::isfinite(spatial_step) || spatial_step<=0 || minimum_samples<1)
+     throw std::invalid_argument("Invalid environmental curve geometry");
+   if(q.cols()<4)return 0.;
+   const double duration=(q.cols()-3)*interval;
+@@ -31,14 +32,15 @@
+   double total=0.;
+   for(int span=0;span<q.cols()-3;++span) {
+     double length=0.;for(int k=0;k<3;++k)length+=(q.col(span+k+1)-q.col(span+k)).norm();
+-    // At least ten samples per span; more for long spans or sharp rotation.
++    // Default quadrature retains ten samples; costly source-wall soft terms
++    // may use caller-selected spatial quadrature without altering hard checks.
+     const auto left=basis(span*interval),right=basis((span+1)*interval);
+     const Eigen::Vector3d lv=q.middleCols(left.index,4)*left.derivative,rv=q.middleCols(right.index,4)*right.derivative;
+     if(!lv.allFinite() || !rv.allFinite() || !std::isfinite(length) ||
+-        length/.025>std::numeric_limits<int>::max()-1)
++        length/spatial_step>std::numeric_limits<int>::max()-1)
+       throw std::invalid_argument("Nonfinite environmental sample geometry");
+     const double turn=std::abs(std::remainder(std::atan2(rv.y(),rv.x())-std::atan2(lv.y(),lv.x()),2*M_PI));
+-    const int samples=std::max({10,int(std::ceil(length/.025)),int(std::ceil(turn/.05))});
++    const int samples=std::max({minimum_samples,int(std::ceil(length/spatial_step)),int(std::ceil(turn/(2*spatial_step)))});
+     const double weight=interval/samples;
+     for(int sample=0;sample<samples;++sample) {
+       const double t=(span+(sample+.5)/samples)*interval;
+--- v283/src/plan_manage/src/scan_replan_fsm.cpp
++++ v284/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1,7 +1,6 @@
+ #include <bspline_opt/full_trajectory_collision.h>
+ 
+ #include <plan_manage/scan_replan_fsm.h>
+-#include <plan_manage/measured_seed.h>
+ #include <plan_manage/reference_path_utils.h>
+ #include <cmath>
+ #include <limits>
+@@ -1166,16 +1165,7 @@
+     {
+       const bool unavailable=info->start_time_.seconds()<1e-5 ||
+           raw_t_cur>=info->duration_ || replan_fail_count_>=3;
+-      bool tracking_agrees=false;
+-      if(!unavailable) {
+-        auto map=planner_manager_->grid_map_;
+-        const auto predicted=info->position_traj_.evaluateDeBoorT(t_cur);
+-        const auto ahead=info->position_traj_.evaluateDeBoorT(std::min(t_cur+GridMap::collision_heading_lookahead_s,info->duration_));
+-        const double planned_yaw=map->collisionTrajectoryYaw(predicted,ahead,info->velocity_traj_.evaluateDeBoorT(t_cur));
+-        tracking_agrees=measuredSeedAgrees(predicted,planned_yaw,odom_pos_,map->measuredBodyYaw(),
+-            map->getResolution(),map->bodyCylinderOffset());
+-      }
+-      const bool measured_start=unavailable||!tracking_agrees;
++      const bool measured_start=unavailable;
+       auto sampled_origin = time_now;
+       const rclcpp::Time *retry_origin = nullptr;
+       if (measured_start) {
+--- v283/src/scan_nav2_controller/test/test_controller.cpp
++++ v284/src/scan_nav2_controller/test/test_controller.cpp
+@@ -322,7 +322,7 @@
+   EXPECT_FALSE(actual->motion_->replan_requested_);EXPECT_TRUE(actual->motion_->hasRoute());
+ }
+ 
+-TEST_F(RouteHeadingTest, ExpiredStoppedStubTurnsThroughBothHeadingBands)
++TEST_F(RouteHeadingTest, ExpiredStoppedStubNeverCommandsNonterminalPureYaw)
+ {
+   expiredCornerStub();
+   auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
+@@ -333,7 +333,7 @@
+   for (double error : {M_PI/2,middle}) {
+     const auto command=cornerCommand(M_PI/2-error);
+     EXPECT_DOUBLE_EQ(command.linear.x,0.0);EXPECT_DOUBLE_EQ(command.linear.y,0.0);
+-    EXPECT_DOUBLE_EQ(command.linear.z,0.0);EXPECT_GT(command.angular.z,0.0);
++    EXPECT_DOUBLE_EQ(command.linear.z,0.0);EXPECT_DOUBLE_EQ(command.angular.z,0.0);
+     bool used=false;
+     EXPECT_NEAR(actual->motion_->tracker_->estimateDesiredYaw(actual->motion_->tracker_->traj_duration_,
+       Eigen::Vector3d(0,0,0.42),&used),M_PI/2,1e-9);
+@@ -342,12 +342,12 @@
+   EXPECT_EQ(cornerCommand(M_PI/2-actual->motion_->tracker_->goal_yaw_tolerance_/2),geometry_msgs::msg::Twist());
+ }
+ 
+-TEST_F(RouteHeadingTest, SameGoalRefreshChangesHeadingAndPreservesGoalLatch)
++TEST_F(RouteHeadingTest, SameGoalRefreshPreservesReferenceButExpiredStubDoesNotTurn)
+ {
+   expiredCornerStub();
+   auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
+   ASSERT_NE(actual,nullptr);
+-  EXPECT_GT(cornerCommand(0.0).angular.z,0.0);
++  EXPECT_DOUBLE_EQ(cornerCommand(0.0).angular.z,0.0);
+   auto &tracker=*actual->motion_->tracker_;
+   const Eigen::Vector3d original_goal=tracker.goal_pos_;
+   const double original_yaw=tracker.goal_yaw_;
+@@ -361,7 +361,7 @@
+   EXPECT_DOUBLE_EQ(tracker.goal_yaw_,original_yaw);
+   double yaw=0.0;EXPECT_FALSE(tracker.estimateRouteLookaheadYaw(Eigen::Vector3d(0,0,0.42),yaw));
+   tracker.goal_position_latched_=false;
+-  EXPECT_LT(cornerCommand(0.0).angular.z,0.0);
++  EXPECT_DOUBLE_EQ(cornerCommand(0.0).angular.z,0.0);
+ }
+ 
+ TEST_F(RouteHeadingTest, ReverseStubKeepsOriginalBodyHeading)
+@@ -373,7 +373,7 @@
+   double yaw=0.0;EXPECT_FALSE(actual->motion_->tracker_->estimateRouteLookaheadYaw(Eigen::Vector3d(0,0,0.42),yaw));
+ }
+ 
+-TEST_F(RouteHeadingTest, PillarUTurnUsesForwardRouteBeyondExpiredStub)
++TEST_F(RouteHeadingTest, ExpiredUTurnStubRetainsHeadingEstimateWithoutActuation)
+ {
+   expiredCornerStub();
+   auto *actual=dynamic_cast<scan_nav2_controller::Controller *>(plugin.get());
+@@ -382,7 +382,7 @@
+   plugin->setPlan(route);
+   const auto command=cornerCommand(0.0);
+   EXPECT_DOUBLE_EQ(command.linear.x,0.0);EXPECT_DOUBLE_EQ(command.linear.y,0.0);
+-  EXPECT_GT(command.angular.z,0.0);
++  EXPECT_DOUBLE_EQ(command.angular.z,0.0);
+   double yaw=0.0;ASSERT_TRUE(actual->motion_->tracker_->estimateRouteLookaheadYaw(Eigen::Vector3d(0,0,0.42),yaw));
+   EXPECT_NEAR(std::abs(yaw),M_PI,1e-9);
+ }
+--- v283/src/scan_nav2_controller/test/test_tracking_behavior.cpp
++++ v284/src/scan_nav2_controller/test/test_tracking_behavior.cpp
+@@ -43,16 +43,16 @@
+   int64_t stamp{0},id{0};
+ };
+ 
+-TEST_F(TrackingBehavior, HeadingHysteresisSurvivesNewSplineAndSameGoalRefresh)
++TEST_F(TrackingBehavior, TravelHeadingKeepsTranslationAndPhaseAcrossSameGoalRefresh)
+ {
+   for(int i=0;i<60;++i)tick();
+   auto previous=node->sampled_command_;
+-  tick(-1.01);EXPECT_TRUE(node->turning_in_place_);EXPECT_TRUE(node->executionFrozen());
++  tick(-1.01);EXPECT_FALSE(node->turning_in_place_);EXPECT_FALSE(node->executionFrozen());
+   EXPECT_GT(node->sampled_command_.linear.x,0.);
+   EXPECT_LE(std::abs(node->sampled_command_.linear.x-previous.linear.x),.04+1e-9);
+   for(double error : {.99,.81,.79,.61,.8}) {
+     replace();node->setReferencePath(node->reference_path_);
+-    tick(-error);EXPECT_TRUE(node->turning_in_place_);EXPECT_TRUE(node->executionFrozen());
++    tick(-error);EXPECT_FALSE(node->turning_in_place_);EXPECT_FALSE(node->executionFrozen());
+   }
+   tick(-.59);EXPECT_FALSE(node->turning_in_place_);EXPECT_FALSE(node->executionFrozen());
+   for(int i=0;i<100;++i) {
+--- v283/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
++++ v284/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
+@@ -307,7 +307,7 @@
+     {
+       const bool within_xy = (goal_pos_ - odom_pos_).head<2>().norm() <= goal_xy_tolerance_;
+       const bool within_z = std::abs(goal_pos_.z() - odom_pos_.z()) <= goal_z_tolerance_;
+-      if (within_xy && within_z) goal_position_latched_ = true;
++      goal_position_latched_ = within_xy && within_z;
+       // Nav2 stateful goal checking: once in XY tolerance, align final yaw.
+       if (goal_position_latched_ && within_z)
+       {
+@@ -331,16 +331,9 @@
+     const double yaw_error = normalizeAngle(estimateDesiredYaw(t_eval, pos_des, &used_route_lookahead) - odom_yaw_);
+     const double yaw_command = std::clamp(kp_yaw_ * yaw_error, -max_vyaw_, max_vyaw_);
+     const double heading_error = std::abs(yaw_error);
+-    if (turning_in_place_) {
+-      if (heading_error <= heading_resume_threshold_) turning_in_place_ = false;
+-    } else if (heading_error >= heading_error_threshold_) turning_in_place_ = true;
+-    if (turning_in_place_)
+-    {
+-      publishExecutionFrozen(true);
+-      publishStop(yaw_command);
+-      last_update_time_ = current_time;
+-      return;
+-    }
++    // Travel follows the curve in world XY while yaw converges in parallel.
++    // A large heading error cannot freeze phase or replace translation by yaw.
++    turning_in_place_=false;
+ 
+     publishExecutionFrozen(false);
+     exec_time_ = std::min(traj_duration_, exec_time_ + dt);
+@@ -357,13 +350,7 @@
+     command.linear.x = std::clamp(c * vel_world.x() + s * vel_world.y(), -max_vx_, max_vx_);
+     command.linear.y = std::clamp(-s * vel_world.x() + c * vel_world.y(), -max_vy_, max_vy_);
+     command.angular.z = yaw_command;
+-    // Smoothstep joins full translation to zero with zero slope at both ends.
+-    const double u=std::clamp((heading_error-heading_resume_threshold_) /
+-        (heading_error_threshold_-heading_resume_threshold_),0.0,1.0);
+-    const double translation_scale=1.0-u*u*(3.0-2.0*u);
+     const double unscaled_speed=std::hypot(command.linear.x,command.linear.y);
+-    command.linear.x*=translation_scale;
+-    command.linear.y*=translation_scale;
+     // Only an expired curve may latch this stop. Small active corrections and
+     // yaw-induced slowing are not classified as low-speed terminal creep.
+     if (exec_time_ >= traj_duration_ &&
+@@ -374,8 +361,7 @@
+       command.linear.x = 0.0;
+       command.linear.y = 0.0;
+       command.linear.z = 0.0;
+-      command.angular.z = used_route_lookahead && std::abs(yaw_error) > goal_yaw_tolerance_ ?
+-          yaw_command : 0.0;
++      command.angular.z = 0.0;
+     }
+     publishVelocity(command);
+   }
+--- v283/src/plan_env/src/static_solid.cpp
++++ v284/src/plan_env/src/static_solid.cpp
+@@ -184,6 +184,57 @@
+   if(squared<=0.||data_->freeCylinder(body))return false;
+   return data_->cylinder(body,body.z()-data_->clearance,true,std::sqrt(squared)).collision();
+ }
++double StaticSolidField::repulsionCost(const Eigen::Vector3d &body,double yaw,Eigen::Vector4d *gradient,const StaticSolidQueryCache *cache) const {
++  constexpr double range=.07,strength=.1;
++  if(gradient)gradient->setZero();
++  if(cache && data_->source && cache->owner_.get()==data_.get() && body.allFinite() &&
++      std::isfinite(yaw) && body.cwiseAbs().maxCoeff()<=1e6) {
++    // Reuse the request's existing hard-query interval certificates only to
++    // prove that the soft cost is exactly zero. No new map or mutable cache.
++    const double ground=body.z()-data_->clearance;
++    const uint64_t z=uint64_t(int64_t(std::floor(ground/.01)));
++    bool clear=true;
++    for(double side:{-1.,1.}) {
++      const double x=body.x()+side*data_->offset*std::cos(yaw),y=body.y()+side*data_->offset*std::sin(yaw);
++      const int ix=int(std::floor(x/.1)),iy=int(std::floor(y/.1));bool proved=false;
++      for(int dx=-1;dx<=1&&!proved;++dx)for(int dy=-1;dy<=1&&!proved;++dy) {
++        const auto found=cache->entries_.find({ix+dx,iy+dy,z});
++        if(found==cache->entries_.end())continue;
++        for(unsigned i=0;i<found->second.count;++i) {
++          const auto &e=found->second.values[i];
++          if(e.z!=body.z() && !(e.margin>0. && e.height_slack>0. && std::abs(ground-e.ground)<=e.height_slack))continue;
++          if(e.margin-std::hypot(x-e.x,y-e.y)>range+1e-8){proved=true;break;}
++        }
++      }
++      if(!proved){clear=false;break;}
++    }
++    if(clear)return 0.;
++  }
++  // Avoid exact finite-difference derivatives outside the active soft band.
++  const auto distance=query(body,yaw,bool(data_->source));
++  if(distance.margin>=range)return 0.;
++  const double hinge=(range-distance.margin)/range;
++  if(gradient) {
++    Eigen::Vector4d normal=Eigen::Vector4d::Zero();
++    if(data_->source) {
++      // The exact radial query already returns its closest source point. Reuse
++      // that witness for XY/yaw instead of eight extra distance evaluations.
++      const Eigen::Vector2d heading(std::cos(yaw),std::sin(yaw));
++      const Eigen::Vector2d a=body.head<2>()-data_->offset*heading-distance.witness.head<2>();
++      const Eigen::Vector2d b=body.head<2>()+data_->offset*heading-distance.witness.head<2>();
++      const double side=a.squaredNorm()<=b.squaredNorm()?-1.:1.;
++      const Eigen::Vector2d delta=side<0.?a:b;
++      if(delta.norm()>1e-9) {
++        normal.head<2>()=delta.normalized();
++        normal(3)=side*data_->offset*(-normal(0)*heading.y()+normal(1)*heading.x());
++        // This source field is radial at the current height, not a 3D ESDF.
++        // Repel horizontally; do not optimize across height-membership jumps.
++      } else normal=assess(body,yaw).gradient;
++    } else normal=assess(body,yaw).gradient;
++    *gradient=(-2.*strength*hinge/range)*normal;
++  }
++  return strength*hinge*hinge;
++}
+ SolidAssessment StaticSolidField::assess(const Eigen::Vector3d &body,double yaw) const {return query(body,yaw,false);}
+ bool StaticSolidField::collides(const Eigen::Vector3d &body,double yaw) const {
+   if(!body.allFinite()||!std::isfinite(yaw))throw std::runtime_error("Invalid static solid query");
+--- v283/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v284/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -330,8 +330,25 @@
+   support_only.occupancy = reactive_stair::Occupancy::Free;
+   reactive_stair::Cell2 body_cell;
+   if (!supportQueryCell(body_query.x_m,body_query.y_m,body_cell)) return Verdict::InvalidQuery;
+-  const auto body_verdict=static_only ? supportState().reactive_decision_.supportVerdict(body_query,&body_cell) :
++  auto body_verdict=static_only ? supportState().reactive_decision_.supportVerdict(body_query,&body_cell) :
+     supportState().reactive_decision_.decide(body_query,support_only,&body_cell);
++  if(!static_only && body_verdict==Verdict::WrongHeight) {
++    const auto layers=terrainCellLayers(body_cell);
++    const double step=reactive_stair::StepScoreParameters{}.critical_height_m;
++    const int layer=layers.raw ? reactive_stair::nearestSurface(*layers.raw,
++        body_reference.z()-supportState().reactive_parameters_.body_clearance_m,step) : -1;
++    if(layer>=0 && layers.scored && layers.raw->size()==layers.scored->size() &&
++        (*layers.raw)[layer].elevation_m==(*layers.scored)[layer].elevation_m &&
++        reactive_stair::selectedSurface((*layers.scored)[layer])) {
++      // Local stepping height is associated with the nearest legal layer at
++      // the same XY using the existing stair-step bound. Preserve obstacle XYZ.
++      const double ground=(*layers.raw)[layer].elevation_m;
++      body_query.z_m=ground+supportState().reactive_parameters_.body_clearance_m;
++      if(mapState().mp_.support_gap_mask_ && mapState().mp_.support_gap_mask_->blocks(
++          body_query.x_m,body_query.y_m,ground))return Verdict::SupportGap;
++      body_verdict=supportState().reactive_decision_.decide(body_query,support_only,&body_cell);
++    }
++  }
+   if (body_verdict!=Verdict::Free) {
+     if (body_verdict==Verdict::WrongHeight || body_verdict==Verdict::UnknownSupport) {
+       const auto association=physicalSupportDiagnostic(body_reference);
+--- v283/src/plan_env/include/plan_env/static_solid.h
++++ v284/src/plan_env/include/plan_env/static_solid.h
+@@ -39,6 +39,10 @@
+   StaticSolidField(const std::string &path,const std::string &fnv);
+   ~StaticSolidField();
+   SolidAssessment assess(const Eigen::Vector3d &body,double yaw) const;
++  // Squared hinge over the extra 0.07 m beyond the unchanged hard radius.
++  // Shared by GPMP and SCAN; source-wall gradient is XY/yaw at the
++  // selected actual height, with zero Z component. Never an admission predicate.
++  double repulsionCost(const Eigen::Vector3d &body,double yaw,Eigen::Vector4d *gradient=nullptr,const StaticSolidQueryCache *cache=nullptr) const;
+   bool collides(const Eigen::Vector3d &body,double yaw) const;
+   bool collides(const Eigen::Vector3d &body,double yaw,StaticSolidQueryCache &cache) const;
+   bool certifiesFreeRotation(const Eigen::Vector3d &body) const;
+--- v283/src/plan_env/include/plan_env/grid_map.h
++++ v284/src/plan_env/include/plan_env/grid_map.h
+@@ -335,14 +335,20 @@
+   static constexpr double collision_heading_lookahead_s = 0.8;
+   double bodyCylinderOffset() const {return mapState().mp_.double_cylinder_offset_;}
+   double environmentalCost(const Eigen::Vector3d &p,double yaw) const {
+-    const auto field=supportState().environmental_field_;return field ? field->cost(p,yaw,mapState().mp_.support_gap_mask_.get()) : 0.;
++    const auto field=supportState().environmental_field_;
++    return field ? field->cost(p,yaw,mapState().mp_.support_gap_mask_.get()) : 0.;
+   }
+   double environmentalCostGradient(const Eigen::Vector3d &p,double yaw,Eigen::Vector4d &gradient) const {
+     const auto field=supportState().environmental_field_;
+     if(field)return field->costGradient(p,yaw,gradient,mapState().mp_.support_gap_mask_.get());
+     gradient.setZero();return 0.;
+   }
+-  bool hasEnvironmentalField() const {return bool(supportState().environmental_field_);}
++  double sourceSolidCostGradient(const Eigen::Vector3d &p,double yaw,Eigen::Vector4d &gradient) const {
++    const auto field=supportState().static_solid_;gradient.setZero();
++    return field ? field->repulsionCost(p,yaw,&gradient) : 0.;
++  }
++  bool hasSourceSolidField() const {return bool(supportState().static_solid_);}
++  bool hasEnvironmentalField() const {return bool(supportState().environmental_field_ || supportState().static_solid_);}
+   double collisionTrajectoryYaw(const Eigen::Vector3d &from, const Eigen::Vector3d &ahead,
+                                const Eigen::Vector3d &velocity) const;
+ 
+@@ -648,10 +654,7 @@
+ }
+ 
+ inline int GridMap::getInflateOccupancy(Eigen::Vector3d pos, double yaw) {
+-  // The optimizer, publication validator and controller query the same exact
+-  // source geometry. A live-cloud blind spot cannot waive a static wall/gap.
+-  if (supportState().static_solid_ &&
+-      staticTraversability(pos,yaw)!=reactive_stair::Verdict::Free) return 1;
++  // Static source solids shape the smooth objective; live evidence owns local admission.
+   return reactive_stair::twoCylinderQuery({{pos.x(),pos.y(),pos.z()}},yaw,
+     mapState().mp_.double_cylinder_offset_,[&](const std::array<double,3> &point) {
+       return reactiveOccupancy(Eigen::Vector3d(point[0],point[1],point[2]),&pos);

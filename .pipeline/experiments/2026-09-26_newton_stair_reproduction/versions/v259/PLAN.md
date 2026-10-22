@@ -1,0 +1,7 @@
+# v259 — Equivalent immutable solid free-space index
+
+Stage: experiment and analysis. Parent frozen v256. Keep source records, shape, material exclusions, signed margin/gradient/witness and exact contact predicate unchanged. Build an immutable2D+height sufficient-free bitmap using an exact squared Euclidean distance transform of retained source cells. Each height segment retains every possibly non-exempt point throughout its closed height interval. Whole-cell XY recall includes both source/query cell half diagonals and original voxel uncertainty. A strict positive lower bound may skip exact queries; uncertain cells use the original finite-cylinder/PCL calculation. A conservative source-group spatial index preserves exact iteration order in full/near-boundary queries. No approximate returned margin, new hard padding, mutable shared cache or route-specific precomputation.
+
+Direct differential gates: frozen-v256 binary, margin, gradient, witness and5,000sampled edges, plus exact contact/floor/cell boundaries and unchanged route XYZ/verdicts. Require ~1s median global wall under the same2CPUquota, reporting one-time map construction separately. Floor/endpoint repairs belong to separate versions.
+
+Unqualified development: thread-local Lipschitz certificates reduced A04from14.64sto2.84s; spatial/local classification variants remained2.5–4s. Preserve logs and the failed local-range source in development/. Phase observer measures solid hard checks as the remaining cost. Do not promote those variants.

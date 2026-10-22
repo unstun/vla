@@ -1,0 +1,17 @@
+# Change boundary
+
+Behavior lives in GridMap callback ownership/reactive provenance, FSM callback boundary, tracker terminal command, ENV225 evaluation and B-spline optimizer integration/return handling. Only these production paths and direct native regression tests change. Reuse immutable geometry, captures, cohort and factory policy. All329 parent source files are copied into a new v288 source snapshot; no parent overwrite or unrelated refactoring.
+
+A per-GridMap recursive work mutex covers the complete callback including exception cleanup and same-thread sensor refresh. Query shells own independent locks/state; clock and private snapshot query service remain outside the planner work lock. Background mapping retains its separate writer ownership and publication synchronization. Cache fault stacks identify victims, so stress tests and real attempts must establish repair evidence rather than assuming the executor-race hypothesis.
+
+Inflated voxels consult contributor provenance before raw unknown status. The obstacle layer records only classified nonterrain Occupied; uninflated or no-contributor air is Free before a single final support/layer/edge/freshness decision. Remove the two-pass Unknown exemption. Terminal capture freezes spline phase, but sends bounded body-frame proportional goal-centering velocity and bounded yaw through existing slew until original XY/Z/yaw acceptance.
+
+Environmental quadrature counts are fixed from the initial controls for each optimization invocation, reused through all objective evaluations. Edge cost/gradient has only the positive active band; solid retains the uncapped hinge. Library rollback q must be synchronized to cps before hard collision review. Cancellation/nonfinite geometry must remain failure; valid intermediate solver termination can proceed through unchanged trajectory/dynamic checks. Tests cover these distinctions.
+
+New private ultra9 prefix, clean14-package ABI build and source/install/helper hashes. Freeze before scored53calls; full geometry audit before ten single physical runs. Return compact original evidence and actual videos. Failed acceptance remains reported as failure.
+
+## Latest authorized extension
+Compare pinned author SCAN348e8a590a50a5a6bbab8d8c6dcfd171f009be26 and PCT35cd73fd82bcd51bc538429294af7646b2a09815 source archives. Simplify terrain endpoint projection to one support-aligned candidate with safe heading, then permit the inherited chord/plane proposal fallback within pool bounds and unchanged full edge/trajectory checks. Keep terrain-aware search when projection succeeds. Enable past3/delta1e-6 function-decrease stopping in both optimizer stages, without replacing LBFGS or changing hard acceptance. Requalify affected binaries and all native tests before any scored freeze.
+
+## Final steering before source freeze
+Use lockMutex(), constant3 samples per span with no partition cache/state, past3/delta1e-4 in the existing solver, saturated edge cost and zero negative-edge gradient (raw diagnostic margins remain visible), restored variables plus unchanged hard review. Terminal XY speed cap0.15m/s, shared2cm center threshold in tracker and Controller braking so aligned-but-offset robots keep centering. Outer mission tolerances remain unchanged. Fresh full14-package build after final header/layout simplification. Native return codes remain logged even when restored candidates continue to validation, so -1008 accounting cannot improve merely by suppressing warnings.

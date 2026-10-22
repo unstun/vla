@@ -1,0 +1,219 @@
+--- v286/src/bspline_opt/include/bspline_opt/environmental_curve_cost.h
++++ v287/src/bspline_opt/include/bspline_opt/environmental_curve_cost.h
+@@ -20,7 +20,8 @@
+   if(q.cols()<4)return 0.;
+   const double duration=(q.cols()-3)*interval;
+   if(!std::isfinite(duration))throw std::invalid_argument("Nonfinite environmental curve duration");
+-  struct Basis {int index;Eigen::Vector4d value,derivative;};
++  struct Basis {EIGEN_MAKE_ALIGNED_OPERATOR_NEW
++    int index;Eigen::Vector4d value,derivative;};
+   const auto basis=[&](double time) {
+     const int i=std::min(int(time/interval),int(q.cols())-4);
+     const double u=(time-i*interval)/interval,u2=u*u,u3=u2*u;
+--- v286/src/bspline_opt/src/bspline_optimizer.cpp
++++ v287/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -1225,8 +1225,8 @@
+ 
+   double BsplineOptimizer::calcEnvironmentalCost(const Eigen::MatrixXd &q,Eigen::MatrixXd &gradient) const {
+     gradient=Eigen::MatrixXd::Zero(3,q.cols());
+-    if(lambda_environment_==0. || !grid_map_->hasReboundEnvironmentalField())return 0.;
+-    const auto score=[this](const Eigen::Vector3d &p,double yaw,Eigen::Vector4d &g){return grid_map_->reboundEnvironmentalCostGradient(p,yaw,g);};
++    if(lambda_environment_==0. || !grid_map_->hasEnvironmentalField())return 0.;
++    const auto score=[this](const Eigen::Vector3d &p,double yaw,Eigen::Vector4d &g){return grid_map_->environmentalCostGradient(p,yaw,g);};
+     const auto heading=[this](const Eigen::Vector3d &p,const Eigen::Vector3d &a,const Eigen::Vector3d &v){return grid_map_->collisionTrajectoryYaw(p,a,v);};
+     return environmentalCurveCost(q,bspline_interval_,GridMap::collision_heading_lookahead_s,score,heading,gradient,
+       grid_map_->measuredBodyYaw());
+--- v286/src/path_searching/include/path_searching/dyn_a_star.h
++++ v287/src/path_searching/include/path_searching/dyn_a_star.h
+@@ -87,6 +87,10 @@
+ 	bool ConvertToIndexAndAdjustStartEndPoints(const Eigen::Vector3d start_pt, const Eigen::Vector3d end_pt, Eigen::Vector3i &start_idx, Eigen::Vector3i &end_idx, double goal_tolerance=0.0);
+ 
+ 	inline Eigen::Vector3d Index2Coord(const Eigen::Vector3i &index) const;
++    bool poolIndexValid(const Eigen::Vector3i &index, bool interior=false) const {
++      const int border=interior ? 1 : 0;
++      return (index.array()>=border).all() && (index.array()<(POOL_SIZE_.array()-border)).all();
++    }
+ 	inline bool Coord2Index(const Eigen::Vector3d &pt, Eigen::Vector3i &idx) const;
+ 
+ 	//bool (*checkOccupancyPtr)( const Eigen::Vector3d &pos );
+@@ -97,7 +101,7 @@
+ 
+ 	double step_size_, inv_step_size_;
+ 	Eigen::Vector3d center_;
+-	Eigen::Vector3i CENTER_IDX_, POOL_SIZE_;
++	Eigen::Vector3i CENTER_IDX_{Eigen::Vector3i::Zero()}, POOL_SIZE_{Eigen::Vector3i::Zero()};
+ 	const double tie_breaker_ = 1.0 + 1.0 / 10000;
+ 
+     bool terrain_search_{false};
+@@ -110,7 +114,7 @@
+     bool has_exact_goal_{false};
+     Eigen::Vector3d exact_goal_{Eigen::Vector3d::Zero()};
+ 
+-	GridNodePtr ***GridNodeMap_;
++	GridNodePtr ***GridNodeMap_{nullptr};
+ 	std::priority_queue<OpenSetEntry, std::vector<OpenSetEntry>, NodeComparator> openSet_;
+ 
+ 	int rounds_{0};
+--- v286/src/path_searching/src/dyn_a_star.cpp
++++ v287/src/path_searching/src/dyn_a_star.cpp
+@@ -242,7 +242,8 @@
+         ? (Coord2Index(start_pt, start_idx) && Coord2Index(end_pt, end_idx) &&
+            (Index2Coord(start_idx) - start_pt).norm() <= 1e-6)
+         : ConvertToIndexAndAdjustStartEndPoints(start_pt, end_pt, start_idx, end_idx, goal_tolerance);
+-    if (!endpoints_valid)
++    if (!endpoints_valid || !poolIndexValid(start_idx, terrain_search_) ||
++        !poolIndexValid(end_idx, terrain_search_))
+     {
+         RCLCPP_ERROR(rclcpp::get_logger("path_searching"),
+                      "Unable to handle the initial or end point, force return!");
+@@ -434,7 +435,7 @@
+                     ? interpolateZIndexOnSearchPlane(neighborIdx(0), neighborIdx(1))
+                     : current->index(2) + dz_step;
+ 
+-                if (neighborIdx(0) < 1 || neighborIdx(0) >= POOL_SIZE_(0) - 1 || neighborIdx(1) < 1 || neighborIdx(1) >= POOL_SIZE_(1) - 1 || neighborIdx(2) < 1 || neighborIdx(2) >= POOL_SIZE_(2) - 1)
++                if (!poolIndexValid(neighborIdx, true))
+                 {
+                     continue;
+                 }
+--- v286/src/plan_env/include/plan_env/environmental_field.h
++++ v287/src/plan_env/include/plan_env/environmental_field.h
+@@ -6,6 +6,7 @@
+ namespace reactive_stair {
+ class SupportGapMask;
+ struct EnvironmentalAssessment {
++  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+   double edge_margin=0, solid_margin=0, terrain=0;
+   double edge_penalty=0, solid_penalty=0;
+   bool floor_known=false;
+--- v286/src/plan_env/include/plan_env/grid_map.h
++++ v287/src/plan_env/include/plan_env/grid_map.h
+@@ -79,6 +79,7 @@
+ // constant parameters
+ 
+ struct MappingParameters {
++  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+   std::shared_ptr<const reactive_stair::SupportGapMask> support_gap_mask_;
+ 
+   /* map properties */
+@@ -198,6 +199,7 @@
+ };
+ 
+ struct GridMapState {
++  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+   std::shared_ptr<const GridMapSupportState> support_{std::make_shared<GridMapSupportState>()};
+   MappingParameters mp_;
+   MappingData md_;
+@@ -344,25 +346,6 @@
+     gradient.setZero();return 0.;
+   }
+   bool hasEnvironmentalField() const {return bool(supportState().environmental_field_);}
+-  bool hasReboundEnvironmentalField() const {
+-    return hasEnvironmentalField() || bool(supportState().static_solid_);
+-  }
+-  double reboundEnvironmentalCostGradient(const Eigen::Vector3d &p,double yaw,Eigen::Vector4d &gradient) const {
+-    double cost=environmentalCostGradient(p,yaw,gradient);
+-    const auto source=supportState().static_solid_;
+-    if(source) {
+-      // Local rebound only: a C2 hinge outside the unchanged 0.35 m envelope.
+-      // Keep exact source geometry separate from the approximate ENV225 atlas.
+-      constexpr double buffer=.055;
+-      const auto assessment=source->assess(p,yaw);
+-      const double u=std::max(0.,(buffer-assessment.margin)/buffer);
+-      if(u>0.) {
+-        cost+=u*u*u*u;
+-        gradient-=(4.*u*u*u/buffer)*assessment.gradient;
+-      }
+-    }
+-    return cost;
+-  }
+   bool hasTerrainSupport() const {return !supportState().reactive_ground_.cells.empty();}
+   // Associate the nearest raw layer first; never skip unsupported terrain for
+   // another floor. This proposes a search height, not a collision exemption.
+@@ -450,7 +433,6 @@
+   };
+   std::shared_ptr<AsyncMapping> async_mapping_;
+   std::shared_ptr<AsyncMapping> query_context_; // Health only; never owns/join-stops the writer.
+-  reactive_stair::StaticSolidQueryCache supported_air_source_cache_; // This query shell owns its immutable-source proofs.
+   uint64_t map_revision_ = 0;
+   bool last_fusion_fixed_point_ = false;
+   void enqueueMapping(MappingInput input);
+--- v286/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v287/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -562,12 +562,12 @@
+     posToIndex(point, query_id);
+     const int address = toAddress(query_id);
+     uninflated_air=mapState().md_.occupancy_buffer_inflate_[address]==0;
+-    if (!uninflated_air) {
++    if (mapState().md_.occupancy_buffer_[address] < mapState().mp_.clamp_min_log_ - 1e-3) {
++      obstacle.occupancy = reactive_stair::Occupancy::Unknown;
++    } else if (uninflated_air) {
++      obstacle.occupancy = reactive_stair::Occupancy::Free;
++    } else {
+       obstacle.occupancy = rawContributorOccupancy(query_id);
+-    } else if (mapState().md_.occupancy_buffer_[address] < mapState().mp_.clamp_min_log_ - 1e-3) {
+-      obstacle.occupancy = reactive_stair::Occupancy::Unknown;
+-    } else {
+-      obstacle.occupancy = reactive_stair::Occupancy::Free;
+     }
+   }
+   if (mapState().reactive_known_trunk_enabled_ && query.in_map && reactive_body_stamp_s_ > 0.0) {
+@@ -598,21 +598,11 @@
+   reactive_stair::Cell2 support_cell;
+   auto verdict = supportQueryCell(query.x_m,query.y_m,support_cell) ?
+       supportState().reactive_decision_.decide(query,obstacle,&support_cell) : reactive_stair::Verdict::InvalidQuery;
+-  if(verdict==reactive_stair::Verdict::UnknownObstacle && query.in_map && uninflated_air &&
+-      supportState().static_solid_) {
+-    // Ray history describes observation, not whether supported source-free air
+-    // exists. Re-run the full support/freshness decision; never waive a hit,
+-    // support gap, unsupported nearest layer or stale observation.
++  if(verdict==reactive_stair::Verdict::UnknownObstacle && query.in_map && uninflated_air) {
++    // An unobserved air voxel is not an observed obstacle. The complete live
++    // decision still requires fresh inputs, support, layer and edge checks.
+     auto air=obstacle;air.occupancy=reactive_stair::Occupancy::Free;
+     verdict=supportState().reactive_decision_.decide(query,air,&support_cell);
+-    if(verdict==reactive_stair::Verdict::Free) {
+-      const Eigen::Vector3d body=body_reference ? *body_reference : point;
+-      const Eigen::Vector3d direction=point-body;
+-      const double yaw=direction.head<2>().squaredNorm()>1e-12 ?
+-          std::atan2(direction.y(),direction.x()) : measuredBodyYaw();
+-      if(supportState().static_solid_->collides(body,yaw,supported_air_source_cache_))
+-        verdict=reactive_stair::Verdict::StaticObstacle;
+-    }
+   }
+   if(typed)*typed=verdict;
+   // Controller query views never share the native logger throttles or diagnostic set.
+--- v286/src/plan_env/include/plan_env/static_solid.h
++++ v287/src/plan_env/include/plan_env/static_solid.h
+@@ -25,6 +25,7 @@
+   size_t queries_=0,hits_=0;
+ };
+ struct SolidAssessment {
++  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+   double margin=0.;
+   Eigen::Vector4d gradient=Eigen::Vector4d::Zero(); // world X,Y,Z,yaw
+   Eigen::Vector3d witness=Eigen::Vector3d::Zero();
+--- v286/src/plan_env/src/environmental_field.cpp
++++ v287/src/plan_env/src/environmental_field.cpp
+@@ -144,7 +144,7 @@
+     Eigen::Vector3d gradient;const double margin=d.margin<false>(center,gradient);
+     if(margin<solid-1e-12)solid=margin;
+   }
+-  const auto penalty=[&](double m){return std::clamp((d.target-m)/d.target,0.,1.);};
++  const auto penalty=[&](double m){return std::max((d.target-m)/d.target,0.);};
+   const double ep=penalty(edge),sp=penalty(solid);
+   return ep*ep+sp*sp+.25*terrain*terrain;
+ }
+@@ -176,10 +176,10 @@
+     Eigen::Vector3d gradient;const double margin=d.margin(center,gradient);
+     combine(margin,pose_gradient(gradient),out.solid_margin,ds,true);
+   }
+-  const auto penalty=[&](double m){return std::clamp((d.target-m)/d.target,0.,1.);};
++  const auto penalty=[&](double m){return std::max((d.target-m)/d.target,0.);};
+   out.edge_penalty=penalty(out.edge_margin);out.solid_penalty=penalty(out.solid_margin);
+-  if(out.edge_margin>0.&&out.edge_margin<d.target)out.gradient-=2*out.edge_penalty/d.target*de;
+-  if(out.solid_margin>0.&&out.solid_margin<d.target)out.gradient-=2*out.solid_penalty/d.target*ds;
++  if(out.edge_margin<d.target)out.gradient-=2*out.edge_penalty/d.target*de;
++  if(out.solid_margin<d.target)out.gradient-=2*out.solid_penalty/d.target*ds;
+   out.gradient+=.5*out.terrain*dt;
+   return out;
+ }

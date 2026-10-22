@@ -1,0 +1,247 @@
+--- parent/src/lite3_nav2_plugins/test/test_shared_traversability.cpp
++++ v283/src/lite3_nav2_plugins/test/test_shared_traversability.cpp
+@@ -139,11 +139,13 @@
+   for(size_t i=0;i<reset.poses.size();++i)EXPECT_EQ(reset.poses[i].pose,first.poses[i].pose);
+ }
+ 
+-TEST_F(SharedPCTTest, LiveBlockedTerminalCacheIsNeverRepublished) {
++TEST_F(SharedPCTTest, LiveHintDoesNotReclassifyStaticLegalTerminal) {
+   live_only=true;begin("terminal-block");
+   const auto first=planner->createPlan(start,goal);
+   start.pose=first.poses.back().pose;witness=start.pose;live_block=true;
+-  EXPECT_THROW(planner->createPlan(start,goal),nav2_core::PlannerException);
++  // Global hint admission does not authorize local execution through a live
++  // obstacle. The local native query retains that independent responsibility.
++  EXPECT_NO_THROW(planner->createPlan(start,goal));
+ }
+ 
+ TEST(BlockedFeedback, FreshExactClearSourceMissionExpiryAndUnknownRules) {
+--- parent/src/lite3_nav2_plugins/src/pct_planner.cpp
++++ v283/src/lite3_nav2_plugins/src/pct_planner.cpp
+@@ -105,6 +105,7 @@
+       const auto xyz=[](const geometry_msgs::msg::PoseStamped &p) {
+         return Eigen::Vector3d(p.pose.position.x,p.pose.position.y,p.pose.position.z);
+       };
++      planner_->setRequestEndpoints(xyz(start),xyz(goal));
+       const auto epoch=session_epoch_.load();
+       const auto context=policy_.context();
+       const std::string session=context ? context->id+"/"+std::to_string(epoch) : "";
+@@ -151,6 +152,16 @@
+           if(attempt==2)throw;
+           continue; // Reuse the original two smooth/one graph attempt budget.
+         }
++        const auto planned=policy_.context();
++        if(traversability_ && planned && planned->refresh_status!="planned" && path.poses.size()>1) {
++          // Validate the remaining reference and its measured-start connector,
++          // not a backwards connector to the obsolete original route start.
++          const auto nearest=std::min_element(path.poses.begin(),path.poses.end(),[&](const auto &a,const auto &b) {
++            return (xyz(a)-xyz(start)).squaredNorm()<(xyz(b)-xyz(start)).squaredNorm();
++          });
++          // Keep two poses for the original terminal approach contract.
++          path.poses.erase(path.poses.begin(),std::min(nearest,path.poses.end()-2));
++        }
+         refresh(path); // Also catches observations arriving during the solve and cached returns.
+         auto rejected=traversability_ ? traversability_->check(path,start) :
+           std::vector<SharedTraversability::Rejection>();
+--- parent/src/lite3_nav2_plugins/src/pct_route_planner.cpp
++++ v283/src/lite3_nav2_plugins/src/pct_route_planner.cpp
+@@ -3,6 +3,8 @@
+ #include <cmath>
+ #include <cstring>
+ #include <fstream>
++#include <sstream>
++#include <iomanip>
+ #include <limits>
+ #include <stdexcept>
+ #include <lite3_nav2_plugins/support_height.hpp>
+@@ -107,6 +109,17 @@
+   if(!same){feedback_=std::move(next);rebuildMap();}
+ }
+ 
++bool PCTRoutePlanner::feedbackExemptAt(const Eigen::Vector3d &point) const {
++  if(!have_request_endpoints_)return false;
++  // Continuous endpoints attach to their surrounding 3x3 lattice cells.
++  // This region covers those connectors, not a scene-specific escape radius.
++  const auto attached=[&](const Eigen::Vector3d &endpoint) {
++    return (point-endpoint).head<2>().cwiseAbs().maxCoeff()<=1.5*resolution_ &&
++      std::abs(point.z()-endpoint.z())<reactive_stair::StepScoreParameters{}.critical_height_m;
++  };
++  return attached(request_start_)||attached(request_goal_);
++}
++
+ bool PCTRoutePlanner::rejectedAt(const Eigen::Vector3d &point,double yaw,bool feedback_only) const {
+   const auto hit=[&](const auto &poses) {
+     return std::any_of(poses.begin(),poses.end(),[&](const auto &pose) {
+@@ -115,7 +128,7 @@
+         (point-pose.position).head(2).norm()<=resolution_*.75;
+     });
+   };
+-  return (!feedback_only&&hit(rejected_))||hit(feedback_);
++  return (!feedback_only&&hit(rejected_))||(!feedbackExemptAt(point)&&hit(feedback_));
+ }
+ 
+ Eigen::Vector3d PCTRoutePlanner::nodePosition(const Node &node) const {
+@@ -389,11 +402,21 @@
+ 
+ std::vector<Eigen::Vector3d> PCTRoutePlanner::plan(const Eigen::Vector3d &start,const Eigen::Vector3d &goal,bool smooth,double start_yaw,double goal_yaw)
+ {
++  setRequestEndpoints(start,goal);
+   solid_query_cache_.clear();
+   planned_yaws_.clear();
+   start_yaw_=support_?start_yaw:std::numeric_limits<double>::quiet_NaN();goal_yaw_=support_?goal_yaw:std::numeric_limits<double>::quiet_NaN();
+   if(std::isinf(start_yaw)||std::isinf(goal_yaw))throw std::runtime_error("pct_invalid_endpoint_yaw");
+-  if((std::isfinite(start_yaw_)&&!poseFree({start,start_yaw_}))||(std::isfinite(goal_yaw_)&&!poseFree({goal,goal_yaw_})))throw std::runtime_error("pct_endpoint_pose_rejected");
++  const auto check_endpoint=[&](const char *role,const Eigen::Vector3d &position,double yaw) {
++    if(!std::isfinite(yaw)||poseFree({position,yaw}))return;
++    const int support=support_?int(support_->assess(position.x(),position.y(),position.z(),yaw)):0;
++    const bool solid=solid_&&solid_->collides(position,yaw,solid_query_cache_);
++    std::ostringstream message;message<<std::setprecision(17)<<"pct_endpoint_pose_rejected role="<<role
++      <<" xyz="<<position.transpose()<<" yaw="<<yaw<<" support="<<support<<" solid="<<solid
++      <<" repair="<<rejectedAt(position,yaw)<<" live_hint="<<rejectedAt(position,yaw,true);
++    throw std::runtime_error(message.str());
++  };
++  check_endpoint("start",start,start_yaw_);check_endpoint("goal",goal,goal_yaw_);
+   const bool oriented=std::isfinite(start_yaw_)||std::isfinite(goal_yaw_);
+   if(solid_&&(solid_->impossibleAt(start)||solid_->impossibleAt(goal)))
+     throw std::runtime_error("pct_endpoint_solid_collision_all_headings");
+--- parent/src/lite3_nav2_plugins/include/lite3_nav2_plugins/shared_traversability.hpp
++++ v283/src/lite3_nav2_plugins/include/lite3_nav2_plugins/shared_traversability.hpp
+@@ -8,6 +8,7 @@
+ #include <future>
+ #include <stdexcept>
+ #include <vector>
++#include <thread>
+ 
+ namespace lite3_nav2 {
+ inline double planarYaw(const geometry_msgs::msg::Pose &pose) {
+@@ -71,13 +72,25 @@
+       throw std::runtime_error("pct_native_traversability_unavailable");
+     auto request=std::make_shared<Service::Request>();request->header=header;
+     request->body=have_body_ ? body_ : start;request->poses=poses;request->mode=mode;
+-    auto future=client_->async_send_request(request);
+-    const auto status=executor_.spin_until_future_complete(future,std::chrono::milliseconds(1500));
+-    if(status!=rclcpp::FutureReturnCode::SUCCESS) throw std::runtime_error("pct_native_traversability_timeout");
+-    const auto reply=future.get();
+-    if(!reply->ready || reply->verdicts.size()!=poses.size())
+-      throw std::runtime_error("pct_native_traversability_evidence_unavailable:"+reply->message);
+-    return reply;
++    // Readiness may change while initial static publishers are being adopted.
++    // Poll inside the original total request budget, never renew that deadline.
++    const auto deadline=std::chrono::steady_clock::now()+std::chrono::milliseconds(1500);
++    for(;;) {
++      auto future=client_->async_send_request(request);
++      const auto remaining=deadline-std::chrono::steady_clock::now();
++      if(remaining<=decltype(remaining)::zero())throw std::runtime_error("pct_native_traversability_timeout");
++      const auto status=executor_.spin_until_future_complete(future,remaining);
++      if(status!=rclcpp::FutureReturnCode::SUCCESS) throw std::runtime_error("pct_native_traversability_timeout");
++      const auto reply=future.get();
++      if(reply->ready && reply->verdicts.size()==poses.size())return reply;
++      if(reply->ready || mode!=Service::Request::STATIC_ONLY ||
++          reply->message!="static_evidence_unavailable")
++        throw std::runtime_error("pct_native_traversability_evidence_unavailable:"+reply->message);
++      std::this_thread::sleep_for(std::min(std::chrono::steady_clock::duration(std::chrono::milliseconds(10)),
++          std::max(std::chrono::steady_clock::duration::zero(),deadline-std::chrono::steady_clock::now())));
++      executor_.spin_some();
++      request->body=have_body_?body_:start;
++    }
+   }
+   // A solid verdict for one oriented footprint does not establish all headings.
+   // Explicitly check the four undirected headings used by the eight-neighbor graph.
+--- parent/src/lite3_nav2_plugins/include/lite3_nav2_plugins/pct_route_planner.hpp
++++ v283/src/lite3_nav2_plugins/include/lite3_nav2_plugins/pct_route_planner.hpp
+@@ -29,6 +29,11 @@
+     solid_=std::move(solid);rebuildMap();
+   }
+   void clearRepairConstraints();
++  void setRequestEndpoints(const Eigen::Vector3d &start,const Eigen::Vector3d &goal) {
++    if(!start.allFinite()||!goal.allFinite())throw std::runtime_error("pct_nonfinite_endpoint");
++    request_start_=start;request_goal_=goal;have_request_endpoints_=true;
++  }
++  bool feedbackExemptAt(const Eigen::Vector3d &position) const;
+   void setFeedbackConstraints(const std::vector<RejectedPose> &poses);
+   bool rejectedAt(const Eigen::Vector3d &position,double yaw,bool feedback_only=false) const;
+   void addRepairConstraints(const std::vector<RejectedPose> &poses);
+@@ -72,6 +77,8 @@
+   Eigen::MatrixXd planning_ground_,planning_ceiling_;
+   Eigen::MatrixXd costs_,ground_,ceiling_,gateway_,grad_x_,grad_y_;
+   std::vector<RejectedPose> rejected_,feedback_;
++  Eigen::Vector3d request_start_,request_goal_;
++  bool have_request_endpoints_{false};
+   std::vector<uint8_t> ground_valid_;
+   OfflineElePlanner planner_;
+ };
+--- parent/src/plan_manage/src/scan_replan_fsm.cpp
++++ v283/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -1,6 +1,7 @@
+ #include <bspline_opt/full_trajectory_collision.h>
+ 
+ #include <plan_manage/scan_replan_fsm.h>
++#include <plan_manage/measured_seed.h>
+ #include <plan_manage/reference_path_utils.h>
+ #include <cmath>
+ #include <limits>
+@@ -1163,8 +1164,18 @@
+ 
+     if (navi_mode_ == NAVI_MODE::REFERENCE_PATH)
+     {
+-      const bool measured_start = info->start_time_.seconds() < 1e-5 ||
+-          raw_t_cur >= info->duration_ || replan_fail_count_ >= 3;
++      const bool unavailable=info->start_time_.seconds()<1e-5 ||
++          raw_t_cur>=info->duration_ || replan_fail_count_>=3;
++      bool tracking_agrees=false;
++      if(!unavailable) {
++        auto map=planner_manager_->grid_map_;
++        const auto predicted=info->position_traj_.evaluateDeBoorT(t_cur);
++        const auto ahead=info->position_traj_.evaluateDeBoorT(std::min(t_cur+GridMap::collision_heading_lookahead_s,info->duration_));
++        const double planned_yaw=map->collisionTrajectoryYaw(predicted,ahead,info->velocity_traj_.evaluateDeBoorT(t_cur));
++        tracking_agrees=measuredSeedAgrees(predicted,planned_yaw,odom_pos_,map->measuredBodyYaw(),
++            map->getResolution(),map->bodyCylinderOffset());
++      }
++      const bool measured_start=unavailable||!tracking_agrees;
+       auto sampled_origin = time_now;
+       const rclcpp::Time *retry_origin = nullptr;
+       if (measured_start) {
+--- parent/src/plan_manage/include/plan_manage/measured_seed.h
++++ v283/src/plan_manage/include/plan_manage/measured_seed.h
+@@ -0,0 +1,20 @@
++#pragma once
++#include <Eigen/Core>
++#include <cmath>
++
++namespace scan_planner {
++// A warm start represents the physical robot only within the map's existing
++// spatial sampling precision. Check both cylinder centers, including yaw.
++inline bool measuredSeedAgrees(const Eigen::Vector3d &planned,double planned_yaw,
++    const Eigen::Vector3d &measured,double measured_yaw,double resolution,double offset) {
++  if(!planned.allFinite()||!measured.allFinite()||!std::isfinite(planned_yaw)||
++      !std::isfinite(measured_yaw)||!std::isfinite(resolution)||resolution<=0||
++      !std::isfinite(offset)||offset<0)return false;
++  const Eigen::Vector3d a(std::cos(planned_yaw),std::sin(planned_yaw),0.);
++  Eigen::Vector3d b(std::cos(measured_yaw),std::sin(measured_yaw),0.);
++  if(a.dot(b)<0)b=-b; // The two-cylinder envelope is unchanged by a half turn.
++  for(double sign:{-1.,1.})
++    if((planned+sign*offset*a-measured-sign*offset*b).norm()>.5*resolution)return false;
++  return true;
++}
++}
+--- parent/src/plan_env/include/plan_env/grid_map.h
++++ v283/src/plan_env/include/plan_env/grid_map.h
+@@ -333,6 +333,7 @@
+   bool collisionFreeSegment(const Eigen::Vector3d &from, const Eigen::Vector3d &to,
+                             int *blocked_sample = nullptr);
+   static constexpr double collision_heading_lookahead_s = 0.8;
++  double bodyCylinderOffset() const {return mapState().mp_.double_cylinder_offset_;}
+   double environmentalCost(const Eigen::Vector3d &p,double yaw) const {
+     const auto field=supportState().environmental_field_;return field ? field->cost(p,yaw,mapState().mp_.support_gap_mask_.get()) : 0.;
+   }
+@@ -647,6 +648,10 @@
+ }
+ 
+ inline int GridMap::getInflateOccupancy(Eigen::Vector3d pos, double yaw) {
++  // The optimizer, publication validator and controller query the same exact
++  // source geometry. A live-cloud blind spot cannot waive a static wall/gap.
++  if (supportState().static_solid_ &&
++      staticTraversability(pos,yaw)!=reactive_stair::Verdict::Free) return 1;
+   return reactive_stair::twoCylinderQuery({{pos.x(),pos.y(),pos.z()}},yaw,
+     mapState().mp_.double_cylinder_offset_,[&](const std::array<double,3> &point) {
+       return reactiveOccupancy(Eigen::Vector3d(point[0],point[1],point[2]),&pos);

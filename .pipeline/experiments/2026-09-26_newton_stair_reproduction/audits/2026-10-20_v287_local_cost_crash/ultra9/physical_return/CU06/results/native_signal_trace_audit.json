@@ -1,0 +1,43 @@
+{
+  "case_id": "CU06",
+  "physics_steps": 0,
+  "trace_files": 6,
+  "faults": [
+    {
+      "signal": "SIGSEGV",
+      "log_file": "native_backtraces/controller_server-107.log",
+      "fault_instruction": "rip            0x766d19dba05c      0x766d19dba05c <GridMap::rawContributorOccupancy(Eigen::Matrix<int, 3, 1, 0, 3, 1> const&)+1020>",
+      "fault_thread_frames": [
+        "#0  std::_Hashtable<int, std::pair<int const, reactive_stair::Occupancy>, std::allocator<std::pair<int const, reactive_stair::Occupancy> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_find_before_node () at /usr/include/c++/9/bits/hashtable.h:1583",
+        "#1  std::_Hashtable<int, std::pair<int const, reactive_stair::Occupancy>, std::allocator<std::pair<int const, reactive_stair::Occupancy> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_find_node () at /usr/include/c++/9/bits/hashtable.h:687",
+        "#2  std::_Hashtable<int, std::pair<int const, reactive_stair::Occupancy>, std::allocator<std::pair<int const, reactive_stair::Occupancy> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find () at /usr/include/c++/9/bits/hashtable.h:1454",
+        "#3  std::unordered_map<int, reactive_stair::Occupancy, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, reactive_stair::Occupancy> > >::find () at /usr/include/c++/9/bits/unordered_map.h:922",
+        "#4  GridMap::rawContributorOccupancy () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:432",
+        "#5  GridMap::rawContributorOccupancy () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:428",
+        "#6  0x0000766d19dce6b8 in GridMap::reactiveOccupancy () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:570",
+        "#7  0x0000766d19dceafa in GridMap::getInflateOccupancy(Eigen::Matrix<double, 3, 1, 0, 3, 1>, double)::{lambda(std::array<double, 3ul> const&)#1}::operator()(std::array<double, 3ul> const&) const () at /work/src/plan_env/include/plan_env/grid_map.h:661",
+        "#8  reactive_stair::twoCylinderQuery<GridMap::getInflateOccupancy(Eigen::Matrix<double, 3, 1, 0, 3, 1>, double)::{lambda(std::array<double, 3ul> const&)#1}>(std::array<double, 3ul> const&, double, double, GridMap::getInflateOccupancy(Eigen::Matrix<double, 3, 1, 0, 3, 1>, double)::{lambda(std::array<double, 3ul> const&)#1}) () at /work/src/plan_env/include/plan_env/footprint_query.h:16",
+        "#9  GridMap::getInflateOccupancy () at /work/src/plan_env/include/plan_env/grid_map.h:659",
+        "#10 operator() () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:657",
+        "#11 collisionFreeSegment<GridMap::collisionFreeSegment(const Vector3d&, const Vector3d&, int*)::<lambda(const Vector3d&, double)> >(void) () at /work/src/plan_env/include/plan_env/collision_segment.h:25",
+        "#12 0x0000766d19dacea3 in AStar::AstarSearch () at /work/src/path_searching/src/dyn_a_star.cpp:524",
+        "#13 0x0000766d19d68d44 in scan_planner::SCANPlannerManager::reboundReplanAttempt () at /work/src/plan_manage/src/planner_manager.cpp:353",
+        "#14 0x0000766d19d6f380 in scan_planner::SCANPlannerManager::reboundReplan () at /work/src/plan_manage/src/planner_manager.cpp:268",
+        "#15 0x0000766d19d092c0 in scan_planner::SCANReplanFSM::callReboundReplan () at /work/src/plan_manage/src/scan_replan_fsm.cpp:1459",
+        "#16 0x0000766d19d0ef9d in scan_planner::SCANReplanFSM::execFSMCallback () at /work/src/plan_manage/src/scan_replan_fsm.cpp:966",
+        "#17 0x0000766d19d10569 in operator() () at /work/src/plan_manage/src/scan_replan_fsm.cpp:144",
+        "#18 callbackBoundary<scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()>, scan_planner::SCANReplanFSM::callbackBoundary(char const*, Work&&) [with Work = scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()>]::<lambda()> > () at /work/install/plan_env/include/plan_env/callback_exception.h:20",
+        "#19 callbackBoundary<scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()> > () at /work/src/plan_manage/include/plan_manage/scan_replan_fsm.h:44",
+        "#20 operator() () at /work/src/plan_manage/src/scan_replan_fsm.cpp:144",
+        "#21 execute_callback_delegate<> () at /opt/ros/foxy/include/rclcpp/timer.hpp:223",
+        "#22 execute_callback () at /opt/ros/foxy/include/rclcpp/timer.hpp:209",
+        "#23 0x0000766d37cfc62d in rclcpp::Executor::execute_any_executable(rclcpp::AnyExecutable&) () from /opt/ros/foxy/lib/librclcpp.so",
+        "#24 0x0000766d37d005f8 in rclcpp::executors::MultiThreadedExecutor::run(unsigned long) () from /opt/ros/foxy/lib/librclcpp.so",
+        "#25 0x0000766d37790df4 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6",
+        "#26 0x0000766d378ac609 in start_thread () from /lib/x86_64-linux-gnu/libpthread.so.0",
+        "#27 0x0000766d3747d353 in clone () from /lib/x86_64-linux-gnu/libc.so.6"
+      ],
+      "allocator_messages": []
+    }
+  ]
+}

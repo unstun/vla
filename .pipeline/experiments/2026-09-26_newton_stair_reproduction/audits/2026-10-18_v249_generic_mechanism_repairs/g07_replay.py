@@ -1,0 +1,8 @@
+from pathlib import Path
+import os,subprocess
+HERE=Path(__file__).resolve().parent;BASE=Path('/data/sun/vla_mppi_20261009');OUT=BASE/'generic_mechanisms_v249'/os.environ.get('G07_RUN_TAG','g07_baseline02');OUT.mkdir(parents=True,exist_ok=True)
+source='/task/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-18_v249_generic_mechanism_repairs'
+shell='source /opt/ros/foxy/setup.bash && source /task/recovery_v188/install/setup.bash && source /task/command_continuity_v206_20261015/install/setup.bash && source /task/callback_failure_v232/install/setup.bash && source /task/cooperative_search_v240/install/setup.bash && source /task/physical_traversability_v247/native/install/setup.bash && source /work/install/setup.bash'
+shell+=' && export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 ROS_DOMAIN_ID=149 ROS_LOCALHOST_ONLY=1 ROS_HOME=/output/ros_home ROS_LOG_DIR=/output/ros_logs && python3 '+source+'/instrument_search.py && cmake -S '+source+' -B /output/build && cmake --build /output/build --target g07_probe -j2'
+shell+=' && source /work/fixtures/probe225.env && export G07_FRAME=2 G07_INPUT=/task/generic_mechanisms_v249/g07_input G07_OUTPUT=/output/frame02 && /output/build/g07_probe --ros-args --params-file /work/fixtures/environment_candidate228.scan.yaml --log-level warn'
+raise SystemExit(subprocess.run(['docker','run','--rm','--pull=never','--user',f'{os.getuid()}:{os.getgid()}','--cpus=2','--memory=6g','-v',str(BASE)+':/task:ro','-v',str(BASE/os.environ.get('G07_NATIVE_WORK','physical_traversability_v247/native'))+':/work:ro','-v',str(OUT)+':/output:rw','--entrypoint','/bin/bash','sha256:5a41a25fb20b6e77ce890974cea27ee59d93533346eaf7df83f56e74303b4bd4','-c',shell]).returncode)

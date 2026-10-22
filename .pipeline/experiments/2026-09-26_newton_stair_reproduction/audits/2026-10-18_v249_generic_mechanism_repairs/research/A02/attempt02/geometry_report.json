@@ -1,0 +1,369 @@
+{
+  "scope": "CPU-only original geometric evidence; no physics, planning, mask modification or pose snapping",
+  "script_sha256": "e4d9829795ff60bc1cf4ca3f5d6fda38f316e196f1937261a71c4f022b3fb3e8",
+  "pose_input_sha256": "af7ae190d339144cfe6d98547c51d09d4c2e8970ec1ee3659cd9661cf4d383cf",
+  "cpu_affinity": [
+    0
+  ],
+  "numpy": "2.5.3",
+  "shapely": "2.1.2",
+  "physics_steps": 0,
+  "inputs": {
+    "mesh": {
+      "path": "/data/sun/vla_mppi_20261009/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/building.usda",
+      "sha256": "e55e4a9507441b8f1788503f909505a49b63d6eb36f6882ba782aee7c38a5d39",
+      "bytes": 736116
+    },
+    "floor": {
+      "path": "/data/sun/vla_mppi_20261009/fixed_curve_input/physical_floor.f32",
+      "sha256": "20acd5cf1ef156c5bd336b12651efe9a18e9959816905b05178ed44b1a181c96",
+      "bytes": 2408000
+    },
+    "mask": {
+      "path": "/data/sun/vla_mppi_20261009/support_coverage_v134/partial.txt",
+      "sha256": "219d7982eca6c7af94545158ec97fb3b0186ff0f2166f8697d53c0b0726c56d8",
+      "bytes": 583523
+    },
+    "triangles": {
+      "path": "/data/sun/vla_mppi_20261009/support_coverage_v134/triangles.f64",
+      "sha256": "f3910b7c8106977d1f6e3364c464a9144c7946a0585c8cdcff4346d7add342fc",
+      "bytes": 1184256
+    },
+    "pcd": {
+      "path": "/data/sun/vla_mppi_20261009/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/inputs/static_background/building2_9.pcd",
+      "sha256": "8721efeb74415336d47c97d861d6e30ad213669b120d5b37c62461100c1f2eae",
+      "bytes": 48000221
+    }
+  },
+  "triangle_count": 16448,
+  "transformed_usd_exactly_equals_archived_triangles": true,
+  "parameters": {
+    "radius_m": 0.35,
+    "offset_m": 0.18,
+    "native_body_clearance_m": 0.3,
+    "height_bound_m": 0.26
+  },
+  "geometry_contract": "Z-clip original transformed triangles to query ground +/- .26, project XY, union; covered center's distance to union boundary is distance to uncovered domain. Circle coverage uses distance >= .35, not polygonal circle sampling.",
+  "circle_uncovered_area_contract": "Area uses inscribed circle polygon with 4096 segments per quadrant; coverage verdict uses exact point-to-mesh-polygon-boundary distance.",
+  "mask_samples": 128,
+  "trigger_source_pairs": 8,
+  "poses": [
+    {
+      "label": "gpmp_a02_stair",
+      "body_xyz": [
+        8.19228290161508,
+        6.120598386447163,
+        3.3710873451931658
+      ],
+      "yaw": 2.149898830712513,
+      "ground_hint": 3.071087345193166,
+      "mesh_height_band": [
+        2.811087345193166,
+        3.3310873451931657
+      ],
+      "clipped_polygons": 3062,
+      "sides": [
+        {
+          "side": "front",
+          "center_xy": [
+            8.0937737626546,
+            6.271250135661253
+          ],
+          "mask_target_cell": [
+            80,
+            62
+          ],
+          "mask_target_bounds": [
+            8.0,
+            6.2,
+            8.1,
+            6.300000000000001
+          ],
+          "mask_trigger_sources": 1,
+          "mask_blocks": true,
+          "source_squares_intersecting_exact_disc": 0,
+          "failed_samples_inside_exact_disc": 0,
+          "nearest_failed_generator_sample_m": 0.5607970304020023,
+          "center_covered": true,
+          "distance_to_uncovered_domain_m": 0.5373741050717525,
+          "continuous_disc_covered": true,
+          "coverage_margin_m": 0.18737410507175256,
+          "nearest_mesh_boundary_xy": [
+            7.6298956871032715,
+            5.999978943264303
+          ],
+          "disc_uncovered_area_m2": 0.0,
+          "pcd_points_inside_disc_height_band": 396,
+          "pcd_horizontal_normal_points": 385,
+          "pcd_horizontal_z_bounds": [
+            2.999197006225586,
+            3.0676066875457764
+          ],
+          "physical_floor_records_within_70cm_height_band": 153,
+          "physical_floor_z_bounds": [
+            3.058094234466553,
+            3.067623109817505
+          ]
+        },
+        {
+          "side": "rear",
+          "center_xy": [
+            8.29079204057556,
+            5.969946637233074
+          ],
+          "mask_target_cell": [
+            82,
+            59
+          ],
+          "mask_target_bounds": [
+            8.200000000000001,
+            5.9,
+            8.3,
+            6.0
+          ],
+          "mask_trigger_sources": 0,
+          "mask_blocks": false,
+          "source_squares_intersecting_exact_disc": 0,
+          "failed_samples_inside_exact_disc": 0,
+          "nearest_failed_generator_sample_m": null,
+          "center_covered": true,
+          "distance_to_uncovered_domain_m": 0.6608963534722889,
+          "continuous_disc_covered": true,
+          "coverage_margin_m": 0.31089635347228894,
+          "nearest_mesh_boundary_xy": [
+            7.6298956871032715,
+            5.969946637233074
+          ],
+          "disc_uncovered_area_m2": 0.0,
+          "pcd_points_inside_disc_height_band": 417,
+          "pcd_horizontal_normal_points": 405,
+          "pcd_horizontal_z_bounds": [
+            2.9992170333862305,
+            3.067615270614624
+          ],
+          "physical_floor_records_within_70cm_height_band": 155,
+          "physical_floor_z_bounds": [
+            3.058094234466553,
+            3.0676293087005617
+          ]
+        }
+      ]
+    },
+    {
+      "label": "gpmp_g07_stair",
+      "body_xyz": [
+        8.188855878415517,
+        6.124151701683316,
+        3.370393142175118
+      ],
+      "yaw": 2.1606004118956394,
+      "ground_hint": 3.070393142175118,
+      "mesh_height_band": [
+        2.8103931421751183,
+        3.330393142175118
+      ],
+      "clipped_polygons": 3080,
+      "sides": [
+        {
+          "side": "front",
+          "center_xy": [
+            8.08874019907164,
+            6.273740640945262
+          ],
+          "mask_target_cell": [
+            80,
+            62
+          ],
+          "mask_target_bounds": [
+            8.0,
+            6.2,
+            8.1,
+            6.300000000000001
+          ],
+          "mask_trigger_sources": 1,
+          "mask_blocks": true,
+          "source_squares_intersecting_exact_disc": 0,
+          "failed_samples_inside_exact_disc": 0,
+          "nearest_failed_generator_sample_m": 0.5578522771803831,
+          "center_covered": true,
+          "distance_to_uncovered_domain_m": 0.5343067969628048,
+          "continuous_disc_covered": true,
+          "coverage_margin_m": 0.18430679696280483,
+          "nearest_mesh_boundary_xy": [
+            7.6298956871032715,
+            5.999978943264303
+          ],
+          "disc_uncovered_area_m2": 0.0,
+          "pcd_points_inside_disc_height_band": 395,
+          "pcd_horizontal_normal_points": 384,
+          "pcd_horizontal_z_bounds": [
+            2.999197006225586,
+            3.0676066875457764
+          ],
+          "physical_floor_records_within_70cm_height_band": 153,
+          "physical_floor_z_bounds": [
+            3.058094234466553,
+            3.067623109817505
+          ]
+        },
+        {
+          "side": "rear",
+          "center_xy": [
+            8.288971557759393,
+            5.97456276242137
+          ],
+          "mask_target_cell": [
+            82,
+            59
+          ],
+          "mask_target_bounds": [
+            8.200000000000001,
+            5.9,
+            8.3,
+            6.0
+          ],
+          "mask_trigger_sources": 0,
+          "mask_blocks": false,
+          "source_squares_intersecting_exact_disc": 0,
+          "failed_samples_inside_exact_disc": 0,
+          "nearest_failed_generator_sample_m": null,
+          "center_covered": true,
+          "distance_to_uncovered_domain_m": 0.659075870656121,
+          "continuous_disc_covered": true,
+          "coverage_margin_m": 0.3090758706561211,
+          "nearest_mesh_boundary_xy": [
+            7.6298956871032715,
+            5.97456276242137
+          ],
+          "disc_uncovered_area_m2": 0.0,
+          "pcd_points_inside_disc_height_band": 419,
+          "pcd_horizontal_normal_points": 407,
+          "pcd_horizontal_z_bounds": [
+            2.9992170333862305,
+            3.067615270614624
+          ],
+          "physical_floor_records_within_70cm_height_band": 154,
+          "physical_floor_z_bounds": [
+            3.058094234466553,
+            3.0676293087005617
+          ]
+        }
+      ]
+    },
+    {
+      "label": "actual_first_policy_observation",
+      "body_xyz": [
+        -6.1101274490356445,
+        6.878294467926025,
+        0.3980444371700287
+      ],
+      "yaw": -0.7857828630328391,
+      "ground_hint": 0.0980444371700287,
+      "mesh_height_band": [
+        -0.1619555628299713,
+        0.3580444371700287
+      ],
+      "clipped_polygons": 326,
+      "sides": [
+        {
+          "side": "front",
+          "center_xy": [
+            -5.982897202108889,
+            6.75096629246216
+          ],
+          "mask_target_cell": [
+            -60,
+            67
+          ],
+          "mask_target_bounds": [
+            -6.0,
+            6.7,
+            -5.9,
+            6.800000000000001
+          ],
+          "mask_trigger_sources": 0,
+          "mask_blocks": false,
+          "source_squares_intersecting_exact_disc": 0,
+          "failed_samples_inside_exact_disc": 0,
+          "nearest_failed_generator_sample_m": null,
+          "center_covered": true,
+          "distance_to_uncovered_domain_m": 0.6364174673297026,
+          "continuous_disc_covered": true,
+          "coverage_margin_m": 0.28641746732970264,
+          "nearest_mesh_boundary_xy": [
+            -6.61927247516338,
+            6.758294632463498
+          ],
+          "disc_uncovered_area_m2": 0.0,
+          "pcd_points_inside_disc_height_band": 212,
+          "pcd_horizontal_normal_points": 212,
+          "pcd_horizontal_z_bounds": [
+            0.05803000181913376,
+            0.05803000181913376
+          ],
+          "physical_floor_records_within_70cm_height_band": 154,
+          "physical_floor_z_bounds": [
+            0.05803032338619232,
+            0.058030345737934114
+          ]
+        },
+        {
+          "side": "rear",
+          "center_xy": [
+            -6.2373576959624,
+            7.0056226433898905
+          ],
+          "mask_target_cell": [
+            -63,
+            70
+          ],
+          "mask_target_bounds": [
+            -6.300000000000001,
+            7.0,
+            -6.2,
+            7.1000000000000005
+          ],
+          "mask_trigger_sources": 6,
+          "mask_blocks": true,
+          "source_squares_intersecting_exact_disc": 0,
+          "failed_samples_inside_exact_disc": 0,
+          "nearest_failed_generator_sample_m": 0.3954877738803137,
+          "center_covered": true,
+          "distance_to_uncovered_domain_m": 0.3790414790998743,
+          "continuous_disc_covered": true,
+          "coverage_margin_m": 0.029041479099874312,
+          "nearest_mesh_boundary_xy": [
+            -6.616374044733038,
+            7.009987301772238
+          ],
+          "disc_uncovered_area_m2": 0.0,
+          "pcd_points_inside_disc_height_band": 221,
+          "pcd_horizontal_normal_points": 221,
+          "pcd_horizontal_z_bounds": [
+            0.05803000181913376,
+            0.05803000181913376
+          ],
+          "physical_floor_records_within_70cm_height_band": 134,
+          "physical_floor_z_bounds": [
+            0.05803032338619232,
+            0.058030345737934114
+          ]
+        }
+      ]
+    }
+  ],
+  "elapsed_s": 0.6979103089979617,
+  "pcd_header": [
+    "# .PCD v0.7 - Point Cloud Data file format",
+    "VERSION 0.7",
+    "FIELDS x y z normal_x normal_y normal_z",
+    "SIZE 4 4 4 4 4 4",
+    "TYPE F F F F F F",
+    "COUNT 1 1 1 1 1 1",
+    "WIDTH 2000000",
+    "HEIGHT 1",
+    "VIEWPOINT 0 0 0 1 0 0 0",
+    "POINTS 2000000",
+    "DATA binary"
+  ]
+}

@@ -1,0 +1,1358 @@
+{
+  "physics_steps": 0,
+  "actual_attempts": 10,
+  "extraction_source_sha256": "60ad5e80abd2e9804aa05386093644e1bce5ba5c231e986d4757fdda5485f31c",
+  "execution_manifest_sha256": "70a28fbdf7269447e580aa00d576e5aec2cbd5f47704dd2497d8544311aeace5",
+  "cases": [
+    {
+      "case_id": "A04",
+      "physics_steps": 61020,
+      "physics_duration_s": 60.998104095458984,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v287_A04_attempt01",
+        "request_id": "v287_A04_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792505503385968468,
+        "requested_at_monotonic_ns": 20458561257652,
+        "backend_terminal_status": "FAILED",
+        "note": "native_process_exit:controller_server:exit_code=-11",
+        "native_failure": {
+          "run_id": "v287_A04_attempt01",
+          "run_epoch_ns": 1792505503385968468,
+          "component": "controller_server",
+          "exit_code": -11,
+          "cause": "native_process_exit",
+          "monotonic_ns": 20458483508150
+        }
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 5,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 52,
+        "no_executable_trajectory": 1
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 5,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 52,
+        "no_executable_trajectory": 1
+      },
+      "native_faults": [
+        {
+          "signal": "SIGSEGV",
+          "log_file": "native_backtraces/controller_server-107.log",
+          "fault_instruction": "rip            0x730d2cfbd6ec      0x730d2cfbd6ec <GridMap::terrainCellLayers(reactive_stair::Cell2 const&)+428>",
+          "fault_thread_frames": [
+            "#0  std::_Hashtable<unsigned long, std::pair<unsigned long const, GridMap::TerrainCellLayers>, std::allocator<std::pair<unsigned long const, GridMap::TerrainCellLayers> >, std::__detail::_Select1st, std::equal_to<unsigned long>, std::hash<unsigned long>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_find_before_node () at /usr/include/c++/9/bits/hashtable.h:1583",
+            "#1  std::_Hashtable<unsigned long, std::pair<unsigned long const, GridMap::TerrainCellLayers>, std::allocator<std::pair<unsigned long const, GridMap::TerrainCellLayers> >, std::__detail::_Select1st, std::equal_to<unsigned long>, std::hash<unsigned long>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_find_node () at /usr/include/c++/9/bits/hashtable.h:687",
+            "#2  std::_Hashtable<unsigned long, std::pair<unsigned long const, GridMap::TerrainCellLayers>, std::allocator<std::pair<unsigned long const, GridMap::TerrainCellLayers> >, std::__detail::_Select1st, std::equal_to<unsigned long>, std::hash<unsigned long>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find () at /usr/include/c++/9/bits/hashtable.h:1454",
+            "#3  std::unordered_map<unsigned long, GridMap::TerrainCellLayers, std::hash<unsigned long>, std::equal_to<unsigned long>, std::allocator<std::pair<unsigned long const, GridMap::TerrainCellLayers> > >::find () at /usr/include/c++/9/bits/unordered_map.h:922",
+            "#4  GridMap::terrainCellLayers () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:276",
+            "#5  0x0000730d2cfc651e in operator() () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:379",
+            "#6  0x0000730d2cfc7956 in GridMap::footprintSupportVerdict () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:393",
+            "#7  0x0000730d2cfcd683 in GridMap::reactiveOccupancy () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:587",
+            "#8  0x0000730d2cfceafa in GridMap::getInflateOccupancy(Eigen::Matrix<double, 3, 1, 0, 3, 1>, double)::{lambda(std::array<double, 3ul> const&)#1}::operator()(std::array<double, 3ul> const&) const () at /work/src/plan_env/include/plan_env/grid_map.h:661",
+            "#9  reactive_stair::twoCylinderQuery<GridMap::getInflateOccupancy(Eigen::Matrix<double, 3, 1, 0, 3, 1>, double)::{lambda(std::array<double, 3ul> const&)#1}>(std::array<double, 3ul> const&, double, double, GridMap::getInflateOccupancy(Eigen::Matrix<double, 3, 1, 0, 3, 1>, double)::{lambda(std::array<double, 3ul> const&)#1}) () at /work/src/plan_env/include/plan_env/footprint_query.h:16",
+            "#10 GridMap::getInflateOccupancy () at /work/src/plan_env/include/plan_env/grid_map.h:659",
+            "#11 operator() () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:657",
+            "#12 collisionFreeSegment<GridMap::collisionFreeSegment(const Vector3d&, const Vector3d&, int*)::<lambda(const Vector3d&, double)> >(void) () at /work/src/plan_env/include/plan_env/collision_segment.h:25",
+            "#13 0x0000730d2cfacea3 in AStar::AstarSearch () at /work/src/path_searching/src/dyn_a_star.cpp:524",
+            "#14 0x0000730d2cf68d44 in scan_planner::SCANPlannerManager::reboundReplanAttempt () at /work/src/plan_manage/src/planner_manager.cpp:353",
+            "#15 0x0000730d2cf6f380 in scan_planner::SCANPlannerManager::reboundReplan () at /work/src/plan_manage/src/planner_manager.cpp:268",
+            "#16 0x0000730d2cf092c0 in scan_planner::SCANReplanFSM::callReboundReplan () at /work/src/plan_manage/src/scan_replan_fsm.cpp:1459",
+            "#17 0x0000730d2cf0ef9d in scan_planner::SCANReplanFSM::execFSMCallback () at /work/src/plan_manage/src/scan_replan_fsm.cpp:966",
+            "#18 0x0000730d2cf10569 in operator() () at /work/src/plan_manage/src/scan_replan_fsm.cpp:144",
+            "#19 callbackBoundary<scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()>, scan_planner::SCANReplanFSM::callbackBoundary(char const*, Work&&) [with Work = scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()>]::<lambda()> > () at /work/install/plan_env/include/plan_env/callback_exception.h:20",
+            "#20 callbackBoundary<scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()> > () at /work/src/plan_manage/include/plan_manage/scan_replan_fsm.h:44",
+            "#21 operator() () at /work/src/plan_manage/src/scan_replan_fsm.cpp:144",
+            "#22 execute_callback_delegate<> () at /opt/ros/foxy/include/rclcpp/timer.hpp:223",
+            "#23 execute_callback () at /opt/ros/foxy/include/rclcpp/timer.hpp:209",
+            "#24 0x0000730d42dbc62d in rclcpp::Executor::execute_any_executable(rclcpp::AnyExecutable&) () from /opt/ros/foxy/lib/librclcpp.so",
+            "#25 0x0000730d42dc05f8 in rclcpp::executors::MultiThreadedExecutor::run(unsigned long) () from /opt/ros/foxy/lib/librclcpp.so",
+            "#26 0x0000730d42850df4 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6",
+            "#27 0x0000730d4296c609 in start_thread () from /lib/x86_64-linux-gnu/libpthread.so.0",
+            "#28 0x0000730d4253d353 in clone () from /lib/x86_64-linux-gnu/libc.so.6"
+          ],
+          "allocator_messages": []
+        }
+      ],
+      "reactive_blocked": [
+        {
+          "verdict": 6,
+          "voxel": 0,
+          "mentions": 26
+        },
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 8
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 48,
+        "refine_minus1008": 3,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "A-star failed": {
+          "one_based_line": 16202,
+          "context": [
+            "[controller_server-3] [INFO] [1792505573.180392312] [quad_0.scan_planner_node]: spline_seed_capture {\"interval\":0.24000000000000005,\"velocity_limit\":1,\"acceleration_limit\":0.5,\"tolerance\":0.5,\"points\":[[-4.9870214737008451,0.14057667717279254,1.2549200812220236],[-5.0447565006198074,-0.017158349746170157,1.3126551081409861],[-5.0870214737008448,-0.18621824207031989,1.3549200812220237],[-5.1313590409982517,-0.35376089012461392,1.3992576485194299],[-5.1370214737008455,-0.5496157016918759,1.4049200812220235],[-5.1870214737008453,-0.71301316131343218,1.4549200812220235],[-5.1870214737008453,-0.91301316131343224,1.4549200812220235],[-5.2370214737008451,-1.0764106209349884,1.5049200812220236],[-5.2468290948361771,-1.2692309439625391,1.5147277023573551],[-5.287021473700845,-1.4398080805565445,1.5549200812220236],[-5.287021473700845,-1.6398080805565445,1.5549200812220234],[-5.287021473700845,-1.8398080805565455,1.5549200812220234],[-5.3370214737008439,-2.0032055401781017,1.6049200812220237],[-5.3679801764850463,-2.1903820256114082,1.6049200812220237],[-5.4870214737008451,-2.325181643562348,1.6549200812220235],[-5.4961195444192548,-2.5185213935456172,1.6640181519404336],[-5.537021473700845,-2.6885791031839044,1.7049200812220238],[-5.5538545713382179,-2.8762564204645802,1.7217531788593963],[-5.5870214737008457,-3.0519765628054607,1.7549200812220236],[-5.5870214737008457,-3.2312658846868061,1.8049200812220236],[-5.5715764500914364,-3.4248683464366163,1.8049200812220234],[-5.4413923374237063,-3.555052459104346,1.8549200812220237],[-5.2846241646943097,-3.6594233228272079,1.8549200812220235],[-5.0846241646943096,-3.6594233228272079,1.8549200812220235],[-4.9675258644434752,-3.6558132271726733,1.8581444816928319]],\"derivatives\":[[-0.065310443984666122,-0.97994754595374889,0.20139935107128537],[0.34560494681760967,-0.93838006550080788,-0.00027093522591280244],[-0.15112910094141258,-0.076923621238004766,-0.071737437520867378],[0,0,0]]}",
+            "[controller_server-3] [INFO] [1792505573.180455036] [quad_0.scan_planner_node]: spline_geometry_initialized samples=25 interval=0.240000000000 duration=5.760000000000",
+            "[controller_server-3] [ERROR] [1792505573.181627583] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792505573.181784581] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=1 clouds=0 body_poses=2 fsm_odom=-1 cloud_age=0.2449->0.1449 body_age=0.0150->0.0000 cloud_ready=1",
+            "[controller_server-3] [INFO] [1792505573.198189813] [bspline_opt]: V139_SAMPLED_REBOUND t=4.102876950 constraints=4"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 2561,
+          "context": [
+            "[controller_server-3] [INFO] [1792505560.352619300] [bspline_opt]: V139_SAMPLED_REBOUND t=1.874190871 constraints=3",
+            "[controller_server-3] [INFO] [1792505560.352778606] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.1299->0.1299 body_age=0.0100->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792505560.356397240] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792505560.356423767] [quad_0.scan_planner_node]: fixed_height_recovery_attempt; full planning gates retained",
+            "[controller_server-3] [INFO] [1792505560.356456505] [quad_0.scan_planner_node]: input_refresh site=replan_start sensor_poses=1 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.1399->0.1399 body_age=0.0100->0.0000 cloud_ready=1"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 46881,
+          "context": [
+            "[controller_server-3] [INFO] [1792505603.462854444] [quad_0.scan_planner_node]: input_refresh site=astar_search sensor_poses=0 clouds=1 body_poses=3 fsm_odom=-1 cloud_age=0.1799->0.1799 body_age=0.0350->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792505603.478332566] [controller_server]: local_trajectory_starvation elapsed_s=0.794563 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792505603.478485522] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792505603.478588152] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[controller_server-3] [INFO] [1792505603.483007131] [quad_0.scan_planner_node]: input_refresh site=astar_search sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.1949->0.1949 body_age=0.0150->0.0000 cloud_ready=1"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792505563.147242477] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505563.153368351] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505573.181627583] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792505573.375370893] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792505573.578749626] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505575.052529097] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792505575.231906160] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505580.148797604] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505580.843276478] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505581.067964683] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505596.859051131] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792505596.985515595] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792505598.706366764] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505603.478485522] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[ERROR] [controller_server-3]: process has died [pid 107, exit code -11, cmd '/usr/bin/python3 /home/ubuntu/sun/vla_v287_20261020/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v287/native_debugger.py /work/install/nav2_controller/lib/nav2_controller/controller_server --ros-args -r __node:=controller_server --params-file /home/ubuntu/sun/vla_v287_20261020/physical_runs/v287_A04_attempt01/runs/v287_A04_attempt01/nav2_params.yaml -r cmd_vel:=/quad_0/cmd_vel'].",
+        "[bt_navigator-6] [ERROR] [1792505610.924776366] [nav2_internal.bt_navigator_rclcpp_node]: Failed to cancel action server for /follow_path"
+      ],
+      "measured_seed_fallback": {
+        "count": 5,
+        "distance_triggered": 5,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.183839
+      },
+      "snapshot_manifest_sha256": "bd906c26bba0323189ff714a260822cac818d1722f1e6aca9840aaf6040e924e",
+      "sources": {
+        "result.json": {
+          "sha256": "f162bc15c692bf8e560280847779bc247d139c9e36860d74768ea69541bb7dd6",
+          "bytes": 5234
+        },
+        "nav2.log": {
+          "sha256": "d8aa2fef038c623bcc7790f6ad72a2d58fc3066dd1a10f521734795e202ce9cf",
+          "bytes": 12919922
+        },
+        "native_backtraces/bt_navigator-113.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-107.json": {
+          "sha256": "de8d05559fadf4db165e6f790e3bf3bd38c82ec8a77f6878b0a3e0d30c8a67f4",
+          "bytes": 46
+        },
+        "native_backtraces/controller_server-107.log": {
+          "sha256": "a320d780907f75a4a52acfbbaba4a0a13b20828b28c447678e9b92543ad2fa9a",
+          "bytes": 67242
+        },
+        "native_backtraces/lifecycle_manager-115.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-109.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-111.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "G05",
+      "physics_steps": 86620,
+      "physics_duration_s": 86.58404541015625,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v287_G05_attempt01",
+        "request_id": "v287_G05_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792505634441030263,
+        "requested_at_monotonic_ns": 20618738580900,
+        "backend_terminal_status": "FAILED",
+        "note": "Native navigation failed: {'seq': 1, 'request_id': 'v287_G05_attempt01-long-goal', 'goal_id': 'long-goal', 'status': 'failed', 'cause': 'nav2_failed', 'monotonic_ns': 20618630684566, 'data': {'action_status': 6}}"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 18,
+        "astar_optimization_failed": 13,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 36,
+        "no_executable_trajectory": 6
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 18,
+        "astar_optimization_failed": 13,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 36,
+        "no_executable_trajectory": 6
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 6,
+          "voxel": 0,
+          "mentions": 52
+        },
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 4
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 32,
+        "refine_minus1008": 3,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "Unable to handle the initial or end point": {
+          "one_based_line": 3615,
+          "context": [
+            "[controller_server-3] [INFO] [1792505691.583021600] [quad_0.scan_planner_node]: spline_seed_capture {\"interval\":0.24000000000000005,\"velocity_limit\":1,\"acceleration_limit\":0.5,\"tolerance\":0.5,\"points\":[[-5.4971522175162759,6.6447686778333477,0.35807025036758711],[-5.3669681048485458,6.5145845651656176,0.4080702503675871],[-5.2367839921808157,6.3844004524978875,0.45807025036758708],[-5.0953626359435065,6.2429790962605773,0.45807025036758708],[-5.0291259117567755,6.1127949835928472,0.50807025036758713],[-5.0471522175162757,5.9202617239179176,0.50807025036758713],[-5.0471522175162757,5.7409724020365722,0.55807025036758706],[-5.0471522175162766,5.540972402036572,0.55807025036758706],[-5.0971522175162765,5.3775749424150163,0.60807025036758711],[-5.0971522175162765,5.177574942415017,0.60807025036758711],[-5.0971522175162765,4.977574942415016,0.60807025036758711],[-5.0971522175162765,4.7972555318657903,0.65558339633514429],[-5.1471522175162763,4.6189962986523252,0.65807025036758715],[-5.1908994210335786,4.4510214743160459,0.70181745388488925],[-5.2471522175162759,4.2763095171494232,0.70807025036758708],[-5.2866771323656359,4.1052437629839877,0.7475951652169468],[-5.2971522175162757,3.9129120575278664,0.75807025036758713],[-5.3444121592845981,3.7475087360650257,0.80533019213590951],[-5.3471522175162765,3.549514597906311,0.80807025036758717],[-5.3971522175162754,3.3861171382847544,0.85807025036758711],[-5.3971522175162754,3.1861171382847537,0.85807025036758711],[-5.4468229348553425,3.0233507076167943,0.90284334983884684],[-5.4457569994373261,2.9540176520251271,0.88592311971119553]],\"derivatives\":[[0.00099065999698821211,-0.68588856266130405,-0.0020813753964599472],[0,0,0],[0.0063909498320837569,0.078492081894574572,0.068203675433066283],[0,0,0]]}",
+            "[controller_server-3] [INFO] [1792505691.583063197] [quad_0.scan_planner_node]: spline_geometry_initialized samples=23 interval=0.240000000000 duration=5.280000000000",
+            "[controller_server-3] [ERROR] [1792505691.587605070] [path_searching]: Unable to handle the initial or end point, force return!",
+            "[controller_server-3] [ERROR] [1792505691.587618879] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792505691.587668681] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=1 body_poses=1 fsm_odom=-1 cloud_age=0.1599->0.1599 body_age=0.0200->0.0000 cloud_ready=1"
+          ]
+        },
+        "A-star failed": {
+          "one_based_line": 3616,
+          "context": [
+            "[controller_server-3] [INFO] [1792505691.583063197] [quad_0.scan_planner_node]: spline_geometry_initialized samples=23 interval=0.240000000000 duration=5.280000000000",
+            "[controller_server-3] [ERROR] [1792505691.587605070] [path_searching]: Unable to handle the initial or end point, force return!",
+            "[controller_server-3] [ERROR] [1792505691.587618879] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792505691.587668681] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=1 body_poses=1 fsm_odom=-1 cloud_age=0.1599->0.1599 body_age=0.0200->0.0000 cloud_ready=1",
+            "[controller_server-3] iter=5,time(ms)=3.06,rebound."
+          ]
+        },
+        "-1008": {
+          "one_based_line": 7810,
+          "context": [
+            "[controller_server-3] [INFO] [1792505695.993584046] [quad_0.scan_planner_node]: spline_geometry_initialized samples=29 interval=0.069858215779 duration=1.956030041819",
+            "[controller_server-3] [INFO] [1792505695.993667165] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1249->0.1249 body_age=0.0000->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792505696.029485807] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792505696.029526788] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1",
+            "[controller_server-3] first_optimize_step_success=0"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 47444,
+          "context": [
+            "[controller_server-3] [INFO] [1792505735.336722451] [quad_0.scan_planner_node]: nominal_replan_result success=0 wall_s=0.011032067 budget_s=0.033333333 overrun=0",
+            "[controller_server-3] [WARN] [1792505735.340322915] [controller_server]: local_trajectory_starvation elapsed_s=0.769577 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792505735.340452994] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792505735.340544196] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[recoveries_server-5] [INFO] [1792505735.357444974] [recoveries_server]: Attempting wait"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792505693.548733569] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792505703.941663369] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505704.299267391] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505704.346273458] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505705.415529280] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505705.435255855] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505711.842679452] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505723.426406067] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505723.427075528] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505735.340452994] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792505742.361049127] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792505749.110761620] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792505756.032699651] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792505763.148623826] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792505770.032775504] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[bt_navigator-6] [ERROR] [1792505770.056515592] [nav2_internal.bt_navigator]: Navigation failed"
+      ],
+      "measured_seed_fallback": {
+        "count": 0,
+        "distance_triggered": 0,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": null
+      },
+      "snapshot_manifest_sha256": "27ce38443c8bbce47272fcd0bcc4b7e190048cf018e118c1c208dfd3e8a480b6",
+      "sources": {
+        "result.json": {
+          "sha256": "0f4ce8c27463bcf100eb9686eaa38955930dd7cee7c608c5b642f477befaefdf",
+          "bytes": 4931
+        },
+        "nav2.log": {
+          "sha256": "ca3f632e1a65900a662c4d0c9c61bd92308d9b2108028b39b78befd7c1188a6b",
+          "bytes": 17803758
+        },
+        "native_backtraces/bt_navigator-113.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-107.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-107.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-115.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-109.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/planner_server-109.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-111.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CU06",
+      "physics_steps": 68660,
+      "physics_duration_s": 68.6339111328125,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v287_CU06_attempt01",
+        "request_id": "v287_CU06_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792505794366720460,
+        "requested_at_monotonic_ns": 20755120648571,
+        "backend_terminal_status": "FAILED",
+        "note": "native_process_exit:controller_server:exit_code=-11",
+        "native_failure": {
+          "run_id": "v287_CU06_attempt01",
+          "run_epoch_ns": 1792505794366720460,
+          "component": "controller_server",
+          "exit_code": -11,
+          "cause": "native_process_exit",
+          "monotonic_ns": 20755105136125
+        }
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 4,
+        "astar_optimization_failed": 5,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 81,
+        "no_executable_trajectory": 2
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 4,
+        "astar_optimization_failed": 5,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 81,
+        "no_executable_trajectory": 2
+      },
+      "native_faults": [
+        {
+          "signal": "SIGSEGV",
+          "log_file": "native_backtraces/controller_server-107.log",
+          "fault_instruction": "rip            0x766d19dba05c      0x766d19dba05c <GridMap::rawContributorOccupancy(Eigen::Matrix<int, 3, 1, 0, 3, 1> const&)+1020>",
+          "fault_thread_frames": [
+            "#0  std::_Hashtable<int, std::pair<int const, reactive_stair::Occupancy>, std::allocator<std::pair<int const, reactive_stair::Occupancy> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_find_before_node () at /usr/include/c++/9/bits/hashtable.h:1583",
+            "#1  std::_Hashtable<int, std::pair<int const, reactive_stair::Occupancy>, std::allocator<std::pair<int const, reactive_stair::Occupancy> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_find_node () at /usr/include/c++/9/bits/hashtable.h:687",
+            "#2  std::_Hashtable<int, std::pair<int const, reactive_stair::Occupancy>, std::allocator<std::pair<int const, reactive_stair::Occupancy> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::find () at /usr/include/c++/9/bits/hashtable.h:1454",
+            "#3  std::unordered_map<int, reactive_stair::Occupancy, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int const, reactive_stair::Occupancy> > >::find () at /usr/include/c++/9/bits/unordered_map.h:922",
+            "#4  GridMap::rawContributorOccupancy () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:432",
+            "#5  GridMap::rawContributorOccupancy () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:428",
+            "#6  0x0000766d19dce6b8 in GridMap::reactiveOccupancy () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:570",
+            "#7  0x0000766d19dceafa in GridMap::getInflateOccupancy(Eigen::Matrix<double, 3, 1, 0, 3, 1>, double)::{lambda(std::array<double, 3ul> const&)#1}::operator()(std::array<double, 3ul> const&) const () at /work/src/plan_env/include/plan_env/grid_map.h:661",
+            "#8  reactive_stair::twoCylinderQuery<GridMap::getInflateOccupancy(Eigen::Matrix<double, 3, 1, 0, 3, 1>, double)::{lambda(std::array<double, 3ul> const&)#1}>(std::array<double, 3ul> const&, double, double, GridMap::getInflateOccupancy(Eigen::Matrix<double, 3, 1, 0, 3, 1>, double)::{lambda(std::array<double, 3ul> const&)#1}) () at /work/src/plan_env/include/plan_env/footprint_query.h:16",
+            "#9  GridMap::getInflateOccupancy () at /work/src/plan_env/include/plan_env/grid_map.h:659",
+            "#10 operator() () at /work/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc:657",
+            "#11 collisionFreeSegment<GridMap::collisionFreeSegment(const Vector3d&, const Vector3d&, int*)::<lambda(const Vector3d&, double)> >(void) () at /work/src/plan_env/include/plan_env/collision_segment.h:25",
+            "#12 0x0000766d19dacea3 in AStar::AstarSearch () at /work/src/path_searching/src/dyn_a_star.cpp:524",
+            "#13 0x0000766d19d68d44 in scan_planner::SCANPlannerManager::reboundReplanAttempt () at /work/src/plan_manage/src/planner_manager.cpp:353",
+            "#14 0x0000766d19d6f380 in scan_planner::SCANPlannerManager::reboundReplan () at /work/src/plan_manage/src/planner_manager.cpp:268",
+            "#15 0x0000766d19d092c0 in scan_planner::SCANReplanFSM::callReboundReplan () at /work/src/plan_manage/src/scan_replan_fsm.cpp:1459",
+            "#16 0x0000766d19d0ef9d in scan_planner::SCANReplanFSM::execFSMCallback () at /work/src/plan_manage/src/scan_replan_fsm.cpp:966",
+            "#17 0x0000766d19d10569 in operator() () at /work/src/plan_manage/src/scan_replan_fsm.cpp:144",
+            "#18 callbackBoundary<scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()>, scan_planner::SCANReplanFSM::callbackBoundary(char const*, Work&&) [with Work = scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()>]::<lambda()> > () at /work/install/plan_env/include/plan_env/callback_exception.h:20",
+            "#19 callbackBoundary<scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()> > () at /work/src/plan_manage/include/plan_manage/scan_replan_fsm.h:44",
+            "#20 operator() () at /work/src/plan_manage/src/scan_replan_fsm.cpp:144",
+            "#21 execute_callback_delegate<> () at /opt/ros/foxy/include/rclcpp/timer.hpp:223",
+            "#22 execute_callback () at /opt/ros/foxy/include/rclcpp/timer.hpp:209",
+            "#23 0x0000766d37cfc62d in rclcpp::Executor::execute_any_executable(rclcpp::AnyExecutable&) () from /opt/ros/foxy/lib/librclcpp.so",
+            "#24 0x0000766d37d005f8 in rclcpp::executors::MultiThreadedExecutor::run(unsigned long) () from /opt/ros/foxy/lib/librclcpp.so",
+            "#25 0x0000766d37790df4 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6",
+            "#26 0x0000766d378ac609 in start_thread () from /lib/x86_64-linux-gnu/libpthread.so.0",
+            "#27 0x0000766d3747d353 in clone () from /lib/x86_64-linux-gnu/libc.so.6"
+          ],
+          "allocator_messages": []
+        }
+      ],
+      "reactive_blocked": [
+        {
+          "verdict": 6,
+          "voxel": 0,
+          "mentions": 32
+        },
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 10
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 69,
+        "refine_minus1008": 11,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "Unable to handle the initial or end point": {
+          "one_based_line": 10398,
+          "context": [
+            "[controller_server-3] [INFO] [1792505857.030243888] [quad_0.scan_planner_node]: spline_geometry_initialized samples=7 interval=0.240000000000 duration=1.440000000000",
+            "[controller_server-3] [INFO] [1792505857.030276833] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1799->0.1799 body_age=0.0000->0.0000 cloud_ready=1",
+            "[controller_server-3] [ERROR] [1792505857.030754224] [path_searching]: Unable to handle the initial or end point, force return!",
+            "[controller_server-3] [ERROR] [1792505857.030757474] [bspline_opt]: A-star error",
+            "[controller_server-3] [WARN] [1792505857.030759125] [bspline_opt]: rebound_no_valid_new_constraints; aborting this optimization"
+          ]
+        },
+        "A-star failed": {
+          "one_based_line": 3539,
+          "context": [
+            "[controller_server-3] [INFO] [1792505850.042689200] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=1 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792505850.042768663] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=67 clouds=66 cloud_stamp=18.621395111 mapping_ms=10.101 copy_ms=11.874 reduced=0 max_queue=3",
+            "[controller_server-3] [ERROR] [1792505850.048185571] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792505850.048215660] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1",
+            "[controller_server-3] \u001b[32miter(+1)=14,time(ms)=1.700,keep optimizing"
+          ]
+        },
+        "-1008": {
+          "one_based_line": 6808,
+          "context": [
+            "[controller_server-3] [INFO] [1792505853.297284330] [quad_0.scan_planner_node]: V87_OBSERVATION_WINDOW expired=1 replaced=0 capacity_drops=0 retention=0.500 update_hz=100.000",
+            "[controller_server-3] [INFO] [1792505853.298201159] [quad_0.scan_planner_node]: V82_MAP_SNAPSHOT revision=105 clouds=95 cloud_stamp=21.519802094 mapping_ms=22.966 copy_ms=8.958 reduced=0 max_queue=3",
+            "[controller_server-3] [WARN] [1792505853.335120860] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792505853.335172881] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1",
+            "[controller_server-3] first_optimize_step_success=0"
+          ]
+        },
+        "Native SCAN has no executable trajectory": {
+          "one_based_line": 53046,
+          "context": [
+            "[controller_server-3] [INFO] [1792505897.965033292] [quad_0.scan_planner_node]: input_refresh site=astar_search sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.2599->0.2599 body_age=0.0000->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792505897.974801903] [controller_server]: local_trajectory_starvation elapsed_s=0.789566 limit_s=0.750000 generation=1; ordinary recovery required",
+            "[controller_server-3] [ERROR] [1792505897.974968929] [controller_server]: Native SCAN has no executable trajectory before timeout",
+            "[controller_server-3] [WARN] [1792505897.975065996] [controller_server_rclcpp_node]: [follow_path] [ActionServer] Aborting handle.",
+            "[controller_server-3] [INFO] [1792505897.985163325] [quad_0.scan_planner_node]: input_refresh site=astar_search sensor_poses=0 clouds=1 body_poses=1 fsm_odom=-1 cloud_age=0.2998->0.2998 body_age=0.0400->0.0000 cloud_ready=1"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792505867.480234292] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505868.027625097] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505868.173440395] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792505874.122269126] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505880.062235568] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505880.063396537] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505880.064799676] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505880.066232001] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505880.067989416] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505880.069640632] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505880.119172680] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505885.857533769] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792505897.974968929] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[controller_server-3] [ERROR] [1792505904.494305169] [controller_server]: Native SCAN has no executable trajectory before timeout",
+        "[ERROR] [controller_server-3]: process has died [pid 107, exit code -11, cmd '/usr/bin/python3 /home/ubuntu/sun/vla_v287_20261020/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v287/native_debugger.py /work/install/nav2_controller/lib/nav2_controller/controller_server --ros-args -r __node:=controller_server --params-file /home/ubuntu/sun/vla_v287_20261020/physical_runs/v287_CU06_attempt01/runs/v287_CU06_attempt01/nav2_params.yaml -r cmd_vel:=/quad_0/cmd_vel'].",
+        "[bt_navigator-6] [ERROR] [1792505907.542759615] [nav2_internal.bt_navigator_rclcpp_node]: Failed to cancel action server for /follow_path"
+      ],
+      "measured_seed_fallback": {
+        "count": 5,
+        "distance_triggered": 5,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.225921
+      },
+      "snapshot_manifest_sha256": "c7c12ef99a66117cde92ae57040f09687e9cceb1307c48b71bcce7b686b63b6f",
+      "sources": {
+        "result.json": {
+          "sha256": "edb8bc859456f5b3b0b0a1de23d2a9db1eb38b8c54ae9c8e8ab30eae3f4ab9ae",
+          "bytes": 5256
+        },
+        "nav2.log": {
+          "sha256": "07f0c266cc0de0211e3bd14752d750d23c6331ef059755ec104c6db607c2f962",
+          "bytes": 14243452
+        },
+        "native_backtraces/bt_navigator-113.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-107.json": {
+          "sha256": "de8d05559fadf4db165e6f790e3bf3bd38c82ec8a77f6878b0a3e0d30c8a67f4",
+          "bytes": 46
+        },
+        "native_backtraces/controller_server-107.log": {
+          "sha256": "dd882f80732b1a9d3b0cc2e403f8b320e4666da8fe7fc5d12341c982fc9eaa47",
+          "bytes": 66521
+        },
+        "native_backtraces/lifecycle_manager-115.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-109.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-111.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "D07",
+      "physics_steps": 125760,
+      "physics_duration_s": 125.70254516601562,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v287_D07_attempt01",
+        "request_id": "v287_D07_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792505930471632876,
+        "requested_at_monotonic_ns": 20958620948361,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 5,
+        "astar_optimization_failed": 2,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 146,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 5,
+        "astar_optimization_failed": 2,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 146,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 6,
+          "voxel": 0,
+          "mentions": 60
+        },
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 4
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 136,
+        "refine_minus1008": 9,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "Unable to handle the initial or end point": {
+          "one_based_line": 93066,
+          "context": [
+            "[controller_server-3] [INFO] [1792506071.784872704] [quad_0.scan_planner_node]: spline_seed_capture {\"interval\":0.24000000000000005,\"velocity_limit\":1,\"acceleration_limit\":0.5,\"tolerance\":0.5,\"points\":[[-3.4069950775985989,-4.5037839563749289,1.8608372370686785],[-3.548416433835909,-4.3623626001376197,1.8608372370686785],[-3.6786005465036387,-4.2321784874698896,1.8108372370686787],[-3.8461284685082262,-4.1537839563749284,1.8108372370686787],[-4.0461284685082264,-4.1537839563749284,1.8108372370686787],[-4.2461284685082257,-4.1537839563749284,1.8108372370686785],[-4.3941399982306963,-4.0666390357428321,1.7608372370686789],[-4.5355613544680047,-3.925217679505522,1.7608372370686785],[-4.6769827107053148,-3.7837963232682128,1.7608372370686789],[-4.807166823373044,-3.6536122106004827,1.7108372370686786],[-4.9069950775985989,-3.4949624274087365,1.7108372370686786],[-4.9839435186696814,-3.3268355153038462,1.7108372370686786],[-5.1069950775985991,-3.1778051398833558,1.7108372370686786],[-5.0569950775985983,-2.9985158180020108,1.7108372370686786],[-5.1069950775985991,-2.8192264961206659,1.7108372370686786],[-5.1069950775985991,-2.676539714617765,1.6608372370686786],[-5.1069950775985991,-2.4765397146177648,1.6608372370686786],[-5.1069950775985991,-2.2765397146177646,1.6608372370686786],[-5.0623980938267508,-2.1091869726030814,1.6162402532968314],[-5.0569950775985983,-1.9131422549962083,1.6108372370686785],[-5.0470963312831065,-1.7866436960725851,1.5854609203338623]],\"derivatives\":[[-0.76033163337506915,0.058366804335913638,0.00043634066496579506],[0.059068733222376622,0.99825391797653551,0],[-0.011660827859135241,0.14851500095060072,0.0067548117922814604],[0,0,0]]}",
+            "[controller_server-3] [INFO] [1792506071.784911585] [quad_0.scan_planner_node]: spline_geometry_initialized samples=21 interval=0.240000000000 duration=4.800000000000",
+            "[controller_server-3] [ERROR] [1792506071.785623757] [path_searching]: Unable to handle the initial or end point, force return!",
+            "[controller_server-3] [ERROR] [1792506071.785642982] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792506071.785665240] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.2049->0.2049 body_age=0.0050->0.0000 cloud_ready=1"
+          ]
+        },
+        "A-star failed": {
+          "one_based_line": 93067,
+          "context": [
+            "[controller_server-3] [INFO] [1792506071.784911585] [quad_0.scan_planner_node]: spline_geometry_initialized samples=21 interval=0.240000000000 duration=4.800000000000",
+            "[controller_server-3] [ERROR] [1792506071.785623757] [path_searching]: Unable to handle the initial or end point, force return!",
+            "[controller_server-3] [ERROR] [1792506071.785642982] [bspline_opt]: A-star failed; aborting optimization",
+            "[controller_server-3] [INFO] [1792506071.785665240] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.2049->0.2049 body_age=0.0050->0.0000 cloud_ready=1",
+            "[controller_server-3] iter=5,time(ms)=1.14,rebound."
+          ]
+        },
+        "-1008": {
+          "one_based_line": 8467,
+          "context": [
+            "[controller_server-3] \u001b[0mfirst_optimize_step_success=1",
+            "[controller_server-3] [INFO] [1792505993.263529467] [quad_0.scan_planner_node]: spline_curve_capture {\"stage\":\"optimized\",\"controls\":[[6.047280075392468,5.7204774315229345,4.8197930489962522],[6.058693322050857,5.7282582061940328,4.8199747503347883],[6.0700656597741602,5.7360084666695785,4.8201652655672023],[6.0819011861602998,5.7464760639670462,4.8220657890415781],[6.0931249301275221,5.7581099971955521,4.8250190797305796],[6.1028592315254526,5.7691619502261888,4.8283678931776119],[6.110226428624526,5.7780809183296267,4.8312576802605864],[6.1143488583521446,5.7833159034795552,4.8330311965942379],[6.1143488583521446,5.7833159034795552,4.8330311965942379],[6.1143488583521446,5.7833159034795552,4.8330311965942379]],\"knots\":[-0.042139917695473247,-0.028093278463648834,-0.014046639231824417,0,0.014046639231824417,0.028093278463648834,0.042139917695473247,0.056186556927297668,0.070233196159122088,0.084279835390946509,0.098326474622770929,0.11237311385459535,0.12641975308641976,0.14046639231824418]}",
+            "[controller_server-3] [ERROR] [1792505993.263567590] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+            "[controller_server-3] [INFO] [1792505993.263582998] [quad_0.scan_planner_node]: spline_curve_capture {\"stage\":\"refined\",\"controls\":[[6.0164227967423258,5.6994335128622824,4.8193289307463143],[6.0587795097870938,5.7283224940918309,4.8199561810525724],[6.1005781874793534,5.7567952337390365,4.8207036609460072],[6.1230868115223345,5.7746542740027831,4.8227145819137638],[6.130878569078182,5.7840662340054445,4.825733442069601],[6.1285277066753761,5.787202123932695,4.8293947642493444],[6.1205981343357552,5.7862313725151377,4.8318462688237984],[6.1143488583521446,5.783315903479556,4.8330311965942379],[6.1143488583521446,5.783315903479556,4.8330311965942379],[6.1143488583521446,5.783315903479556,4.8330311965942379]],\"knots\":[-0.15563793229451162,-0.10375862152967441,-0.051879310764837205,0,0.051879310764837205,0.10375862152967441,0.15563793229451162,0.20751724305934882,0.25939655382418603,0.31127586458902323,0.36315517535386044,0.41503448611869764,0.46691379688353485,0.51879310764837205]}",
+            "[controller_server-3] [INFO] [1792505993.263587886] [quad_0.scan_planner_node]: post_opt_time_adjustment iteration=1 ratio=7.284509206802 duration=0.363155175354"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792506036.427150858] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506037.172814276] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792506037.332341513] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792506062.593736435] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506071.785623757] [path_searching]: Unable to handle the initial or end point, force return!",
+        "[controller_server-3] [ERROR] [1792506071.785642982] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792506071.793964125] [path_searching]: Unable to handle the initial or end point, force return!",
+        "[controller_server-3] [ERROR] [1792506071.793978168] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792506071.851705579] [path_searching]: Unable to handle the initial or end point, force return!",
+        "[controller_server-3] [ERROR] [1792506071.851741546] [bspline_opt]: A-star failed; aborting optimization",
+        "[controller_server-3] [ERROR] [1792506071.853210288] [path_searching]: Unable to handle the initial or end point, force return!",
+        "[controller_server-3] [ERROR] [1792506071.853219367] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792506071.854905209] [path_searching]: Unable to handle the initial or end point, force return!",
+        "[controller_server-3] [ERROR] [1792506071.854912864] [bspline_opt]: A-star error",
+        "[controller_server-3] [ERROR] [1792506096.191065901] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506096.191845395] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions."
+      ],
+      "measured_seed_fallback": {
+        "count": 8,
+        "distance_triggered": 8,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.170924
+      },
+      "snapshot_manifest_sha256": "8fdeb03b30d5a72dac7d695b9284f4c9c696a99d7278c52392be85d652ef1013",
+      "sources": {
+        "result.json": {
+          "sha256": "a9b9284ae855d0b0ce6fbdb3324392be80d17a7f1cf28d4b9650036246bf931a",
+          "bytes": 4780
+        },
+        "nav2.log": {
+          "sha256": "f5c67574feb12415df817f1b3aa5700083bd3420410a78f1b6199d2a5ec7e792",
+          "bytes": 34398645
+        },
+        "native_backtraces/bt_navigator-113.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-107.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-107.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-115.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-109.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/planner_server-109.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-111.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "S04",
+      "physics_steps": 30540,
+      "physics_duration_s": 30.534847259521484,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v287_S04_attempt01",
+        "request_id": "v287_S04_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792506133540142644,
+        "requested_at_monotonic_ns": 21052802781268,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 41,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 41,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 6,
+          "voxel": 0,
+          "mentions": 4
+        },
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 2
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 40,
+        "refine_minus1008": 1,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "-1008": {
+          "one_based_line": 3904,
+          "context": [
+            "[controller_server-3] [INFO] [1792506189.649068590] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=1 clouds=0 body_poses=2 fsm_odom=-1 cloud_age=0.2399->0.1399 body_age=0.0150->0.0000 cloud_ready=1",
+            "[controller_server-3] [INFO] [1792506189.652693631] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1399->0.1399 body_age=0.0000->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792506189.662181011] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792506189.662221247] [quad_0.scan_planner_node]: fixed_height_recovery_result accepted=0",
+            "[controller_server-3] [WARN] [1792506189.662258040] [quad_0.scan_planner_node]: [DEBUG-prefix-01] reference=1 remaining=6 local=4.375000000000 projection=0.350000000000 frontier=4.599007660650"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792506192.700527844] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions."
+      ],
+      "measured_seed_fallback": {
+        "count": 4,
+        "distance_triggered": 4,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.158653
+      },
+      "snapshot_manifest_sha256": "b7af8c141a11475c37746849b0d98b5b5978c9ca2f764397a7cc0e37cf9cf945",
+      "sources": {
+        "result.json": {
+          "sha256": "8d656f0446b3cba2f6f1285345439af2e5589eca708939d06171eebbf49c390b",
+          "bytes": 4733
+        },
+        "nav2.log": {
+          "sha256": "e9fcf195242e9ca0c776ec410803343a1df75e9059c725a1d0a57143f6885bfc",
+          "bytes": 3109140
+        },
+        "native_backtraces/bt_navigator-113.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-107.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-107.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-115.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-109.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/planner_server-109.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-111.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CD12",
+      "physics_steps": 133560,
+      "physics_duration_s": 133.5402374267578,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v287_CD12_attempt01",
+        "request_id": "v287_CD12_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792506227143725785,
+        "requested_at_monotonic_ns": 21265247299074,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 157,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 157,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 6,
+          "voxel": 0,
+          "mentions": 51
+        },
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 6
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 136,
+        "refine_minus1008": 20,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "-1008": {
+          "one_based_line": 10115,
+          "context": [
+            "[controller_server-3] goal:  6.38 -0.647   4.83, 0 0 0",
+            "[controller_server-3] [INFO] [1792506292.209749311] [scan_nav2_tracking]: Received trajectory 264, duration 2.017s",
+            "[controller_server-3] [WARN] [1792506292.222061731] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792506292.222114488] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1",
+            "[controller_server-3] first_optimize_step_success=0"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792506348.728198293] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506363.321918188] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506367.072659846] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506367.073980895] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506367.075256143] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506367.076457210] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506367.077646692] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506369.686884436] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506369.689443757] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506372.330112914] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506376.130896301] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506376.132027399] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506378.936720819] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506392.815672415] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506394.523091081] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506404.307350836] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions."
+      ],
+      "measured_seed_fallback": {
+        "count": 2,
+        "distance_triggered": 2,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.151828
+      },
+      "snapshot_manifest_sha256": "7fed888e02da49fd084d76b25a311002d9a8b2a4b8fb1a05171d3ec90562d19e",
+      "sources": {
+        "result.json": {
+          "sha256": "a920bdf0c954ca85ab98514770764023691f036def6064d153cdd6b36b4b3dc7",
+          "bytes": 4780
+        },
+        "nav2.log": {
+          "sha256": "9b99b03d368991b5116b9af32bf401e11d37aa8d0a61d5da5751279ccd2ff6f5",
+          "bytes": 35418264
+        },
+        "native_backtraces/bt_navigator-113.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-107.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-107.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-115.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-109.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/planner_server-109.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-111.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CM02",
+      "physics_steps": 17920,
+      "physics_duration_s": 17.92177963256836,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v287_CM02_attempt01",
+        "request_id": "v287_CM02_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792506439899789083,
+        "requested_at_monotonic_ns": 21341005676465,
+        "backend_terminal_status": "FAILED",
+        "note": "native_process_exit:controller_server:exit_code=-6"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 0,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 0,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [
+        {
+          "signal": "SIGABRT",
+          "log_file": "native_backtraces/controller_server-107.log",
+          "fault_instruction": "rip            0x74dba000300b      0x74dba000300b <raise+203>",
+          "fault_thread_frames": [
+            "#0  0x000074dba000300b in raise () from /lib/x86_64-linux-gnu/libc.so.6",
+            "#1  0x000074db9ffe2859 in abort () from /lib/x86_64-linux-gnu/libc.so.6",
+            "#2  0x000074dba004d266 in ?? () from /lib/x86_64-linux-gnu/libc.so.6",
+            "#3  0x000074dba00552fc in ?? () from /lib/x86_64-linux-gnu/libc.so.6",
+            "#4  0x000074dba0056fa0 in ?? () from /lib/x86_64-linux-gnu/libc.so.6",
+            "#5  0x000074db7a5af927 in __gnu_cxx::new_allocator<OpenSetEntry>::deallocate () at /usr/include/c++/9/ext/new_allocator.h:128",
+            "#6  std::allocator_traits<std::allocator<OpenSetEntry> >::deallocate () at /usr/include/c++/9/bits/alloc_traits.h:469",
+            "#7  std::_Vector_base<OpenSetEntry, std::allocator<OpenSetEntry> >::_M_deallocate () at /usr/include/c++/9/bits/stl_vector.h:351",
+            "#8  std::vector<OpenSetEntry, std::allocator<OpenSetEntry> >::_M_realloc_insert<GridNode*&> () at /usr/include/c++/9/bits/vector.tcc:500",
+            "#9  0x000074db7a5afaad in std::vector<OpenSetEntry, std::allocator<OpenSetEntry> >::emplace_back<GridNode*&> () at /usr/include/c++/9/bits/vector.tcc:121",
+            "#10 std::priority_queue<OpenSetEntry, std::vector<OpenSetEntry, std::allocator<OpenSetEntry> >, NodeComparator>::emplace<GridNode*&> () at /usr/include/c++/9/bits/stl_queue.h:645",
+            "#11 0x000074db7a5ac6f9 in AStar::AstarSearch () at /work/src/path_searching/src/dyn_a_star.cpp:490",
+            "#12 0x000074db7a568d44 in scan_planner::SCANPlannerManager::reboundReplanAttempt () at /work/src/plan_manage/src/planner_manager.cpp:353",
+            "#13 0x000074db7a56f7b9 in scan_planner::SCANPlannerManager::reboundReplan () at /work/src/plan_manage/src/planner_manager.cpp:279",
+            "#14 0x000074db7a508df9 in scan_planner::SCANReplanFSM::callReboundReplan () at /work/src/plan_manage/src/scan_replan_fsm.cpp:1427",
+            "#15 0x000074db7a50a533 in scan_planner::SCANReplanFSM::planFromCurrentTraj () at /work/src/plan_manage/src/scan_replan_fsm.cpp:1194",
+            "#16 0x000074db7a50ac60 in scan_planner::SCANReplanFSM::performNominalReplan () at /work/src/plan_manage/src/scan_replan_fsm.cpp:864",
+            "#17 0x000074db7a50fd18 in scan_planner::SCANReplanFSM::execFSMCallback () at /work/src/plan_manage/src/scan_replan_fsm.cpp:1094",
+            "#18 0x000074db7a510569 in operator() () at /work/src/plan_manage/src/scan_replan_fsm.cpp:144",
+            "#19 callbackBoundary<scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()>, scan_planner::SCANReplanFSM::callbackBoundary(char const*, Work&&) [with Work = scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()>]::<lambda()> > () at /work/install/plan_env/include/plan_env/callback_exception.h:20",
+            "#20 callbackBoundary<scan_planner::SCANReplanFSM::init(rclcpp::Node*, rclcpp::CallbackGroup::SharedPtr, scan_planner::SCANReplanFSM::DirectIO)::<lambda()>::<lambda()> > () at /work/src/plan_manage/include/plan_manage/scan_replan_fsm.h:44",
+            "#21 operator() () at /work/src/plan_manage/src/scan_replan_fsm.cpp:144",
+            "#22 execute_callback_delegate<> () at /opt/ros/foxy/include/rclcpp/timer.hpp:223",
+            "#23 execute_callback () at /opt/ros/foxy/include/rclcpp/timer.hpp:209",
+            "#24 0x000074dba095e62d in rclcpp::Executor::execute_any_executable(rclcpp::AnyExecutable&) () from /opt/ros/foxy/lib/librclcpp.so",
+            "#25 0x000074dba09625f8 in rclcpp::executors::MultiThreadedExecutor::run(unsigned long) () from /opt/ros/foxy/lib/librclcpp.so",
+            "#26 0x000074dba03f2df4 in ?? () from /lib/x86_64-linux-gnu/libstdc++.so.6",
+            "#27 0x000074dba050e609 in start_thread () from /lib/x86_64-linux-gnu/libpthread.so.0",
+            "#28 0x000074dba00df353 in clone () from /lib/x86_64-linux-gnu/libc.so.6"
+          ],
+          "allocator_messages": [
+            "[controller_server-3] double free or corruption (out)"
+          ]
+        }
+      ],
+      "reactive_blocked": [
+        {
+          "verdict": 6,
+          "voxel": 0,
+          "mentions": 1
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 0,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {},
+      "final_error_lines": [
+        "[ERROR] [controller_server-3]: process has died [pid 107, exit code -6, cmd '/usr/bin/python3 /home/ubuntu/sun/vla_v287_20261020/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v287/native_debugger.py /work/install/nav2_controller/lib/nav2_controller/controller_server --ros-args -r __node:=controller_server --params-file /home/ubuntu/sun/vla_v287_20261020/physical_runs/v287_CM02_attempt01/runs/v287_CM02_attempt01/nav2_params.yaml -r cmd_vel:=/quad_0/cmd_vel'].",
+        "[bt_navigator-6] [ERROR] [1792506493.435285945] [nav2_internal.bt_navigator_rclcpp_node]: Failed to cancel action server for /follow_path"
+      ],
+      "measured_seed_fallback": {
+        "count": 0,
+        "distance_triggered": 0,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": null
+      },
+      "snapshot_manifest_sha256": "5ad1aee6d1e829a28a10ced65a798bd318c756277edf12bf829ec78e47479919",
+      "sources": {
+        "result.json": {
+          "sha256": "82f2684be76cc15aa451aae9542e3ff373bc4335998c0eba95eb95fb657f4825",
+          "bytes": 5017
+        },
+        "nav2.log": {
+          "sha256": "a9af74cf1e11d92373336dcffd32b2f4bd3260c68ac8c4bf317169a83c062848",
+          "bytes": 221587
+        },
+        "native_backtraces/bt_navigator-113.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-107.json": {
+          "sha256": "6fe8d2a1751d4b85b821df7a34072b95e22c9509c058521bc7702d6d242a048c",
+          "bytes": 46
+        },
+        "native_backtraces/controller_server-107.log": {
+          "sha256": "2cea624a61655f489f63a805d736b52c8d25f7d7cf385e8dbbe37af7a5f5c570",
+          "bytes": 66886
+        },
+        "native_backtraces/lifecycle_manager-115.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-109.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-111.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CM07",
+      "physics_steps": 57780,
+      "physics_duration_s": 57.759883880615234,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v287_CM07_attempt01",
+        "request_id": "v287_CM07_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792506515976935405,
+        "requested_at_monotonic_ns": 21461076674327,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 48,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 48,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 6,
+          "voxel": 0,
+          "mentions": 13
+        },
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 1
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 43,
+        "refine_minus1008": 4,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "-1008": {
+          "one_based_line": 9715,
+          "context": [
+            "[controller_server-3] [INFO] [1792506575.529151072] [quad_0.scan_planner_node]: spline_geometry_initialized samples=25 interval=0.080901933874 duration=1.941646412971",
+            "[controller_server-3] [INFO] [1792506575.529211743] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1849->0.1849 body_age=0.0000->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792506575.565595240] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792506575.565661984] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1",
+            "[controller_server-3] [INFO] [1792506575.565709056] [quad_0.scan_planner_node]: input_refresh site=replan_start sensor_poses=0 clouds=0 body_poses=4 fsm_odom=-1 cloud_age=0.2149->0.2149 body_age=0.0300->0.0000 cloud_ready=1"
+          ]
+        }
+      },
+      "final_error_lines": [
+        "[controller_server-3] [ERROR] [1792506576.751242180] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506591.143463984] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506591.333265298] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.",
+        "[controller_server-3] [ERROR] [1792506591.776060575] [bspline_opt]: Solver error while refining: return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions."
+      ],
+      "measured_seed_fallback": {
+        "count": 9,
+        "distance_triggered": 7,
+        "occupancy_triggered": 2,
+        "maximum_predicted_distance_before_fallback_m": 0.165312
+      },
+      "snapshot_manifest_sha256": "7abcb6dad200cb11f49fd73f6aae3071a64bd8a5d75c9f3047c50f54ce5c6f64",
+      "sources": {
+        "result.json": {
+          "sha256": "334a810a87b968a5cdac555bca7efc664d7484cada22dfb50b0598dc6c74e262",
+          "bytes": 4756
+        },
+        "nav2.log": {
+          "sha256": "6557b103dd55d2b6f76008d9645f055fb21f3117f5b1ec8a6c1237453ba6db8b",
+          "bytes": 10641697
+        },
+        "native_backtraces/bt_navigator-113.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-107.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-107.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-115.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-109.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-111.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CS03",
+      "physics_steps": 30140,
+      "physics_duration_s": 30.135066986083984,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v287_CS03_attempt01",
+        "request_id": "v287_CS03_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792506635174998909,
+        "requested_at_monotonic_ns": 21551464707141,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 59,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 59,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 6,
+          "voxel": 0,
+          "mentions": 4
+        },
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 3
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 59,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "-1008": {
+          "one_based_line": 4775,
+          "context": [
+            "[controller_server-3] [INFO] [1792506691.274357443] [quad_0.scan_planner_node]: spline_geometry_initialized samples=24 interval=0.094002986546 duration=2.162068690565",
+            "[controller_server-3] [INFO] [1792506691.274478644] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1999->0.1999 body_age=0.0000->0.0000 cloud_ready=1",
+            "[controller_server-3] [WARN] [1792506691.292254173] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792506691.292324827] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1",
+            "[controller_server-3] [INFO] [1792506691.292392634] [quad_0.scan_planner_node]: input_refresh site=replan_start sensor_poses=0 clouds=0 body_poses=1 fsm_odom=-1 cloud_age=0.2099->0.2099 body_age=0.0100->0.0000 cloud_ready=1"
+          ]
+        }
+      },
+      "final_error_lines": [],
+      "measured_seed_fallback": {
+        "count": 2,
+        "distance_triggered": 2,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": 0.152962
+      },
+      "snapshot_manifest_sha256": "1487d2848fb6a7ad8dfdaa01cd1f9b8b6d5157f87e43b8b2e570c3667eed9076",
+      "sources": {
+        "result.json": {
+          "sha256": "06304623add2d4168798cf8ea7f17e9de5dc6d2d3c10756b859ffc4cc4e6fd8e",
+          "bytes": 4742
+        },
+        "nav2.log": {
+          "sha256": "e7bbc97c55ae9553d4c5322709f6ad0b2a27c827a0dbc03f8946c4fc0e318081",
+          "bytes": 2823412
+        },
+        "native_backtraces/bt_navigator-113.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-107.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-107.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-115.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-109.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-111.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    },
+    {
+      "case_id": "CE03",
+      "physics_steps": 27120,
+      "physics_duration_s": 27.11672592163086,
+      "finish": {
+        "schema_version": 1,
+        "run_id": "v287_CE03_attempt01",
+        "request_id": "v287_CE03_attempt01-long-goal",
+        "observed_run_epoch_ns": 1792506725618338162,
+        "requested_at_monotonic_ns": 21636431856433,
+        "backend_terminal_status": "FINISHED",
+        "note": "native arrival and measured PD hold"
+      },
+      "target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 54,
+        "no_executable_trajectory": 0
+      },
+      "application_log_target_errors": {
+        "pool_exhaustion": 0,
+        "endpoint_adjustment_failed": 0,
+        "astar_optimization_failed": 0,
+        "inside_obstacle": 0,
+        "lbfgs_minus1008": 54,
+        "no_executable_trajectory": 0
+      },
+      "native_faults": [],
+      "reactive_blocked": [
+        {
+          "verdict": 6,
+          "voxel": 0,
+          "mentions": 1
+        },
+        {
+          "verdict": 7,
+          "voxel": 2,
+          "mentions": 3
+        }
+      ],
+      "stage_errors": {
+        "rebound_minus1008": 54,
+        "refine_minus1008": 0,
+        "failed_to_make_progress": 0
+      },
+      "first_target_error_contexts": {
+        "-1008": {
+          "one_based_line": 522,
+          "context": [
+            "[controller_server-3] [INFO] [1792506774.998770876] [quad_0.scan_planner_node]: input_refresh site=rebound_round sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1401->0.1401 body_age=0.0000->0.0000 cloud_ready=1",
+            "[controller_server-3] [INFO] [1792506774.999454156] [scan_nav2_tracking]: Received trajectory 2, duration 4.330s",
+            "[controller_server-3] [WARN] [1792506775.003496098] [bspline_opt]: Solver error. Return=-1008, A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions.; skip this plan",
+            "[controller_server-3] [INFO] [1792506775.003519840] [quad_0.scan_planner_node]: V48_WARM_RESULT accepted=0 graph_fallback=1",
+            "[controller_server-3] [INFO] [1792506775.003540007] [quad_0.scan_planner_node]: input_refresh site=replan_start sensor_poses=0 clouds=0 body_poses=0 fsm_odom=-1 cloud_age=0.1401->0.1401 body_age=0.0000->0.0000 cloud_ready=1"
+          ]
+        }
+      },
+      "final_error_lines": [],
+      "measured_seed_fallback": {
+        "count": 0,
+        "distance_triggered": 0,
+        "occupancy_triggered": 0,
+        "maximum_predicted_distance_before_fallback_m": null
+      },
+      "snapshot_manifest_sha256": "b21bcda51a4b2488770d4dd0812350b4584e5bd7be4bc63a0a0152ec616f0e86",
+      "sources": {
+        "result.json": {
+          "sha256": "31c0218fdcf4a7778099c44584ee65f855eed16b54fb0a46568d699f1033c2aa",
+          "bytes": 4767
+        },
+        "nav2.log": {
+          "sha256": "a45d4d7a801d3b67859358b33a2ed6bf87d9a0ef98884f276b7128694ed1dc04",
+          "bytes": 1716799
+        },
+        "native_backtraces/bt_navigator-112.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/controller_server-106.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/controller_server-106.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/lifecycle_manager-114.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/planner_server-108.json": {
+          "sha256": "4d4b09f40ab5ddff5c192370a237a22cec78d0a7ddb69175fc2921847bb2e066",
+          "bytes": 41
+        },
+        "native_backtraces/planner_server-108.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        },
+        "native_backtraces/recoveries_server-110.log": {
+          "sha256": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+          "bytes": 121
+        }
+      }
+    }
+  ]
+}

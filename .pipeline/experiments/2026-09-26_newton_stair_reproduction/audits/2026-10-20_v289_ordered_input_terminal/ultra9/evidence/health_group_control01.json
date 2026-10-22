@@ -1,0 +1,68 @@
+{
+  "passed": true,
+  "rows": [
+    {
+      "name": "parent",
+      "returncode": 1,
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=host",
+        "--cpus=1",
+        "--memory=2g",
+        "--user",
+        "1000:1000",
+        "-e",
+        "ROS_HOME=/out/ros_home",
+        "-e",
+        "ROS_LOG_DIR=/out/ros_logs",
+        "-v",
+        "/home/ubuntu/sun/vla_v288_20261020/native:/work:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v289:/source:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/health_group_control/parent:/out:rw",
+        "--entrypoint",
+        "/bin/bash",
+        "sha256:ec85ad5a21dc2b3441523571d2dc583f22bf08121390081ca780f78e15332343",
+        "-c",
+        "source /opt/ros/foxy/setup.bash && source /work/install/setup.bash && export PYTHONPATH=/work/src/lite3_nav2_bridge:$PYTHONPATH PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ROS_DOMAIN_ID=156 ROS_LOCALHOST_ONLY=1 && python3 -m pytest -q /source/src/lite3_nav2_bridge/test/test_mission_bridge.py -k liveness_responses_continue --junitxml=/out/result.xml --basetemp=/out/tmp"
+      ],
+      "log_sha256": "b1bc711a7fb9f1fe8622f2dfdcb6bc6d46999e918e3c9e367c7244b0c7bcf3f8"
+    },
+    {
+      "name": "candidate",
+      "returncode": 0,
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--network=host",
+        "--cpus=1",
+        "--memory=2g",
+        "--user",
+        "1000:1000",
+        "-e",
+        "ROS_HOME=/out/ros_home",
+        "-e",
+        "ROS_LOG_DIR=/out/ros_logs",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/native:/work:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/repo/.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v289:/source:ro",
+        "-v",
+        "/home/ubuntu/sun/vla_v289_20261020/health_group_control/candidate:/out:rw",
+        "--entrypoint",
+        "/bin/bash",
+        "sha256:ec85ad5a21dc2b3441523571d2dc583f22bf08121390081ca780f78e15332343",
+        "-c",
+        "source /opt/ros/foxy/setup.bash && source /work/install/setup.bash && export PYTHONPATH=/work/src/lite3_nav2_bridge:$PYTHONPATH PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ROS_DOMAIN_ID=156 ROS_LOCALHOST_ONLY=1 && python3 -m pytest -q /source/src/lite3_nav2_bridge/test/test_mission_bridge.py -k liveness_responses_continue --junitxml=/out/result.xml --basetemp=/out/tmp"
+      ],
+      "log_sha256": "fd929ddf36d767d733c5e04b8edf82f13bf9201f1cf6eb3ccd9622ac00fc7bea"
+    }
+  ],
+  "physics_steps": 0
+}

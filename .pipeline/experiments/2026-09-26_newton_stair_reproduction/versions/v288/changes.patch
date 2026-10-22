@@ -1,0 +1,512 @@
+--- v287/src/bspline_opt/include/bspline_opt/environmental_curve_cost.h
++++ v288/src/bspline_opt/include/bspline_opt/environmental_curve_cost.h
+@@ -11,11 +11,10 @@
+ template<class Cost,class Heading>
+ double environmentalCurveCost(const Eigen::MatrixXd &q,double interval,double lookahead,
+     Cost score,Heading heading,Eigen::MatrixXd &gradient,
+-    double measured_yaw=std::numeric_limits<double>::quiet_NaN(),
+-    double spatial_step=.025,int minimum_samples=10) {
++    double measured_yaw=std::numeric_limits<double>::quiet_NaN()) {
+   gradient=Eigen::MatrixXd::Zero(3,q.cols());
+   if(q.rows()!=3 || !q.allFinite() || !std::isfinite(interval) || interval<=0 ||
+-      !std::isfinite(lookahead) || lookahead<0 || !std::isfinite(spatial_step) || spatial_step<=0 || minimum_samples<1)
++      !std::isfinite(lookahead) || lookahead<0)
+     throw std::invalid_argument("Invalid environmental curve geometry");
+   if(q.cols()<4)return 0.;
+   const double duration=(q.cols()-3)*interval;
+@@ -32,16 +31,7 @@
+   };
+   double total=0.;
+   for(int span=0;span<q.cols()-3;++span) {
+-    double length=0.;for(int k=0;k<3;++k)length+=(q.col(span+k+1)-q.col(span+k)).norm();
+-    // Default quadrature retains ten samples; costly source-wall soft terms
+-    // may use caller-selected spatial quadrature without altering hard checks.
+-    const auto left=basis(span*interval),right=basis((span+1)*interval);
+-    const Eigen::Vector3d lv=q.middleCols(left.index,4)*left.derivative,rv=q.middleCols(right.index,4)*right.derivative;
+-    if(!lv.allFinite() || !rv.allFinite() || !std::isfinite(length) ||
+-        length/spatial_step>std::numeric_limits<int>::max()-1)
+-      throw std::invalid_argument("Nonfinite environmental sample geometry");
+-    const double turn=std::abs(std::remainder(std::atan2(rv.y(),rv.x())-std::atan2(lv.y(),lv.x()),2*M_PI));
+-    const int samples=std::max({minimum_samples,int(std::ceil(length/spatial_step)),int(std::ceil(turn/(2*spatial_step)))});
++    constexpr int samples=3; // Same objective partition throughout every line search.
+     const double weight=interval/samples;
+     for(int sample=0;sample<samples;++sample) {
+       const double t=(span+(sample+.5)/samples)*interval;
+--- v287/src/bspline_opt/src/bspline_optimizer.cpp
++++ v288/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -1045,12 +1045,19 @@
+       lbfgs::lbfgs_load_default_parameters(&lbfgs_params);
+       lbfgs_params.mem_size = 16;
+       lbfgs_params.max_iterations = 200;
++      lbfgs_params.past = 3;
++      lbfgs_params.delta = 1e-4;
+       lbfgs_params.g_epsilon = 0.01;
+ 
+       /* ---------- optimize ---------- */
+       t1 = std::chrono::steady_clock::now();
+       int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRebound, NULL, BsplineOptimizer::earlyExit, this, &lbfgs_params);
++      // The solver restores q to its last accepted point on line-search error;
++      // objective callbacks leave cps at the final rejected trial otherwise.
++      memcpy(cps_.points.data()+3*start_id,q,variable_num_*sizeof(q[0]));
+       if(force_stop_type_!=DONT_STOP)result=lbfgs::LBFGSERR_CANCELED;
++      if(result<0 && result!=lbfgs::LBFGSERR_CANCELED && result!=lbfgs::LBFGSERR_MAXIMUMITERATION && iter_num_>1 && cps_.points.allFinite())
++        RCLCPP_INFO(rclcpp::get_logger("bspline_opt"),"LBFGS_RESTORED stage=rebound return=%d; hard validation pending",result);
+       t2 = std::chrono::steady_clock::now();
+       double time_ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
+       double total_time_ms = std::chrono::duration<double, std::milli>(t2 - t0).count();
+@@ -1059,7 +1066,8 @@
+       if (result == lbfgs::LBFGS_CONVERGENCE ||
+           result == lbfgs::LBFGSERR_MAXIMUMITERATION ||
+           result == lbfgs::LBFGS_ALREADY_MINIMIZED ||
+-          result == lbfgs::LBFGS_STOP)
++          result == lbfgs::LBFGS_STOP ||
++          (result<0 && result!=lbfgs::LBFGSERR_CANCELED && iter_num_>1 && cps_.points.allFinite()))
+       {
+         //ROS_WARN("Solver error in planning!, return = %s", lbfgs::lbfgs_strerror(result));
+         flag_force_return = false;
+@@ -1170,14 +1178,20 @@
+       lbfgs::lbfgs_load_default_parameters(&lbfgs_params);
+       lbfgs_params.mem_size = 16;
+       lbfgs_params.max_iterations = 200;
++      lbfgs_params.past = 3;
++      lbfgs_params.delta = 1e-4;
+       lbfgs_params.g_epsilon = 0.001;
+ 
+       int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRefine, NULL, BsplineOptimizer::earlyExit, this, &lbfgs_params);
+-      if(force_stop_type_!=DONT_STOP)return false;
++      memcpy(cps_.points.data()+3*start_id,q,variable_num_*sizeof(q[0]));
++      if(force_stop_type_!=DONT_STOP){lambda4_=origin_lambda4;return false;}
++      if(result<0 && result!=lbfgs::LBFGSERR_MAXIMUMITERATION && iter_num_>1 && cps_.points.allFinite())
++        RCLCPP_INFO(rclcpp::get_logger("bspline_opt"),"LBFGS_RESTORED stage=refine return=%d; hard validation pending",result);
+       if (result == lbfgs::LBFGS_CONVERGENCE ||
+           result == lbfgs::LBFGSERR_MAXIMUMITERATION ||
+           result == lbfgs::LBFGS_ALREADY_MINIMIZED ||
+-          result == lbfgs::LBFGS_STOP)
++          result == lbfgs::LBFGS_STOP ||
++          (result<0 && result!=lbfgs::LBFGSERR_CANCELED && iter_num_>1 && cps_.points.allFinite()))
+       {
+         //pass
+       }
+@@ -1185,6 +1199,7 @@
+       {
+         RCLCPP_ERROR(rclcpp::get_logger("bspline_opt"),
+                      "Solver error while refining: return=%d, %s", result, lbfgs::lbfgs_strerror(result));
++        lambda4_=origin_lambda4;return false;
+       }
+ 
+       UniformBspline traj = UniformBspline(cps_.points, 3, bspline_interval_);
+--- v287/src/bspline_opt/test/test_uniform_bspline.cpp
++++ v288/src/bspline_opt/test/test_uniform_bspline.cpp
+@@ -25,3 +25,44 @@
+   EXPECT_NEAR(velocity.y(), 0.0, 1e-9);
+   EXPECT_NEAR(velocity.z(), 0.0, 1e-9);
+ }
++
++#include <bspline_opt/environmental_curve_cost.h>
++TEST(EnvironmentalQuadrature, FixedPartitionHasConsistentDirectionalDerivative)
++{
++  Eigen::MatrixXd q=Eigen::MatrixXd::Zero(3,8);
++  for(int i=0;i<8;++i){q(0,i)=i*.1;q(1,i)=.02*std::sin(i);}
++  auto score=[](const Eigen::Vector3d&p,double,Eigen::Vector4d &g) {
++    g<<0.,4.*p.y()*p.y()*p.y(),0.,0.;return std::pow(p.y(),4);
++  };
++  auto heading=[](const Eigen::Vector3d&,const Eigen::Vector3d&,const Eigen::Vector3d&){return 0.;};
++  Eigen::MatrixXd g,unused;
++  const double cost=scan_planner::environmentalCurveCost(q,.2,.8,score,heading,g,0.);
++  const double eps=1e-6;q(1,3)+=eps;
++  const double plus=scan_planner::environmentalCurveCost(q,.2,.8,score,heading,unused,0.);
++  q(1,3)-=2*eps;
++  const double minus=scan_planner::environmentalCurveCost(q,.2,.8,score,heading,unused,0.);
++  EXPECT_GT(cost,0.);EXPECT_NEAR(g(1,3),(plus-minus)/(2*eps),1e-9);
++  // Evaluation count is constant even across a partition ceil threshold.
++  int calls=0;auto countScore=[&](const Eigen::Vector3d&p,double,Eigen::Vector4d&g){++calls;return score(p,0.,g);};
++  for(double scale : {.999,1.001,2.}) {
++    calls=0;Eigen::MatrixXd trial=scale*q;
++    scan_planner::environmentalCurveCost(trial,.2,.8,countScore,heading,unused,0.);
++    EXPECT_EQ(calls,3*(q.cols()-3));
++  }
++}
++
++#include <bspline_opt/lbfgs.hpp>
++TEST(LbfgsRollback, ErrorRestoresLastAcceptedVariablesAfterRejectedTrials)
++{
++  struct State {int calls=0;double last=0.;} state;
++  auto cost=[](void *data,const double *x,double *g,int) {
++    auto &s=*static_cast<State*>(data);++s.calls;s.last=x[0];g[0]=x[0];
++    // Two consistent evaluations accept the first step. Subsequent rejected
++    // trials emulate a discontinuous environmental objective deterministically.
++    return s.calls<=2 ? .5*x[0]*x[0] : 1000.;
++  };
++  lbfgs::lbfgs_parameter_t param;lbfgs::lbfgs_load_default_parameters(&param);
++  param.max_linesearch=20;
++  double x=4.,value=0.;const int result=lbfgs::lbfgs_optimize(1,&x,&value,cost,nullptr,nullptr,&state,&param);
++  EXPECT_LT(result,0);EXPECT_GT(state.calls,2);EXPECT_DOUBLE_EQ(x,3.);
++}
+--- v287/src/lite3_nav2_plugins/test/test_environmental_cost.cpp
++++ v288/src/lite3_nav2_plugins/test/test_environmental_cost.cpp
+@@ -144,7 +144,7 @@
+   EXPECT_DOUBLE_EQ(scan_planner::environmentalCurveCost(Eigen::MatrixXd::Zero(3,4),.2,.1,
+     [&](const Eigen::Vector3d &,double,Eigen::Vector4d &g){++calls;g.setZero();return 0.;},
+     [](const Eigen::Vector3d &,const Eigen::Vector3d &,const Eigen::Vector3d &){return 0.;},curve_gradient),0.);
+-  EXPECT_EQ(calls,10);EXPECT_DOUBLE_EQ(curve_gradient.norm(),0.);
++  EXPECT_EQ(calls,3); // Fixed three-point quadrature requested for v288.EXPECT_DOUBLE_EQ(curve_gradient.norm(),0.);
+ }
+ 
+ TEST(EnvironmentalSCAN, NativeObjectiveGradientAndLbfgsMoveAwayFromEdge) {
+--- v287/src/path_searching/src/dyn_a_star.cpp
++++ v288/src/path_searching/src/dyn_a_star.cpp
+@@ -98,38 +98,23 @@
+         return false;
+ 
+     if(terrain_search_) {
+-      // Quantization adjusts XY only. Every proposal is put back on the
+-      // nearest support layer, and endpoints use actual connector tangents.
+-      // Do not retreat indefinitely along a 3D chord through stair risers.
+-      const auto adjust=[&](const Vector3d &point,Vector3i &index,bool start) {
+-        const Vector3i initial=index;
+-        for(int ring=0;ring<=2;++ring)for(int dx=-ring;dx<=ring;++dx)for(int dy=-ring;dy<=ring;++dy) {
+-          if(std::max(std::abs(dx),std::abs(dy))!=ring)continue;
+-          Vector3i candidate=initial+Vector3i(dx,dy,0);
+-          if(candidate.x()<1 || candidate.x()>=POOL_SIZE_.x()-1 || candidate.y()<1 || candidate.y()>=POOL_SIZE_.y()-1)continue;
+-          Vector3d projected=latticeCoord(candidate);projected.z()=point.z();
+-          if(!grid_map_->terrainSupportHeight(projected,projected.z()))continue;
+-          candidate.z()=reactive_stair::nearestGridOffset((projected.z()-center_.z())*inv_step_size_)+CENTER_IDX_.z();
+-          if(candidate.z()<1 || candidate.z()>=POOL_SIZE_.z()-1)continue;
+-          bool clear=false;
+-          // Quantization is not a physical connector. Use an actual adjacent
+-          // support edge to determine a feasible arrival/departure tangent.
+-          for(int dx=-1;dx<=1&&!clear;++dx)for(int dy=-1;dy<=1&&!clear;++dy) {
+-            if(dx==0&&dy==0)continue;
+-            Vector3d adjacent=projected+step_size_*Vector3d(dx,dy,0);
+-            if(!grid_map_->terrainSupportHeight(adjacent,adjacent.z()))continue;
+-            clear=start ? grid_map_->collisionFreeSegment(projected,adjacent) :
+-                grid_map_->collisionFreeSegment(adjacent,projected);
++      // Prefer one support-aligned endpoint. Endpoint quantization need not
++      // prove an extra adjacent edge: the actual search edges do that below.
++      const auto project=[&](const Vector3d &point,Vector3i &index) {
++        Vector3d p=latticeCoord(index);p.z()=point.z();
++        if(!grid_map_->terrainSupportHeight(p,p.z()) || !Coord2Index(p,index) || !poolIndexValid(index,true))return false;
++        for(int dx=-1;dx<=1;++dx)for(int dy=-1;dy<=1;++dy) {
++          if((dx||dy) && checkOccupancy(p,std::atan2(double(dy),double(dx)))==0) {
++            terrain_points_[terrainKey(index)]=p;return true;
+           }
+-          if(!clear)continue;
+-          index=candidate;terrain_points_[terrainKey(index)]=projected;return true;
+         }
+         return false;
+       };
+-      // A goal region may contain a valid reached neighbor even if its center
+-      // is occupied. Keep the original center/tolerance; search certifies it.
+-      return adjust(start_pt,start_idx,true) &&
+-          (goal_tolerance>0. || adjust(end_pt,end_idx,false));
++      if(project(start_pt,start_idx) && (goal_tolerance>0. || project(end_pt,end_idx)))return true;
++      // SCAN's original chord/plane representation is a proposal fallback,
++      // subject to the same occupancy, support, edge and downstream curve checks.
++      terrain_search_=false;terrain_points_.clear();
++      if(!Coord2Index(start_pt,start_idx) || !Coord2Index(end_pt,end_idx))return false;
+     }
+ 
+     Eigen::Vector3d start_to_end = end_pt - start_pt;
+@@ -138,6 +123,10 @@
+     const double path_yaw = std::atan2(start_to_end(1), start_to_end(0));
+     start_to_end.normalize();
+ 
++    const auto within_pool=[&](const Vector3d &p) {
++        const Vector3d index=(p-center_)*inv_step_size_+CENTER_IDX_.cast<double>();
++        return (index.array()>=1.).all() && (index.array()<(POOL_SIZE_-Vector3i::Ones()).cast<double>().array()).all();
++    };
+     int occ = checkOccupancy(Index2Coord(start_idx), path_yaw);
+     if (occ)
+     {
+@@ -145,8 +134,9 @@
+         int attempts=0;
+         do
+         {
+-            if(++attempts>2)return false;
++            if(++attempts>POOL_SIZE_.maxCoeff())return false;
+             start_pt -= start_to_end * step_size_;
++            if (!within_pool(start_pt))return false;
+             if (!Coord2Index(start_pt, start_idx))
+                 return false;
+ 
+@@ -166,8 +156,9 @@
+         int attempts=0;
+         do
+         {
+-            if(++attempts>2)return false;
++            if(++attempts>POOL_SIZE_.maxCoeff())return false;
+             end_pt += start_to_end * step_size_;
++            if (!within_pool(end_pt))return false;
+             if (!Coord2Index(end_pt, end_idx))
+                 return false;
+ 
+--- v287/src/plan_env/include/plan_env/grid_map.h
++++ v288/src/plan_env/include/plan_env/grid_map.h
+@@ -224,6 +224,8 @@
+ class GridMap {
+   struct AsyncMapping;
+ public:
++  std::recursive_mutex &lockMutex() const { return work_mutex_; }
++
+   GridMap() : owned_state_(std::make_unique<GridMapState>()) {}
+   ~GridMap();
+ 
+@@ -382,6 +384,7 @@
+   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+ 
+ private:
++  mutable std::recursive_mutex work_mutex_;
+   const GridMapState &mapState() const { return read_state_ ? *read_state_ : *owned_state_; }
+   GridMapState &mutableMapState() {
+     if (read_state_ || async_mapping_) throw std::logic_error("Mutable access to a planner snapshot");
+--- v287/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ v288/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -562,26 +562,11 @@
+     posToIndex(point, query_id);
+     const int address = toAddress(query_id);
+     uninflated_air=mapState().md_.occupancy_buffer_inflate_[address]==0;
+-    if (mapState().md_.occupancy_buffer_[address] < mapState().mp_.clamp_min_log_ - 1e-3) {
+-      obstacle.occupancy = reactive_stair::Occupancy::Unknown;
+-    } else if (uninflated_air) {
+-      obstacle.occupancy = reactive_stair::Occupancy::Free;
+-    } else {
+-      obstacle.occupancy = rawContributorOccupancy(query_id);
+-    }
+-  }
+-  if (mapState().reactive_known_trunk_enabled_ && query.in_map && reactive_body_stamp_s_ > 0.0) {
+-    Eigen::Vector3i id;
+-    posToIndex(point, id);
+-    // Test the queried point, not its voxel centre, so the waiver does not
+-    // depend on how the grid aligns with the body height.
+-    const Eigen::Vector3d local = reactive_body_quaternion_.conjugate() *
+-                                 (point - queryBodyPosition());
+-    const bool inside = reactive_stair::knownNavigationFootprintInterior(
+-        local.x(), local.y(), local.z(), query.stamp_s, reactive_body_stamp_s_,
+-        mapState().mp_.double_cylinder_radius_, mapState().mp_.double_cylinder_offset_);
+-    obstacle.occupancy = reactive_stair::measuredTrunkQuery(
+-        obstacle.occupancy, mapState().md_.occupancy_buffer_inflate_[toAddress(id)] != 0, inside);
++    // Support and freshness are checked below. The obstacle layer answers only
++    // whether a retained non-terrain inflation contributor is present.
++    obstacle.occupancy = !uninflated_air &&
++        rawContributorOccupancy(query_id)==reactive_stair::Occupancy::Occupied ?
++        reactive_stair::Occupancy::Occupied : reactive_stair::Occupancy::Free;
+   }
+   if (body_reference) {
+     const auto support_verdict=footprintSupportVerdict(*body_reference,obstacle,query,false);
+@@ -598,12 +583,6 @@
+   reactive_stair::Cell2 support_cell;
+   auto verdict = supportQueryCell(query.x_m,query.y_m,support_cell) ?
+       supportState().reactive_decision_.decide(query,obstacle,&support_cell) : reactive_stair::Verdict::InvalidQuery;
+-  if(verdict==reactive_stair::Verdict::UnknownObstacle && query.in_map && uninflated_air) {
+-    // An unobserved air voxel is not an observed obstacle. The complete live
+-    // decision still requires fresh inputs, support, layer and edge checks.
+-    auto air=obstacle;air.occupancy=reactive_stair::Occupancy::Free;
+-    verdict=supportState().reactive_decision_.decide(query,air,&support_cell);
+-  }
+   if(typed)*typed=verdict;
+   // Controller query views never share the native logger throttles or diagnostic set.
+   if (query_context_) return verdict == reactive_stair::Verdict::Free ? 0 : 1;
+--- v287/src/plan_env/src/environmental_field.cpp
++++ v288/src/plan_env/src/environmental_field.cpp
+@@ -145,7 +145,7 @@
+     if(margin<solid-1e-12)solid=margin;
+   }
+   const auto penalty=[&](double m){return std::max((d.target-m)/d.target,0.);};
+-  const double ep=penalty(edge),sp=penalty(solid);
++  const double ep=std::clamp((d.target-edge)/d.target,0.,1.),sp=penalty(solid);
+   return ep*ep+sp*sp+.25*terrain*terrain;
+ }
+ 
+@@ -177,8 +177,8 @@
+     combine(margin,pose_gradient(gradient),out.solid_margin,ds,true);
+   }
+   const auto penalty=[&](double m){return std::max((d.target-m)/d.target,0.);};
+-  out.edge_penalty=penalty(out.edge_margin);out.solid_penalty=penalty(out.solid_margin);
+-  if(out.edge_margin<d.target)out.gradient-=2*out.edge_penalty/d.target*de;
++  out.edge_penalty=std::clamp((d.target-out.edge_margin)/d.target,0.,1.);out.solid_penalty=penalty(out.solid_margin);
++  if(0.0<out.edge_margin && out.edge_margin<d.target)out.gradient-=2*out.edge_penalty/d.target*de;
+   if(out.solid_margin<d.target)out.gradient-=2*out.solid_penalty/d.target*ds;
+   out.gradient+=.5*out.terrain*dt;
+   return out;
+--- v287/src/plan_env/src/grid_map.cpp
++++ v288/src/plan_env/src/grid_map.cpp
+@@ -227,32 +227,32 @@
+   {
+     lidar_pose_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+         "sensor_pose", rclcpp::SensorDataQoS(),
+-        [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"sensorPoseCallback",[&]{sensorPoseCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
++        [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) {std::lock_guard<std::recursive_mutex> lock(lockMutex());scan_runtime::callbackBoundary(node_->get_logger(),"sensorPoseCallback",[&]{sensorPoseCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+     cloud_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+         "cloud", rclcpp::SensorDataQoS(),
+-        [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"cloudCallback",[&]{cloudCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
++        [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {std::lock_guard<std::recursive_mutex> lock(lockMutex());scan_runtime::callbackBoundary(node_->get_logger(),"cloudCallback",[&]{cloudCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+   }
+ 
+   sliding_map_frame_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+       "body_pose", rclcpp::SensorDataQoS(),
+-      [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"slidingMapFrameCallback",[&]{slidingMapFrameCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
++      [this](nav_msgs::msg::Odometry::ConstSharedPtr msg) {std::lock_guard<std::recursive_mutex> lock(lockMutex());scan_runtime::callbackBoundary(node_->get_logger(),"slidingMapFrameCallback",[&]{slidingMapFrameCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+ 
+   reactive_tomogram_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+       "/pct_tomogram", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
+-      [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"reactiveTomogramCallback",[&]{reactiveTomogramCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
++      [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {std::lock_guard<std::recursive_mutex> lock(lockMutex());scan_runtime::callbackBoundary(node_->get_logger(),"reactiveTomogramCallback",[&]{reactiveTomogramCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+   if (!mutableMapState().reactive_surface_ground_topic_.empty())
+     reactive_surface_ground_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+         mutableMapState().reactive_surface_ground_topic_, rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
+-        [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"reactiveSurfaceGroundCallback",[&]{reactiveSurfaceGroundCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
++        [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {std::lock_guard<std::recursive_mutex> lock(lockMutex());scan_runtime::callbackBoundary(node_->get_logger(),"reactiveSurfaceGroundCallback",[&]{reactiveSurfaceGroundCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+   if (!mutableMapState().reactive_physical_floor_topic_.empty())
+     reactive_physical_floor_sub_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+         mutableMapState().reactive_physical_floor_topic_, rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
+-        [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {scan_runtime::callbackBoundary(node_->get_logger(),"reactivePhysicalFloorCallback",[&]{reactivePhysicalFloorCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
++        [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {std::lock_guard<std::recursive_mutex> lock(lockMutex());scan_runtime::callbackBoundary(node_->get_logger(),"reactivePhysicalFloorCallback",[&]{reactivePhysicalFloorCallback(msg);},[this]{callback_failed_=true;});}, subscription_options);
+ 
+   occ_timer_ = node_->create_wall_timer(std::chrono::milliseconds(50),
+-                                        [this] {scan_runtime::callbackBoundary(node_->get_logger(),"updateOccupancyCallback",[this]{updateOccupancyCallback();},[this]{callback_failed_=true;});}, callback_group);
++                                        [this] {std::lock_guard<std::recursive_mutex> lock(lockMutex());scan_runtime::callbackBoundary(node_->get_logger(),"updateOccupancyCallback",[this]{updateOccupancyCallback();},[this]{callback_failed_=true;});}, callback_group);
+   vis_timer_ = node_->create_wall_timer(std::chrono::milliseconds(50),
+-                                        [this] {scan_runtime::callbackBoundary(node_->get_logger(),"visCallback",[this]{visCallback();},[this]{callback_failed_=true;});}, callback_group);
++                                        [this] {std::lock_guard<std::recursive_mutex> lock(lockMutex());scan_runtime::callbackBoundary(node_->get_logger(),"visCallback",[this]{visCallback();},[this]{callback_failed_=true;});}, callback_group);
+ 
+   map_pub_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>("grid_map/occupancy", rclcpp::SensorDataQoS());
+   map_inf_pub_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>("grid_map/occupancy_inflate", rclcpp::SensorDataQoS());
+@@ -1538,6 +1538,7 @@
+ 
+ void GridMap::guardedDepthPoseCallback(sensor_msgs::msg::Image::ConstSharedPtr image,
+     nav_msgs::msg::Odometry::ConstSharedPtr pose) {
++  std::lock_guard<std::recursive_mutex> lock(lockMutex());
+   scan_runtime::callbackBoundary(node_->get_logger(),"depthPoseCallback",
+     [&]{depthPoseCallback(image,pose);},[this]{callback_failed_=true;});
+ }
+--- v287/src/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ v288/src/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -41,6 +41,7 @@
+     void publishSpline(const scan_planner_msgs::msg::Bspline &spline);
+     void callbackFailed(const char *site) noexcept;
+     template<class Work> void callbackBoundary(const char *site,Work &&work) noexcept {
++      std::lock_guard<std::recursive_mutex> lock(planner_manager_->grid_map_->lockMutex());
+       scan_runtime::callbackBoundary(node_->get_logger(),site,std::forward<Work>(work),
+         [this,site]{callbackFailed(site);});
+     }
+--- v287/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
++++ v288/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
+@@ -28,6 +28,7 @@
+ class TrackingNode : public rclcpp::Node
+ {
+ public:
++  static constexpr double kGoalCenterTolerance=0.02;
+   explicit TrackingNode(const rclcpp::NodeOptions &options = rclcpp::NodeOptions())
+       : Node("scan_nav2_tracking", options)
+   {
+@@ -308,19 +309,27 @@
+       const bool within_xy = (goal_pos_ - odom_pos_).head<2>().norm() <= goal_xy_tolerance_;
+       const bool within_z = std::abs(goal_pos_.z() - odom_pos_.z()) <= goal_z_tolerance_;
+       goal_position_latched_ = within_xy && within_z;
+-      // Nav2 stateful goal checking: once in XY tolerance, align final yaw.
+-      if (goal_position_latched_ && within_z)
++      // Final capture keeps the admitted goal center while yaw converges.
++      if (goal_position_latched_)
+       {
+         const double error = normalizeAngle(goal_yaw_ - odom_yaw_);
+-        if (std::abs(error) <= goal_yaw_tolerance_ && !within_xy)
+-          goal_position_latched_ = false; // Reacquire strict final XY after yaw drift.
+-        else
+-        {
+-          publishExecutionFrozen(true);
+-          publishStop(std::abs(error) <= goal_yaw_tolerance_ ? 0.0 : kp_yaw_ * error);
+-          last_update_time_ = current_time;
+-          return;
++        publishExecutionFrozen(true);
++        const Eigen::Vector2d position_error=(goal_pos_-odom_pos_).head<2>();
++        const bool centered=position_error.norm()<=kGoalCenterTolerance;
++        if (centered && std::abs(error) <= goal_yaw_tolerance_)
++          publishStop();
++        else {
++          const Eigen::Vector2d vel_world=centered ? Eigen::Vector2d::Zero() :
++              clampNorm(kp_pos_*position_error,std::min(0.15,std::max(max_vx_,max_vy_)));
++          const double c=std::cos(odom_yaw_), s=std::sin(odom_yaw_);
++          geometry_msgs::msg::Twist command;
++          command.linear.x=std::clamp(c*vel_world.x()+s*vel_world.y(),-max_vx_,max_vx_);
++          command.linear.y=std::clamp(-s*vel_world.x()+c*vel_world.y(),-max_vy_,max_vy_);
++          command.angular.z=std::abs(error)<=goal_yaw_tolerance_ ? 0. : std::clamp(kp_yaw_*error,-max_vyaw_,max_vyaw_);
++          publishVelocity(command);
+         }
++        last_update_time_ = current_time;
++        return;
+       }
+     }
+     double dt = (current_time - last_update_time_).seconds();
+--- v287/src/scan_nav2_controller/src/controller.cpp
++++ v288/src/scan_nav2_controller/src/controller.cpp
+@@ -133,7 +133,7 @@
+ bool Controller::withinGoalPosition(const geometry_msgs::msg::Pose &pose) const
+ {
+   const auto &g=state_->goal_pose.position;
+-  return state_->has_goal_pose && std::hypot(pose.position.x-g.x, pose.position.y-g.y)<=state_->xy_tolerance &&
++  return state_->has_goal_pose && std::hypot(pose.position.x-g.x, pose.position.y-g.y)<=std::min(state_->xy_tolerance,scan_planner::TrackingNode::kGoalCenterTolerance) &&
+     std::abs(pose.position.z-g.z)<=state_->z_tolerance;
+ }
+ bool Controller::withinGoalYaw(const geometry_msgs::msg::Pose &pose, bool braking) const
+--- v287/src/scan_nav2_controller/test/test_controller.cpp
++++ v288/src/scan_nav2_controller/test/test_controller.cpp
+@@ -979,3 +979,16 @@
+   actual->motion_->update();EXPECT_EQ(actual->motion_->tracker_->traj_id_,42);
+   EXPECT_TRUE(actual->motion_->hasRoute());
+ }
++
++TEST_F(RouteHeadingTest, AlignedOffCenterCaptureKeepsTranslatingBeforePdHold)
++{
++  expiredCornerStub();
++  auto body=pose();body.pose=route.poses.back().pose;body.pose.position.x-=.1;
++  const auto cmd=settledCommand(body,{}).twist;
++  EXPECT_GT(std::hypot(cmd.linear.x,cmd.linear.y),.01);
++  EXPECT_LE(std::hypot(cmd.linear.x,cmd.linear.y),.15+1e-9);
++  EXPECT_FALSE(actual->state_->goal_reached);EXPECT_FALSE(actual->terminalPhase());
++  body.pose=route.poses.back().pose;
++  EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
++  EXPECT_TRUE(actual->state_->goal_reached);
++}
+--- v287/src/scan_nav2_controller/test/test_shared_support.cpp
++++ v288/src/scan_nav2_controller/test/test_shared_support.cpp
+@@ -190,6 +190,7 @@
+   auto node=std::make_shared<rclcpp::Node>("callback_exception_boundary");
+   scan_planner::SCANReplanFSM fsm;fsm.node_=node.get();fsm.have_target_=true;fsm.have_odom_=false;
+   fsm.replan_fail_count_=0;fsm.planner_manager_=std::make_unique<scan_planner::SCANPlannerManager>();
++  fsm.planner_manager_->grid_map_=std::make_shared<GridMap>(); // Match initialized production callback ownership.
+   std::atomic<int> failures{0},ticks{0},work_calls{0};
+   fsm.direct_io_.planning_result=[&](bool success,int64_t){EXPECT_FALSE(success);++failures;};
+   fsm.direct_io_.before_work=[&]{if(++work_calls%2)throw std::runtime_error("injected timer failure");throw 7;};
+--- v287/src/scan_nav2_controller/test/test_tracking_behavior.cpp
++++ v288/src/scan_nav2_controller/test/test_tracking_behavior.cpp
+@@ -169,3 +169,30 @@
+     EXPECT_GE(ratio,.5-1e-9);EXPECT_LE(ratio,previous+1e-9);previous=ratio;
+   }
+ }
++
++TEST_F(TrackingBehavior, TerminalYawCentersInWorldCoordinatesWithSlew)
++{
++  for(double yaw : {-.8, .8, 2.4}) {
++    node->clearTrajectory(); replace();
++    body.pose.position.x=49.90;body.pose.position.y=.04;
++    geometry_msgs::msg::Twist previous;
++    for(int i=0;i<60;++i) {
++      const auto cmd=tick(yaw);
++      EXPECT_TRUE(node->goal_position_latched_);EXPECT_TRUE(node->executionFrozen());
++      EXPECT_LE(std::abs(cmd.linear.x-previous.linear.x),.04+1e-8);
++      EXPECT_LE(std::abs(cmd.linear.y-previous.linear.y),.04+1e-8);
++      EXPECT_LE(std::abs(cmd.angular.z-previous.angular.z),.06+1e-8);
++      previous=cmd;
++    }
++    const auto cmd=node->sampled_command_;
++    const Eigen::Vector2d world(std::cos(yaw)*cmd.linear.x-std::sin(yaw)*cmd.linear.y,
++        std::sin(yaw)*cmd.linear.x+std::cos(yaw)*cmd.linear.y);
++    EXPECT_GT(world.dot(Eigen::Vector2d(.10,-.04)),0.);
++    EXPECT_GT(std::hypot(cmd.linear.x,cmd.linear.y),.01);
++    EXPECT_LT(cmd.angular.z*yaw,0.);
++    EXPECT_DOUBLE_EQ(node->exec_time_,0.);
++  }
++  body.pose.position.x=50.;body.pose.position.y=0.;
++  for(int i=0;i<60;++i)tick(0.);
++  EXPECT_EQ(node->sampled_command_,geometry_msgs::msg::Twist());
++}

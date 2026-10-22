@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite
+  name="nav2_controller.uncrustify"
+  tests="12"
+  failures="3"
+  errors="0"
+  time="0.031"
+>
+  <testcase
+    name="include/nav2_controller/nav2_controller.hpp"
+    classname="nav2_controller.uncrustify"
+  >
+      <failure message="Diff with 18 lines"><![CDATA[--- include/nav2_controller/nav2_controller.hpp
++++ include/nav2_controller/nav2_controller.hpp.uncrustify
+@@ -112,2 +112,3 @@
+-  class ActionServer : public nav2_util::SimpleActionServer<Action> {
+-  public:
++  class ActionServer : public nav2_util::SimpleActionServer<Action>
++  {
++public:
+@@ -115 +116,2 @@
+-    rclcpp_action::GoalUUID currentGoalId() const {
++    rclcpp_action::GoalUUID currentGoalId() const
++    {
+@@ -153 +155 @@
+-  void checkProgress(geometry_msgs::msg::PoseStamped &pose);
++  void checkProgress(geometry_msgs::msg::PoseStamped & pose);
+@@ -205 +207 @@
+-  void recordFailure(const rclcpp_action::GoalUUID &id, const nav2_core::PlannerException &error);
++  void recordFailure(const rclcpp_action::GoalUUID & id, const nav2_core::PlannerException & error);
+]]></failure>
+  </testcase>
+  <testcase
+    name="include/nav2_controller/plugins/simple_goal_checker.hpp"
+    classname="nav2_controller.uncrustify"/>
+  <testcase
+    name="include/nav2_controller/plugins/simple_progress_checker.hpp"
+    classname="nav2_controller.uncrustify"/>
+  <testcase
+    name="include/nav2_controller/plugins/stopped_goal_checker.hpp"
+    classname="nav2_controller.uncrustify"/>
+  <testcase
+    name="plugins/simple_goal_checker.cpp"
+    classname="nav2_controller.uncrustify"/>
+  <testcase
+    name="plugins/simple_progress_checker.cpp"
+    classname="nav2_controller.uncrustify"/>
+  <testcase
+    name="plugins/stopped_goal_checker.cpp"
+    classname="nav2_controller.uncrustify"/>
+  <testcase
+    name="plugins/test/goal_checker.cpp"
+    classname="nav2_controller.uncrustify"/>
+  <testcase
+    name="plugins/test/progress_checker.cpp"
+    classname="nav2_controller.uncrustify"/>
+  <testcase
+    name="src/main.cpp"
+    classname="nav2_controller.uncrustify"/>
+  <testcase
+    name="src/nav2_controller.cpp"
+    classname="nav2_controller.uncrustify"
+  >
+      <failure message="Diff with 55 lines"><![CDATA[--- src/nav2_controller.cpp
++++ src/nav2_controller.cpp.uncrustify
+@@ -53 +53 @@
+-  failure_service_=create_service<lite3_nav2_interfaces::srv::FollowPathFailure>(
++  failure_service_ = create_service<lite3_nav2_interfaces::srv::FollowPathFailure>(
+@@ -56 +56 @@
+-           std::shared_ptr<lite3_nav2_interfaces::srv::FollowPathFailure::Response> response) {
++    std::shared_ptr<lite3_nav2_interfaces::srv::FollowPathFailure::Response> response) {
+@@ -58,2 +58,2 @@
+-      response->known=failure_known_ && request->goal_id==failed_goal_id_;
+-      response->terminal_timeout=response->known && terminal_timeout_;
++      response->known = failure_known_ && request->goal_id == failed_goal_id_;
++      response->terminal_timeout = response->known && terminal_timeout_;
+@@ -243,3 +243,5 @@
+-  if (vel_publisher_) publishZeroVelocity();
+-  if (action_server_) action_server_->deactivate();
+-  for (auto &entry : controllers_) entry.second->deactivate();
++  if (vel_publisher_) {publishZeroVelocity();}
++  if (action_server_) {action_server_->deactivate();}
++  for (auto & entry : controllers_) {
++    entry.second->deactivate();
++  }
+@@ -324 +326 @@
+-    recordFailure(action_server_->currentGoalId(),e);
++    recordFailure(action_server_->currentGoalId(), e);
+@@ -389 +391 @@
+-void ControllerServer::checkProgress(geometry_msgs::msg::PoseStamped &pose)
++void ControllerServer::checkProgress(geometry_msgs::msg::PoseStamped & pose)
+@@ -393 +395 @@
+-  auto *execution = dynamic_cast<scan_nav2_controller::ExecutionControl *>(
++  auto * execution = dynamic_cast<scan_nav2_controller::ExecutionControl *>(
+@@ -432 +434,3 @@
+-void ControllerServer::recordFailure(const rclcpp_action::GoalUUID &id,const nav2_core::PlannerException &error)
++void ControllerServer::recordFailure(
++  const rclcpp_action::GoalUUID & id,
++  const nav2_core::PlannerException & error)
+@@ -435 +439,4 @@
+-  failed_goal_id_=id;terminal_timeout_=dynamic_cast<const scan_nav2_controller::TerminalSettleTimeout *>(&error)!=nullptr;failure_known_=true;
++  failed_goal_id_ = id;
++  terminal_timeout_ =
++    dynamic_cast<const scan_nav2_controller::TerminalSettleTimeout *>(&error) != nullptr;
++  failure_known_ = true;
+@@ -442,2 +449,3 @@
+-    auto *output = dynamic_cast<scan_nav2_controller::ExecutionControl *>(controller->second.get());
+-    if (output) output->stop("nav2_server_stop");
++    auto * output =
++      dynamic_cast<scan_nav2_controller::ExecutionControl *>(controller->second.get());
++    if (output) {output->stop("nav2_server_stop");}
+@@ -445,3 +453,3 @@
+-    for (auto &entry : controllers_) {
+-      auto *output = dynamic_cast<scan_nav2_controller::ExecutionControl *>(entry.second.get());
+-      if (output) output->stop("nav2_no_selected_controller");
++    for (auto & entry : controllers_) {
++      auto * output = dynamic_cast<scan_nav2_controller::ExecutionControl *>(entry.second.get());
++      if (output) {output->stop("nav2_no_selected_controller");}
+]]></failure>
+  </testcase>
+  <testcase
+    name="test/test_command_owner.cpp"
+    classname="nav2_controller.uncrustify"
+  >
+      <failure message="Diff with 215 lines"><![CDATA[--- test/test_command_owner.cpp
++++ test/test_command_owner.cpp.uncrustify
+@@ -17,3 +17,4 @@
+-  void releaseProgress() { progress_checker_.reset(); }
+-  void initializeProgress() {
+-    progress_checker_=std::make_shared<nav2_controller::SimpleProgressChecker>();
++  void releaseProgress() {progress_checker_.reset();}
++  void initializeProgress()
++  {
++    progress_checker_ = std::make_shared<nav2_controller::SimpleProgressChecker>();
+@@ -23,4 +24,5 @@
+-  void attach(const nav2_core::Controller::Ptr &plugin) {
+-    controllers_["SCAN"]=plugin;
+-    current_controller_="SCAN";
+-    vel_publisher_=create_publisher<geometry_msgs::msg::Twist>("cmd_vel",10);
++  void attach(const nav2_core::Controller::Ptr & plugin)
++  {
++    controllers_["SCAN"] = plugin;
++    current_controller_ = "SCAN";
++    vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
+@@ -29,2 +31,2 @@
+-  void deselect() { current_controller_.clear(); }
+-  void disablePublisher() { vel_publisher_->on_deactivate(); }
++  void deselect() {current_controller_.clear();}
++  void disablePublisher() {vel_publisher_->on_deactivate();}
+@@ -36,3 +38,4 @@
+-  static void SetUpTestCase() {
+-    const char *args[]={"command_owner_test","--ros-args","-r","cmd_vel:=/quad_0/cmd_vel"};
+-    rclcpp::init(4,args);
++  static void SetUpTestCase()
++  {
++    const char * args[] = {"command_owner_test", "--ros-args", "-r", "cmd_vel:=/quad_0/cmd_vel"};
++    rclcpp::init(4, args);
+@@ -40,6 +43,7 @@
+-  static void TearDownTestCase() { rclcpp::shutdown(); }
+-  void SetUp() override {
+-    server=std::make_shared<OutputServer>();
+-    server->declare_parameter("SCAN.native_worker_enabled",false);
+-    plugin=std::make_shared<scan_nav2_controller::Controller>();
+-    plugin->configure(server,"SCAN",nullptr,nullptr);
++  static void TearDownTestCase() {rclcpp::shutdown();}
++  void SetUp() override
++  {
++    server = std::make_shared<OutputServer>();
++    server->declare_parameter("SCAN.native_worker_enabled", false);
++    plugin = std::make_shared<scan_nav2_controller::Controller>();
++    plugin->configure(server, "SCAN", nullptr, nullptr);
+@@ -48,5 +52,6 @@
+-    observer=std::make_shared<rclcpp::Node>("command_owner_observer");
+-    subscription=observer->create_subscription<geometry_msgs::msg::Twist>("/quad_0/cmd_vel",10,
+-      [this](geometry_msgs::msg::Twist::ConstSharedPtr msg) { received.push_back(*msg); });
+-    const auto until=std::chrono::steady_clock::now()+2s;
+-    while(subscription->get_publisher_count()!=1 && std::chrono::steady_clock::now()<until)
++    observer = std::make_shared<rclcpp::Node>("command_owner_observer");
++    subscription = observer->create_subscription<geometry_msgs::msg::Twist>(
++      "/quad_0/cmd_vel", 10,
++      [this](geometry_msgs::msg::Twist::ConstSharedPtr msg) {received.push_back(*msg);});
++    const auto until = std::chrono::steady_clock::now() + 2s;
++    while (subscription->get_publisher_count() != 1 && std::chrono::steady_clock::now() < until) {
+@@ -54,4 +59,6 @@
+-    ASSERT_EQ(subscription->get_publisher_count(),1u);
+-    path.header.frame_id="world";
+-    geometry_msgs::msg::PoseStamped start;start.header.frame_id="world";start.pose.orientation.w=1;
+-    path.poses={start,start};path.poses.back().pose.position.x=8;
++    }
++    ASSERT_EQ(subscription->get_publisher_count(), 1u);
++    path.header.frame_id = "world";
++    geometry_msgs::msg::PoseStamped start;start.header.frame_id = "world";
++    start.pose.orientation.w = 1;
++    path.poses = {start, start};path.poses.back().pose.position.x = 8;
+@@ -60 +67,2 @@
+-  void TearDown() override {
++  void TearDown() override
++  {
+@@ -64,5 +72,6 @@
+-  void spin() { rclcpp::spin_some(observer);std::this_thread::sleep_for(5ms); }
+-  void expectCount(size_t count) {
+-    const auto until=std::chrono::steady_clock::now()+1s;
+-    while(received.size()<count && std::chrono::steady_clock::now()<until) spin();
+-    EXPECT_EQ(received.size(),count);
++  void spin() {rclcpp::spin_some(observer);std::this_thread::sleep_for(5ms);}
++  void expectCount(size_t count)
++  {
++    const auto until = std::chrono::steady_clock::now() + 1s;
++    while (received.size() < count && std::chrono::steady_clock::now() < until) {spin();}
++    EXPECT_EQ(received.size(), count);
+@@ -80,2 +89,4 @@
+-  auto command=plugin->computeVelocityCommands(path.poses.front(),geometry_msgs::msg::Twist());
+-  for(int i=0;i<10;++i) spin();
++  auto command = plugin->computeVelocityCommands(path.poses.front(), geometry_msgs::msg::Twist());
++  for (int i = 0; i < 10; ++i) {
++    spin();
++  }
+@@ -83 +94 @@
+-  EXPECT_EQ(command.twist,geometry_msgs::msg::Twist());
++  EXPECT_EQ(command.twist, geometry_msgs::msg::Twist());
+@@ -85 +96 @@
+-  command.twist.linear.x=.4;
++  command.twist.linear.x = .4;
+@@ -87,3 +98,5 @@
+-  EXPECT_DOUBLE_EQ(received.back().linear.x,.4);
+-  for(int i=0;i<10;++i) spin();
+-  EXPECT_EQ(received.size(),2u);
++  EXPECT_DOUBLE_EQ(received.back().linear.x, .4);
++  for (int i = 0; i < 10; ++i) {
++    spin();
++  }
++  EXPECT_EQ(received.size(), 2u);
+@@ -94 +107 @@
+-  geometry_msgs::msg::TwistStamped moving;moving.twist.linear.x=.4;
++  geometry_msgs::msg::TwistStamped moving;moving.twist.linear.x = .4;
+@@ -97,2 +110,5 @@
+-  EXPECT_EQ(received.back(),geometry_msgs::msg::Twist());
+-  EXPECT_THROW(plugin->computeVelocityCommands(path.poses.front(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++  EXPECT_EQ(received.back(), geometry_msgs::msg::Twist());
++  EXPECT_THROW(
++    plugin->computeVelocityCommands(
++      path.poses.front(),
++      geometry_msgs::msg::Twist()), nav2_core::PlannerException);
+@@ -104,2 +120,5 @@
+-  EXPECT_EQ(received.back(),geometry_msgs::msg::Twist());
+-  EXPECT_THROW(plugin->computeVelocityCommands(path.poses.front(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++  EXPECT_EQ(received.back(), geometry_msgs::msg::Twist());
++  EXPECT_THROW(
++    plugin->computeVelocityCommands(
++      path.poses.front(),
++      geometry_msgs::msg::Twist()), nav2_core::PlannerException);
+@@ -111 +130 @@
+-  geometry_msgs::msg::TwistStamped moving;moving.twist.linear.x=.4;
++  geometry_msgs::msg::TwistStamped moving;moving.twist.linear.x = .4;
+@@ -114 +133,3 @@
+-  for(int i=0;i<10;++i) spin();
++  for (int i = 0; i < 10; ++i) {
++    spin();
++  }
+@@ -116 +137,4 @@
+-  EXPECT_THROW(plugin->computeVelocityCommands(path.poses.front(),geometry_msgs::msg::Twist()),nav2_core::PlannerException);
++  EXPECT_THROW(
++    plugin->computeVelocityCommands(
++      path.poses.front(),
++      geometry_msgs::msg::Twist()), nav2_core::PlannerException);
+@@ -122,4 +146,4 @@
+-  auto clock=server->get_clock();
+-  ASSERT_EQ(rcl_enable_ros_time_override(clock->get_clock_handle()),RCL_RET_OK);
+-  ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),1000000000LL),RCL_RET_OK);
+-  auto near=path.poses.back();near.pose.position.x-=.3;
++  auto clock = server->get_clock();
++  ASSERT_EQ(rcl_enable_ros_time_override(clock->get_clock_handle()), RCL_RET_OK);
++  ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(), 1000000000LL), RCL_RET_OK);
++  auto near = path.poses.back();near.pose.position.x -= .3;
+@@ -127,4 +151,4 @@
+-  ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),12000000000LL),RCL_RET_OK);
+-  EXPECT_THROW(server->checkProgress(near),nav2_core::PlannerException);
+-  auto at=path.poses.back();
+-  plugin->computeVelocityCommands(at,geometry_msgs::msg::Twist());
++  ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(), 12000000000LL), RCL_RET_OK);
++  EXPECT_THROW(server->checkProgress(near), nav2_core::PlannerException);
++  auto at = path.poses.back();
++  plugin->computeVelocityCommands(at, geometry_msgs::msg::Twist());
+@@ -135 +159 @@
+-  EXPECT_NO_THROW(plugin->computeVelocityCommands(near,geometry_msgs::msg::Twist()));
++  EXPECT_NO_THROW(plugin->computeVelocityCommands(near, geometry_msgs::msg::Twist()));
+@@ -138,2 +162,2 @@
+-  ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),23000000000LL),RCL_RET_OK);
+-  EXPECT_THROW(server->checkProgress(near),nav2_core::PlannerException);
++  ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(), 23000000000LL), RCL_RET_OK);
++  EXPECT_THROW(server->checkProgress(near), nav2_core::PlannerException);
+@@ -144,2 +168,2 @@
+-  using Query=lite3_nav2_interfaces::srv::FollowPathFailure;
+-  auto client=observer->create_client<Query>("/lite3_nav2/follow_path_failure");
++  using Query = lite3_nav2_interfaces::srv::FollowPathFailure;
++  auto client = observer->create_client<Query>("/lite3_nav2/follow_path_failure");
+@@ -147,2 +171,2 @@
+-  rclcpp_action::GoalUUID id{};id[0]=1;
+-  server->recordFailure(id,scan_nav2_controller::TerminalSettleTimeout());
++  rclcpp_action::GoalUUID id{};id[0] = 1;
++  server->recordFailure(id, scan_nav2_controller::TerminalSettleTimeout());
+@@ -150,13 +174,17 @@
+-  auto query=[&](rclcpp_action::GoalUUID target) {
+-    auto req=std::make_shared<Query::Request>();req->goal_id=target;
+-    auto future=client->async_send_request(req);
+-    const auto until=std::chrono::steady_clock::now()+2s;
+-    while(future.wait_for(0ms)!=std::future_status::ready && std::chrono::steady_clock::now()<until) {
+-      rclcpp::spin_some(server->get_node_base_interface());spin();
+-    }
+-    if(future.wait_for(0ms)!=std::future_status::ready)throw std::runtime_error("query timed out");
+-    return future.get();
+-  };
+-  auto result=query(id);EXPECT_TRUE(result->known);EXPECT_TRUE(result->terminal_timeout);
+-  auto other=id;other[0]=2;
+-  result=query(other);EXPECT_FALSE(result->known);EXPECT_FALSE(result->terminal_timeout);
++  auto query = [&](rclcpp_action::GoalUUID target) {
++      auto req = std::make_shared<Query::Request>();req->goal_id = target;
++      auto future = client->async_send_request(req);
++      const auto until = std::chrono::steady_clock::now() + 2s;
++      while (future.wait_for(0ms) != std::future_status::ready &&
++        std::chrono::steady_clock::now() < until)
++      {
++        rclcpp::spin_some(server->get_node_base_interface());spin();
++      }
++      if (future.wait_for(0ms) != std::future_status::ready) {
++        throw std::runtime_error("query timed out");
++      }
++      return future.get();
++    };
++  auto result = query(id);EXPECT_TRUE(result->known);EXPECT_TRUE(result->terminal_timeout);
++  auto other = id;other[0] = 2;
++  result = query(other);EXPECT_FALSE(result->known);EXPECT_FALSE(result->terminal_timeout);
+@@ -164,3 +192,3 @@
+-  server->recordFailure(other,nav2_core::PlannerException("terminal_settle_timeout"));
+-  result=query(other);EXPECT_TRUE(result->known);EXPECT_FALSE(result->terminal_timeout);
+-  result=query(id);EXPECT_FALSE(result->known);EXPECT_FALSE(result->terminal_timeout);
++  server->recordFailure(other, nav2_core::PlannerException("terminal_settle_timeout"));
++  result = query(other);EXPECT_TRUE(result->known);EXPECT_FALSE(result->terminal_timeout);
++  result = query(id);EXPECT_FALSE(result->known);EXPECT_FALSE(result->terminal_timeout);
+]]></failure>
+  </testcase>
+  <system-out>Checked files:
+* include/nav2_controller/nav2_controller.hpp
+* include/nav2_controller/plugins/simple_goal_checker.hpp
+* include/nav2_controller/plugins/simple_progress_checker.hpp
+* include/nav2_controller/plugins/stopped_goal_checker.hpp
+* plugins/simple_goal_checker.cpp
+* plugins/simple_progress_checker.cpp
+* plugins/stopped_goal_checker.cpp
+* plugins/test/goal_checker.cpp
+* plugins/test/progress_checker.cpp
+* src/main.cpp
+* src/nav2_controller.cpp
+* test/test_command_owner.cpp</system-out>
+</testsuite>

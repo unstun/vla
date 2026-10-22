@@ -1,0 +1,817 @@
+--- a/src/bspline_opt/CMakeLists.txt
++++ b/src/bspline_opt/CMakeLists.txt
+@@ -34,6 +34,7 @@
+   find_package(ament_cmake_gtest REQUIRED)
+   ament_add_gtest(test_uniform_bspline test/test_uniform_bspline.cpp)
+   if(TARGET test_uniform_bspline)
++    target_compile_options(test_uniform_bspline PRIVATE -fno-access-control)
+     target_link_libraries(test_uniform_bspline bspline_opt Eigen3::Eigen)
+   endif()
+ endif()
+--- a/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
++++ b/src/bspline_opt/include/bspline_opt/bspline_optimizer.h
+@@ -2,6 +2,7 @@
+ #define _BSPLINE_OPTIMIZER_H_
+ 
+ #include <Eigen/Eigen>
++#include <limits>
+ #include <path_searching/dyn_a_star.h>
+ #include <bspline_opt/uniform_bspline.h>
+ #include <plan_env/grid_map.h>
+@@ -125,9 +126,13 @@
+     double max_vel_, max_acc_; // dynamic limits
+ 
+     int variable_num_;              // optimization variables
+-    int iter_num_;                  // iteration of the solver
++    int iter_num_;                  // Objective evaluation count, not accepted steps.
+     Eigen::VectorXd best_variable_; //
+-    double min_cost_;               //
++    double min_cost_;               // Best finite evaluated cost in this solve.
++    double initial_cost_{std::numeric_limits<double>::infinity()};
++    void beginCandidates(const double *q,int n);
++    void rememberCandidate(const double *q,const double *gradient,double cost,int n);
++    bool candidateDescended() const;
+ 
+     ControlPoints cps_;
+ 
+--- a/src/bspline_opt/src/bspline_optimizer.cpp
++++ b/src/bspline_opt/src/bspline_optimizer.cpp
+@@ -406,6 +406,24 @@
+     return a_star_paths;
+   }
+ 
++  void BsplineOptimizer::beginCandidates(const double *q,int n) {
++    initial_cost_=std::numeric_limits<double>::quiet_NaN();
++    min_cost_=std::numeric_limits<double>::infinity();
++    best_variable_=Eigen::Map<const Eigen::VectorXd>(q,n);
++  }
++  void BsplineOptimizer::rememberCandidate(const double *q,const double *gradient,double cost,int n) {
++    const bool valid=force_stop_type_==DONT_STOP && std::isfinite(cost) &&
++        Eigen::Map<const Eigen::VectorXd>(q,n).allFinite() &&
++        Eigen::Map<const Eigen::VectorXd>(gradient,n).allFinite();
++    if(std::isnan(initial_cost_))initial_cost_=valid ? cost : std::numeric_limits<double>::infinity();
++    if(!valid)return;
++    if(cost<min_cost_) {min_cost_=cost;best_variable_=Eigen::Map<const Eigen::VectorXd>(q,n);}
++  }
++  bool BsplineOptimizer::candidateDescended() const {
++    return std::isfinite(initial_cost_) && std::isfinite(min_cost_) &&
++        min_cost_<initial_cost_ && best_variable_.allFinite();
++  }
++
+   int BsplineOptimizer::earlyExit(void *func_data, const double *x, const double *g, const double fx, const double xnorm, const double gnorm, const double step, int n, int k, int ls)
+   {
+     BsplineOptimizer *opt = reinterpret_cast<BsplineOptimizer *>(func_data);
+@@ -424,6 +442,7 @@
+       [&]{opt->combineCostRebound(x,grad,cost,n);},
+       [&]{opt->force_stop_type_=STOP_FOR_ERROR;cost=0.;std::fill(grad,grad+n,0.);});
+ 
++    opt->rememberCandidate(x,grad,cost,n);
+     opt->iter_num_ += 1;
+     return cost;
+   }
+@@ -438,6 +457,7 @@
+       [&]{opt->combineCostRefine(x,grad,cost,n);},
+       [&]{opt->force_stop_type_=STOP_FOR_ERROR;cost=0.;std::fill(grad,grad+n,0.);});
+ 
++    opt->rememberCandidate(x,grad,cost,n);
+     opt->iter_num_ += 1;
+     return cost;
+   }
+@@ -1051,23 +1071,24 @@
+ 
+       /* ---------- optimize ---------- */
+       t1 = std::chrono::steady_clock::now();
++      beginCandidates(q,variable_num_);
+       int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRebound, NULL, BsplineOptimizer::earlyExit, this, &lbfgs_params);
+-      // The solver restores q to its last accepted point on line-search error;
+-      // objective callbacks leave cps at the final rejected trial otherwise.
++      // A lower finite evaluated candidate can survive a line-search failure,
++      // but only the original whole-curve and dynamics checks may admit it.
++      if(result<0){memcpy(q,best_variable_.data(),variable_num_*sizeof(q[0]));final_cost=min_cost_;}
+       memcpy(cps_.points.data()+3*start_id,q,variable_num_*sizeof(q[0]));
+       if(force_stop_type_!=DONT_STOP)result=lbfgs::LBFGSERR_CANCELED;
+-      if(result<0 && result!=lbfgs::LBFGSERR_CANCELED && result!=lbfgs::LBFGSERR_MAXIMUMITERATION && iter_num_>1 && cps_.points.allFinite())
+-        RCLCPP_INFO(rclcpp::get_logger("bspline_opt"),"LBFGS_RESTORED stage=rebound return=%d; hard validation pending",result);
++      if(result<0 && result!=lbfgs::LBFGSERR_CANCELED && result!=lbfgs::LBFGSERR_MAXIMUMITERATION && candidateDescended() && cps_.points.allFinite())
++        RCLCPP_INFO(rclcpp::get_logger("bspline_opt"),"LBFGS_RESTORED stage=rebound return=%d initial_cost=%.12g best_cost=%.12g; hard validation pending",result,initial_cost_,min_cost_);
+       t2 = std::chrono::steady_clock::now();
+       double time_ms = std::chrono::duration<double, std::milli>(t2 - t1).count();
+       double total_time_ms = std::chrono::duration<double, std::milli>(t2 - t0).count();
+ 
+       /* ---------- success temporary, check collision again ---------- */
+       if (result == lbfgs::LBFGS_CONVERGENCE ||
+-          result == lbfgs::LBFGSERR_MAXIMUMITERATION ||
+           result == lbfgs::LBFGS_ALREADY_MINIMIZED ||
+           result == lbfgs::LBFGS_STOP ||
+-          (result<0 && result!=lbfgs::LBFGSERR_CANCELED && iter_num_>1 && cps_.points.allFinite()))
++          (result<0 && result!=lbfgs::LBFGSERR_CANCELED && candidateDescended() && cps_.points.allFinite()))
+       {
+         //ROS_WARN("Solver error in planning!, return = %s", lbfgs::lbfgs_strerror(result));
+         flag_force_return = false;
+@@ -1182,16 +1203,17 @@
+       lbfgs_params.delta = 1e-4;
+       lbfgs_params.g_epsilon = 0.001;
+ 
++      beginCandidates(q,variable_num_);
+       int result = lbfgs::lbfgs_optimize(variable_num_, q, &final_cost, BsplineOptimizer::costFunctionRefine, NULL, BsplineOptimizer::earlyExit, this, &lbfgs_params);
++      if(result<0){memcpy(q,best_variable_.data(),variable_num_*sizeof(q[0]));final_cost=min_cost_;}
+       memcpy(cps_.points.data()+3*start_id,q,variable_num_*sizeof(q[0]));
+       if(force_stop_type_!=DONT_STOP){lambda4_=origin_lambda4;return false;}
+-      if(result<0 && result!=lbfgs::LBFGSERR_MAXIMUMITERATION && iter_num_>1 && cps_.points.allFinite())
+-        RCLCPP_INFO(rclcpp::get_logger("bspline_opt"),"LBFGS_RESTORED stage=refine return=%d; hard validation pending",result);
++      if(result<0 && result!=lbfgs::LBFGSERR_MAXIMUMITERATION && candidateDescended() && cps_.points.allFinite())
++        RCLCPP_INFO(rclcpp::get_logger("bspline_opt"),"LBFGS_RESTORED stage=refine return=%d initial_cost=%.12g best_cost=%.12g; hard validation pending",result,initial_cost_,min_cost_);
+       if (result == lbfgs::LBFGS_CONVERGENCE ||
+-          result == lbfgs::LBFGSERR_MAXIMUMITERATION ||
+           result == lbfgs::LBFGS_ALREADY_MINIMIZED ||
+           result == lbfgs::LBFGS_STOP ||
+-          (result<0 && result!=lbfgs::LBFGSERR_CANCELED && iter_num_>1 && cps_.points.allFinite()))
++          (result<0 && result!=lbfgs::LBFGSERR_CANCELED && candidateDescended() && cps_.points.allFinite()))
+       {
+         //pass
+       }
+--- a/src/bspline_opt/test/test_uniform_bspline.cpp
++++ b/src/bspline_opt/test/test_uniform_bspline.cpp
+@@ -1,4 +1,5 @@
+ #include <gtest/gtest.h>
++#include <bspline_opt/bspline_optimizer.h>
+ 
+ #include <Eigen/Core>
+ #include <bspline_opt/uniform_bspline.h>
+@@ -66,3 +67,44 @@
+   double x=4.,value=0.;const int result=lbfgs::lbfgs_optimize(1,&x,&value,cost,nullptr,nullptr,&state,&param);
+   EXPECT_LT(result,0);EXPECT_GT(state.calls,2);EXPECT_DOUBLE_EQ(x,3.);
+ }
++
++TEST(OptimizerCandidateRecovery, EvaluationCountCannotStandForDescent) {
++  scan_planner::BsplineOptimizer opt;double q[]={1,2,3},g[]={1,1,1};
++  opt.beginCandidates(q,3);opt.rememberCandidate(q,g,10.,3);
++  double trial[]={2,3,4};opt.rememberCandidate(trial,g,11.,3);opt.iter_num_=200;
++  EXPECT_FALSE(opt.candidateDescended());EXPECT_DOUBLE_EQ(opt.best_variable_[0],1);
++  double better[]={.5,1,1.5};opt.rememberCandidate(better,g,8.,3);
++  EXPECT_TRUE(opt.candidateDescended());EXPECT_DOUBLE_EQ(opt.initial_cost_,10.);
++  EXPECT_DOUBLE_EQ(opt.min_cost_,8.);EXPECT_DOUBLE_EQ(opt.best_variable_[0],.5);
++  opt.beginCandidates(q,3);EXPECT_FALSE(opt.candidateDescended());
++}
++TEST(OptimizerCandidateRecovery, InvalidOrCanceledTrialCannotBecomeBest) {
++  scan_planner::BsplineOptimizer opt;double q[]={1,2,3},g[]={1,1,1};
++  opt.beginCandidates(q,3);opt.rememberCandidate(q,g,10.,3);
++  double trial[]={0,0,0},bad[]={NAN,0,0};opt.rememberCandidate(trial,bad,1.,3);
++  EXPECT_FALSE(opt.candidateDescended());
++  opt.force_stop_type_=scan_planner::BsplineOptimizer::STOP_FOR_ERROR;
++  opt.rememberCandidate(trial,g,1.,3);EXPECT_FALSE(opt.candidateDescended());
++}
++
++TEST(OptimizerCandidateRecovery, InvalidInitialEvaluationCannotInventABaseline) {
++  scan_planner::BsplineOptimizer opt;double q[]={1.},g[]={1.},bad[]={NAN};
++  opt.beginCandidates(q,1);opt.rememberCandidate(q,bad,10.,1);
++  q[0]=.8;opt.rememberCandidate(q,g,8.,1);
++  q[0]=.6;opt.rememberCandidate(q,g,6.,1);
++  EXPECT_FALSE(opt.candidateDescended());
++}
++TEST(OptimizerCandidateRecovery, ActualLineSearchFailureRetainsLowerFiniteCandidate) {
++  struct State {scan_planner::BsplineOptimizer opt;int calls=0;} state;
++  double x=4.,value=0.;state.opt.beginCandidates(&x,1);
++  auto cost=[](void *data,const double *q,double *g,int n) {
++    auto &s=*static_cast<State*>(data);++s.calls;g[0]=q[0];
++    const double f=s.calls<=2 ? .5*q[0]*q[0] : 1000.;
++    s.opt.rememberCandidate(q,g,f,n);return f;
++  };
++  lbfgs::lbfgs_parameter_t p;lbfgs::lbfgs_load_default_parameters(&p);p.max_linesearch=20;
++  const int result=lbfgs::lbfgs_optimize(1,&x,&value,cost,nullptr,nullptr,&state,&p);
++  ASSERT_LT(result,0);EXPECT_TRUE(state.opt.candidateDescended());
++  EXPECT_DOUBLE_EQ(state.opt.initial_cost_,8.);EXPECT_DOUBLE_EQ(state.opt.min_cost_,4.5);
++  EXPECT_DOUBLE_EQ(state.opt.best_variable_[0],3.);
++}
+--- a/src/lite3_nav2_bridge/CMakeLists.txt
++++ b/src/lite3_nav2_bridge/CMakeLists.txt
+@@ -23,6 +23,7 @@
+   find_package(ament_cmake_pytest REQUIRED)
+   ament_add_pytest_test(test_wait_recovery test/test_wait_recovery.py TIMEOUT 25)
+   ament_add_pytest_test(test_mission_bridge test/test_mission_bridge.py TIMEOUT 90)
++  ament_add_pytest_test(test_navigation_readiness test/test_navigation_readiness.py TIMEOUT 45)
+   ament_add_pytest_test(test_static_terrain test/test_static_terrain.py TIMEOUT 30)
+   ament_add_pytest_test(test_terrain_profile test/test_terrain_profile.py TIMEOUT 30)
+ endif()
+--- a/src/lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py
++++ b/src/lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py
+@@ -11,11 +11,12 @@
+ from lite3_nav2_interfaces.srv import RouteSession
+ from nav_msgs.msg import Odometry
+ from rclpy.action import ActionClient
+-from rclpy.callback_groups import ReentrantCallbackGroup
++from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
+ from rclpy.executors import MultiThreadedExecutor
+ from rclpy.node import Node
+ from rclpy.clock import Clock, ClockType
+ from lifecycle_msgs.srv import GetState
++from lifecycle_msgs.msg import State
+ from .runtime_failure import read_json, valid_failure, process_failure
+ from rclpy.qos import qos_profile_sensor_data
+ 
+@@ -59,7 +60,10 @@
+         if (not math.isfinite(self._critical_timeout) or self._critical_timeout<0
+                 or (self._critical_timeout>0 and not self._failure_path)):
+             raise ValueError('Invalid critical-process health configuration')
+-        self._health_pending, self._health_last = {}, {}
++        self._health_pending, self._health_last, self._health_sent = {}, {}, {}
++        self._health_group = MutuallyExclusiveCallbackGroup()
++        self._lifecycle_state = {}
++        self._require_active_navigation = bool(self.declare_parameter('require_active_navigation', False).value)
+ 
+         self._input_group = ReentrantCallbackGroup()
+         self._client = ActionClient(self, NavigateToPose, '/nav2_internal/navigate_to_pose',
+@@ -71,10 +75,10 @@
+         self._session_client = self.create_client(RouteSession, '/lite3_nav2/route_session',
+                                                   callback_group=self._input_group)
+         self._dispatch_timer = self.create_timer(0.02, self.dispatch_goals)
+-        self._liveness_clients = {name:self.create_client(GetState,name+'/get_state',callback_group=self._input_group)
+-            for name in ('/controller_server','/planner_server','/recoveries_server','/nav2_internal/bt_navigator')} if self._critical_timeout>0 else {}
++        self._liveness_clients = {name:self.create_client(GetState,name+'/get_state',callback_group=self._health_group)
++            for name in ('/controller_server','/planner_server','/recoveries_server','/nav2_internal/bt_navigator')} if self._critical_timeout>0 or self._require_active_navigation else {}
+         self._fault_timer = self.create_timer(0.02,self._check_native_health,
+-            clock=Clock(clock_type=ClockType.STEADY_TIME))
++            clock=Clock(clock_type=ClockType.STEADY_TIME), callback_group=self._health_group)
+ 
+         http = self.config.get('http', {})
+         self._http = ThreadingHTTPServer((http.get('host', '127.0.0.1'), int(http.get('port', 8785))),
+@@ -95,26 +99,43 @@
+                             except Exception: pass
+                         self._finish(rid,'failed',fault['cause'],dict(fault))
+                 return
+-            active=self.current_owner and self.jobs[self.current_owner['request_id']]['status']=='running'
++            active=self.current_owner and self.jobs[self.current_owner['request_id']]['status'] in ('pending','running')
+             if not active:
+                 self._health_last.clear()
++                self._health_sent.clear()
+                 return
++            running=self.jobs[self.current_owner['request_id']]['status']=='running'
+             now=time.monotonic()
+             for name,client in self._liveness_clients.items():
+                 self._health_last.setdefault(name,now)
+                 pending=self._health_pending.get(name)
+                 if pending and pending.done():
+                     try:
+-                        if pending.result() is not None:self._health_last[name]=now
++                        if pending.result() is not None:
++                            self._health_last[name]=now
++                            self._lifecycle_state[name]=(int(pending.result().current_state.id),now)
+                     except Exception: pass
+                     self._health_pending.pop(name,None)
+-                if now-self._health_last[name]>self._critical_timeout:
++                if running and self._critical_timeout>0 and now-self._health_last[name]>self._critical_timeout:
+                     process_failure(self._failure_path,self.config['run_id'],self.config['run_epoch_ns'],
+                                     name,None,'native_node_unresponsive')
+                     return
+-                if name not in self._health_pending and client.service_is_ready():
+-                    try:self._health_pending[name]=client.call_async(GetState.Request())
++                # Poll at 5 Hz; timeout checks remain at 50 Hz on the steady clock.
++                if (name not in self._health_pending and client.service_is_ready()
++                        and now-self._health_sent.get(name, -math.inf)>=0.2):
++                    try:
++                        self._health_pending[name]=client.call_async(GetState.Request())
++                        self._health_sent[name]=now
+                     except Exception: pass
++
++    def _inactive_navigation(self, now):
++        if not self._require_active_navigation:
++            return {}
++        return {name: self._lifecycle_state.get(name, (None, None))[0]
++                for name in self._liveness_clients
++                if name not in self._lifecycle_state
++                or self._lifecycle_state[name][0] != State.PRIMARY_STATE_ACTIVE
++                or now - self._lifecycle_state[name][1] > 1.0}
+ 
+     def on_odometry(self, message):
+         p, q = message.pose.pose.position, message.pose.pose.orientation
+@@ -202,6 +223,17 @@
+                     else:
+                         self._dispatch.append(request_id)
+                     continue
++                inactive = self._inactive_navigation(time.monotonic())
++                if inactive:
++                    if time.monotonic() - job['submitted_s'] > 5.0:
++                        self._finish(request_id, 'failed', 'nav2_nodes_not_active', {'nodes': inactive})
++                    else:
++                        self._dispatch.append(request_id)
++                    continue
++                if self._require_active_navigation:
++                    job['navigation_active'] = {name: {'state_id': state, 'observed_monotonic_s': stamp}
++                                                for name, (state, stamp) in self._lifecycle_state.items()}
++                    self.get_logger().info('navigation_active_before_goal ' + json.dumps({'request_id': request_id, 'nodes': job['navigation_active']}))
+                 goal = NavigateToPose.Goal()
+                 goal.pose.header.frame_id = self.frame_id
+                 goal.pose.header.stamp = self.get_clock().now().to_msg()
+--- a/src/lite3_nav2_bridge/test/test_event_planning.cpp
++++ b/src/lite3_nav2_bridge/test/test_event_planning.cpp
+@@ -84,20 +84,14 @@
+   void update(){board->set("goal",goal);}
+ };
+ 
+-TEST_F(EventPlanning, CurrentRouteFailureReplansWithoutStoppingFollowPath) {
++TEST_F(EventPlanning, CurrentRouteFeedbackPreservesStaticReferenceAndTracking) {
+   auto t=tree();t.tickRoot();
+   const auto header=board->get<nav_msgs::msg::Path>("path").header;
+-  for(int i=0;i<100 && !request->get_subscription_count();++i)std::this_thread::sleep_for(std::chrono::milliseconds(5));
+-  ASSERT_GT(request->get_subscription_count(),0u);
+-  finish_plan=false;request->publish(header);
+-  for(int i=0;i<100 && starts==1;++i){t.tickRoot();std::this_thread::sleep_for(std::chrono::milliseconds(5));}
+-  ASSERT_EQ(starts,2);const int before=follows;
+-  for(int i=0;i<10;++i)t.tickRoot();
+-  EXPECT_GT(follows,before);EXPECT_EQ(cancels,0);EXPECT_EQ(waits,0);
+-  finish_plan=true;t.tickRoot();EXPECT_EQ(starts,2);
+-  request->publish(header); // Old route request cannot invalidate the replacement.
+-  for(int i=0;i<10;++i){t.tickRoot();std::this_thread::sleep_for(std::chrono::milliseconds(5));}
+-  EXPECT_EQ(starts,2);
++  const int before=follows;
++  request->publish(header);
++  for(int i=0;i<20;++i){t.tickRoot();std::this_thread::sleep_for(std::chrono::milliseconds(5));}
++  EXPECT_EQ(starts,1);EXPECT_GT(follows,before);EXPECT_EQ(cancels,0);EXPECT_EQ(waits,0);
++  EXPECT_EQ(board->get<nav_msgs::msg::Path>("path").header,header);
+ }
+ 
+ TEST_F(EventPlanning, WrongRouteRequestDoesNotReplan) {
+@@ -147,11 +141,11 @@
+   finish_plan=false;goal.pose.position.y=1.;update();t.tickRoot();
+   t.haltTree();EXPECT_EQ(cancels,1);finish_plan=true;t.tickRoot();EXPECT_EQ(starts,4);
+ }
+-TEST_F(EventPlanning, OrdinaryFailureReplansWithUnchangedSixRetryBudget) {
++TEST_F(EventPlanning, OrdinaryFailureRetainsReferenceAndSixRetryBudget) {
+   auto t=tree();t.tickRoot();fail_follow=true;
+   Status result=Status::RUNNING;
+   for(int i=0;i<100 && result==Status::RUNNING;++i)result=t.tickRoot();
+-  EXPECT_EQ(result,Status::FAILURE);EXPECT_EQ(starts,7);EXPECT_EQ(waits,6);
++  EXPECT_EQ(result,Status::FAILURE);EXPECT_EQ(starts,1);EXPECT_EQ(waits,6);
+ }
+ TEST_F(EventPlanning, PlanningFailureRetainsOriginalRetries) {
+   fail_plan=true;auto t=tree();Status result=Status::RUNNING;
+--- a/src/lite3_nav2_bridge/test/test_mission_bridge.py
++++ b/src/lite3_nav2_bridge/test/test_mission_bridge.py
+@@ -429,3 +429,40 @@
+     result=subprocess.run([sys.executable,'-c',code,str(fault)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=8,text=True)
+     assert result.returncode==0,result.stdout
+     assert not fault.exists(),result.stdout
++
++
++def test_liveness_responses_continue_while_default_group_is_busy(bridge, tmp_path):
++    from lifecycle_msgs.srv import GetState
++    node, io = bridge
++    node._critical_timeout = 1.0
++    node._failure_path = str(tmp_path / 'health.json')
++    replies = []
++    def respond(request, response):
++        replies.append(time.monotonic())
++        return response
++    service = io.create_service(GetState, '/health_test/get_state', respond)
++    client = node.create_client(GetState, '/health_test/get_state', callback_group=getattr(node, '_health_group', node._input_group))
++    wait(client.service_is_ready)
++    node._liveness_clients = {'/health_test': client}
++    node.submit_goal(goal_payload('health'))
++    with node._lock:
++        node.jobs['health']['status'] = 'running'
++        node._dispatch.clear()
++    entered, release = threading.Event(), threading.Event()
++    def busy_default_callback():
++        entered.set()
++        release.wait(0.9)
++    timer = node.create_timer(0.01, busy_default_callback)
++    try:
++        assert entered.wait(2)
++        replies.clear()
++        wait(lambda: len(replies)>=3, seconds=0.75)
++        assert not release.is_set()
++        assert node.jobs['health']['status']=='running'
++        assert not (tmp_path / 'health.json').exists()
++        # A bounded request cadence must not flood the four lifecycle services.
++        assert all(b-a>=0.15 for a,b in zip(replies,replies[1:]))
++    finally:
++        timer.cancel()
++        release.set()
++        io.destroy_service(service)
+--- /dev/null
++++ b/src/lite3_nav2_bridge/test/test_navigation_readiness.py
+@@ -0,0 +1,70 @@
++"""Actual loopback lifecycle replies gate an already discoverable action."""
++import threading,time
++from unittest.mock import patch
++from lifecycle_msgs.srv import GetState
++from lifecycle_msgs.msg import State
++from nav2_msgs.action import NavigateToPose
++from rclpy.action import ActionServer
++from rclpy.callback_groups import ReentrantCallbackGroup
++from test_mission_bridge import bridge,wait,goal_payload
++
++
++def lifecycle(node,io,initial):
++ names=('/controller_server','/planner_server','/recoveries_server','/nav2_internal/bt_navigator')
++ states={name:initial for name in names};servers=[]
++ for name in names:
++  def reply(request,response,key=name):
++   response.current_state.id=states[key];return response
++  servers.append(io.create_service(GetState,name+'/get_state',reply))
++ with node._lock:
++  node._require_active_navigation=True
++  node._liveness_clients={name:node.create_client(GetState,name+'/get_state',callback_group=node._health_group) for name in names}
++ return states,servers
++
++
++def action(node,io,goals):
++ def execute(handle):
++  goals.append(handle.request);handle.succeed();return NavigateToPose.Result()
++ server=ActionServer(io,NavigateToPose,'/nav2_internal/navigate_to_pose',execute_callback=execute,callback_group=ReentrantCallbackGroup())
++ node._test_action_servers.append(server);wait(node._client.server_is_ready)
++
++
++def test_interface_ready_but_inactive_waits_then_dispatches_exactly_once(bridge):
++ node,io=bridge;goals=[];action(node,io,goals)
++ states,servers=lifecycle(node,io,State.PRIMARY_STATE_INACTIVE)
++ node.submit_goal(goal_payload('delayed'))
++ wait(lambda:len(node._lifecycle_state)==4)
++ with node._lock:
++  assert node.jobs['delayed']['status']=='pending'
++  assert not node.jobs['delayed']['sent'] and not goals and not node._test_sessions
++  states.update({name:State.PRIMARY_STATE_ACTIVE for name in states})
++ wait(lambda:node.jobs['delayed']['status']=='arrived')
++ assert len(goals)==1
++ assert len(node.jobs['delayed']['navigation_active'])==4
++ assert all(v['state_id']==State.PRIMARY_STATE_ACTIVE for v in node.jobs['delayed']['navigation_active'].values())
++ assert len([s for s in node._test_sessions if s.operation==s.BEGIN])==1
++ node.submit_goal(goal_payload('delayed'));assert len(goals)==1
++
++
++def test_permanently_inactive_reports_nodes_and_closes_normally(bridge):
++ node,io=bridge;goals=[];action(node,io,goals)
++ states,servers=lifecycle(node,io,State.PRIMARY_STATE_INACTIVE)
++ node.submit_goal(goal_payload('inactive'))
++ wait(lambda:len(node._lifecycle_state)==4)
++ with node._lock:node.jobs['inactive']['submitted_s']-=5.1
++ wait(lambda:node.jobs['inactive']['status']=='failed')
++ result=node.terminal_results[-1]
++ assert result['cause']=='nav2_nodes_not_active'
++ assert result['data']['nodes']==states
++ assert node.current_owner is None and not goals and not node.jobs['inactive']['sent']
++
++
++def test_cancel_during_activation_never_sends_goal(bridge):
++ node,io=bridge;goals=[];action(node,io,goals)
++ states,servers=lifecycle(node,io,State.PRIMARY_STATE_INACTIVE)
++ node.submit_goal(goal_payload('cancel-pending'))
++ wait(lambda:len(node._lifecycle_state)==4)
++ node.cancel_goal({'request_id':'cancel','target_request_id':'cancel-pending'})
++ wait(lambda:node.jobs['cancel-pending']['status']=='cancelled')
++ states.update({name:State.PRIMARY_STATE_ACTIVE for name in states})
++ assert not goals and not node.jobs['cancel-pending']['sent']
+--- a/src/lite3_nav2_bridge/test/test_terminal_tree.cpp
++++ b/src/lite3_nav2_bridge/test/test_terminal_tree.cpp
+@@ -49,7 +49,7 @@
+   void SetUp() override {int argc=0;rclcpp::init(argc,nullptr);}
+   void TearDown() override {rclcpp::shutdown();}
+ };
+-TEST_F(RecoveryTree, OrdinaryFailuresMatchFrozenTreeAndNextMissionResets) {
++TEST_F(RecoveryTree, OrdinaryFailuresPreserveRecoveryBudgetAndStaticReference) {
+   for(bool planner:{false,true})for(int count:{2,99}) {
+     std::vector<int> expected;
+     for(const char *file:{LEGACY_TREE,NAVIGATION_TREE}) {
+@@ -58,10 +58,14 @@
+       auto bb=BT::Blackboard::create();bb->set("goal",geometry_msgs::msg::PoseStamped());
+       auto tree=factory.createTreeFromFile(file,bb);
+       const auto result=run(tree);
+-      std::vector<int> observed{plans,follows,waits,int(result)};
++      std::vector<int> observed{follows,waits,int(result)};
+       if(expected.empty())expected=observed;else EXPECT_EQ(observed,expected);
+       EXPECT_EQ(waits,planner||count==99?6:2);
+-      if(planner)EXPECT_EQ(plans,7);else EXPECT_EQ(follows,count==99?7:3);
++      if(planner)EXPECT_EQ(plans,7);
++      else {
++        EXPECT_EQ(follows,count==99?7:3);
++        EXPECT_EQ(plans,std::string(file)==NAVIGATION_TREE?1:(count==99?7:3));
++      }
+     }
+   }
+ }
+@@ -98,7 +102,7 @@
+     plans=follows=waits=0;plan_failure=false;
+     EXPECT_EQ(run(tree),BT::NodeStatus::FAILURE);EXPECT_EQ(queries,1);EXPECT_EQ(plans,1);EXPECT_EQ(waits,0);
+     tree.haltTree();terminal_reply=false;plans=waits=0;queries=0;
+-    EXPECT_EQ(run(tree),BT::NodeStatus::FAILURE);EXPECT_EQ(queries,7);EXPECT_EQ(plans,7);EXPECT_EQ(waits,6);
++    EXPECT_EQ(run(tree),BT::NodeStatus::FAILURE);EXPECT_EQ(queries,7);EXPECT_EQ(plans,1);EXPECT_EQ(waits,6);
+   }
+   executor.cancel();thread.join();executor.remove_node(io);server.reset();service.reset();node.reset();io.reset();
+ }
+--- a/src/plan_env/CMakeLists.txt
++++ b/src/plan_env/CMakeLists.txt
+@@ -44,4 +44,10 @@
+ ament_export_dependencies(
+   cv_bridge Eigen3 geometry_msgs message_filters nav_msgs OpenCV PCL pcl_conversions
+   rclcpp scan_planner_msgs sensor_msgs tf2 tf2_ros visualization_msgs)
++if(BUILD_TESTING)
++  find_package(ament_cmake_gtest REQUIRED)
++  ament_add_gtest(test_body_time_buffer test/test_body_time_buffer.cpp)
++  ament_target_dependencies(test_body_time_buffer nav_msgs)
++  target_include_directories(test_body_time_buffer PRIVATE include)
++endif()
+ ament_package()
+--- a/src/plan_env/include/plan_env/body_time_buffer.h
++++ b/src/plan_env/include/plan_env/body_time_buffer.h
+@@ -19,7 +19,7 @@
+       return fail("invalid_body_source_stamp");
+     const int64_t stamp = int64_t(message->header.stamp.sec)*1000000000LL + message->header.stamp.nanosec;
+     if (stamp <= 0) return fail("invalid_body_source_stamp");
+-    if (stamp < high_water_) return fail("regressed_body_source_stamp");
++    if (stamp < high_water_) { ++ignored_older_samples_; return false; }
+     if (stamp == high_water_) return true; // A duplicate cannot refresh evidence.
+     if (pending_.size() >= 64) return fail("future_body_buffer_exhausted");
+     high_water_ = stamp;
+@@ -35,10 +35,12 @@
+     }
+     return latest;
+   }
++  uint64_t ignoredOlderSamples() const { return ignored_older_samples_; }
+   bool healthy() const { return error_.empty(); }
+   const std::string &error() const { return error_; }
+  private:
+   bool fail(const char *reason) { error_=reason; return false; }
++  uint64_t ignored_older_samples_ = 0;
+   int64_t high_water_ = 0;
+   std::deque<std::pair<int64_t,Message>> pending_;
+   std::string error_;
+--- a/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
++++ b/src/plan_env/include/plan_env/scan_reactive_grid_methods.inc
+@@ -568,6 +568,19 @@
+         rawContributorOccupancy(query_id)==reactive_stair::Occupancy::Occupied ?
+         reactive_stair::Occupancy::Occupied : reactive_stair::Occupancy::Free;
+   }
++  if (mapState().reactive_known_trunk_enabled_ && query.in_map && reactive_body_stamp_s_ > 0.0) {
++    Eigen::Vector3i id;
++    posToIndex(point, id);
++    // Test the queried point, not its voxel centre, so the waiver does not
++    // depend on how the grid aligns with the body height.
++    const Eigen::Vector3d local = reactive_body_quaternion_.conjugate() *
++                                 (point - queryBodyPosition());
++    const bool inside = reactive_stair::knownNavigationFootprintInterior(
++        local.x(), local.y(), local.z(), query.stamp_s, reactive_body_stamp_s_,
++        mapState().mp_.double_cylinder_radius_, mapState().mp_.double_cylinder_offset_);
++    obstacle.occupancy = reactive_stair::measuredTrunkQuery(
++        obstacle.occupancy, mapState().md_.occupancy_buffer_inflate_[toAddress(id)] != 0, inside);
++  }
+   if (body_reference) {
+     const auto support_verdict=footprintSupportVerdict(*body_reference,obstacle,query,false);
+     if(support_verdict!=reactive_stair::Verdict::Free) {
+--- a/src/plan_env/src/grid_map.cpp
++++ b/src/plan_env/src/grid_map.cpp
+@@ -1055,6 +1055,7 @@
+   if (async_mapping_) {
+     applyDueLiveBody();
+     if (!live_body_inputs_.push(pose)) {
++      if (live_body_inputs_.healthy()) return; // Superseded delivery: never enqueue an older map pose.
+       reactive_body_stamp_s_=0.0;
+       // Publish this existing fail-closed state through the shared atomic map
+       // health latch so independent read-only queries reject it as well.
+@@ -1112,6 +1113,7 @@
+ 
+ void GridMap::refreshSensorInputs(const char *site, int fsm_odometry, bool adopt_completed_map)
+ {
++  std::lock_guard<std::recursive_mutex> work(lockMutex());
+   reactive_stair::PlanningProfile::Scope profile(planning_profile_, reactive_stair::PlanningProfile::Inputs);
+   // Actual occupancy/ground mutations invalidate. An empty input drain does not.
+   // v31: SCAN serves its planning and safety timers and these subscriptions on
+@@ -1190,9 +1192,10 @@
+       (applied[2] > 0 && body_age > 0.05) || cloud_age_after < 0.0 || body_age_after < 0.0)
+     RCLCPP_INFO(node_->get_logger(),
+                 "input_refresh site=%s sensor_poses=%d clouds=%d body_poses=%d fsm_odom=%d "
+-                "cloud_age=%.4f->%.4f body_age=%.4f->%.4f cloud_ready=%d",
++                "cloud_age=%.4f->%.4f body_age=%.4f->%.4f cloud_ready=%d ignored_older_body=%llu",
+                 site, applied[0], applied[1], applied[2], fsm_odometry, cloud_age, cloud_age_after,
+-                body_age, body_age_after, static_cast<int>(mapState().reactive_cloud_ready_));
++                body_age, body_age_after, static_cast<int>(mapState().reactive_cloud_ready_),
++                static_cast<unsigned long long>(live_body_inputs_.ignoredOlderSamples()));
+ }
+ 
+ void GridMap::cloudCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr img)
+--- /dev/null
++++ b/src/plan_env/test/test_body_time_buffer.cpp
+@@ -0,0 +1,48 @@
++#include <gtest/gtest.h>
++#include <plan_env/body_time_buffer.h>
++#include <condition_variable>
++#include <mutex>
++#include <thread>
++
++namespace {
++using Message=nav_msgs::msg::Odometry;
++auto pose(int64_t ns,double x=0.) {
++  auto m=std::make_shared<Message>();m->header.stamp.sec=ns/1000000000;
++  m->header.stamp.nanosec=ns%1000000000;m->pose.pose.position.x=x;return m;
++}
++}
++TEST(BodyTimeBuffer, SupersededDeliveryPreservesNewerAndAdmitsNext) {
++  scan_input_time::BodyTimeBuffer b;
++  ASSERT_TRUE(b.push(pose(2000000000,2)));
++  EXPECT_FALSE(b.push(pose(1000000000,1)));
++  EXPECT_TRUE(b.healthy());EXPECT_TRUE(b.error().empty());
++  auto current=b.takeDue(2000000000);ASSERT_TRUE(current);EXPECT_DOUBLE_EQ(current->pose.pose.position.x,2);
++  ASSERT_TRUE(b.push(pose(3000000000,3)));
++  auto next=b.takeDue(3000000000);ASSERT_TRUE(next);EXPECT_DOUBLE_EQ(next->pose.pose.position.x,3);
++}
++TEST(BodyTimeBuffer, TakenBeforeGuardCannotPoisonManualDrain) {
++  scan_input_time::BodyTimeBuffer b;std::recursive_mutex work;
++  std::mutex phase_mutex;std::condition_variable phase;bool taken=false,accepted=true;
++  std::unique_lock<std::recursive_mutex> current(work);
++  std::thread callback([&]{auto older=pose(1000000000,1);
++    {std::lock_guard<std::mutex> lock(phase_mutex);taken=true;}phase.notify_one();
++    std::lock_guard<std::recursive_mutex> lock(work);accepted=b.push(older);
++  });
++  {std::unique_lock<std::mutex> lock(phase_mutex);phase.wait(lock,[&]{return taken;});}
++  ASSERT_TRUE(b.push(pose(2000000000,2)));current.unlock();callback.join();
++  EXPECT_FALSE(accepted);ASSERT_TRUE(b.healthy());
++  ASSERT_TRUE(b.push(pose(3000000000,3)));auto next=b.takeDue(3000000000);
++  ASSERT_TRUE(next);EXPECT_DOUBLE_EQ(next->pose.pose.position.x,3);
++}
++TEST(BodyTimeBuffer, DuplicateCannotRestampOrReplaceEvidence) {
++  scan_input_time::BodyTimeBuffer b;ASSERT_TRUE(b.push(pose(1000000000,1)));
++  EXPECT_TRUE(b.push(pose(1000000000,9)));auto m=b.takeDue(2000000000);
++  ASSERT_TRUE(m);EXPECT_EQ(m->header.stamp.sec,1);EXPECT_DOUBLE_EQ(m->pose.pose.position.x,1);
++  EXPECT_FALSE(b.takeDue(3000000000));
++}
++TEST(BodyTimeBuffer, FutureAndMalformedInputsRetainTheirContract) {
++  scan_input_time::BodyTimeBuffer b;ASSERT_TRUE(b.push(pose(2000000000)));
++  EXPECT_FALSE(b.takeDue(1000000000));EXPECT_TRUE(b.takeDue(2000000000));
++  EXPECT_FALSE(b.push(pose(0)));EXPECT_FALSE(b.healthy());
++  EXPECT_FALSE(b.push(pose(3000000000)));
++}
+--- a/src/plan_manage/CMakeLists.txt
++++ b/src/plan_manage/CMakeLists.txt
+@@ -68,6 +68,10 @@
+   find_package(ament_cmake_gtest REQUIRED)
+   find_package(ament_cmake_pytest REQUIRED)
+   find_package(launch_testing_ament_cmake REQUIRED)
++  ament_add_gtest(test_replan_fsm_Safety test/test_replan_fsm_Safety.cpp)
++  target_compile_options(test_replan_fsm_Safety PRIVATE -fno-access-control)
++  target_link_libraries(test_replan_fsm_Safety scan_native_core)
++  ament_target_dependencies(test_replan_fsm_Safety ${scan_planner_dependencies})
+   ament_add_gtest(test_reference_path_utils test/test_reference_path_utils.cpp)
+   target_include_directories(test_reference_path_utils PRIVATE include)
+   ament_target_dependencies(test_reference_path_utils nav_msgs traj_utils)
+--- a/src/plan_manage/src/scan_replan_fsm.cpp
++++ b/src/plan_manage/src/scan_replan_fsm.cpp
+@@ -634,6 +634,7 @@
+   {
+     applyDueOdometry();
+     if (!body_inputs_.push(msg)) {
++      if (body_inputs_.healthy()) return; // Keep the newer body state applied above.
+       have_odom_=false;
+       flag_escape_emergency_=true;
+       need_hover_stop_=true;
+--- /dev/null
++++ b/src/plan_manage/test/test_replan_fsm_Safety.cpp
+@@ -0,0 +1,41 @@
++#include <gtest/gtest.h>
++#include <plan_manage/scan_replan_fsm.h>
++#include <rcl/time.h>
++#include <condition_variable>
++#include <thread>
++
++TEST(ReplanFsmSafety, LateCallbackCannotUndoNewerManualDrain) {
++  rclcpp::init(0,nullptr);
++  {
++    auto node=std::make_shared<rclcpp::Node>("fsm_body_order_test");
++    scan_planner::SCANReplanFSM fsm;
++    fsm.node_=node.get();
++    fsm.planner_manager_=std::make_unique<scan_planner::SCANPlannerManager>();
++    fsm.planner_manager_->grid_map_=std::make_shared<GridMap>();
++    fsm.navi_mode_=3;fsm.have_odom_=false;fsm.exec_state_=scan_planner::SCANReplanFSM::EXEC_TRAJ;
++    fsm.self_inflation_z_up_=0.55;fsm.self_inflation_z_down_=0.35;
++    fsm.self_double_cylinder_radius_=0.35;fsm.self_double_cylinder_offset_=0.18;
++    fsm.self_inflation_pub_=node->create_publisher<visualization_msgs::msg::Marker>("body",10);
++    auto clock=node->get_clock();
++    ASSERT_EQ(rcl_enable_ros_time_override(clock->get_clock_handle()),RCL_RET_OK);
++    ASSERT_EQ(rcl_set_ros_time_override(clock->get_clock_handle(),3000000000LL),RCL_RET_OK);
++    auto pose=[](int sec){auto m=std::make_shared<nav_msgs::msg::Odometry>();
++      m->header.stamp.sec=sec;m->pose.pose.position.x=sec;m->pose.pose.orientation.w=1.;return m;};
++    std::mutex phase_mutex;std::condition_variable phase;bool taken=false;
++    std::unique_lock<std::recursive_mutex> work(fsm.planner_manager_->grid_map_->lockMutex());
++    std::thread callback([&]{auto t1=pose(1);
++      {std::lock_guard<std::mutex> l(phase_mutex);taken=true;}phase.notify_one();
++      fsm.callbackBoundary("late_callback",[&]{fsm.odometryCallback(t1);});
++    });
++    {std::unique_lock<std::mutex> l(phase_mutex);phase.wait(l,[&]{return taken;});}
++    fsm.callbackBoundary("manual_drain",[&]{fsm.odometryCallback(pose(2));});
++    work.unlock();callback.join();
++    EXPECT_TRUE(fsm.have_odom_);EXPECT_DOUBLE_EQ(fsm.odom_pos_.x(),2.);
++    EXPECT_TRUE(fsm.body_inputs_.healthy());EXPECT_EQ(fsm.body_inputs_.ignoredOlderSamples(),1u);
++    fsm.callbackBoundary("next_callback",[&]{fsm.odometryCallback(pose(3));});
++    EXPECT_TRUE(fsm.have_odom_);EXPECT_DOUBLE_EQ(fsm.odom_pos_.x(),3.);
++    EXPECT_EQ(fsm.exec_state_,scan_planner::SCANReplanFSM::EXEC_TRAJ);
++    EXPECT_TRUE(fsm.body_inputs_.healthy());
++  }
++  rclcpp::shutdown();
++}
+--- a/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
++++ b/src/scan_nav2_controller/include/scan_nav2_controller/tracking_node.hpp
+@@ -28,7 +28,7 @@
+ class TrackingNode : public rclcpp::Node
+ {
+ public:
+-  static constexpr double kGoalCenterTolerance=0.02;
++  static constexpr double kGoalCenterDeadzone=0.05;
+   explicit TrackingNode(const rclcpp::NodeOptions &options = rclcpp::NodeOptions())
+       : Node("scan_nav2_tracking", options)
+   {
+@@ -315,17 +315,18 @@
+         const double error = normalizeAngle(goal_yaw_ - odom_yaw_);
+         publishExecutionFrozen(true);
+         const Eigen::Vector2d position_error=(goal_pos_-odom_pos_).head<2>();
+-        const bool centered=position_error.norm()<=kGoalCenterTolerance;
+-        if (centered && std::abs(error) <= goal_yaw_tolerance_)
++        if (std::abs(error) <= goal_yaw_tolerance_)
+           publishStop();
+         else {
+-          const Eigen::Vector2d vel_world=centered ? Eigen::Vector2d::Zero() :
+-              clampNorm(kp_pos_*position_error,std::min(0.15,std::max(max_vx_,max_vy_)));
++          const double distance=position_error.norm();
++          const double pull=distance>kGoalCenterDeadzone ? 1.0-kGoalCenterDeadzone/distance : 0.0;
++          const Eigen::Vector2d vel_world=clampNorm(kp_pos_*pull*position_error,
++              std::min(0.15,std::max(max_vx_,max_vy_)));
+           const double c=std::cos(odom_yaw_), s=std::sin(odom_yaw_);
+           geometry_msgs::msg::Twist command;
+           command.linear.x=std::clamp(c*vel_world.x()+s*vel_world.y(),-max_vx_,max_vx_);
+           command.linear.y=std::clamp(-s*vel_world.x()+c*vel_world.y(),-max_vy_,max_vy_);
+-          command.angular.z=std::abs(error)<=goal_yaw_tolerance_ ? 0. : std::clamp(kp_yaw_*error,-max_vyaw_,max_vyaw_);
++          command.angular.z=std::clamp(kp_yaw_*error,-max_vyaw_,max_vyaw_);
+           publishVelocity(command);
+         }
+         last_update_time_ = current_time;
+--- a/src/scan_nav2_controller/src/controller.cpp
++++ b/src/scan_nav2_controller/src/controller.cpp
+@@ -133,7 +133,7 @@
+ bool Controller::withinGoalPosition(const geometry_msgs::msg::Pose &pose) const
+ {
+   const auto &g=state_->goal_pose.position;
+-  return state_->has_goal_pose && std::hypot(pose.position.x-g.x, pose.position.y-g.y)<=std::min(state_->xy_tolerance,scan_planner::TrackingNode::kGoalCenterTolerance) &&
++  return state_->has_goal_pose && std::hypot(pose.position.x-g.x, pose.position.y-g.y)<=state_->xy_tolerance &&
+     std::abs(pose.position.z-g.z)<=state_->z_tolerance;
+ }
+ bool Controller::withinGoalYaw(const geometry_msgs::msg::Pose &pose, bool braking) const
+--- a/src/scan_nav2_controller/test/test_controller.cpp
++++ b/src/scan_nav2_controller/test/test_controller.cpp
+@@ -980,15 +980,25 @@
+   EXPECT_TRUE(actual->motion_->hasRoute());
+ }
+ 
+-TEST_F(RouteHeadingTest, AlignedOffCenterCaptureKeepsTranslatingBeforePdHold)
++TEST_F(RouteHeadingTest, AlignedOffCenterCaptureStopsWithinMissionTolerance)
+ {
+   expiredCornerStub();
+   auto body=pose();body.pose=route.poses.back().pose;body.pose.position.x-=.1;
+   const auto cmd=settledCommand(body,{}).twist;
+-  EXPECT_GT(std::hypot(cmd.linear.x,cmd.linear.y),.01);
+-  EXPECT_LE(std::hypot(cmd.linear.x,cmd.linear.y),.15+1e-9);
+-  EXPECT_FALSE(actual->state_->goal_reached);EXPECT_FALSE(actual->terminalPhase());
++  EXPECT_EQ(cmd,geometry_msgs::msg::Twist());
++  EXPECT_TRUE(actual->state_->goal_reached);EXPECT_TRUE(actual->terminalPhase());
+   body.pose=route.poses.back().pose;
+   EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
+   EXPECT_TRUE(actual->state_->goal_reached);
+ }
++
++TEST_F(RouteHeadingTest, GaitSwayOffsetsDoNotBlockTerminalPd) {
++  for(double offset:{.024,.05,.10}) {
++    expiredCornerStub();auto body=pose();body.pose=route.poses.back().pose;
++    body.pose.position.x-=offset;
++    EXPECT_TRUE(actual->withinGoalPosition(body.pose));
++    EXPECT_EQ(settledCommand(body,{}).twist,geometry_msgs::msg::Twist());
++    EXPECT_TRUE(actual->terminalPhase());
++    completeStand(body);EXPECT_TRUE(goal->isGoalReached(body.pose,body.pose,{}));
++  }
++}
+--- a/src/scan_nav2_controller/test/test_tracking_behavior.cpp
++++ b/src/scan_nav2_controller/test/test_tracking_behavior.cpp
+@@ -196,3 +196,28 @@
+   for(int i=0;i<60;++i)tick(0.);
+   EXPECT_EQ(node->sampled_command_,geometry_msgs::msg::Twist());
+ }
++
++TEST_F(TrackingBehavior, AlignedGoalStopsAcrossGaitSwayAndCaptureOffsets) {
++  for(double offset:{.024,.05,.10,.24}) {
++    node->clearTrajectory();replace();body.pose.position.x=50.-offset;body.pose.position.y=0.;
++    for(int i=0;i<60;++i)tick(0.);
++    EXPECT_EQ(node->sampled_command_,geometry_msgs::msg::Twist());
++    EXPECT_TRUE(node->executionFrozen());
++  }
++}
++TEST_F(TrackingBehavior, YawCaptureHasSmoothGaitDeadzoneAndBoundedPull) {
++  for(double offset:{.024,.05,.050001,.10,.24}) {
++    node->clearTrajectory();replace();body.pose.position.x=50.-offset;body.pose.position.y=0.;
++    for(int i=0;i<60;++i)tick(.8);
++    const auto cmd=node->sampled_command_;
++    EXPECT_LE(std::hypot(cmd.linear.x,cmd.linear.y),.15+1e-9);
++    EXPECT_LT(cmd.angular.z,0.);
++    if(offset<=.05) EXPECT_LT(std::hypot(cmd.linear.x,cmd.linear.y),1e-9);
++    else {
++      const Eigen::Vector2d world(std::cos(.8)*cmd.linear.x-std::sin(.8)*cmd.linear.y,
++          std::sin(.8)*cmd.linear.x+std::cos(.8)*cmd.linear.y);
++      EXPECT_GT(world.x(),0.);
++      if(offset<.051){EXPECT_LT(world.norm(),1e-5);}
++    }
++  }
++}

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="0" failures="1" hostname="ubun" name="pytest" skipped="0" tests="1" time="1.296" timestamp="2026-10-21T05:49:40.326215"><testcase classname="test_mission_bridge" file="test_mission_bridge.py" line="433" name="test_liveness_responses_continue_while_default_group_is_busy" time="1.025"><failure message="AssertionError: Timed out waiting for loopback ROS operation">bridge = (&lt;lite3_nav2_bridge.mission_bridge.MissionBridge object at 0x7fd0d6c33250&gt;, &lt;rclpy.node.Node object at 0x7fd0d6c33280&gt;)
+tmp_path = PosixPath(&apos;/out/tmp/test_liveness_responses_contin0&apos;)
+
+    def test_liveness_responses_continue_while_default_group_is_busy(bridge, tmp_path):
+        from lifecycle_msgs.srv import GetState
+        node, io = bridge
+        node._critical_timeout = 1.0
+        node._failure_path = str(tmp_path / &apos;health.json&apos;)
+        replies = []
+        def respond(request, response):
+            replies.append(time.monotonic())
+            return response
+        service = io.create_service(GetState, &apos;/health_test/get_state&apos;, respond)
+        client = node.create_client(GetState, &apos;/health_test/get_state&apos;, callback_group=getattr(node, &apos;_health_group&apos;, node._input_group))
+        wait(client.service_is_ready)
+        node._liveness_clients = {&apos;/health_test&apos;: client}
+        node.submit_goal(goal_payload(&apos;health&apos;))
+        with node._lock:
+            node.jobs[&apos;health&apos;][&apos;status&apos;] = &apos;running&apos;
+            node._dispatch.clear()
+        entered, release = threading.Event(), threading.Event()
+        def busy_default_callback():
+            entered.set()
+            release.wait(0.9)
+        timer = node.create_timer(0.01, busy_default_callback)
+        try:
+            assert entered.wait(2)
+            replies.clear()
+&gt;           wait(lambda: len(replies)&gt;=3, seconds=0.75)
+
+source/src/lite3_nav2_bridge/test/test_mission_bridge.py:459: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+predicate = &lt;function test_liveness_responses_continue_while_default_group_is_busy.&lt;locals&gt;.&lt;lambda&gt; at 0x7fd0c17678b0&gt;
+seconds = 0.75
+
+    def wait(predicate, seconds=4.0):
+        end = time.monotonic() + seconds
+        while time.monotonic() &lt; end:
+            value = predicate()
+            if value:
+                return value
+            time.sleep(0.01)
+&gt;       raise AssertionError(&apos;Timed out waiting for loopback ROS operation&apos;)
+E       AssertionError: Timed out waiting for loopback ROS operation
+
+source/src/lite3_nav2_bridge/test/test_mission_bridge.py:32: AssertionError</failure></testcase></testsuite></testsuites>
