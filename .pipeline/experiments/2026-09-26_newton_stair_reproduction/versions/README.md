@@ -2,6 +2,19 @@
 
 Dr Sun designated the delivered empty-floor system as v3 on 2026-09-27 and requested one version per change. These version numbers describe this local simulation integration, separately from native SCAN candidate/build numbers.
 
+## Latest research status — 2026-10-22
+
+**Accepted baseline: v232/v233. Latest evaluated candidate: v290 (acceptance failed).**
+The v242–v290 sources and compact results are now locally committed on
+`local/research-unpublished` (`77d4ca08e`); they have not been published.
+v290 records 6/10 arrival+PD and 4/10 also clearing sampled physical geometry.
+Eight earlier delivered tasks are archived with failed acceptance; v290 remains
+in repair review. Frozen sources, prior failures and the runtime selection are unchanged.
+
+[Current project summary](../../../../bigmemory/热区/状态简报.md),
+[cohort results and task closeout](../../../../bigmemory/冷区/里程碑/2026-10-22_v242-v290-local-closeout.md),
+[local payload hashes and recovery](../artifact_retention/2026-10-22_v242-v290_local/README.md).
+
 ## Current single-route physical baseline — v232 / v233
 
 Adopted by Dr Sun on 2026-10-17: **v232 remains the user-selected navigation

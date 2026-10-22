@@ -3,7 +3,7 @@
   "name": "v290-terrain-terminal",
   "title": "v290 terrain-continuous local search and terminal braking",
   "description": "Preserve exact endpoints, keep support-aligned local search during obstacle retreat, investigate inflated contributors and reduce terminal braking drift without changing radius or scan timing.",
-  "status": "in_progress",
+  "status": "review",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -12,10 +12,10 @@
   "assignee": "sun",
   "createdAt": "2026-10-21",
   "completedAt": null,
-  "branch": "main",
-  "base_branch": "main",
+  "branch": "local/research-unpublished",
+  "base_branch": null,
   "worktree_path": null,
-  "commit": null,
+  "commit": "77d4ca08e09d23f8193d9e7b9ca81de773669f34",
   "pr_url": null,
   "subtasks": [],
   "children": [],
@@ -25,10 +25,32 @@
     ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-21_v290_terrain_terminal/ultra9/RESULTS_zh.md",
     ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-21_v290_terrain_terminal/ultra9/delivered/index.html"
   ],
-  "notes": "User explicitly approved the preceding diagnosis and instructed implementation of the three scoped next-version fixes. Inline workflow; no subagents. Native/captured-input work is authorized; no new physical actuation is started by this task setup. Frozen v290 implementation/cohort and local report/video delivery are closed. Physical acceptance FAILED (6/10arrival,4/10combined); terminal centering/braking remains open. No success archival or baseline promotion.",
+  "notes": "User explicitly approved the preceding diagnosis and instructed implementation of the three scoped next-version fixes. Inline workflow; no subagents. Native/captured-input work is authorized; no new physical actuation is started by this task setup. Frozen v290 implementation/cohort and local report/video delivery are closed. Physical acceptance FAILED (6/10arrival,4/10combined); terminal centering/braking remains open. No success archival or baseline promotion.\n2026-10-22: source/evidence locally committed and prior delivered tasks archived with failed acceptance. This task remains the single v242-v290 repair-review entry; no running experiment is asserted. No push or baseline promotion.",
   "meta": {
     "delivery_complete": true,
     "physical_acceptance": "failed",
-    "terminal_repair_open": true
+    "terminal_repair_open": true,
+    "closeout": {
+      "date": "2026-10-22",
+      "disposition": "delivery_complete_acceptance_failed_review_open",
+      "previous_status": "in_progress",
+      "previous_branch": "main",
+      "source_evidence_commit": "77d4ca08e09d23f8193d9e7b9ca81de773669f34",
+      "acceptance_passed": false,
+      "baseline_promoted": false,
+      "published": false,
+      "superseded_tasks": [
+        ".trellis/tasks/archive/2026-10/10-18-v242-building-generalization",
+        ".trellis/tasks/archive/2026-10/10-19-v283-navigation-geometry-repair",
+        ".trellis/tasks/archive/2026-10/10-19-v284-static-mission-continuity",
+        ".trellis/tasks/archive/2026-10/10-19-v285-local-search-tracking",
+        ".trellis/tasks/archive/2026-10/10-19-v286-supported-air-refinement",
+        ".trellis/tasks/archive/2026-10/10-20-v287-local-cost-crash-repair",
+        ".trellis/tasks/archive/2026-10/10-20-v288-reentrant-work-terminal",
+        ".trellis/tasks/archive/2026-10/10-20-v289-ordered-input-terminal"
+      ]
+    },
+    "acceptance_passed": false,
+    "next_step": "Review unified outer Controller/tracker terminal behavior, measured yaw/PD drift geometry, and the two 100 ms scanner deadline failures. No new execution is authorized by repository housekeeping."
   }
 }

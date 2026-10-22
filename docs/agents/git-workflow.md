@@ -34,10 +34,17 @@ Do not switch the primary research checkout to the published main merely to
 make `git status` clean: those trees intentionally contain different research
 history. Use a separate checkout for ordinary work on the published baseline.
 
-## Current Review Boundary
+## Review History And Current Local Closeout
 
 The 50 pre-existing modifications were reviewed in `10-22-vla-branch-review`.
 The subsequent authorized `10-22-vla-no-hooks` task finalizes the reviewed
 Trellis update with its inline-start repair and removes all project hooks.
-The five research/retention edits and their related untracked evidence remain
-pending; this harness maintenance does not publish them.
+Those harness changes did not publish the five research/retention edits or
+their associated evidence.
+
+On 2026-10-22 Dr Sun separately authorized local preservation of v242-v290,
+state synchronization and task closeout, explicitly forbidding a GitHub push.
+Commit `77d4ca08e` records their sources, compact results, original task records
+and associated specs on `local/research-unpublished`. Eight delivered tasks are
+archived with failed acceptance; v290 remains in review. The original research
+hold still applies. See [closeout and retained payloads](../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/artifact_retention/2026-10-22_v242-v290_local/README.md).

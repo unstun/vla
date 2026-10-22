@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 38
-- **Last Active**: 2026-10-18
+- **Total Sessions**: 39
+- **Last Active**: 2026-10-22
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1387 | Active |
+| `journal-1.md` | ~1422 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 39 | 2026-10-22 | Preserve v242-v290 locally and close delivered research tasks | `77d4ca08e` | `local/research-unpublished` |
 | 38 | 2026-10-18 | v240 terminal continuity and one v241 full physical route pass | `b709a7d6`, `e5f640ba`, `80d4f74a`, `fe04bd31` | `main` |
 | 37 | 2026-10-17 | Return to gpu5070ti and validate one v237 original route | `6a9e531c`, `10fe2631` | `main` |
 | 36 | 2026-10-17 | v236 LiDAR deadline repair and failed single-route writer-backlog trial | `bcc43b6a`, `40e1cecd` | `main` |

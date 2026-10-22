@@ -1385,3 +1385,38 @@ Committed v238 attribution, retained rejected v239, froze v240 input-delivery re
 ### Status
 
 [OK] **Completed**
+
+
+## Session 39: Preserve v242-v290 locally and close delivered research tasks
+<!-- trellis-session: v=2 fp=e57fc3e5e6571f86 -->
+
+**Date**: 2026-10-22
+**Task**: Preserve v242-v290 locally and close delivered research tasks
+**Branch**: `local/research-unpublished`
+
+### Summary
+
+Committed versioned source and compact evidence locally; retained all original payloads with hashes. Archived eight delivered tasks with failed acceptance, kept v290 in review, refreshed hot-zone state and preserved its prior snapshot. No GitHub push, new experiments or baseline change.
+
+### Main Changes
+
+- Source/evidence commit contains 49 version directories and 18 audit directories, with media/full logs/sample data retained in place.
+- Preserve failed outcomes separately from administrative task completion; accepted baseline remains v232/v233.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `77d4ca08e` | chore(research): preserve v242-v290 sources and compact evidence locally |
+
+### Testing
+
+- [OK] Verified 42 frozen manifests and 2494 declared source entries; local payload retention is checked by the committed read-only verifier.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Review v290 unified terminal centering/braking and scanner deadlines; no new physical run is authorized by housekeeping.
