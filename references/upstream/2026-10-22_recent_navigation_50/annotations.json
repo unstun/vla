@@ -1,0 +1,297 @@
+{
+  "allenai/vla-evaluation-harness": {
+    "priority": "后续",
+    "use_for_lite3": "模型与环境解耦的评测接口、逐回合记录和异步推理测量",
+    "boundary": "通用 VLA 评测工具，不是楼梯导航算法"
+  },
+  "iit-DLSLab/state_estimation_benchmark": {
+    "priority": "优先",
+    "use_for_lite3": "比较四足本体状态估计，检查停站时实测速度和足端运动是否可信",
+    "boundary": "需要匹配机器人运动学和传感器格式"
+  },
+  "isaac-sim2real/sage": {
+    "priority": "后续",
+    "use_for_lite3": "量化命令到关节实际运动的仿真与真机差距",
+    "boundary": "以人形关节实验为主，方法需适配 Lite3"
+  },
+  "mit-acl/mighty": {
+    "priority": "优先",
+    "use_for_lite3": "实时轨迹生成、速度连续性和动态重规划的实现对照",
+    "boundary": "同时面向无人机和地面机器人，不包含 Lite3 步态"
+  },
+  "Renforce-Dynamics/genesislab": {
+    "priority": "后续",
+    "use_for_lite3": "轻量仿真任务组织和不同步态策略的评测接口",
+    "boundary": "新增仿真框架只作参考，本轮不迁移现有实验"
+  },
+  "wty-yy/RoboGauge": {
+    "priority": "优先",
+    "use_for_lite3": "对现有 RL 步态做速度跟踪、稳定性和鲁棒性评测",
+    "boundary": "先评测原策略，不把下载当成重新训练授权"
+  },
+  "zsibot/matrix": {
+    "priority": "后续",
+    "use_for_lite3": "传感器、物理仿真与可视化分离的系统组织",
+    "boundary": "完整运行另需引擎与资产"
+  },
+  "amazon-far/RPL": {
+    "priority": "后续",
+    "use_for_lite3": "复杂地形上的感知运动控制与鲁棒性训练",
+    "boundary": "人形平台参考，不能直接移植其策略到 Lite3"
+  },
+  "ASIG-X/JEPLO": {
+    "priority": "优先",
+    "use_for_lite3": "无显式地图的 LiDAR 感知步态表示，比较地形输入与运动能力",
+    "boundary": "属于步态学习路线，本轮只读源码"
+  },
+  "GalaxyGeneralRobotics/Click-and-Traverse": {
+    "priority": "后续",
+    "use_for_lite3": "视觉目标到跨越动作的分层控制和地形行为衔接",
+    "boundary": "需核对 G1 等平台差异，不能当现成四足控制器"
+  },
+  "HITSZ-NRSL/ReTAP-Planner": {
+    "priority": "优先",
+    "use_for_lite3": "不平地形上的可行轨迹和地形约束组织",
+    "boundary": "地面移动机器人方法，需适配多层楼梯和四足支撑"
+  },
+  "iit-DLSLab/basic-locomotion-isaaclab": {
+    "priority": "优先",
+    "use_for_lite3": "多四足平台的指令、观测、训练和部署边界",
+    "boundary": "保存源码，模型资产与实机启动均未执行"
+  },
+  "iit-DLSLab/fault-locomotion-isaaclab": {
+    "priority": "后续",
+    "use_for_lite3": "执行能力退化时的运动鲁棒性与失败恢复评测",
+    "boundary": "电机故障场景不同于当前终点漂移"
+  },
+  "iit-DLSLab/get-up-isaaclab": {
+    "priority": "后续",
+    "use_for_lite3": "四足起立和恢复动作的状态组织与仿真评测",
+    "boundary": "起立恢复不是精确终点站立控制"
+  },
+  "iit-DLSLab/Quadruped-PyMPC": {
+    "priority": "优先",
+    "use_for_lite3": "四足 MPC、落脚优化、接触力平滑及模型失配处理",
+    "boundary": "用作控制能力对照，不直接替换当前 RL"
+  },
+  "junhengl/mpc-rl": {
+    "priority": "后续",
+    "use_for_lite3": "训练时以 MPC 引导策略，研究模型误差与执行能力",
+    "boundary": "人形运动/操作任务，属于方法参考"
+  },
+  "lab-sun/Feetend-Planner": {
+    "priority": "优先",
+    "use_for_lite3": "以足端地形特征生成身体轨迹，补充仅查身体中心的规划视角",
+    "boundary": "2026 年论文，当前提交早于近半年窗口；依赖 OCS2 感知控制"
+  },
+  "linchangyi1/LocoTouch": {
+    "priority": "后续",
+    "use_for_lite3": "触觉和本体感觉如何进入四足控制与训练",
+    "boundary": "原任务是运输，主要借鉴接触感知与控制接口"
+  },
+  "nvidia-isaac/SWAGGER": {
+    "priority": "优先",
+    "use_for_lite3": "从占用地图生成稀疏航点图及 Nav2 路由接口",
+    "boundary": "二维占用图方法，不能直接表达跨层楼梯"
+  },
+  "amap-cvlab/ABot-Recon": {
+    "priority": "后续",
+    "use_for_lite3": "长视频流式几何重建与局部上下文管理",
+    "boundary": "视觉重建，不等于实时 Lite3 导航"
+  },
+  "arclab-hku/P2M": {
+    "priority": "后续",
+    "use_for_lite3": "LiDAR 输入下的动态环境端到端导航与控制接口",
+    "boundary": "须核对平台和动作空间；提交早于近半年窗口"
+  },
+  "clegenti/2fast2lamaa": {
+    "priority": "后续",
+    "use_for_lite3": "实时 LiDAR-IMU 里程计与大范围地图维护",
+    "boundary": "需要传感器标定和实际时序适配"
+  },
+  "cvg/VIGS-SLAM": {
+    "priority": "后续",
+    "use_for_lite3": "视觉惯性约束与高斯地图的联合优化",
+    "boundary": "算力及地图更新延迟需要单独测量"
+  },
+  "hku-mars/UMI-3D": {
+    "priority": "后续",
+    "use_for_lite3": "多传感器 SLAM 与三维轨迹数据处理",
+    "boundary": "原采集装置不同于 Lite3"
+  },
+  "kornia/kornia-slam": {
+    "priority": "后续",
+    "use_for_lite3": "Rust 实时视觉惯性估计的模块和时间戳接口",
+    "boundary": "Rust 工具链与传感器格式需适配"
+  },
+  "KTH-RPL/OneMap": {
+    "priority": "后续",
+    "use_for_lite3": "开放词汇目标与几何地图的统一表达",
+    "boundary": "留给后续 VLA，当前不接入语义模块"
+  },
+  "Lab-of-AI-and-Robotics/LEGO-SLAM": {
+    "priority": "后续",
+    "use_for_lite3": "语言特征与三维重建融合，用于未来语义导航",
+    "boundary": "高斯地图不是现有占用/支撑地图的直接替代"
+  },
+  "MIT-SPARK/VGGT-SLAM": {
+    "priority": "后续",
+    "use_for_lite3": "视觉基础模型与 SLAM 一致性优化",
+    "boundary": "依赖模型和算力，未下载权重"
+  },
+  "ori-drs/ScaRF-SLAM": {
+    "priority": "后续",
+    "use_for_lite3": "前馈视觉模型与传统 SLAM 的尺度一致性",
+    "boundary": "视觉尺度与 Lite3 LiDAR 几何仍需对齐"
+  },
+  "ouguangjun/kilo-map": {
+    "priority": "后续",
+    "use_for_lite3": "LiDAR 里程计、地图维护和鲁棒性实现",
+    "boundary": "不是规划器或步态控制器"
+  },
+  "PRBonn/2DGS-SLAM": {
+    "priority": "后续",
+    "use_for_lite3": "RGB-D 建图与全局一致性",
+    "boundary": "需检查实时性与深度相机误差"
+  },
+  "PRBonn/kiss-slam": {
+    "priority": "优先",
+    "use_for_lite3": "简洁 LiDAR SLAM 作为定位建图工程对照",
+    "boundary": "需要 LiDAR 数据与基准轨迹验证"
+  },
+  "PRBonn/rko_lio": {
+    "priority": "优先",
+    "use_for_lite3": "减少传感器特定假设的 LiDAR-IMU 里程计",
+    "boundary": "校准、时间同步与鲁棒性需在 Lite3 验证"
+  },
+  "PRBonn/rko_slam": {
+    "priority": "后续",
+    "use_for_lite3": "ROS 2 LiDAR-IMU SLAM 和多次运行地图对齐",
+    "boundary": "用于跨次实验定位一致性"
+  },
+  "PRBonn/spatio-temporal-mapping": {
+    "priority": "优先",
+    "use_for_lite3": "动态环境中时空一致地图构建，研究旧占用如何更新",
+    "boundary": "动态对象处理不能直接等同当前地图历史规则"
+  },
+  "sjtuyinjie/Ground-Fusion2": {
+    "priority": "后续",
+    "use_for_lite3": "地面机器人多传感器融合及传感器退化处理",
+    "boundary": "与当前传感器配置需逐项匹配"
+  },
+  "sjtuyinjie/Ultra-Fusion": {
+    "priority": "后续",
+    "use_for_lite3": "传感器退化、时空扰动下的融合鲁棒性",
+    "boundary": "数据接口与延迟需单独验证"
+  },
+  "Tsinghua-MARS-Lab/SLAM-Former": {
+    "priority": "后续",
+    "use_for_lite3": "Transformer 联合定位建图的研究对照",
+    "boundary": "不是当前终点控制修复的优先依赖"
+  },
+  "wentingw/AWSM": {
+    "priority": "后续",
+    "use_for_lite3": "从视觉观测建立可编辑、可仿真的三维环境",
+    "boundary": "用于后续场景生成，非实时局部规划器"
+  },
+  "Yancey2023/small_point_lio": {
+    "priority": "后续",
+    "use_for_lite3": "紧凑 Point-LIO 实现，查看状态估计与部署取舍",
+    "boundary": "属于现有算法的衍生实现，单列来源关系"
+  },
+  "botbotrobotics/BotBrain": {
+    "priority": "优先",
+    "use_for_lite3": "四足导航、地图、遥操作和状态监测的完整系统接口",
+    "boundary": "系统集成项目，不能把其上游组件重复当独立算法贡献"
+  },
+  "dfl-rlab/dddmr_navigation": {
+    "priority": "优先",
+    "use_for_lite3": "三维地图到控制器的完整地面导航实现",
+    "boundary": "需要匹配机器人几何、ROS 版本与速度接口"
+  },
+  "engineai-robotics/engineai_navigation": {
+    "priority": "后续",
+    "use_for_lite3": "LiDAR 距离图驱动导航与底层步态分层接口",
+    "boundary": "PM01 人形且基于 SRU；不当成独立全新算法"
+  },
+  "FINS-Fines/FineNav": {
+    "priority": "优先",
+    "use_for_lite3": "三维地面导航栈、地形/路径/控制模块组织",
+    "boundary": "现有地形表示及机器人可行性需要对照检查"
+  },
+  "hucebot/g1pilot": {
+    "priority": "后续",
+    "use_for_lite3": "ROS 2 机器人状态和控制桥接的工程组织",
+    "boundary": "G1 人形平台，仅作为系统接口参考"
+  },
+  "ivaROS/quad_gap": {
+    "priority": "优先",
+    "use_for_lite3": "基于可通行间隙的四足局部规划，作为简洁控制组",
+    "boundary": "提交早于近半年窗口；需另做楼梯与停站验证"
+  },
+  "ManifoldTechLtd/Odin-Nav-Stack": {
+    "priority": "优先",
+    "use_for_lite3": "LiDAR 定位、地图和自主导航的整套接口",
+    "boundary": "依赖 Odin 传感器/运行环境，需逐项适配"
+  },
+  "ManifoldTechLtd/SRU-Odin": {
+    "priority": "后续",
+    "use_for_lite3": "感知导航策略在实际传感器上的部署适配",
+    "boundary": "SRU 的部署衍生实现，不当作新的基础算法"
+  },
+  "Robot-Nav/SA-MPPI": {
+    "priority": "优先",
+    "use_for_lite3": "动态避障、模型扰动及局部控制的 MPPI 对照",
+    "boundary": "先检查默认分支；其他分支不重复计数"
+  },
+  "suchetanrs/roadmap-explorer": {
+    "priority": "后续",
+    "use_for_lite3": "探索航点、路线图更新与目标选择",
+    "boundary": "探索模块，不直接解决局部停站"
+  },
+  "tudelft/Bee-Nav": {
+    "priority": "后续",
+    "use_for_lite3": "轻量视觉导航与学习飞行启发的记忆机制",
+    "boundary": "平台/传感器与足式三维约束不同"
+  },
+  "Fantasy-AMAP/fantasy-vln": {
+    "priority": "后续",
+    "use_for_lite3": "多模态推理与视觉语言导航的接口",
+    "boundary": "待基础导航稳定后再接入"
+  },
+  "Ganvin-Li/AlldayWalker": {
+    "priority": "后续",
+    "use_for_lite3": "跨时段、多场景导航适应与长期评测",
+    "boundary": "模型适应不等于楼梯运动能力"
+  },
+  "GWxuan/AwareVLN": {
+    "priority": "后续",
+    "use_for_lite3": "导航推理的自我状态意识和决策校准",
+    "boundary": "先核对连续动作接口与真实反馈"
+  },
+  "NJU-R-L-Group-Embodied-Lab/lavira-code": {
+    "priority": "后续",
+    "use_for_lite3": "语言与视觉到机器人动作的转换",
+    "boundary": "需要对齐当前导航执行接口"
+  },
+  "TeleHuman/GN0": {
+    "priority": "后续",
+    "use_for_lite3": "导航生成、评测和策略学习的一体化实验组织",
+    "boundary": "后续 VLA 研究参考，本轮未运行模型"
+  },
+  "ros-controls/ros2_controllers": {
+    "priority": "优先",
+    "use_for_lite3": "查看轨迹跟踪、指令超时、停止和控制器状态切换的成熟实现",
+    "boundary": "通用 ROS 2 控制器；不将轮式约束直接套给 Lite3"
+  },
+  "iit-DLSLab/muse": {
+    "priority": "优先",
+    "use_for_lite3": "融合 IMU 与关节状态估计四足实测运动，辅助判断真正停稳",
+    "boundary": "默认 unitree_sdk 分支；Lite3 需运动学与消息适配"
+  },
+  "leggedrobotics/ocs2": {
+    "priority": "优先",
+    "use_for_lite3": "切换系统最优控制、足式接触约束与感知 MPC 的参考实现",
+    "boundary": "成熟项目的当前版本，依赖及各子模块许可需分别保留"
+  }
+}

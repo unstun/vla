@@ -20,3 +20,8 @@ commit, dependencies, original commands, and evidence status.
 
 Do not describe a clone as reproduced or integrated until the corresponding
 runtime evidence exists.
+
+## Recent collections
+
+- [2026-10-22: 50 recent repositories and six supplementary references](2026-10-22_recent_navigation_50/comparison.md)
+  — Chinese catalogue, pinned source, license and integrity records; imported only.

@@ -5,6 +5,20 @@ reviewed: false
 
 # Literature And Upstream Index
 
+## 2026-10-22: 50 recent open-source repositories plus six supplementary references
+
+Dr Sun requested at least 50 additional recent open-source repositories.
+[The acquisition survey](../survey/2026-10-22_recent_navigation_50_upstream_survey.md)
+records 50 newly acquired canonical repositories with default-branch commits
+since 2026-04-22, plus six separately labelled older references. All 56 are
+deduplicated against 361 prior reference/survey identities; source checkouts,
+commit pins, license evidence, entry points and file-integrity records are local.
+[The Chinese catalogue](../../references/upstream/2026-10-22_recent_navigation_50/comparison.md)
+groups navigation/control, terrain/locomotion, mapping, VLN and evaluation.
+Two source-empty repositories, one binary-only core release and one conflicting
+license declaration are excluded from the count. Status: imported only; no
+upstream program, simulation or physical experiment was run. Baseline unchanged.
+
 ## 2026-10-09: Navigation qualification across 18 repositories
 
 [Qualification survey](../survey/2026-10-09_navigation_qualification_upstream_survey.md)
