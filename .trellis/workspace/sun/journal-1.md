@@ -1450,3 +1450,38 @@ Unified terminal command ownership and added loaded-leg zero-command assistance.
 ### Next Steps
 
 - Select four unseen routes and freeze physical configuration before 24 paired runs.
+
+
+## Session 41: v291 frozen24 physical evaluation: candidate rejected
+<!-- trellis-session: v=2 fp=a45d58afeee32e06 -->
+
+**Date**: 2026-10-22
+**Task**: v291 frozen24 physical evaluation: candidate rejected
+**Branch**: `local/research-unpublished`
+
+### Summary
+
+Completed all24 authorized ultra9 simulations and original route/geometry/PD audits. Both versions3/12; candidate A042/3 and no consistent drift reduction. HTML9complete/3deferred; raw9.81GB hash-preserved, no push.
+
+### Main Changes
+
+- Frozen CU04/CD09/CM04/CE04 holdouts and all24 paired conditions; no candidate tuning or replacement runs.
+- Published five source-backed scientific figures, per-run failures, censoring and final stop-expansion decision in the existing HTML.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b5b7dab8c` | research: record v291 frozen 24-run evaluation |
+
+### Testing
+
+- [OK] 9 metric/decision tests; exact executed-analysis hashes; all24 actual resource records; full raw hashes; browser scores, links, SVG IDs and no overflow.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Split unified terminal control from stance capture; reproduce small-command stagnation and PD disturbance exits. Resolve CPU contention before authorizing additional physics.
