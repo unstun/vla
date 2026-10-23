@@ -27,7 +27,8 @@ Evidence: [research/evidence.md](research/evidence.md).
   `nice -n 19`.
 - Output: `E/audits/2026-10-2x_v12_command_range/`, with `REPORT.md`, `results/*.json`, plots, and a test for the
   band and interval definitions.
-- Write the band definitions before reading any numbers, as paired-24's `DEFINITIONS.md` did.
+- Write the band definitions before reading any numbers, using paired-24's `analysis/DEFINITIONS.md`
+  as the reference (path clarified at Step 0, 2026-10-23).
 
 ## Step 2 — Phase B flat primitives (gate G2)
 

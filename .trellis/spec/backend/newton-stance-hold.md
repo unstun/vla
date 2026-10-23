@@ -1,5 +1,23 @@
 # Newton PD hold and long-route integration
 
+## V12 command-range evidence correction (2026-10-23)
+
+The model149999 handoff's saved `env.yaml:2100` enables
+`dynamic_resample_commands`. In its hash-matched `commands.py`, the norm
+cutoff at 0.2 m/s occurs only in the non-dynamic branch; the active dynamic
+sampler uses remaining distance/time. Therefore this code does not establish
+a fixed 0.2 m/s training floor. The zero-linear branch still retains yaw.
+Source/config hashes and the dated correction are in
+`.trellis/tasks/10-23-v12-terminal-turn-stop/research/evidence.md`.
+
+The 34-recording Phase A audit confirms long low-speed terminal stalls, but
+its longest pure-yaw interval is 1.559 s and its largest turn is 50.4 degrees.
+These mixed terrain/transition observations do not set flat-ground execution
+limits or a 180-degree drift allowance. The frozen definitions, 14 tests and
+per-run/source-row measurements are in
+`audits/2026-10-23_v12_command_range/` under the Newton experiment. No stance
+contract, PD gate or accepted navigation baseline changed in this audit.
+
 ## v216 supported-transfer override (2026-10-15)
 
 The approved v216 return retains v208 stillness/target/crossfade behavior but

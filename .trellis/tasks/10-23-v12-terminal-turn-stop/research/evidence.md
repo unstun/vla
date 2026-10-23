@@ -41,32 +41,50 @@ v291's loaded-leg settling assistance did not reduce drift consistently (paired-
 median 1.48 → 8.07 cm). S04 v291 r1 started PD at 27.43655 s and aborted 0.06 s later on
 `stand_transition_disturbance:linear_speed`.
 
-## 3. V12 was never trained on the commands the terminal sends (verified in source)
+## 3. V12 command sampling and the low-speed hypothesis (corrected 2026-10-23)
+
+**2026-10-23 Step 0 correction:** the original heading and claim that every command at or below 0.2 m/s
+was removed from V12 training were wrong. The cited saved config enables `dynamic_resample_commands`
+(`env.yaml:2100`), but the 0.2 m/s zeroing at `commands.py:186-187` is inside the **non-dynamic `else`**
+branch. The dynamic branch at lines 143-166 uses a distance/time-dependent per-axis lower bound and does
+not apply that norm cutoff. This corrects the training premise; the recorded low-speed stall and stop
+drift remain observations. No runtime configuration, threshold or old result was changed.
 
 V12 sampler: `/Users/sun/tongbu/study/phdproject/machine-dog/2_experiment/baseline_rebuild/go2_rl_robotlab_lite3_v12/source/robot_lab/robot_lab/tasks/go2/mdp/commands.py`,
 SHA-256 `d97996f154ea4bf5c00043f5379896f95c7b434592c0e61fd70568c9502bd488`. This matches line 129 of
 `references/upstream/2026-09-11_lite3_v12_locomotion/SHA256SUMS.txt` (V12 runtime source). Config:
 `/Users/sun/tongbu/study/phdproject/machine-dog/artifacts/2026-07-16_v12_lite3_model149999_handoff/tracked_configs/env.yaml:2092-2310`.
+Config SHA-256 checked at Step 0: `876ea804379655ae334f74cc4ea0084ee85b4f504ff0624855660aca5f46d029`.
+The sampler helper at `source/robot_lab/robot_lab/tasks/go2/mdp/utils.py:110-123` in the same V12 tree
+samples the disjoint intervals supplied by that dynamic bound; SHA-256
+`5b2e969d948a6bf6a40096af793216ac2653a495b3cb39b9cc9e79b11dacbe64`.
 
 Facts read from the code:
-- `commands.py:186-187`: any sampled linear command with `‖(vx, vy)‖ ≤ 0.2` m/s is set to zero (yaw is kept).
+- `commands.py:143-187`: dynamic sampling uses remaining distance and remaining episode time to set its
+  per-axis bound. Only the non-dynamic branch zeroes `‖(vx, vy)‖ ≤ 0.2` m/s (yaw is kept). The saved config
+  selects dynamic sampling, so the fixed 0.2 cutoff is not evidence of the checkpoint's training floor.
 - `commands.py:234-257`: the zero-command branch (probability ramps 0 → 0.1 over iterations 0-1500) zeroes only
-  the linear part. Yaw keeps its uniform sample; with probability 0.2 it is replaced by a range extreme.
+  the linear part, subject to `next_time_left > 0`. Yaw keeps its uniform sample; with probability 0.2 it is
+  replaced by a range extreme. The configured probability is not a measured training frequency.
 - `limit_vel` (probability 0.2) uses range extremes for x and y, with yaw in {min, 0, max}.
 - `stand_still` and `feet_contact_without_cmd` rewards are defined but unused (stance survey, below).
 
 Inferences, to be measured in Phase B (not yet shown in physics):
-- **Low-speed dead zone.** A commanded 0 < |v| ≤ 0.2 m/s is outside V12's training. The v291 terminal centering
-  command is capped at 0.15 m/s and is about 5 cm/s near the goal. In v291 CD12 r1 it commanded 5.38 cm/s for about
-  2 s and the body moved 0.56 cm, with three `Failed to make progress` retries (paired-24 report, control issue 2).
-- **True stand-still is rare in training.** An exact all-zero command needs the uniform yaw sample to land near
-  zero, so V12 almost never practised `[0, 0, 0]`. This fits the known zero-command jitter: Isaac stand yaw rate
+- **Low-speed tracking weakness.** The v291 terminal centering command is capped at 0.15 m/s and is about
+  5 cm/s near the goal. In v291 CD12 r1 it commanded 5.38 cm/s for about 2 s and the body moved 0.56 cm, with
+  three `Failed to make progress` retries (paired-24 report, control issue 2). This supports testing a usable
+  speed floor; it does not establish a fixed training exclusion at 0.2 m/s. Training command frequencies
+  have not been measured. Phase B must determine the execution floor.
+- **True stand-still lacks an explicit sampler branch.** The named zero branch retains sampled yaw; its
+  near-zero frequency and exact all-zero exposure have not been measured. This fits the known jitter:
+  Isaac stand yaw rate
   −0.101 to +0.126 rad/s and 3.2 cm drift in 10 s (`machine-dog/artifacts/2026-07-18_v12_model149999_flat_standstill_diagnosis/README.md:51-73`, via the survey).
-- **Pure yaw is in distribution.** Zero linear velocity with non-zero yaw is common (small-command zeroing plus
-  the zero branch), so in-place turning should be something V12 can do. Its XY drift while turning is unmeasured.
+- **Pure yaw is explicitly sampled.** The zero-linear branch retains nonzero yaw even with dynamic sampling
+  enabled, so pure yaw remains a strong candidate primitive. Its training frequency and XY drift while
+  turning are unmeasured; the disabled small-command-zeroing branch is not additional exposure evidence.
 
 Survey with the training parameters: `.trellis/tasks/archive/2026-09/09-17-isaac-runner-stance-hold/research/stance_hold_code_survey.md`
-(`reviewed: false`; the two facts above were re-checked against the source on 2026-10-23).
+(`reviewed: false`; the earlier 2026-10-23 review missed the dynamic-branch selection, corrected above).
 
 ## 4. In-place turning existed and was removed
 

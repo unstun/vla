@@ -3,7 +3,7 @@
   "name": "v12-terminal-turn-stop",
   "title": "V12 low-speed/turn characterization and rotate-then-approach terminal",
   "description": "Measure what V12 can execute at low speed, in pure yaw and when stopping on flat ground; then build a v292 terminal that turns in place at a clearance-checked point, approaches at the goal heading and never sends commands below V12's trained speed floor.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -27,16 +27,31 @@
     ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-21_v290_terrain_terminal/ultra9/RESULTS_zh.md",
     ".trellis/tasks/10-21-v290-terrain-terminal/CLOSEOUT.md"
   ],
-  "notes": "2026-10-23: created from Dr Sun's hypothesis that the bottleneck is V12 stopping and missing in-place turning, not planning. Package for Codex: prd.md, implement.md, research/evidence.md, CODEX_PROMPT.md. Gates G1 (read-only ultra9), G2 (flat-scene physics), G3 (paired physical) each need Dr Sun's explicit yes. No physics, SSH or code change yet. Follows the open v290 repair review (.trellis/tasks/10-21-v290-terrain-terminal). Accepted baseline stays v232/v233. Local branch, no push.",
+  "notes": "2026-10-23: created from Dr Sun's hypothesis that the bottleneck is V12 stopping and missing in-place turning, not planning. Package for Codex: prd.md, implement.md, research/evidence.md, CODEX_PROMPT.md. Gates G1 (read-only ultra9), G2 (flat-scene physics), G3 (paired physical) each need Dr Sun's explicit yes. No physics, SSH or code change yet. Follows the open v290 repair review (.trellis/tasks/10-21-v290-terrain-terminal). Accepted baseline stays v232/v233. Local branch, no push.\n2026-10-23T01:15:21-07:00: Step 0 completed in Codex; active task and context manifests verified. Corrected the false fixed-0.2 training-floor premise using saved dynamic sampler config and matching source hashes. Recorded B matrix budget conflict (93 mandatory starts versus suggested cap 40), Phase A boundary definitions, untouched untracked files and scoped pending G1 proposal in run-state.md. No SSH/build/physics. G1/G2/G3 pending; no push.\n2026-10-23T01:18:12-07:00: Dr Sun explicitly approved G1 in this session. Phase A proceeds; Phase C remains after B. G2/G3 pending.\n2026-10-23T01:34:35-07:00: Phase A passed all34 retained-run analyses with102 verified historical sources,14 unit tests and accounting checks. Report/tables/plots complete. G2 proposal prepared for93 mandatory runs; G2/G3 pending, C after B. Local commit pending; no push.\n2026-10-23T01:36:56-07:00: Phase A final quality/file-size review passed; included in local research commit. Next gate G2 proposal: ultra9,93 fresh starts,120s simulation/run,1–3h estimated/4h wall cap. G2/G3 remain pending; no B/C/D execution or push.",
   "meta": {
     "parent_review_task": ".trellis/tasks/10-21-v290-terrain-terminal",
     "planned_version": "v292",
     "gates": {
-      "G1": "pending",
+      "G1": "approved",
       "G2": "pending",
       "G3": "pending"
     },
     "handoff": "codex",
-    "baseline_promoted": false
+    "baseline_promoted": false,
+    "g1_approval": {
+      "recorded_at": "2026-10-23T01:18:12-07:00",
+      "user_text": "Yes, G1 approved for the stated scope on ultra9. Proceed with Phase A now. Keep Phase C after B, and ask separately for G2 and G3.",
+      "host": "ultra9",
+      "phase_a_retained_runs": 34,
+      "new_physics_runs": 0,
+      "phase_c_dependency": "after Phase B; previously stated zero-physics scope only"
+    },
+    "phase_a": {
+      "status": "passed",
+      "report": ".pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-23_v12_command_range/REPORT.md",
+      "runs": 34,
+      "verified_source_files": 102,
+      "new_physics_steps": 0
+    }
   }
 }

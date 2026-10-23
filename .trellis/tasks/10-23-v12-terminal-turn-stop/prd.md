@@ -18,7 +18,9 @@ the RL policy (V12) stops badly and that in-place turning is missing. Evidence c
 - In v290 and v291, every physical failure that was not a scanner timeout happened at the goal: while turning,
   standing or handing over to PD. Planning passes offline (49/50).
 - Stop drift (about 20 cm) happens while V12 owns the joints, before PD takes over.
-- V12's training set every linear command of 0.2 m/s or less to zero. The terminal centering sends 0.05–0.15 m/s.
+- Corrected 2026-10-23: the saved V12 config selects dynamic sampling, which bypasses the fixed 0.2 m/s
+  zeroing branch. The terminal sends 0.05–0.15 m/s and has recorded tracking weakness; Phase B must establish
+  the usable floor. See the dated source/config correction in `research/evidence.md`.
 - In-place turning existed in v206 and was replaced in v285 by turning while moving.
 - At the CD12, CS03 and CE03 goals, half or more of the 32 checked headings collide. So the turn cannot simply be
   done at the goal.
@@ -84,7 +86,8 @@ drift, stop and report to Dr Sun before C. That would make retraining (O1) the n
   - `wz_turn`: the pure-yaw rate with the lowest XY drift;
   - `turn_drift_margin`: the worst-case drift at `wz_turn` plus a stated safety term;
   - `stop_distance(v)`: the braking distance at each tested speed.
-  Treat `v_floor` = 0.2 m/s as the prior from training. Measure it; do not assume it.
+  Treat 0.2 m/s as an initial test point, not an established training floor (2026-10-23 source correction).
+  Measure `v_floor`; do not assume it. The command-floor requirement remains unchanged.
 
 ### Phase C — v292 terminal (zero physics; lead proposals, confirm in design.md)
 
@@ -134,8 +137,9 @@ drift, stop and report to Dr Sun before C. That would make retraining (O1) the n
 
 ## Acceptance criteria
 
-- [ ] A: terminal command-band and pure-yaw tables for all 34 retained runs (10 + 24), with source hashes and
-      missing runs listed.
+- [x] A: terminal command-band and pure-yaw tables for all 34 retained runs (10 + 24), with source hashes and
+      missing runs listed. Passed 2026-10-23: 102 matched source files; no missing runs; 28 circle / 6 fallback
+      windows; report at `E/audits/2026-10-23_v12_command_range/REPORT.md`.
 - [ ] B: every cell × repeat reported, failures kept, with `v_floor`, `wz_turn`, `turn_drift_margin` and
       `stop_distance(v)` each traced to rows. A clear yes or no on "V12 can turn in place with drift below X cm".
 - [ ] C: component tests for C1–C4:
