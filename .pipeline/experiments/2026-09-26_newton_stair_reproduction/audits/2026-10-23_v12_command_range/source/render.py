@@ -30,6 +30,8 @@ def label(r):
 def save(fig,name):
     fig.savefig(ROOT/'figures'/f'{name}.png',dpi=160,bbox_inches='tight',facecolor='white')
     fig.savefig(ROOT/'figures'/f'{name}.svg',bbox_inches='tight',facecolor='white')
+    svg = ROOT/'figures'/f'{name}.svg'
+    svg.write_text('\n'.join(line.rstrip() for line in svg.read_text().splitlines())+'\n')
     plt.close(fig)
 
 

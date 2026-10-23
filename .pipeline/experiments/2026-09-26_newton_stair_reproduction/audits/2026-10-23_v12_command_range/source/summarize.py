@@ -94,7 +94,7 @@ def summarize():
         (ROOT/'results'/name).write_text(json.dumps(value,indent=2,allow_nan=False)+'\n')
     for name, values in [('runs.csv',run_rows),('bands.csv',band_rows),('pure_yaw_intervals.csv',yaw_rows)]:
         with (ROOT/'results'/name).open('w') as f:
-            writer=csv.DictWriter(f,fieldnames=list(values[0]));writer.writeheader();writer.writerows(values)
+            writer=csv.DictWriter(f,fieldnames=list(values[0]),lineterminator='\n');writer.writeheader();writer.writerows(values)
     verification=dict(passed=not summary['unavailable_runs'],checks={
         'frozen_source_unchanged':True,'exact_34_run_order':True,'all_source_hashes_match':True,
         'duration_partition':True,'inclusive_overlap':True,'pure_yaw_intervals_reconcile':True,

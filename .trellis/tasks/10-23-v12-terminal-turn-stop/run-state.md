@@ -53,3 +53,10 @@
 - Final checks passed: unchanged frozen source,14 unit tests, all34 run identities,102 source hashes, accounting, Python compilation, report links, plot provenance/visual review, context manifests and git diff whitespace. Detailed receipt: audit `results/quality_review.json`.
 - Phase A is complete. This checkpoint is included in the local commit `research: audit V12 terminal command range across 34 recordings`. No push.
 - Awaiting G2 explicit yes: ultra9,93 fresh flat-ground starts, optional assistance arm omitted,120 simulated seconds/run including startup, expected1–3h with4h total wall cap. Source/metrics freeze and zero-step loaded-module preflight precede scored physics. Proposal: `research/phase-b-proposal.md`. No B physics/C implementation/D evaluation has started; G3 remains pending.
+
+## 2026-10-23T01:38:09-07:00 — export-format check correction
+
+- Full staged whitespace check found SVG trailing spaces and CSV CRLF omitted by the earlier tracked-only check. A later shell command masked the failure exit and the work commit proceeded; retain it and use a separate correction commit, not amend.
+- Corrected only derived SVG/CSV serialization and exporter defaults. Verified CSV parsed cells and SVG whitespace-insensitive content are identical; PNG pixels unchanged. Frozen extractor/request/definitions and extract01 unchanged; no new SSH or physics. Failure and before/after hashes: audit `results/export_format_correction.json`. Final full artifact diff check is repeated for the correction.
+
+- Work commit confirmed: `660824e2e`. Full task HEAD-to-working-tree whitespace check now passes; frozen source and Python compilation rechecked. Export normalization preserves CSV cells/SVG shapes/PNG pixels. This formatting correction is committed separately; no push. G2 still pending.
