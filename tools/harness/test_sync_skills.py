@@ -126,9 +126,6 @@ class ProjectConfigurationTests(unittest.TestCase):
 
     def test_active_catalog_and_platform_links_resolve(self):
         expected = {
-            "archive", "fetch-arxiv-md", "inno-code-survey",
-            "literature-survey", "memory-retrieval", "paper-analyzer",
-            "project-status", "remote-experiment", "research-pipeline-planner",
             "trellis-before-dev", "trellis-brainstorm", "trellis-break-loop",
             "trellis-channel", "trellis-check", "trellis-continue",
             "trellis-finish-work", "trellis-meta", "trellis-session-insight",

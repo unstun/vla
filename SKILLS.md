@@ -1,6 +1,6 @@
 # Project Skills
 
-The active set contains 12 Trellis core skills and nine project skills.
+The active set contains only the 12 Trellis core skills.
 Canonical project skills are real directories under `.agents/skills/`.
 Claude Code and Cursor discover them through generated links, except where
 an installed Trellis directory already owns the name.
@@ -16,24 +16,6 @@ Keep the Trellis core skills and runtime, with the hook removals and local
 task-start patch documented in the harness specification. Project rules in
 `AGENTS.md` take precedence over generic templates. In particular, subagents
 require an explicit user request and `session_auto_commit` remains false.
-
-## Project Capabilities
-
-| Skill | Purpose |
-|---|---|
-| `project-status` | Read current evidence and explain progress and next steps. |
-| `memory-retrieval` | Retrieve relevant past decisions and evidence, read-only. |
-| `archive` | Save durable findings or synchronize project state when requested. |
-| `research-pipeline-planner` | Plan research stages, dependencies and acceptance criteria. |
-| `literature-survey` | Find and compare primary papers with traceable sources. |
-| `inno-code-survey` | Inspect and acquire pinned upstream implementations. |
-| `paper-analyzer` | Analyze one paper against its actual methods and results. |
-| `fetch-arxiv-md` | Convert arXiv source into local Markdown with existing scripts. |
-| `remote-experiment` | Execute authorized remote work and return reproducible evidence. |
-
-Status questions do not trigger archival. Literature discovery does not require
-extra generic research skills. Dataset discovery uses the same primary-source
-approach; source-code selection belongs to `inno-code-survey`.
 
 ## Synchronization
 

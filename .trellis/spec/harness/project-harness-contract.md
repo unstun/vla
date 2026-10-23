@@ -37,8 +37,8 @@ research evidence; a harness change does not authorize research-state edits.
 
 ## 3. Skill Discovery
 
-The active catalog is documented in `SKILLS.md`: 12 Trellis core plus nine
-project skills. Canonical project skills are real `.agents/skills/` directories.
+The active catalog is documented in `SKILLS.md`: only the 12 Trellis core
+skills. Canonical project skills are real `.agents/skills/` directories.
 Claude/Cursor mirrors are links unless a real installed directory owns the name.
 
 `sync-skills.sh` is offline and project-only. It must:
