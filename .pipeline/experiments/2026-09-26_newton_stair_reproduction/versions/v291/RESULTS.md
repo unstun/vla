@@ -1,6 +1,6 @@
 # v291 — terminal ownership and settling assistance
 
-2026-10-22. Components, recorded replays and the complete strict53 offline gate passed. New physics attempts: **0**. Accepted v232/v233 unchanged. This candidate does not yet have a measured drift-reduction result.
+2026-10-22 component stage: components, recorded replays and the complete strict53 offline gate passed, with **0 new physics attempts in that stage**. The subsequent [24-run paired physical evaluation](../../audits/2026-10-22_v291_paired24/REPORT.md) is now complete: v290 and v291 each passed 3/12; v291 did not reduce drift consistently and is not promoted. Accepted v232/v233 unchanged.
 
 ## What changed
 
@@ -67,6 +67,12 @@ All 53 per-case admit/reject/end-to-end/first-solve outcomes match the recorded 
 is established by components and recorded-controller comparison. The full local
 receipts, case summaries and remote artifact hashes are under `results/`.
 
-## What to do next
+## Next step recorded at component closeout
 
 Select four unseen routes and finalize the fixed candidate-versus-v290 execution configuration before the planned 24 physical simulations. Measure zero-command-to-PD maximum displacement, PD takeover time, geometry during terminal turning, final steady duration, complete-route success and elapsed time. D07's pre-stop turning sweep remains an explicit target; these component results do not declare it solved.
+
+## Subsequent frozen physical evaluation — 2026-10-22
+
+D07/CD12/S04/A04 × three fresh starts × v290/v291 completed on ultra9. Candidate source and installed binaries stayed frozen. Complete success was 3/12 for each version; v291 A04 passed 2/3, with the third attempt interrupted by the unchanged100ms scanner deadline. Available A04 stop displacement median increased from1.48cm (three observations) to8.07cm (two). The candidate S04 third repeat reached42.31cm in a later stop episode. CD12 showed smaller stop displacement in its one available candidate observation, but failed whole-route geometry and lacked two further terminal observations.
+
+Seven scanner deadline interruptions (parent2/candidate5) expose shared-host CPU contention; they remain failures and are separated from control findings. Do not treat these success rates as an uncontaminated algorithm ranking. Holdouts CU04/CD09/CM04/CE04 are frozen but unrun; the planned26-run expansion is deferred. Raw9.81GB and all failed attempts remain on ultra9 with a verified manifest. See the paired report for every run, censoring, geometry timing and next-step judgment. This is an evaluation closeout, not an accepted baseline update.

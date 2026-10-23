@@ -3,8 +3,8 @@
 Open [index.html](index.html) directly in a browser. It is a standalone Chinese
 page with no external assets, packages, network requests or experiment runner.
 
-This page saves the plan discussed with Dr Sun on 2026-10-22. It does not report
-new robot experiments or change the accepted v232/v233 baseline. The initial
+This page saves the plan discussed with Dr Sun on 2026-10-22 and now includes
+the completed24-run physical simulation evaluation. The accepted v232/v233 baseline remains unchanged. The initial
 delivery had twelve incomplete research checklist items. The first comparison uses
 v290 and one frozen candidate: 4 routes × 3 repeats × 2 versions = 24 runs.
 Only after passing that comparison, run 10 original routes on the candidate and
@@ -75,3 +75,9 @@ Native 14-package suite, 29 Python checks and both recorded controller/stance
 replays passed. `component` is also complete: 49/50 legal, 3/3 illegal refusals, 1.421 s median, independent original-geometry audit passed. The page now shows 4/12 completed. Runtime
 candidate source is frozen, but the plan's broader `freeze` item still needs
 four new physical routes and the paired execution configuration.
+
+## Frozen24 comparison completed — 2026-10-22
+
+The page now shows9/12 items complete. The three expansion items are explicitly deferred after the first review failed; they are not marked done. Full success is v2903/12 versus v2913/12, candidate A042/3. The existing score form contains those values and A04 wall-time change−5.5% (rounded from−5.48%) (three parent/two candidate successful-completion samples). The next-action card correctly stops expansion when the first review fails.
+
+Four holdouts CU04/CD09/CM04/CE04 and all shared execution conditions were frozen before the24 runs. The results section embeds five standalone Chinese SVG figures, all24 outcomes, missing/PD-entry-censored labels and shared-host scanner failures. The old component and v290 timeline sections remain historical evidence. See [paired report](../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v291_paired24/REPORT.md).

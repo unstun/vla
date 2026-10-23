@@ -1,0 +1,13 @@
+# Analysis definitions
+
+The frozen request defines first terminal zero-command episode, censoring, whole-route geometry, original finalPD and the first-review thresholds. `source/stop_metrics.py` is part of the frozen physical manifest and has six synthetic edge-case checks.
+
+Elapsed time is reported in both simulation and actual host wall seconds. The A04 +15% comparison uses **goal request through the driver's successful completion**, including its original PD dwell, mapped through the recorded telemetry pacing timestamps to wall time. Runtime teardown/storage time is excluded. Successful-completion time is unavailable for a failed run; report sample counts and both clocks, do not give early failures artificially fast completion. This definition is written while the first D07 pair is running, before any A04 result.
+
+The exact existing v290 physical-envelope rule is retained: all-recorded sampled support-gap, source-solid and raw-point margins >= -1e-10, plus separately audited original factory frames. Nominal standing-height static verdict counts are reported separately, as in the original v290 summary. Complete success combines this with the unchanged original full-route verifier, explicit requested yaw, floor-relative startup height and >=2 s final measured FIXED_STAND. Full-source point geometry and the exact old native probes are reused; no invented clearance metric.
+
+Heavy original geometry audits run only after all24 physical recordings close. Preliminary stop measurements may be computed from closed recordings while subsequent runs proceed, but are explicitly unscored until full audit. A missing terminal stop is unavailable. No PD before restart/end remains censored; its observed displacement is a lower bound and stays separate from completed-stop medians. Report all first-episode observations, valid completed-stop counts, restart/worst-episode measurements and complete success counts.
+
+The original retention helper may report unrelated-mount lsof warnings on this shared host. Preserve that failure and expanded raw records; do not delete or replace them. Process/recording completion, archival success and physical task success are separate fields.
+
+Naming clarification: summary keys containing `completed_stop` or `first_stop_completed_n` mean that the frozen metric observed **PD entry** within the episode. They do not imply the transition finished or the run succeeded. `first_pd_entry_observed_n` makes that identical denominator explicit; fixed-stand observation, PD aborts and final successful qualification are reported separately. This clarifies labels without changing the frozen numerical definition.
