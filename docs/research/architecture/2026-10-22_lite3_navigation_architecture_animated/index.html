@@ -308,6 +308,7 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
     <a data-i18n="h001" href="#tldr">一页看懂</a>
     <a data-i18n="h002" href="#arch">全景数据流</a>
     <a data-i18n="h003" href="#sim">导航动画</a>
+    <a data-i18n="h168" href="#pct">全局规划</a>
     <a data-i18n="h004" href="#replan">重规划流水线</a>
     <a data-i18n="h005" href="#fsm">状态机</a>
     <a data-i18n="h006" href="#race">时间戳锁死</a>
@@ -407,9 +408,77 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
   </div>
 </section>
 
+<!-- ================= PCT GLOBAL PLANNER ================= -->
+<section class="sec" id="pct">
+  <div class="sec-head reveal"><div class="num">04</div><div><h2 data-i18n="h169">PCT 全局规划：把整栋楼切成断层图，算一条能爬楼的全局路</h2><p data-i18n="h170"><code>lite3_nav2::PCTPlanner</code> 与 <code>PCTRoutePlanner</code> 将开源 <code>byangw/PCT_planner @35cd73f</code> 的 C++ 核心（<code>OfflineElePlanner</code>）编译为 Nav2 原生插件。它把整栋楼切成多层断层图（Tomogram），并用局部规划同源的<b>支撑格 <code>native.support</code></b>（找回被上层悬挑挡住的底层地面）和<b>实体面 <code>SURFACE271B</code></b>（344 个封闭体 + 3,444 个面片）做 2.5 cm 步长的双圆柱足迹（r = 0.35 m，前后 ±0.18 m）校验，输出带真实台阶高度与朝向的全局路线。</p></div></div>
+  <div class="panel reveal" style="padding:14px">
+    <div class="controls" style="margin:0 0 12px;justify-content:space-between">
+      <div class="seg" id="pctScen">
+        <button data-i18n="h171" data-k="normal" class="on">正常跨层爬楼（平滑一次过）</button>
+        <button data-i18n="h172" data-k="fallback">3 次尝试回退（GPMP 越界 → 折线）</button>
+        <button data-i18n="h173" data-k="cs01">CS01（起终点合法，0.35 m 无路 · 49/50）</button>
+        <button data-i18n="h174" data-k="invalid">非法起点负对照（3/3 拒绝）</button>
+      </div>
+      <label data-i18n="h175" class="chk"><input type="checkbox" id="pctSupportRecover" checked><code>native.support</code> 找回悬挑下底层地面</label>
+    </div>
+    <div class="pipe" id="pctPipe">
+      <button data-i18n="h176" data-s="0">① 断层与支撑重建<small>rebuildMap · 找回底层</small><span class="bar" style="background:var(--global)"></span></button>
+      <button data-i18n="h177" data-s="1">② 连续端点与转向<small>3×3 接入 · Hermite/原地</small><span class="bar" style="background:var(--global)"></span></button>
+      <button data-i18n="h178" data-s="2">③ 跨层 A* 搜索<small>gateway · 2.5 cm 边校验</small><span class="bar" style="background:var(--global)"></span></button>
+      <button data-i18n="h179" data-s="3">④ GPMP 五次平滑<small>quintic · Gap + ENV225</small><span class="bar" style="background:var(--global)"></span></button>
+      <button data-i18n="h180" data-s="4">⑤ 支撑高度带投影<small>0.025 m · [lower, upper]</small><span class="bar" style="background:var(--global)"></span></button>
+      <button data-i18n="h181" data-s="5">⑥ 实体双圆柱终检<small>SURFACE271B · r=0.35 m</small><span class="bar" style="background:var(--global)"></span></button>
+    </div>
+    <div class="replan-side">
+      <div class="stage"><canvas id="pctCanvas" height="460"></canvas></div>
+      <div class="logbox" id="pctLog"></div>
+    </div>
+    <div class="controls">
+      <button data-i18n="h182" class="btn on" id="pctPlay">❚❚ 暂停</button>
+      <button data-i18n="h183" class="btn ghost" id="pctRestart">↺ 重新开始</button>
+      <span data-i18n="h184" class="demo-note">⚠ 合成等轴测示意：展示 PCTRoutePlanner 的 6 个真实代码阶段、双圆柱包络（r = 0.35 m，偏移 ±0.18 m）、2.5 cm 支撑带投影与 3 次尝试回退机理；楼层几何为教学简化</span>
+    </div>
+    <div class="grid3" style="margin-top:14px">
+      <div data-i18n="h185" class="plain small"><b>为什么断层图还要配 <code>native.support</code>？</b><br>原始断层图切片边界不是真实楼板，且二楼悬挑/楼梯下方常漏掉一楼地面。<code>rebuildMap()</code> 用 <code>native.support</code> 修正每层真实高度，并复用空闲/重复槽位找回底层地面（可取消勾选上方开关对比）。</div>
+      <div data-i18n="h186" class="infobox small"><b>为什么平滑后还要做 2.5 cm 高度带投影？</b><br>GPMP 五次平滑后的高度可能悬空或切入台阶棱角。<code>projectSupportHeights()</code> 每 2.5 cm 查询真实支撑面，将高度夹紧在连续可行的 <code>[lower, upper]</code> 支撑带内，同时严格保留起终点请求的原始高度。</div>
+      <div data-i18n="h187" class="warnbox small"><b>为什么绑定同一份实体几何，局部仍可能拒？</b><br>v266–v272 起全局和局部共用 <code>SURFACE271B</code>（344 个封闭体 + 3,444 个面片）与 <code>native.support</code>，静态判据一致；但局部 SCAN 还要看实时雷达点云膨胀、0.35 s 新鲜度和 RL 真实跟踪偏差。</div>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:18px;grid-template-columns:1.35fr 1fr">
+    <div class="panel reveal" style="padding:18px 20px">
+      <h3 data-i18n="h188">触发方式对比：<code>PlanOnGoalChange</code> + 前缀裁剪 vs. <code>1 Hz</code> 周期重算</h3>
+      <p data-i18n="h189" class="muted small" style="margin:4px 0 10px"><code>expected_planner_frequency: 1.0</code> 只是 Nav2 Planner Server 用来打印“单次算路超过 1.0 s”告警的阈值，<b>不会</b>触发 1 Hz 定时算路。v212 起由行为树节点 <code>PlanOnGoalChange</code> 控制触发，恢复重试时由 <code>RoutePolicy::retainedStatic</code> 裁剪已走前缀，保持同一路线纪元。</p>
+      <div class="controls" style="margin:0 0 10px">
+        <div class="seg" id="pctTrigMode">
+          <button data-i18n="h190" data-m="v290" class="on">v212–v290：PlanOnGoalChange + 前缀裁剪</button>
+          <button data-i18n="h191" data-m="v210">v210 踩坑：RateController 1 Hz 重算</button>
+        </div>
+        <button data-i18n="h192" class="btn ghost" id="pctTrigRetry">模拟：局部失败 → 恢复重试</button>
+      </div>
+      <div class="svgstage"><svg id="pctTrigSvg" viewBox="0 0 680 230"></svg></div>
+    </div>
+    <div class="panel reveal">
+      <h3 data-i18n="h193">v290 离线门禁（strict53）与静态输入契约</h3>
+      <p data-i18n="h194" class="muted small">进 1 kHz 物理仿真前，先在楼宇内固定 50 个合法起终点 + 3 个非法负对照上跑原生计时与独立几何审计：</p>
+      <table>
+        <tr><th data-i18n="h195">指标 / 静态资产</th><th data-i18n="h196" style="text-align:right">v290 实测 / 校验</th></tr>
+        <tr><td data-i18n="h197">合法起终点通过（门槛 ≥ 48/50）</td><td class="num pos"><b>49 / 50</b>（仅 CS01 无路）</td></tr>
+        <tr><td data-i18n="h198">非法负对照拒绝（门槛 3/3）</td><td class="num pos"><b>3 / 3</b></td></tr>
+        <tr><td data-i18n="h199">全局规划耗时（中位 ≤ 1.5 s / P95 / 最大）</td><td class="num"><b>1.361 s</b> / 2.029 s / 2.048 s</td></tr>
+        <tr><td data-i18n="h200">50 个合法起点最小额外支撑 / 固体余量</td><td class="num pos">+15.00 cm / +14.42 cm</td></tr>
+        <tr><td data-i18n="h201">断层图 <code>tomogram</code></td><td class="num"><code>PCTMAP01</code> 二进制矩阵</td></tr>
+        <tr><td data-i18n="h202">支撑格 <code>native.support</code></td><td class="num">FNV64 <code>15212154834549674106</code></td></tr>
+        <tr><td data-i18n="h203">实体面 <code>SURFACE271B</code></td><td class="num">344 封闭体 · 3,444 面片（SHA）</td></tr>
+        <tr><td data-i18n="h204">环境软代价场 <code>ENV225</code></td><td class="num">台阶边缘 + 实体墙梯度（FNV64）</td></tr>
+      </table>
+      <p data-i18n="h205" class="muted small" style="margin-top:10px">源码分工：<code>pct_planner.cpp</code> 管 Nav2 插件生命周期、哈希校验、<code>RouteSession</code> 与 3 次尝试；<code>pct_route_planner.cpp</code> 管断层图解析、<code>native.support</code> 重建、<code>OfflineElePlanner</code> 回调注入、2.5 cm 支撑带投影与 <code>SURFACE271B</code> 终检；<code>planner_node.py</code> 是早期独立 Python/RViz 调试节点，不在正式 Nav2 闭环内。</p>
+    </div>
+  </div>
+</section>
+
 <!-- ================= REPLAN ================= -->
 <section class="sec" id="replan">
-  <div class="sec-head reveal"><div class="num">04</div><div><h2 data-i18n="h062">一次局部重规划：目标预算 33.3 ms</h2><p data-i18n="h063"><code>SCANPlannerManager::reboundReplan</code> 是整个系统的核心算法。先找一条能过去的折线作种子，再拟合成光滑曲线，用优化器把曲线“弹”离障碍，然后调时间满足速度和加速度上限，最后用<b>最新</b>地图把整条曲线逐点再查一遍。任何一步不过就不发布；33.3 ms 是调度预算，实测长尾会超出。</p></div></div>
+  <div class="sec-head reveal"><div class="num">05</div><div><h2 data-i18n="h062">一次局部重规划：目标预算 33.3 ms</h2><p data-i18n="h063"><code>SCANPlannerManager::reboundReplan</code> 是整个系统的核心算法。先找一条能过去的折线作种子，再拟合成光滑曲线，用优化器把曲线“弹”离障碍，然后调时间满足速度和加速度上限，最后用<b>最新</b>地图把整条曲线逐点再查一遍。任何一步不过就不发布；33.3 ms 是调度预算，实测长尾会超出。</p></div></div>
   <div class="panel reveal" style="padding:14px">
     <div class="pipe" id="pipe">
       <button data-i18n="h064" data-s="0">① 刷新输入<small>refreshSensorInputs</small><span class="bar"></span></button>
@@ -439,7 +508,7 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 
 <!-- ================= FSM ================= -->
 <section class="sec" id="fsm">
-  <div class="sec-head reveal"><div class="num">05</div><div><h2 data-i18n="h077">SCAN 局部规划状态机</h2><p data-i18n="h078"><code>SCANReplanFSM</code> 是局部规划的节拍器：10 ms 状态机定时器检查是否到期，按墙钟 30 Hz 目标节奏重算；另有 50 ms 安全巡检，受同一执行组和地图锁串行调度。输入失效或前方被挡时急停。<code>callbackBoundary</code> 捕获回调抛出的 C++ 异常并通知失败；FAILED 是失败结果，不是图中的状态，也不包括段错误等信号崩溃。</p></div></div>
+  <div class="sec-head reveal"><div class="num">06</div><div><h2 data-i18n="h077">SCAN 局部规划状态机</h2><p data-i18n="h078"><code>SCANReplanFSM</code> 是局部规划的节拍器：10 ms 状态机定时器检查是否到期，按墙钟 30 Hz 目标节奏重算；另有 50 ms 安全巡检，受同一执行组和地图锁串行调度。输入失效或前方被挡时急停。<code>callbackBoundary</code> 捕获回调抛出的 C++ 异常并通知失败；FAILED 是失败结果，不是图中的状态，也不包括段错误等信号崩溃。</p></div></div>
   <div class="grid2" style="grid-template-columns:1.6fr 1fr;align-items:start">
     <div class="panel reveal" style="padding:14px"><div class="svgstage"><svg id="fsmSvg" viewBox="0 0 900 330"></svg></div>
       <div class="controls"><button data-i18n="h079" class="btn red" id="fsmEm">触发：障碍 / 输入失效</button><button data-i18n="h080" class="btn ghost" id="fsmExit">触发：放弃目标</button><button data-i18n="h081" class="btn ghost" id="fsmGoal">下发新目标</button></div></div>
@@ -459,7 +528,7 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 
 <!-- ================= RACE ================= -->
 <section class="sec" id="race">
-  <div class="sec-head reveal"><div class="num">06</div><div><h2 data-i18n="h087">v288 的时间戳锁死，以及 v289 怎么修</h2><p data-i18n="h088">v288 给地图加了一把锁，解决了 v287 的内存崩溃。但排队发生在<b>消息已经被取走之后</b>：拿着旧位姿的线程在锁外等，持锁的规划线程先取到新位姿并登记；旧位姿后进门，被判成“时间倒流”。更糟的是，一次倒流会让之后所有位姿都被拒绝。</p></div></div>
+  <div class="sec-head reveal"><div class="num">07</div><div><h2 data-i18n="h087">v288 的时间戳锁死，以及 v289 怎么修</h2><p data-i18n="h088">v288 给地图加了一把锁，解决了 v287 的内存崩溃。但排队发生在<b>消息已经被取走之后</b>：拿着旧位姿的线程在锁外等，持锁的规划线程先取到新位姿并登记；旧位姿后进门，被判成“时间倒流”。更糟的是，一次倒流会让之后所有位姿都被拒绝。</p></div></div>
   <div class="panel reveal" style="padding:14px">
     <div class="controls" style="margin:0 0 10px"><div class="seg" id="raceVer"><button data-i18n="h089" data-v="288" class="on">v288：永久锁存</button><button data-i18n="h090" data-v="289">v289：迟到样本丢弃</button></div><button data-i18n="h091" class="btn" id="racePlay">▶ 重播</button><span data-i18n="h092" class="demo-note">⚠ 时序示意；锁存行为已在零物理步探针里用冻结的真实 BodyTimeBuffer 复现：push 返回 [1, 0, 0]</span></div>
     <div class="svgstage"><svg id="raceSvg" viewBox="0 0 1000 380"></svg></div>
@@ -473,7 +542,7 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 
 <!-- ================= TERMINAL ================= -->
 <section class="sec" id="terminal">
-  <div class="sec-head reveal"><div class="num">07</div><div><h2 data-i18n="h096">终点收尾：现在最难啃的一段</h2><p data-i18n="h097">快到终点时，狗要停稳并转到指定朝向。原地转身时屁股会扫一圈，靠墙就会蹭到；零命令之后到 PD 接管之前，RL 步态还在踏步，机身会漂。下面四个场景依次是四个版本的做法，以及它们各自暴露的问题。</p></div></div>
+  <div class="sec-head reveal"><div class="num">08</div><div><h2 data-i18n="h096">终点收尾：现在最难啃的一段</h2><p data-i18n="h097">快到终点时，狗要停稳并转到指定朝向。原地转身时屁股会扫一圈，靠墙就会蹭到；零命令之后到 PD 接管之前，RL 步态还在踏步，机身会漂。下面四个场景依次是四个版本的做法，以及它们各自暴露的问题。</p></div></div>
   <div class="panel reveal" style="padding:14px">
     <div class="controls" style="margin:0 0 10px"><div class="seg" id="termTabs"><button data-i18n="h098" data-k="v287" class="on">v287 原地纯转向</button><button data-i18n="h099" data-k="v288">v288 2 cm 居中</button><button data-i18n="h100" data-k="v290">v290 零命令后漂移</button><button data-i18n="h101" data-k="v291">v291 候选（已评估，未升级）</button></div><button data-i18n="h102" class="btn ghost" id="termReplay">↺ 重播</button></div>
     <div class="term-grid">
@@ -505,13 +574,13 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 
 <!-- ================= GATES ================= -->
 <section class="sec" id="gates">
-  <div class="sec-head reveal"><div class="num">08</div><div><h2 data-i18n="h114">安全与时间硬门禁</h2><p data-i18n="h115">这些实验的门槛<b>保持不变</b>，不按场景、路线编号或坐标写特判。v290 十路线批次每条只跑一次，失败保留；v291 收敛计划预先规定配对重复次数（每条每版本 3 次），全部计入，不能失败后临时加跑、挑成功的；v291 的 24 次已按此执行，7 次雷达超时也都计为失败。</p></div></div>
+  <div class="sec-head reveal"><div class="num">09</div><div><h2 data-i18n="h114">安全与时间硬门禁</h2><p data-i18n="h115">这些实验的门槛<b>保持不变</b>，不按场景、路线编号或坐标写特判。v290 十路线批次每条只跑一次，失败保留；v291 收敛计划预先规定配对重复次数（每条每版本 3 次），全部计入，不能失败后临时加跑、挑成功的；v291 的 24 次已按此执行，7 次雷达超时也都计为失败。</p></div></div>
   <div class="grid4" id="gateGrid"></div>
 </section>
 
 <!-- ================= ACCEPT ================= -->
 <section class="sec" id="accept">
-  <div class="sec-head reveal"><div class="num">09</div><div><h2 data-i18n="h116">验收漏斗：一个版本要过几关</h2><p data-i18n="h117">第一关是 50 个合法加 3 个非法起终点的离线门禁，不跑物理。第二关是 10 条固定路线各跑一次物理仿真，要求原生判到达、实测 PD 站稳，并且 10 Hz 实测位姿下全记录几何余量 ≥ 0。下面以 v290 为例。</p></div></div>
+  <div class="sec-head reveal"><div class="num">10</div><div><h2 data-i18n="h116">验收漏斗：一个版本要过几关</h2><p data-i18n="h117">第一关是 50 个合法加 3 个非法起终点的离线门禁，不跑物理。第二关是 10 条固定路线各跑一次物理仿真，要求原生判到达、实测 PD 站稳，并且 10 Hz 实测位姿下全记录几何余量 ≥ 0。下面以 v290 为例。</p></div></div>
   <div class="grid2" style="grid-template-columns:1.4fr 1fr">
     <div class="panel reveal"><div class="funnel" id="funnel"></div>
       <p data-i18n="h118" class="muted small" style="margin-top:14px">这只是<b>单次</b>试验，不能当作统计可靠性；采样检查也不等于连续时间认证或足端接触认证。如果再要求原生静态姿态裁决全部为 Free，v290 到达联合通过只有 3/10。</p></div>
@@ -530,7 +599,7 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 
 <!-- ================= HISTORY ================= -->
 <section class="sec" id="history">
-  <div class="sec-head reveal"><div class="num">10</div><div><h2 data-i18n="h126">版本演进</h2><p data-i18n="h127">从空地 12 m 一路走到整栋楼的楼梯，再到 50+3 个起终点的泛化。下面依次是各大阶段、最近 9 个版本的成绩柱状图，以及“10 条路线 × 4 个版本”的逐格结果（鼠标悬停看失败原因）。</p></div></div>
+  <div class="sec-head reveal"><div class="num">11</div><div><h2 data-i18n="h126">版本演进</h2><p data-i18n="h127">从空地 12 m 一路走到整栋楼的楼梯，再到 50+3 个起终点的泛化。下面依次是各大阶段、最近 9 个版本的成绩柱状图，以及“10 条路线 × 4 个版本”的逐格结果（鼠标悬停看失败原因）。</p></div></div>
   <div class="panel reveal"><div class="phases" id="phases"></div></div>
   <div class="grid2" style="margin-top:18px;grid-template-columns:1.25fr 1fr">
     <div class="panel reveal"><h3 data-i18n="h128">10 条单次实跑：到达+PD / 几何全过，以及全局中位耗时</h3><svg id="histSvg" viewBox="0 0 640 330" style="width:100%;height:auto"></svg></div>
@@ -541,13 +610,13 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 
 <!-- ================= ISSUES ================= -->
 <section class="sec" id="issues">
-  <div class="sec-head reveal"><div class="num">11</div><div><h2 data-i18n="h133">当前问题地图（v290 / v291 之后）与下一步</h2><p data-i18n="h134">每条都标了证据等级：已证实、已测量或推断。v291 针对第 1、2 条的修复已做 24 次冻结配对物理评估：没有稳定减少漂移，不升级。第 3、4 条是这次评估新发现的控制问题。</p></div></div>
+  <div class="sec-head reveal"><div class="num">12</div><div><h2 data-i18n="h133">当前问题地图（v290 / v291 之后）与下一步</h2><p data-i18n="h134">每条都标了证据等级：已证实、已测量或推断。v291 针对第 1、2 条的修复已做 24 次冻结配对物理评估：没有稳定减少漂移，不升级。第 3、4 条是这次评估新发现的控制问题。</p></div></div>
   <div class="panel reveal" id="issueList"></div>
 </section>
 
 <!-- ================= BOUNDARY / FILES ================= -->
 <section class="sec" id="boundary">
-  <div class="sec-head reveal"><div class="num">12</div><div><h2 data-i18n="h135">证据边界与源码索引</h2><p data-i18n="h136">这一页是讲解材料，本身不是实验证据。所有数字以下面链接的原始报告为准。</p></div></div>
+  <div class="sec-head reveal"><div class="num">13</div><div><h2 data-i18n="h135">证据边界与源码索引</h2><p data-i18n="h136">这一页是讲解材料，本身不是实验证据。所有数字以下面链接的原始报告为准。</p></div></div>
   <div class="grid2">
     <div class="panel reveal"><h3 data-i18n="h137" style="color:var(--ok)">有直接证据</h3>
       <ul class="small">
@@ -773,6 +842,44 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 "h165": "\n  Generated on 2026-10-22 from the local repository’s frozen v288–v290 sources, runtime configurations and audit reports, plus the v291 component record and the 24-run paired evaluation report. All animations on this page are <b>illustrations<\/b>: floor layout, trajectories and timing are synthetic, and only numbers marked as measured come from the original reports. This page is not experimental evidence; numbers defer to the linked reports. Standalone HTML, no external dependencies, no network requests.\n",
 "h166": "✕ Close",
 "h167": "v291 / v290 24-run frozen paired physical evaluation: 3/12 complete successes each, every failure kept and none rerun; raw records (28,777 files, 9.81 GB) checked file-by-file with SHA256 and kept on ultra9.",
+"h168": "Global planner",
+"h169": "PCT global planning: slicing the building into tomograms to find a stair-climbing route",
+"h170": "<code>lite3_nav2::PCTPlanner<\/code> and <code>PCTRoutePlanner<\/code> compile the C++ core (<code>OfflineElePlanner<\/code>) of <code>byangw/PCT_planner @35cd73f<\/code> into a native Nav2 plugin. It slices the building into layered tomograms and binds the same <b>support grid <code>native.support<\/code><\/b> (recovering lower floors hidden under overhangs) and <b>solid faces <code>SURFACE271B<\/code><\/b> (344 closed solids + 3,444 faces) used by local SCAN, checking the dual-circle footprint (r = 0.35 m, ±0.18 m fore/aft) every 2.5 cm to output a 3D route with true step heights and headings.",
+"h171": "Normal multi-floor route (smooth pass)",
+"h172": "3-attempt fallback (GPMP collision → polyline)",
+"h173": "CS01 (valid endpoints, 0.35 m blocked · 49/50)",
+"h174": "Invalid start control (3/3 rejected)",
+"h175": "<input type=\"checkbox\" id=\"pctSupportRecover\" checked><code>native.support<\/code> recovers lower floor under overhang",
+"h176": "① Tomogram & support<small>rebuildMap · floor recovery<\/small><span class=\"bar\" style=\"background:var(--global)\"><\/span>",
+"h177": "② Continuous endpoints<small>3×3 attach · Hermite/turn<\/small><span class=\"bar\" style=\"background:var(--global)\"><\/span>",
+"h178": "③ Multi-layer A*<small>gateway · 2.5 cm edge check<\/small><span class=\"bar\" style=\"background:var(--global)\"><\/span>",
+"h179": "④ GPMP quintic smooth<small>quintic · Gap + ENV225<\/small><span class=\"bar\" style=\"background:var(--global)\"><\/span>",
+"h180": "⑤ Support band project<small>0.025 m · [lower, upper]<\/small><span class=\"bar\" style=\"background:var(--global)\"><\/span>",
+"h181": "⑥ Solid footprint check<small>SURFACE271B · r=0.35 m<\/small><span class=\"bar\" style=\"background:var(--global)\"><\/span>",
+"h182": "❚❚ Pause",
+"h183": "↺ Restart",
+"h184": "⚠ Synthetic isometric illustration: demonstrates the 6 real code stages of PCTRoutePlanner, the dual-circle envelope (r = 0.35 m, offset ±0.18 m), 2.5 cm support-band projection and 3-attempt fallback; building geometry is simplified for clarity",
+"h185": "<b>Why pair the tomogram with <code>native.support<\/code>?<\/b><br>Raw tomogram slice boundaries are not physical floors, and 2F overhangs / stairs often hide the 1F floor below. <code>rebuildMap()<\/code> snaps layers to <code>native.support<\/code> and reuses vacant/duplicate slots to recover the lower floor (toggle the checkbox above to compare).",
+"h186": "<b>Why project onto a 2.5 cm height band after smoothing?<\/b><br>A GPMP quintic curve can float or cut across step edges. <code>projectSupportHeights()<\/code> queries the physical support every 2.5 cm and clamps z into a continuous <code>[lower, upper]<\/code> band while preserving the exact requested endpoint heights.",
+"h187": "<b>Why can local SCAN still reject when static geometry is shared?<\/b><br>Since v266–v272 global and local share <code>SURFACE271B<\/code> (344 solids + 3,444 faces) and <code>native.support<\/code>, so static checks agree; but local SCAN also enforces live LiDAR inflation, 0.35 s cloud freshness and real RL tracking sway.",
+"h188": "Trigger comparison: <code>PlanOnGoalChange<\/code> + prefix trim vs. <code>1 Hz<\/code> periodic replanning",
+"h189": "<code>expected_planner_frequency: 1.0<\/code> is only the Nav2 Planner Server warning threshold for a single call taking > 1.0 s; it <b>never<\/b> triggers 1 Hz planning. Since v212 the BT decorator <code>PlanOnGoalChange<\/code> triggers PCT only once per goal, and on recovery retry <code>RoutePolicy::retainedStatic<\/code> trims the walked prefix while keeping the same route epoch.",
+"h190": "v212–v290: PlanOnGoalChange + prefix trim",
+"h191": "v210 pitfall: RateController 1 Hz replan",
+"h192": "Simulate: local failure → recovery retry",
+"h193": "v290 offline gate (strict53) & static input contract",
+"h194": "Before running 1 kHz physics, every candidate is timed and audited offline on 50 valid start/goal pairs + 3 invalid negative controls:",
+"h195": "Metric / static asset",
+"h196": "v290 measured / verified",
+"h197": "Valid start/goal pairs passed (gate ≥ 48/50)",
+"h198": "Invalid negative controls rejected (gate 3/3)",
+"h199": "Global planning latency (median ≤ 1.5 s / P95 / max)",
+"h200": "Min extra support / solid margin over 50 valid starts",
+"h201": "Tomogram <code>tomogram<\/code>",
+"h202": "Support grid <code>native.support<\/code>",
+"h203": "Solid faces <code>SURFACE271B<\/code>",
+"h204": "Soft environment field <code>ENV225<\/code>",
+"h205": "Source split: <code>pct_planner.cpp<\/code> owns the Nav2 plugin lifecycle, hash checks, <code>RouteSession<\/code> and 3-attempt loop; <code>pct_route_planner.cpp<\/code> owns tomogram parsing, <code>native.support<\/code> rebuild, <code>OfflineElePlanner<\/code> callbacks, 2.5 cm height projection and <code>SURFACE271B<\/code> final check; <code>planner_node.py<\/code> is a standalone Python/RViz debug node not used in the closed loop.",
 "__title": "Lite3 Building Navigation Architecture · Animated (through v291 paired evaluation)",
 "__description": "Interactive animated page of the complete autonomous navigation stack of the Lite3 quadruped in a building with stairs. Standalone HTML, no external dependencies.",
 "__archLabel": "Lite3 navigation system architecture overview"
@@ -1113,7 +1220,7 @@ const DETAIL = {
     issue:ZE('历史演变（按冻结副本）：v89–v171 主分支里还有 BindScanRoute，恢复分支是 WaitForScanStop（调 /lite3_nav2/wait_stopped，等网关给出实测停稳证据，最多约 10 s）；v170–v171 试过 MeasuredProgressRecovery（走进 ≥ 2 m 的新区域就补满重试次数）。v194 改回原版 RecoveryNode + Wait 1 s；v196–v204 用 RateController 1 Hz 重算；v204 加入 RetryAllowed；v212 用 PlanOnGoalChange 替换 RateController。progress_recovery.hpp 和它的单测还留在 v290 源码里，但没有注册进行为树，也没有被 navigate.xml 使用。', 'History (frozen copies): in v89–v171 the main branch also had BindScanRoute and the recovery branch was WaitForScanStop (calling /lite3_nav2/wait_stopped and waiting up to ~10 s for measured stop evidence from the gateway); v170–v171 tried MeasuredProgressRecovery (refilling the retry budget after entering ≥ 2 m of new space). v194 returned to the stock RecoveryNode + Wait 1 s; v196–v204 replanned with RateController 1 Hz; v204 added RetryAllowed; v212 replaced RateController with PlanOnGoalChange. progress_recovery.hpp and its unit test remain in the v290 source but are neither registered in the tree nor used by navigate.xml.')},
   pct:{layer:[ZE('全局层', 'Global layer'),'#0d9488'], t:ZE('PCT 全局规划', 'PCT global planner'), plain:ZE('把整栋楼切成一层层断层图（哪里是地面、哪里是台阶、哪层连着哪层），在上面找一条从起点到终点、能上下楼梯的路线。相当于导航软件里的“整条路”。', 'Slices the whole building into layered tomograms (where the floor is, where the steps are, which layer connects to which) and searches them for a route from start to goal that can climb stairs. Think of it as the “whole route” in a navigation app.'),
     kv:[[ZE('上游', 'Upstream'),ZE('byangw/PCT_planner @35cd73f（固定版本，原生库编译）', 'byangw/PCT_planner @35cd73f (pinned, native library build)')],[ZE('触发方式', 'Trigger'),ZE('PlanOnGoalChange：首次目标、目标改变或恢复重试。expected_planner_frequency: 1.0 只是 Planner Server 的耗时告警参考，不会触发 1 Hz 算路', 'PlanOnGoalChange: first goal, goal change or recovery retry. expected_planner_frequency: 1.0 is only the Planner Server’s timing-warning reference and does not trigger 1 Hz planning')],[ZE('静态输入', 'Static inputs'),ZE('断层图 tomogram · 支撑格 native.support · 实体面 SURFACE271B', 'tomogram · support grid native.support · solid faces SURFACE271B')],[ZE('v290 离线', 'v290 offline'),ZE('合法 49/50 · 非法 3/3 · 中位 1.361 s · P95 2.029 s', 'valid 49/50 · invalid 3/3 · median 1.361 s · P95 2.029 s')],[ZE('已知问题', 'Known issues'),ZE('CS01 合法但无路；尾部耗时约 2 s', 'CS01 is valid but has no route; tail latency ~2 s')]],
-    src:'lite3_nav2_plugins/src/pct_planner.cpp · lite3_nav2_plugins/src/pct_route_planner.cpp · pct_planner/pct_planner/planner_node.py', issue:ZE('全局和局部从 v266–v272 起绑定同一份实体几何（344 个封闭体 + 3,444 个表面面片），让静态几何判据一致；在线点云、新鲜度和真实跟踪仍可能使局部拒绝。', 'Since v266–v272 global and local planning bind the same solid geometry (344 closed solids + 3,444 surface faces), so static geometry checks agree; live point clouds, freshness and real tracking can still make the local planner reject.')},
+    src:'lite3_nav2_plugins/src/pct_planner.cpp · lite3_nav2_plugins/src/pct_route_planner.cpp · pct_planner/pct_planner/planner_node.py', issue:ZE('全局和局部从 v266–v272 起绑定同一份实体几何（344 个封闭体 + 3,444 个表面面片），让静态几何判据一致；在线点云、新鲜度和真实跟踪仍可能使局部拒绝。<br><a href="#pct" onclick="document.getElementById(\'drawerClose\').click()"><b>→ 跳转到 §04 PCT 全局规划交互动画拆解</b></a>', 'Since v266–v272 global and local planning bind the same solid geometry (344 closed solids + 3,444 surface faces), so static geometry checks agree; live point clouds, freshness and real tracking can still make the local planner reject.<br><a href="#pct" onclick="document.getElementById(\'drawerClose\').click()"><b>→ Jump to §04 PCT interactive animation</b></a>')},
   fsm:{layer:[ZE('局部层', 'Local layer'),'#2563eb'], t:ZE('SCAN 重规划状态机', 'SCAN replanning FSM'), plain:ZE('局部规划的节拍器。有目标就生成轨迹，执行中按固定节奏重算，输入异常或前方被挡就急停，然后等待或重新生成。', 'The metronome of local planning. With a goal it generates a trajectory, replans at a fixed rhythm while executing, and stops on bad input or a blocked path, then waits or regenerates.'),
     kv:[[ZE('状态', 'States'),ZE('INIT → WAIT_TARGET → GEN_NEW_TRAJ → EXEC_TRAJ ⇄ REPLAN_TRAJ；EMERGENCY_STOP', 'INIT → WAIT_TARGET → GEN_NEW_TRAJ → EXEC_TRAJ ⇄ REPLAN_TRAJ; EMERGENCY_STOP')],[ZE('频率', 'Rate'),ZE('fsm.replan_frequency 30（replan_use_wall_clock: true），超预算记 overrun=1', 'fsm.replan_frequency 30 (replan_use_wall_clock: true); overruns logged as overrun=1')],[ZE('视野', 'Horizon'),'planning_horizon 3.5 m · emergency_time 1.0 s'],[ZE('回调保护', 'Callback guard'),ZE('callbackBoundary 捕获 C++ 异常并通知失败（v232）；FAILED 不是 FSM 状态，也不拦截 SIGSEGV 等信号', 'callbackBoundary catches C++ exceptions and reports failure (v232); FAILED is not an FSM state, and signals such as SIGSEGV are not intercepted')]],
     src:'plan_manage/src/scan_replan_fsm.cpp'},
@@ -1471,6 +1578,542 @@ function openEdge(id){
   $('#simPlay').onclick = () => { playing = !playing; $('#simPlay').textContent = playing ? ZE('❚❚ 暂停', '❚❚ Pause') : ZE('▶ 播放', '▶ Play'); $('#simPlay').classList.toggle('on', playing); };
   if(!playing){ $('#simPlay').textContent = ZE('▶ 播放', '▶ Play'); $('#simPlay').classList.remove('on'); }
   $$('#simSpeed button').forEach(b => b.onclick = () => { speed = +b.dataset.v; $$('#simSpeed button').forEach(x => x.classList.toggle('on', x === b)); });
+})();
+
+/* =====================================================================
+   PCT GLOBAL PLANNER: 3D isometric layered tomogram + native.support
+   floor recovery + 6-stage pipeline + trigger comparison
+   ===================================================================== */
+(function(){
+  const cv = $('#pctCanvas'); if(!cv) return;
+  const K = makeCanvas(cv, 800, 460); const ctx = K.ctx; const logb = $('#pctLog');
+  const btns = $$('#pctPipe button');
+  let playing = !RM;
+
+  // Isometric projection of building coordinates: x in [0, 12], y in [0, 4.4], z in [0, 2.2]
+  function iso(x, y, z){
+    const X = 86 + x*45 + y*24;
+    const Y = 358 - y*26 + x*9 - z*78;
+    return [X, Y];
+  }
+  function poly3(pts, fill, stroke, lw = 1, dash = []){
+    ctx.beginPath();
+    pts.forEach(([x,y,z], i) => { const [px,py] = iso(x,y,z); i ? ctx.lineTo(px,py) : ctx.moveTo(px,py); });
+    ctx.closePath();
+    if(fill){ ctx.fillStyle = fill; ctx.fill(); }
+    if(stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.setLineDash(dash); ctx.stroke(); ctx.setLineDash([]); }
+  }
+  function box3(x0, y0, z0, dx, dy, dz, topC, frontC, sideC, strokeC){
+    const x1 = x0+dx, y1 = y0+dy, z1 = z0+dz;
+    // front face (y = y0)
+    poly3([[x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1]], frontC, strokeC, 1);
+    // right face (x = x1)
+    poly3([[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]], sideC, strokeC, 1);
+    // top face (z = z1)
+    poly3([[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]], topC, strokeC, 1);
+  }
+  function drawFootprint3D(x, y, z, yaw, ok = true, highlight = false){
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    [0.18, -0.18].forEach(off => {
+      const cx = x + c*off, cy = y + s*off;
+      ctx.beginPath();
+      for(let k=0;k<=28;k++){
+        const a = k/28*TAU;
+        const [px,py] = iso(cx + Math.cos(a)*0.35, cy + Math.sin(a)*0.35, z);
+        k ? ctx.lineTo(px,py) : ctx.moveTo(px,py);
+      }
+      ctx.fillStyle = ok ? (highlight ? 'rgba(13,148,136,.20)' : 'rgba(5,150,105,.10)') : 'rgba(220,38,38,.26)';
+      ctx.fill();
+      ctx.strokeStyle = ok ? (highlight ? '#0d9488' : '#059669') : '#dc2626';
+      ctx.lineWidth = highlight ? 1.8 : 1.3;
+      ctx.stroke();
+    });
+    const [p0x,p0y] = iso(x, y, z), [p1x,p1y] = iso(x + c*0.48, y + s*0.48, z);
+    ctx.strokeStyle = ok ? '#0f172a' : '#dc2626'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.moveTo(p0x,p0y); ctx.lineTo(p1x,p1y); ctx.stroke();
+  }
+
+  // Waypoints for scenarios: [x, y, z_ground, yaw]
+  // Normal route goes through the 1F corridor under the 2F overhang (x=2.0..4.5, y=2.6), climbs stairs (x=5.0..8.2, y=1.7), reaches 2F goal (x=11.0, y=2.7)
+  const ROUTES = {
+    normal: {
+      start: [0.9, 2.7, 0.0, -0.35],
+      goal:  [11.0, 2.7, 1.5, 0.15],
+      astar: [[0.9,2.7,0],[2.3,2.8,0],[3.7,2.6,0],[4.9,1.8,0],[5.6,1.7,0.3],[6.5,1.7,0.75],[7.4,1.7,1.2],[8.3,1.7,1.5],[9.6,2.1,1.5],[11.0,2.7,1.5]],
+       detour: [[0.9,2.7,0],[1.8,0.8,0],[3.8,0.8,0],[4.9,1.6,0],[5.6,1.7,0.3],[6.5,1.7,0.75],[7.4,1.7,1.2],[8.3,1.7,1.5],[9.6,2.1,1.5],[11.0,2.7,1.5]]
+    },
+    fallback: {
+      start: [0.9, 2.5, 0.0, 0.0],
+      goal:  [11.1, 3.1, 1.5, 0.45],
+      astar: [[0.9,2.5,0],[2.5,2.5,0],[4.9,1.7,0],[5.7,1.7,0.35],[6.6,1.7,0.8],[7.5,1.7,1.25],[8.3,1.7,1.5],[9.4,1.8,1.5],[10.2,2.7,1.5],[11.1,3.1,1.5]]
+    },
+    cs01: {
+      start: [0.9, 2.3, 0.0, 0.0],
+      goal:  [11.1, 2.6, 1.5, 0.0],
+      astar: [[0.9,2.3,0],[2.5,2.2,0],[4.9,1.7,0],[5.8,1.7,0.4],[6.8,1.7,0.9],[7.8,1.7,1.35],[8.3,1.7,1.5],[9.3,2.2,1.5]]
+    },
+    invalid: {
+      start: [1.55, 1.45, 0.0, 0.2], // inside 1F solid pillar!
+      goal:  [11.0, 2.7, 1.5, 0.15],
+      astar: []
+    }
+  };
+
+  function densifyRoute(pts, smoothMode, unprojectedZ = false){
+    if(pts.length < 2) return [];
+    const out = [];
+    for(let i=0;i<pts.length-1;i++){
+      const a = pts[i], b = pts[i+1];
+      const n = 10;
+      for(let k=0;k<(i===pts.length-2 ? n+1 : n);k++){
+        const u = k/n;
+        let x = lerp(a[0], b[0], u), y = lerp(a[1], b[1], u);
+        if(smoothMode && i > 0 && i < pts.length-2){
+          const prev = pts[i-1], next = pts[i+2];
+          const u2 = u*u, u3 = u2*u;
+          const b0 = (1-u)*(1-u)*(1-u)/6, b1 = (3*u3-6*u2+4)/6, b2 = (-3*u3+3*u2+3*u+1)/6, b3 = u3/6;
+          x = b0*prev[0] + b1*a[0] + b2*b[0] + b3*next[0];
+          y = b0*prev[1] + b1*a[1] + b2*b[1] + b3*next[1];
+        }
+        // True stair/floor height at x
+        let zTrue = x <= 5.0 ? 0.0 : (x >= 8.2 ? 1.5 : Math.round(((x-5.0)/3.2)*10)/10 * 1.5);
+        // Unprojected GPMP height (diagonal slope + slight cubic wave)
+        let zRaw = x <= 4.4 ? 0.0 : (x >= 8.8 ? 1.5 : clamp((x-4.4)/4.4*1.5 + 0.14*Math.sin((x-4.4)/4.4*TAU), -0.05, 1.62));
+        const z = unprojectedZ ? zRaw : zTrue;
+        out.push([x, y, z, zTrue, zRaw]);
+      }
+    }
+    for(let i=0;i<out.length;i++){
+      const p = out[i], q = out[Math.min(out.length-1, i+1)], r = out[Math.max(0, i-1)];
+      p.push(Math.atan2(q[1]-r[1], q[0]-r[0]));
+    }
+    return out;
+  }
+
+  const ST = {scen:'normal', stage:0, t:0, supportRec:true, chkIdx:0, failStopped:false};
+  const DUR = [1.8, 1.8, 2.1, 2.2, 2.0, 2.6];
+
+  function getActivePoints(){
+    const R = ROUTES[ST.scen];
+    if(ST.scen === 'normal') return ST.supportRec ? R.astar : R.detour;
+    return R.astar;
+  }
+
+  function setStage(s){
+    ST.stage = s; ST.t = 0; ST.chkIdx = 0; ST.failStopped = false;
+    btns.forEach((b,i) => {
+      b.classList.toggle('on', i === s);
+      b.classList.toggle('done', i < s);
+      b.classList.remove('fail');
+      b.querySelector('.bar').style.width = i < s ? '100%' : '0';
+    });
+    if(s === 0){
+      logTo(logb, ZE(`<span class="hi">── PCTRoutePlanner::plan（场景：${ST.scen.toUpperCase()}）──</span>`, `<span class="hi">── PCTRoutePlanner::plan (scenario: ${ST.scen.toUpperCase()}) ──</span>`));
+      logTo(logb, ZE(`rebuildMap()：加载 PCTMAP01（2 层）+ SURFACE271B（344 封闭体）+ ENV225`, `rebuildMap(): loaded PCTMAP01 (2 layers) + SURFACE271B (344 solids) + ENV225`));
+      if(ST.supportRec) logTo(logb, ZE(`native.support：修正踏面高度，并<span class="ok">找回二楼悬挑下方被漏掉的一楼地面 ✓</span>`, `native.support: snapped step heights and <span class="ok">recovered 1F floor under 2F overhang ✓</span>`));
+      else logTo(logb, ZE(`<span class="warn">未启用底层找回：二楼悬挑遮挡导致下方一楼地面缺失，只能绕远路</span>`, `<span class="warn">Floor recovery off: 2F overhang hides the 1F floor below, forcing a detour</span>`));
+    }
+    if(s === 1){
+      if(ST.scen === 'invalid'){
+        btns[1].classList.add('fail');
+        logTo(logb, ZE(`<span class="bad">✗ check_endpoint("start")：pct_endpoint_pose_rejected</span>（起点侵入 SURFACE271B 实体柱，solid=1）→ 非法负对照 3/3 立即拒绝`, `<span class="bad">✗ check_endpoint("start"): pct_endpoint_pose_rejected</span> (start collides with SURFACE271B solid pillar, solid=1) → invalid control 3/3 rejected immediately`));
+      } else {
+        logTo(logb, ZE(`continuousEndpoint()：起终点连续 XYZ 关联真实支撑面，接入周围 3×3 网格并生成 Hermite 转向边 <span class="ok">✓</span>`, `continuousEndpoint(): continuous start/goal attached to 3×3 lattice with Hermite heading connectors <span class="ok">✓</span>`));
+      }
+    }
+    if(s === 2){
+      if(ST.scen === 'cs01'){
+        logTo(logb, ZE(`OfflineElePlanner::Plan()：跨层搜索 Layer 0 → 楼梯 gateway → Layer 1……`, `OfflineElePlanner::Plan(): searching Layer 0 → stair gateway → Layer 1…`));
+      } else {
+        const pts = getActivePoints();
+        logTo(logb, ZE(`跨层 A* 完成：经楼梯 gateway 连通 Layer 0 → Layer 1（每条边按 2.5 cm 步长查 transitionAllowed，共 ${pts.length} 个节点）`, `Multi-layer A* done: Layer 0 → stair gateway → Layer 1 (transitionAllowed checked every 2.5 cm, ${pts.length} nodes)`));
+      }
+    }
+    if(s === 3){
+      if(ST.scen === 'fallback'){
+        logTo(logb, ZE(`<span class="warn">attempt 0, 1 (smooth=true)：GPMP 五次曲线在二楼窄弯擦碰实体柱 → 抛 PCTOptimizationFailure</span>`, `<span class="warn">attempt 0, 1 (smooth=true): GPMP quintic curve scrapes 2F pillar → throws PCTOptimizationFailure</span>`));
+        logTo(logb, ZE(`<span class="ok">→ 自动回退 attempt 2 (smooth=false)</span>：保留合法图搜索折线 + Hermite 端点转向边`, `<span class="ok">→ Fallback to attempt 2 (smooth=false)</span>: keeping valid graph polyline + Hermite endpoint connectors`));
+      } else {
+        logTo(logb, ZE(`trajectory_optimizer_wnoj (use_quintic=true)：GPMP 五次平滑 + PhysicalGapCost + ENV225 梯度推离台阶边与墙 <span class="ok">✓</span>`, `trajectory_optimizer_wnoj (use_quintic=true): GPMP quintic smoothing + PhysicalGapCost + ENV225 gradient <span class="ok">✓</span>`));
+      }
+    }
+    if(s === 4){
+      logTo(logb, ZE(`projectSupportHeights()：按 0.025 m（2.5 cm）加密采样，把平滑曲线 z(s) 夹紧进台阶支撑带 [lower, upper]，保留精确起终点高度 <span class="ok">✓</span>`, `projectSupportHeights(): densified at 0.025 m (2.5 cm), z(s) clamped into step support band [lower, upper], exact endpoint heights preserved <span class="ok">✓</span>`));
+    }
+    if(s === 5){
+      logTo(logb, ZE(`validateSolidPath()：沿 3D 路线每 2.5 cm 查双圆柱足迹（r=0.35 m，偏移 ±0.18 m）与 344 个封闭体……`, `validateSolidPath(): checking dual-circle footprint (r=0.35 m, offset ±0.18 m) every 2.5 cm against 344 closed solids…`));
+    }
+  }
+
+  function restart(){ logb.innerHTML = ''; setStage(0); }
+
+  function advance(dt){
+    ST.t += dt;
+    const s = ST.stage, d = DUR[s];
+    const bar = btns[s].querySelector('.bar');
+    if(ST.scen === 'invalid' && s === 1){
+      bar.style.width = '100%';
+      if(ST.t > 2.8) setStage(0);
+      return;
+    }
+    if(ST.scen === 'cs01' && s === 2){
+      const p = clamp(ST.t/d, 0, 1);
+      bar.style.width = (p*100) + '%';
+      if(p >= 0.85 && !ST.failStopped){
+        ST.failStopped = true;
+        btns[2].classList.add('fail');
+        logTo(logb, ZE(`<span class="bad">✗ pct_no_route（CS01）</span>：起终点本身均合法，但二楼通道宽 < 0.70 m，r=0.35 m 双圆柱在所有朝向下 transitionAllowed 均为 false（离线 49/50 唯一无路）`, `<span class="bad">✗ pct_no_route (CS01)</span>: start and goal are both legal, but the 2F choke is < 0.70 m wide so the r=0.35 m dual-circle fails transitionAllowed in all headings (the sole 49/50 miss)`));
+      }
+      if(ST.t > d + 2.2) setStage(0);
+      return;
+    }
+    bar.style.width = (clamp(ST.t/d, 0, 1)*100) + '%';
+    if(s === 5 && Math.abs(ST.t - d*0.82) < dt*0.8){
+      logTo(logb, ZE(`<span class="ok">✓ 全部 2.5 cm 采样点通过 SURFACE271B + native.support → 写入 RoutePolicy 缓存并发布 /pct_planned_path（约 1.36 s）</span>`, `<span class="ok">✓ All 2.5 cm samples passed SURFACE271B + native.support → cached in RoutePolicy and published to /pct_planned_path (~1.36 s)</span>`));
+    }
+    if(ST.t > d){
+      if(s < 5) setStage(s + 1);
+      else if(ST.t > d + 1.4) setStage(0);
+    }
+  }
+
+  function drawInsetProfile(samples){
+    const x0 = 492, y0 = 266, w = 294, h = 180;
+    rrect(ctx, x0, y0, w, h, 12);
+    ctx.fillStyle = 'rgba(255,255,255,.94)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(100,116,139,.35)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#0f172a'; ctx.font = '700 11.5px -apple-system,"PingFang SC",sans-serif';
+    ctx.fillText(ZE('⑤ 沿路线的高度带投影剖面 z(s) · 步长 2.5 cm', '⑤ Support-band height profile z(s) · 2.5 cm step'), x0+12, y0+20);
+
+    const px = x0+38, py = y0+h-26, pw = w-52, ph = h-58;
+    ctx.strokeStyle = 'rgba(100,116,139,.35)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px+pw, py); ctx.moveTo(px, py); ctx.lineTo(px, py-ph); ctx.stroke();
+    ctx.fillStyle = '#64748b'; ctx.font = '10px ui-monospace,Menlo,monospace';
+    ctx.fillText('0.0m', px-32, py+3); ctx.fillText('+1.5m', px-35, py-ph*(1.5/1.8)+4);
+
+    if(!samples || samples.length < 2) return;
+    const N = samples.length;
+    const sx = i => px + (i/(N-1))*pw;
+    const sy = z => py - (z/1.8)*ph;
+
+    // Support height band [lower, upper] around true surface
+    ctx.beginPath();
+    for(let i=0;i<N;i++) i ? ctx.lineTo(sx(i), sy(samples[i][3]+0.12)) : ctx.moveTo(sx(i), sy(samples[i][3]+0.12));
+    for(let i=N-1;i>=0;i--) ctx.lineTo(sx(i), sy(Math.max(0, samples[i][3]-0.08)));
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(16,185,129,.18)'; ctx.fill();
+
+    // True step profile
+    ctx.beginPath();
+    for(let i=0;i<N;i++) i ? ctx.lineTo(sx(i), sy(samples[i][3])) : ctx.moveTo(sx(i), sy(samples[i][3]));
+    ctx.strokeStyle = 'rgba(100,116,139,.55)'; ctx.lineWidth = 1.2; ctx.stroke();
+
+    // Unprojected GPMP curve (dashed amber/red)
+    if(ST.stage >= 3){
+      ctx.beginPath();
+      for(let i=0;i<N;i++) i ? ctx.lineTo(sx(i), sy(samples[i][4])) : ctx.moveTo(sx(i), sy(samples[i][4]));
+      ctx.strokeStyle = '#d97706'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // Projected curve clamped to supportHeightBand (solid teal)
+    if(ST.stage >= 4){
+      const p = ST.stage === 4 ? clamp(ST.t/DUR[4], 0, 1) : 1;
+      const nShow = Math.max(2, Math.floor(p*N));
+      ctx.beginPath();
+      for(let i=0;i<nShow;i++){
+        const z = lerp(samples[i][4], samples[i][3], ease(p));
+        i ? ctx.lineTo(sx(i), sy(z)) : ctx.moveTo(sx(i), sy(z));
+      }
+      ctx.strokeStyle = '#0d9488'; ctx.lineWidth = 2.4; ctx.stroke();
+    }
+
+    // Legend inside inset
+    ctx.font = '10.5px -apple-system,"PingFang SC",sans-serif';
+    ctx.fillStyle = '#059669'; ctx.fillText(ZE('■ [lower, upper] 支撑带', '■ [lower, upper] support band'), px+6, y0+36);
+    ctx.fillStyle = '#d97706'; ctx.fillText(ZE('--- 投影前平滑高度', '--- unprojected smooth z'), px+136, y0+36);
+  }
+
+  function draw(){
+    K.begin();
+    ctx.fillStyle = '#fbfcfd'; ctx.fillRect(0, 0, 800, 460);
+
+    // 1. Layer 0 (1F floor, x: 0..5.0, y: 0..4.0, z: 0.0)
+    poly3([[0,0,0],[5.0,0,0],[5.0,4.0,0],[0,4.0,0]], '#f1f5f9', '#94a3b8', 1.2);
+    for(let x=0.5;x<=4.5;x+=0.5){
+      const [x0,y0] = iso(x,0,0), [x1,y1] = iso(x,4.0,0);
+      ctx.strokeStyle = 'rgba(148,163,184,.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+    }
+    for(let y=0.5;y<=3.5;y+=0.5){
+      const [x0,y0] = iso(0,y,0), [x1,y1] = iso(5.0,y,0);
+      ctx.strokeStyle = 'rgba(148,163,184,.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+    }
+
+    // Under-overhang zone on 1F (x: 1.8..4.6, y: 2.0..3.8, z: 0.0)
+    poly3([[1.8,2.0,0.01],[4.6,2.0,0.01],[4.6,3.8,0.01],[1.8,3.8,0.01]],
+      ST.supportRec ? 'rgba(16,185,129,.18)' : 'rgba(220,38,38,.14)',
+      ST.supportRec ? '#059669' : '#dc2626', 1.5, ST.supportRec ? [] : [4,3]);
+    {
+      const [lx,ly] = iso(2.0, 3.3, 0.02);
+      ctx.font = '600 11px -apple-system,"PingFang SC",sans-serif';
+      ctx.fillStyle = ST.supportRec ? '#065f46' : '#991b1b';
+      ctx.fillText(ST.supportRec ? ZE('native.support 找回悬挑下 1F 地面 ✓', 'native.support recovered 1F floor ✓') : ZE('✗ 原始断层图被悬挑遮挡，1F 地面丢失', '✗ Raw tomogram lost 1F floor under overhang'), lx-10, ly);
+    }
+
+    // 1F Solid Pillar (SURFACE271B)
+    box3(1.2, 1.1, 0, 0.7, 0.7, 1.1, '#cbd5e1', '#94a3b8', '#64748b', '#334155');
+    { const [px,py] = iso(1.3, 1.4, 1.15); ctx.fillStyle = '#334155'; ctx.font = '600 10.5px -apple-system,"PingFang SC",sans-serif'; ctx.fillText(ZE('1F 实体柱', '1F solid pillar'), px-14, py-4); }
+
+    // 2. Staircase Gateway (x: 5.0..8.2, y: 0.8..2.6, 10 steps from z=0 to z=1.5)
+    // ENV225 soft cost glow along stair edges
+    poly3([[4.9,0.55,0],[8.3,0.55,1.5],[8.3,2.85,1.5],[4.9,2.85,0]], 'rgba(217,119,6,.10)', 'rgba(217,119,6,.45)', 1, [3,3]);
+    for(let k=0;k<10;k++){
+      const sx0 = 5.0 + k*0.32, sz0 = k*0.15, sz1 = (k+1)*0.15;
+      box3(sx0, 0.8, sz0, 0.32, 1.8, 0.15, 'rgba(13,148,136,.24)', 'rgba(13,148,136,.42)', 'rgba(13,148,136,.32)', '#0d9488');
+    }
+    // Gateway badges at bottom and top of stairs
+    [[5.0,1.7,0.05,'Gateway L0→L1'],[8.2,1.7,1.52,'Gateway L1']].forEach(([gx,gy,gz,txt]) => {
+      const [px,py] = iso(gx,gy,gz);
+      ctx.fillStyle = '#0d9488'; ctx.beginPath(); ctx.arc(px,py,4,0,TAU); ctx.fill();
+      ctx.font = '600 10px ui-monospace,Menlo,monospace'; ctx.fillText(txt, px-28, py-8);
+    });
+
+    // 3. Layer 1 (2F upper landing x: 8.2..12.0, y: 0..4.0, z: 1.5 + 2F overhang x: 1.8..4.6, y: 2.0..3.8, z: 1.5)
+    // Draw 2F overhang semi-transparently above 1F so the overlap is obvious
+    poly3([[1.8,2.0,1.5],[4.6,2.0,1.5],[4.6,3.8,1.5],[1.8,3.8,1.5]], 'rgba(124,58,237,.11)', 'rgba(124,58,237,.5)', 1.2, [5,4]);
+    { const [ox,oy] = iso(2.0, 3.4, 1.55); ctx.fillStyle = '#6d28d9'; ctx.font = '600 10.5px -apple-system,"PingFang SC",sans-serif'; ctx.fillText(ZE('Layer 1：二楼悬挑楼板 (+1.5 m)', 'Layer 1: 2F overhang slab (+1.5 m)'), ox-8, oy); }
+    // Vertical dashed drop lines from 2F overhang corners to 1F
+    [[1.8,2.0],[4.6,2.0],[4.6,3.8],[1.8,3.8]].forEach(([cx,cy]) => {
+      const [a0,b0] = iso(cx,cy,0), [a1,b1] = iso(cx,cy,1.5);
+      ctx.strokeStyle = 'rgba(124,58,237,.28)'; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.moveTo(a0,b0); ctx.lineTo(a1,b1); ctx.stroke(); ctx.setLineDash([]);
+    });
+
+    // Main 2F landing slab
+    poly3([[8.2,0,1.5],[12.0,0,1.5],[12.0,4.0,1.5],[8.2,4.0,1.5]], 'rgba(124,58,237,.09)', '#7c3aed', 1.3);
+    for(let x=8.5;x<=11.5;x+=0.5){
+      const [x0,y0] = iso(x,0,1.5), [x1,y1] = iso(x,4.0,1.5);
+      ctx.strokeStyle = 'rgba(124,58,237,.16)'; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+    }
+
+    // 2F Solid obstacles (SURFACE271B) depending on scenario
+    if(ST.scen === 'fallback'){
+      // Tight corner pillar that catches smooth GPMP curve
+      box3(9.4, 2.55, 1.5, 0.75, 0.85, 0.9, '#fecaca', '#f87171', '#ef4444', '#b91c1c');
+      const [px,py] = iso(9.45, 2.9, 2.45); ctx.fillStyle = '#991b1b'; ctx.font = '600 10.5px -apple-system,"PingFang SC",sans-serif';
+      ctx.fillText(ZE('窄角实体柱（SURFACE271B）', 'Tight corner solid (SURFACE271B)'), px-36, py-4);
+    } else if(ST.scen === 'cs01'){
+      // Two pillars leaving < 0.70 m gap so r=0.35 m dual-circle cannot pass
+      box3(9.5, 0.2, 1.5, 0.7, 1.75, 0.9, '#cbd5e1', '#94a3b8', '#64748b', '#334155');
+      box3(9.5, 2.45, 1.5, 0.7, 1.5, 0.9, '#cbd5e1', '#94a3b8', '#64748b', '#334155');
+      const [px,py] = iso(9.6, 2.15, 2.45); ctx.fillStyle = '#dc2626'; ctx.font = '700 11px -apple-system,"PingFang SC",sans-serif';
+      ctx.fillText(ZE('CS01 瓶颈 < 0.70 m（双圆柱 r=0.35 m 无路）', 'CS01 choke < 0.70 m (r=0.35 m blocked)'), px-68, py-6);
+    } else {
+      box3(9.8, 0.5, 1.5, 0.8, 0.8, 0.9, '#cbd5e1', '#94a3b8', '#64748b', '#334155');
+    }
+
+    // Stage 0: sweep slice plane
+    if(ST.stage === 0){
+      const sx = clamp(ST.t/DUR[0], 0, 1)*12.0;
+      const sz = sx <= 5.0 ? 0 : (sx >= 8.2 ? 1.5 : (sx-5.0)/3.2*1.5);
+      poly3([[sx,0,sz],[sx,4.0,sz],[sx,4.0,sz+0.9],[sx,0,sz+0.9]], 'rgba(13,148,136,.18)', '#0d9488', 2);
+    }
+
+    const R = ROUTES[ST.scen];
+    const astarPts = getActivePoints();
+    const useSmooth = ST.scen === 'normal';
+    const samples = densifyRoute(astarPts, useSmooth, ST.stage === 3);
+
+    // Stage 2+: A* polyline & expanded nodes
+    if(ST.stage >= 2 && astarPts.length >= 2){
+      const p = ST.stage === 2 ? clamp(ST.t/DUR[2], 0, 1) : 1;
+      const nNodes = Math.max(2, Math.round(p*astarPts.length));
+      // Draw A* grid edges
+      ctx.beginPath();
+      for(let i=0;i<nNodes;i++){
+        const [px,py] = iso(astarPts[i][0], astarPts[i][1], astarPts[i][2]+0.05);
+        i ? ctx.lineTo(px,py) : ctx.moveTo(px,py);
+      }
+      ctx.strokeStyle = ST.stage === 2 ? '#0f172a' : 'rgba(15,23,42,.38)';
+      ctx.lineWidth = ST.stage === 2 ? 2.2 : 1.4;
+      ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+      for(let i=0;i<nNodes;i++){
+        const [px,py] = iso(astarPts[i][0], astarPts[i][1], astarPts[i][2]+0.05);
+        ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(px,py,3,0,TAU); ctx.fill();
+      }
+      if(ST.scen === 'cs01' && ST.failStopped){
+        const last = astarPts[astarPts.length-1];
+        drawFootprint3D(last[0]+0.35, last[1], last[2]+0.04, 0.0, false, true);
+      }
+    }
+
+    // Stage 3: Fallback failed smooth curve illustration
+    if(ST.scen === 'fallback' && ST.stage === 3){
+      const badSmooth = densifyRoute(astarPts, true, false);
+      if(ST.t < DUR[3]*0.58){
+        ctx.beginPath();
+        badSmooth.forEach((q,i) => { const [px,py] = iso(q[0], q[1]+0.22*Math.sin(i/badSmooth.length*Math.PI), q[2]+0.06); i ? ctx.lineTo(px,py) : ctx.moveTo(px,py); });
+        ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2.6; ctx.stroke();
+        const [bx,by] = iso(9.6, 2.45, 1.56);
+        ctx.fillStyle = '#dc2626'; ctx.font = '700 12px -apple-system,"PingFang SC",sans-serif';
+        ctx.fillText(ZE('✗ attempt 0,1：GPMP 五次平滑外甩擦碰实体柱 → 回退 attempt 2 折线', '✗ attempt 0,1: GPMP smooth hits pillar → fallback to attempt 2 polyline'), bx-180, by-24);
+      }
+    }
+
+    // Stage 3+: Active trajectory (smooth quintic or fallback polyline)
+    if(ST.stage >= 3 && samples.length >= 2){
+      const p = ST.stage === 3 ? clamp(ST.t/DUR[3], 0, 1) : 1;
+      const nS = Math.max(2, Math.floor(p*samples.length));
+      ctx.beginPath();
+      for(let i=0;i<nS;i++){
+        const q = samples[i];
+        const z = ST.stage === 3 ? q[4] : (ST.stage === 4 ? lerp(q[4], q[3], clamp(ST.t/DUR[4],0,1)) : q[3]);
+        const [px,py] = iso(q[0], q[1], z+0.06);
+        i ? ctx.lineTo(px,py) : ctx.moveTo(px,py);
+      }
+      ctx.shadowColor = '#0d9488'; ctx.shadowBlur = 10;
+      ctx.strokeStyle = '#0d9488'; ctx.lineWidth = 3.2; ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // Stage 5: Sweep 0.35 m dual-circle footprint every 2.5 cm along the 3D route
+    if(ST.stage === 5 && samples.length >= 2){
+      const u = clamp(ST.t/(DUR[5]*0.82), 0, 1);
+      const idx = Math.min(samples.length-1, Math.floor(u*(samples.length-1)));
+      for(let i=0;i<=idx;i+=3){
+        const [px,py] = iso(samples[i][0], samples[i][1], samples[i][3]+0.06);
+        ctx.fillStyle = '#059669'; ctx.beginPath(); ctx.arc(px,py,2.1,0,TAU); ctx.fill();
+      }
+      const cur = samples[idx];
+      drawFootprint3D(cur[0], cur[1], cur[3]+0.06, cur[5], true, true);
+      if(u >= 1){
+        ctx.font = '800 21px -apple-system,"PingFang SC",sans-serif';
+        ctx.fillStyle = '#059669';
+        ctx.fillText(ZE('✓ 全局路线通过 2.5 cm 实体终检并缓存发布', '✓ Global route passed 2.5 cm solid check & published'), 26, 434);
+      }
+    }
+
+    // Start & Goal endpoints + Stage 1 footprints
+    const st = R.start, gl = R.goal;
+    if(ST.stage >= 1){
+      drawFootprint3D(st[0], st[1], st[2]+0.03, st[3], ST.scen !== 'invalid', ST.stage === 1);
+      if(ST.scen !== 'invalid') drawFootprint3D(gl[0], gl[1], gl[2]+0.03, gl[3], true, ST.stage === 1);
+    }
+    const [sx,sy] = iso(st[0], st[1], st[2]+0.05);
+    ctx.fillStyle = ST.scen === 'invalid' ? '#dc2626' : '#7c3aed';
+    ctx.beginPath(); ctx.arc(sx,sy,5.5,0,TAU); ctx.fill();
+    ctx.font = '700 11.5px -apple-system,"PingFang SC",sans-serif';
+    ctx.fillText(ST.scen === 'invalid' ? ZE('非法起点（侵入实体柱）', 'Invalid start (inside solid)') : ZE('1F 起点 (Layer 0)', '1F Start (Layer 0)'), sx-28, sy+20);
+
+    const [gx,gy] = iso(gl[0], gl[1], gl[2]+0.05);
+    ctx.fillStyle = '#2563eb'; ctx.beginPath(); ctx.arc(gx,gy,5.5,0,TAU); ctx.fill();
+    ctx.fillText(ZE('2F 终点 (Layer 1, +1.5 m)', '2F Goal (Layer 1, +1.5 m)'), gx-62, gy-12);
+
+    // Draw elevation profile inset
+    drawInsetProfile(samples);
+
+    // Top-left stage banner
+    const titles = [
+      ZE('① rebuildMap：断层图切片 + native.support 找回悬挑下底层地面', '① rebuildMap: tomogram slices + native.support floor recovery'),
+      ZE('② continuousEndpoint：起终点双圆柱校验 + 3×3 接入与 Hermite 转向', '② continuousEndpoint: endpoint footprint check + 3×3 Hermite attach'),
+      ZE('③ OfflineElePlanner::Plan：跨层 A* 搜索（Layer 0 → 楼梯 gateway → Layer 1）', '③ OfflineElePlanner::Plan: multi-layer A* across stair gateway'),
+      ZE('④ GPMP 五次曲线平滑 + ENV225 软场推离（失败可回退折线）', '④ GPMP quintic smoothing + ENV225 repulsion (with polyline fallback)'),
+      ZE('⑤ projectSupportHeights：2.5 cm 步长把曲线高度夹紧进真实台阶支撑带', '⑤ projectSupportHeights: 2.5 cm clamping onto step support band'),
+      ZE('⑥ validateSolidPath：沿 3D 路线每 2.5 cm 查 0.35 m 双圆柱与 344 个实体', '⑥ validateSolidPath: 0.35 m dual-circle checked every 2.5 cm vs 344 solids')
+    ];
+    ctx.font = '700 12.5px -apple-system,"PingFang SC",sans-serif';
+    const tw = ctx.measureText(titles[ST.stage]).width + 24;
+    rrect(ctx, 16, 14, tw, 28, 14);
+    ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fill();
+    ctx.strokeStyle = '#0d9488'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.fillStyle = '#0f766e'; ctx.fillText(titles[ST.stage], 28, 33);
+  }
+
+  restart();
+  addTicker(cv, dt => { if(playing) advance(dt); draw(); });
+
+  $('#pctPlay').onclick = () => { playing = !playing; $('#pctPlay').textContent = playing ? ZE('❚❚ 暂停', '❚❚ Pause') : ZE('▶ 播放', '▶ Play'); $('#pctPlay').classList.toggle('on', playing); };
+  if(!playing){ $('#pctPlay').textContent = ZE('▶ 播放', '▶ Play'); $('#pctPlay').classList.remove('on'); }
+  $('#pctRestart').onclick = () => restart();
+  $('#pctSupportRecover').onchange = e => { ST.supportRec = e.target.checked; restart(); };
+  $$('#pctScen button').forEach(b => b.onclick = () => {
+    ST.scen = b.dataset.k;
+    $$('#pctScen button').forEach(x => x.classList.toggle('on', x === b));
+    restart();
+  });
+  btns.forEach((b,i) => b.onclick = () => setStage(i));
+
+  // ---------- Trigger Comparison SVG (PlanOnGoalChange vs 1 Hz RateController) ----------
+  const tsvg = $('#pctTrigSvg');
+  if(tsvg){
+    let mode = 'v290', tt = 0, retryInjected = false;
+    const lanes = [
+      [ZE('BT 触发器', 'BT trigger'), 44],
+      [ZE('PCT 算路 / 缓存', 'PCT solve / cache'), 112],
+      [ZE('SCAN 局部热启动', 'SCAN warm start'), 180]
+    ];
+    lanes.forEach(([n,y]) => {
+      el('line', {x1:132, y1:y, x2:662, y2:y, stroke:'rgba(100,116,139,.25)'}, tsvg);
+      const tx = el('text', {x:12, y:y+4, 'font-size':12, 'font-weight':700, fill:'#334155'}, tsvg); tx.textContent = n;
+    });
+    // 1.0 s warning threshold ruler note
+    const warnNote = el('text', {x:132, y:218, 'font-size':11, fill:'#64748b'}, tsvg);
+    const dynG = el('g', {}, tsvg);
+    const playHead = el('line', {x1:132, y1:20, x2:132, y2:198, stroke:'#0f172a', 'stroke-width':1.5, 'stroke-dasharray':'3 3'}, tsvg);
+
+    function renderTrig(){
+      dynG.innerHTML = '';
+      const xOf = s => 132 + (s/12)*520;
+      if(mode === 'v290'){
+        warnNote.textContent = ZE('注：首次算路 1.36 s > expected_planner_frequency 告警线(1.0 s) 只打一条日志，绝不触发 1 Hz 重算；恢复重试仅裁剪已走前缀', 'Note: 1.36 s > expected_planner_frequency (1.0 s) only logs a timing warning; recovery retry trims the walked prefix');
+        // Event 1: t=0.4s first goal -> PCT plans once (1.36s)
+        el('rect', {x:xOf(0.4), y:30, width:68, height:26, rx:7, fill:'rgba(124,58,237,.16)', stroke:'#7c3aed'}, dynG);
+        el('text', {x:xOf(0.4)+34, y:47, 'text-anchor':'middle', 'font-size':10.5, 'font-weight':700, fill:'#6d28d9'}, dynG).textContent = ZE('首次目标 ✓', 'First goal ✓');
+        el('rect', {x:xOf(0.4), y:98, width:72, height:26, rx:7, fill:'rgba(13,148,136,.18)', stroke:'#0d9488'}, dynG);
+        el('text', {x:xOf(0.4)+36, y:115, 'text-anchor':'middle', 'font-size':10.5, 'font-weight':700, fill:'#0f766e'}, dynG).textContent = ZE('算路 1 次 (1.36s)', 'Plan once (1.36s)');
+        // Event 2: t=4.2s timestamp refresh -> ignored by PlanOnGoalChange
+        el('rect', {x:xOf(4.2), y:30, width:96, height:26, rx:7, fill:'rgba(100,116,139,.12)', stroke:'#94a3b8', 'stroke-dasharray':'3 2'}, dynG);
+        el('text', {x:xOf(4.2)+48, y:47, 'text-anchor':'middle', 'font-size':10.5, fill:'#475569'}, dynG).textContent = ZE('仅时间戳刷新 → 忽略', 'Stamp refresh → ignored');
+        // Event 3: t=7.8s recovery retry -> retainedStatic prefix trim
+        if(retryInjected){
+          el('rect', {x:xOf(7.6), y:30, width:96, height:26, rx:7, fill:'rgba(217,119,6,.16)', stroke:'#d97706'}, dynG);
+          el('text', {x:xOf(7.6)+48, y:47, 'text-anchor':'middle', 'font-size':10.5, 'font-weight':700, fill:'#b45309'}, dynG).textContent = ZE('恢复重试 halt()', 'Recovery retry');
+          el('rect', {x:xOf(7.6), y:98, width:132, height:26, rx:7, fill:'rgba(5,150,105,.18)', stroke:'#059669'}, dynG);
+          el('text', {x:xOf(7.6)+66, y:115, 'text-anchor':'middle', 'font-size':10.5, 'font-weight':700, fill:'#047857'}, dynG).textContent = ZE('retainedStatic 裁前缀 ✓', 'retainedStatic trim ✓');
+        }
+        // SCAN continuous green bar
+        el('rect', {x:xOf(1.8), y:167, width:xOf(11.6)-xOf(1.8), height:26, rx:7, fill:'rgba(37,99,235,.15)', stroke:'#2563eb'}, dynG);
+        el('text', {x:xOf(6.7), y:184, 'text-anchor':'middle', 'font-size':11, 'font-weight':700, fill:'#1d4ed8'}, dynG).textContent = ZE('同一路线纪元（route epoch）· 30 Hz 热启动连续不中断 ✓', 'Same route epoch · 30 Hz warm-start continuity preserved ✓');
+      } else {
+        warnNote.textContent = ZE('v210 历史问题：RateController 每秒触发 PCT 重算（54 s 内发了 39 次 /pct_path），SCAN 参考路线被反复抽换！', 'v210 issue: RateController triggered PCT every 1 s (39 /pct_path updates in 54 s), repeatedly yanking SCAN’s reference!');
+        for(let k=0;k<6;k++){
+          const s = 0.6 + k*1.9;
+          el('rect', {x:xOf(s), y:30, width:58, height:26, rx:6, fill:'rgba(220,38,38,.14)', stroke:'#dc2626'}, dynG);
+          el('text', {x:xOf(s)+29, y:47, 'text-anchor':'middle', 'font-size':10, 'font-weight':700, fill:'#b91c1c'}, dynG).textContent = '1 Hz tick';
+          el('rect', {x:xOf(s+0.2), y:98, width:66, height:26, rx:6, fill:'rgba(217,119,6,.18)', stroke:'#d97706'}, dynG);
+          el('text', {x:xOf(s+0.2)+33, y:115, 'text-anchor':'middle', 'font-size':10, fill:'#92400e'}, dynG).textContent = `/pct_path #${k+1}`;
+          el('rect', {x:xOf(s+0.3), y:167, width:62, height:26, rx:6, fill:'rgba(220,38,38,.22)', stroke:'#dc2626'}, dynG);
+          el('text', {x:xOf(s+0.3)+31, y:184, 'text-anchor':'middle', 'font-size':10, 'font-weight':700, fill:'#991b1b'}, dynG).textContent = ZE('✗ 热启动打断', '✗ reset');
+        }
+      }
+    }
+    renderTrig();
+    addTicker(tsvg, dt => {
+      tt = (tt + dt*1.8) % 12;
+      const px = 132 + (tt/12)*520;
+      playHead.setAttribute('x1', px); playHead.setAttribute('x2', px);
+    });
+    $$('#pctTrigMode button').forEach(b => b.onclick = () => {
+      mode = b.dataset.m;
+      $$('#pctTrigMode button').forEach(x => x.classList.toggle('on', x === b));
+      tt = 0; renderTrig();
+    });
+    $('#pctTrigRetry').onclick = () => {
+      mode = 'v290';
+      $$('#pctTrigMode button').forEach(x => x.classList.toggle('on', x.dataset.m === 'v290'));
+      retryInjected = !retryInjected;
+      $('#pctTrigRetry').classList.toggle('on', retryInjected);
+      tt = 6.8; renderTrig();
+    };
+  }
 })();
 
 /* =====================================================================
