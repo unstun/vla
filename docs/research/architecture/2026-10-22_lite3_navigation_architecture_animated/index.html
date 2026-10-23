@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>(function(){var d=document.documentElement,l="zh";try{var q=new URLSearchParams(location.search).get("lang");l=q||localStorage.getItem("lite3-arch-lang")||"zh";if(q)localStorage.setItem("lite3-arch-lang",q);}catch(e){}if(l!=="en")l="zh";d.setAttribute("data-lang",l);d.lang=l==="en"?"en":"zh-CN";d.classList.add("preload");setTimeout(function(){d.classList.remove("preload")},1500);})();</script>
-<title>Lite3 楼宇导航算法架构 · 动画版（截至 v290 / v291 进行中）</title>
+<title>Lite3 楼宇导航算法架构 · 动画版（截至 v291 配对评估）</title>
 <meta name="description" content="Lite3 四足机器狗楼宇（含楼梯）自主导航整体算法框架的交互动画页面。独立 HTML，无外部依赖。">
 <style>
 :root{
@@ -330,8 +330,8 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
     <p data-i18n="h014" class="lead">Lite3 四足机器狗在楼宇里（含楼梯）自主导航的整套算法，做成一页可以交互的动画。分层看：任务调度、全局路线、30 Hz 局部重规划、轨迹跟踪、RL 步态和 PD 站立。每一层都配了真实参数、实测成绩和已知失败。</p>
     <div class="badges">
       <span data-i18n="h015" class="badge b-ok">采纳基线：v232 源码 / v233 执行</span>
-      <span data-i18n="h016" class="badge b-warn">最新实跑 v290：到达+PD 6/10，几何全过 4/10，总验收未通过</span>
-      <span data-i18n="h017" class="badge b-blue">v291：组件、回放及 strict53 已通过，物理实跑 0 次</span>
+      <span data-i18n="h016" class="badge b-warn">最新十路线批次 v290：到达+PD 6/10，几何全过 4/10，总验收未通过</span>
+      <span data-i18n="h017" class="badge b-blue">v291：24 次配对物理对照完成，完整成功 3/12（v290 也是 3/12），不升级</span>
       <span data-i18n="h018" class="badge b-dim">仅 Newton 仿真 · VLA 尚未接入闭环</span>
     </div>
     <div class="kpis">
@@ -351,7 +351,7 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
   <div class="grid3">
     <div class="panel reveal"><div data-i18n="h027" class="tag" style="color:var(--ok)">已经做到</div><h3 data-i18n="h028" style="margin-top:12px">原始楼梯路线能走通</h3><p data-i18n="h029" class="muted small">v233、v237、v241 各跑过一次，都完整走通：约 121–124 s 到达，PD 站稳约 4.4 s，终点误差约 12–14 cm。v289 修掉了 v288 的时间戳永久锁死，v290 修掉了“楼梯中途高度沿起终点斜面走”的问题。</p></div>
     <div class="panel reveal"><div data-i18n="h030" class="tag" style="color:var(--warn)">还不行</div><h3 data-i18n="h031" style="margin-top:12px">换起终点不稳，终点收尾是最大短板</h3><p data-i18n="h032" class="muted small">10 条固定路线最近两版到达+PD 都是 6/10，几何全过分别是 5/10（v289）和 4/10（v290）。v290 的失败大多出在终点：转向时擦墙（D07 −27.60 cm）；零命令后 PD 接管前漂了 20 cm 以上（CD12 −13.77 cm）。</p></div>
-    <div class="panel reveal"><div data-i18n="h033" class="tag" style="color:var(--local)">正在做</div><h3 data-i18n="h034" style="margin-top:12px">v291：终点只交给一个控制器</h3><p data-i18n="h035" class="muted small">终点的位置修正、转向和刹车统一由 <code>TrackingNode</code> 负责；零命令期间，已经受力的静止腿按力矩连续的方式锁住。14 个原生包、D07/CD12 回放和 strict53 均已通过：合法 49/50、非法拒绝 3/3、全局中位 1.421 s。<b>物理实跑 0 次</b>。</p></div>
+    <div class="panel reveal"><div data-i18n="h033" class="tag" style="color:var(--local)">刚评估完</div><h3 data-i18n="h034" style="margin-top:12px">v291：终点只交给一个控制器，但漂移没有稳定减少</h3><p data-i18n="h035" class="muted small">终点的位置修正、转向和刹车统一由 <code>TrackingNode</code> 负责；零命令期间，已经受力的静止腿按力矩连续的方式锁住。组件、回放和 strict53 均已通过（49/50、3/3、中位 1.421 s）。随后 D07/CD12/S04/A04 × 3 次 × 2 版本的冻结配对物理对照：<b>完整成功两版都是 3/12</b>；A04 停步位移中位从 1.48 cm 变成 8.07 cm。<b>v291 不升级</b>，余下 26 次暂缓。</p></div>
   </div>
 </section>
 
@@ -475,7 +475,7 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 <section class="sec" id="terminal">
   <div class="sec-head reveal"><div class="num">07</div><div><h2 data-i18n="h096">终点收尾：现在最难啃的一段</h2><p data-i18n="h097">快到终点时，狗要停稳并转到指定朝向。原地转身时屁股会扫一圈，靠墙就会蹭到；零命令之后到 PD 接管之前，RL 步态还在踏步，机身会漂。下面四个场景依次是四个版本的做法，以及它们各自暴露的问题。</p></div></div>
   <div class="panel reveal" style="padding:14px">
-    <div class="controls" style="margin:0 0 10px"><div class="seg" id="termTabs"><button data-i18n="h098" data-k="v287" class="on">v287 原地纯转向</button><button data-i18n="h099" data-k="v288">v288 2 cm 居中</button><button data-i18n="h100" data-k="v290">v290 零命令后漂移</button><button data-i18n="h101" data-k="v291">v291 候选（未实跑）</button></div><button data-i18n="h102" class="btn ghost" id="termReplay">↺ 重播</button></div>
+    <div class="controls" style="margin:0 0 10px"><div class="seg" id="termTabs"><button data-i18n="h098" data-k="v287" class="on">v287 原地纯转向</button><button data-i18n="h099" data-k="v288">v288 2 cm 居中</button><button data-i18n="h100" data-k="v290">v290 零命令后漂移</button><button data-i18n="h101" data-k="v291">v291 候选（已评估，未升级）</button></div><button data-i18n="h102" class="btn ghost" id="termReplay">↺ 重播</button></div>
     <div class="term-grid">
       <div><div class="stage"><canvas id="termCanvas" height="430"></canvas></div><div class="tl" id="termTl"></div></div>
       <div id="termText"></div>
@@ -505,7 +505,7 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 
 <!-- ================= GATES ================= -->
 <section class="sec" id="gates">
-  <div class="sec-head reveal"><div class="num">08</div><div><h2 data-i18n="h114">安全与时间硬门禁</h2><p data-i18n="h115">这些实验的门槛<b>保持不变</b>，不按场景、路线编号或坐标写特判。v290 十路线批次每条只跑一次，失败保留；v291 收敛计划预先规定配对重复次数（每条每版本 3 次），全部计入，不能失败后临时加跑、挑成功的。</p></div></div>
+  <div class="sec-head reveal"><div class="num">08</div><div><h2 data-i18n="h114">安全与时间硬门禁</h2><p data-i18n="h115">这些实验的门槛<b>保持不变</b>，不按场景、路线编号或坐标写特判。v290 十路线批次每条只跑一次，失败保留；v291 收敛计划预先规定配对重复次数（每条每版本 3 次），全部计入，不能失败后临时加跑、挑成功的；v291 的 24 次已按此执行，7 次雷达超时也都计为失败。</p></div></div>
   <div class="grid4" id="gateGrid"></div>
 </section>
 
@@ -516,14 +516,14 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
     <div class="panel reveal"><div class="funnel" id="funnel"></div>
       <p data-i18n="h118" class="muted small" style="margin-top:14px">这只是<b>单次</b>试验，不能当作统计可靠性；采样检查也不等于连续时间认证或足端接触认证。如果再要求原生静态姿态裁决全部为 Free，v290 到达联合通过只有 3/10。</p></div>
     <div class="panel reveal">
-      <h3 data-i18n="h119">收敛计划（2026-10-22 已定）</h3>
+      <h3 data-i18n="h119">收敛计划（2026-10-22 已定，① 已执行）</h3>
       <p data-i18n="h120" class="small muted">先让机器狗稳稳停住，再谈泛化。每个冻结候选最多 50 次完整仿真：</p>
       <table>
-        <tr><td data-i18n="h121">① 配对对比</td><td data-i18n="h122" class="num">4 路线 × 3 次 × 2 版本 = 24</td></tr>
-        <tr><td data-i18n="h123">② 原 10 条路线</td><td class="num">10</td></tr>
-        <tr><td data-i18n="h124">③ 新路线配对</td><td class="num">4 × 2 × 2 = 16</td></tr>
+        <tr><td data-i18n="h121">① 配对对比</td><td data-i18n="h122" class="num">4 路线 × 3 次 × 2 版本 = 24 · 已完成</td></tr>
+        <tr><td data-i18n="h123">② 原 10 条路线（暂缓）</td><td class="num">10</td></tr>
+        <tr><td data-i18n="h124">③ 新路线配对（暂缓）</td><td class="num">4 × 2 × 2 = 16</td></tr>
       </table>
-      <p data-i18n="h125" class="small muted">对照组是 v290，候选是 v291。<a href="../../plans/2026-10-22-convergence/index.html">打开交互式收敛计划 →</a></p>
+      <p data-i18n="h125" class="small muted">对照组是 v290，候选是 v291。① 的结果：完整成功两版都是 3/12，v291 没有稳定减少漂移，不升级；② ③ 共 26 次暂缓。<a href="../../plans/2026-10-22-convergence/index.html">打开交互式收敛计划 →</a> · <a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v291_paired24/REPORT.md">24 次配对报告 →</a></p>
     </div>
   </div>
 </section>
@@ -541,7 +541,7 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 
 <!-- ================= ISSUES ================= -->
 <section class="sec" id="issues">
-  <div class="sec-head reveal"><div class="num">11</div><div><h2 data-i18n="h133">当前问题地图（v290 之后）与下一步</h2><p data-i18n="h134">每条都标了证据等级：已证实、已测量或推断。修复方向里，只有 v291 已经写好代码，其余都还没实现。</p></div></div>
+  <div class="sec-head reveal"><div class="num">11</div><div><h2 data-i18n="h133">当前问题地图（v290 / v291 之后）与下一步</h2><p data-i18n="h134">每条都标了证据等级：已证实、已测量或推断。v291 针对第 1、2 条的修复已做 24 次冻结配对物理评估：没有稳定减少漂移，不升级。第 3、4 条是这次评估新发现的控制问题。</p></div></div>
   <div class="panel reveal" id="issueList"></div>
 </section>
 
@@ -556,20 +556,21 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
         <li data-i18n="h140">v290：14 个原生包构建通过；270 项 XML 结果，失败 0、错误 0；原生信号崩溃 0。</li>
         <li data-i18n="h141">v289 / v290 躯干时间戳回退错误 0；v290 离线门禁 49/50、3/3，全局中位 1.361 s。</li>
         <li data-i18n="h142">v290 D07/CD12 停止过程的遥测复核（新增物理步数 0）。</li>
+        <li data-i18n="h167">v291 / v290 24 次冻结配对物理对照：完整成功各 3/12，失败全部保留、未补跑；原始记录 28777 个文件、9.81 GB，逐文件 SHA256 已核对并保留在 ultra9。</li>
       </ul></div>
     <div class="panel reveal"><h3 data-i18n="h143" style="color:var(--bad)">还没有证明</h3>
       <ul class="small">
-        <li data-i18n="h144">重复可靠性：每条路线每个版本都只跑过一次。</li>
+        <li data-i18n="h144">重复可靠性：v290 / v291 只在 4 条路线上各重复过 3 次，完整成功都只有 3/12；共享主机 CPU 争用造成 7 次雷达超时，成功率不能当作干净的算法排名。</li>
         <li data-i18n="h145">持续 30 Hz：基线平均成功率对应 25.44 Hz，v290 中位耗时达标但 P95 超出。</li>
         <li data-i18n="h146">泛化能力：最近版本几何全过最高 5/10。</li>
         <li data-i18n="h147">逐脚接触和腿摆动几何：目前只用了机身双圆柱。</li>
-        <li data-i18n="h148">v291 能不能减少漂移：strict53 离线已通过，仍没有新物理实跑结果。</li>
+        <li data-i18n="h148">v291 能减少漂移：<b>24 次配对未能证明</b>，A04 与 S04 的停步位移反而更大；两项改动各自的作用尚未拆开验证。</li>
         <li data-i18n="h149">本页 Newton 导航栈的 Jetson 实机运动与 VLA 导航闭环：<b>尚无本页所引证据</b>；ARM64 构建通过不等于实机运行通过。</li>
       </ul></div>
   </div>
   <div class="panel reveal" style="margin-top:18px" id="files">
     <h3 data-i18n="h150">源码与报告</h3>
-    <p data-i18n="h151" class="small muted">冻结源码根目录：<code>.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v290/src/</code>（v291 候选在同级 <code>v291/</code> 目录）</p>
+    <p data-i18n="h151" class="small muted">冻结源码根目录：<code>.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v290/src/</code>（v291 候选在同级 <code>v291/</code> 目录，已评估、未升级）</p>
     <table class="small">
       <tr><th data-i18n="h152">模块</th><th data-i18n="h153">源码（相对 src/）</th></tr>
       <tr><td data-i18n="h154">任务入口 / 行为树</td><td><code>lite3_nav2_bridge/lite3_nav2_bridge/mission_bridge.py</code> · <code>lite3_nav2_bridge/config/navigate.xml</code> · <code>lite3_nav2_plugins/src/recovery_bt.cpp</code></td></tr>
@@ -585,7 +586,8 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
     <p data-i18n="h164" class="small">报告：
       <a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-21_v290_terrain_terminal/ultra9/RESULTS_zh.md">v290 中文报告</a> ·
       <a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v290_stop_timeline/REPORT.md">D07/CD12 停止时间线</a> ·
-      <a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v291/RESULTS.md">v291 进展</a> ·
+      <a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v291/RESULTS.md">v291 组件记录</a> ·
+      <a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v291_paired24/REPORT.md">v291 24 次配对报告</a> ·
       <a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-20_v289_ordered_input_terminal/ultra9/RESULTS_zh.md">v289 中文报告</a> ·
       <a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-20_v288_reentrant_work_terminal/ultra9/RESULTS_zh.md">v288 中文报告</a> ·
       <a href="../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/README.md">版本总索引</a> ·
@@ -595,7 +597,7 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 </section>
 
 <footer data-i18n="h165">
-  生成于 2026-10-22。依据本地仓库的 v288–v290 冻结源码、运行配置、审计报告，以及 v291 的进展记录整理。页面里所有动画都是<b>示意</b>：楼层布局、轨迹和时序是合成的，只有标注为实测的数字来自原始报告。页面不是实验证据，数字以链接的报告为准。独立 HTML，无外部依赖，不发任何网络请求。
+  生成于 2026-10-22。依据本地仓库的 v288–v290 冻结源码、运行配置、审计报告，以及 v291 的组件记录和 24 次配对评估报告整理。页面里所有动画都是<b>示意</b>：楼层布局、轨迹和时序是合成的，只有标注为实测的数字来自原始报告。页面不是实验证据，数字以链接的报告为准。独立 HTML，无外部依赖，不发任何网络请求。
 </footer>
 
 <aside id="drawer" aria-hidden="true"><button data-i18n="h166" class="btn ghost close" id="drawerClose">✕ 关闭</button><div id="drawerBody"></div></aside>
@@ -619,8 +621,8 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 "h013": "From one goal point<br>to four legs standing still",
 "h014": "The complete autonomous navigation stack of the Lite3 quadruped inside a building with stairs, as one interactive animated page. Read it layer by layer: mission dispatch, global route, 30 Hz local replanning, trajectory tracking, RL gait and PD stand. Every layer comes with real parameters, measured results and known failures.",
 "h015": "Adopted baseline: v232 source / v233 run",
-"h016": "Latest run v290: arrival+PD 6/10, geometry clean 4/10, overall acceptance not passed",
-"h017": "v291: components, replays and strict53 passed, 0 physical runs",
+"h016": "Latest ten-route batch v290: arrival+PD 6/10, geometry clean 4/10, overall acceptance not passed",
+"h017": "v291: 24-run paired physical evaluation done, 3/12 complete (v290 also 3/12), not promoted",
 "h018": "Newton simulation only · VLA not yet in the loop",
 "h019": "SCAN local replanning schedule (33.3 ms budget per round)",
 "h020": "Hard body safety radius (dual-circle footprint, never relaxed)",
@@ -636,9 +638,9 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 "h030": "Not yet",
 "h031": "New start/goal pairs are unstable; the terminal approach is the weakest link",
 "h032": "On the 10 fixed routes the last two versions both reached arrival+PD 6/10, with geometry clean 5/10 (v289) and 4/10 (v290). Most v290 failures happen at the goal: scraping the wall while turning (D07 −27.60 cm), and drifting more than 20 cm between zero command and PD takeover (CD12 −13.77 cm).",
-"h033": "In progress",
-"h034": "v291: one controller owns the goal",
-"h035": "Terminal position correction, turning and braking are all handled by <code>TrackingNode<\/code>; during zero command, still legs that already carry load are locked with torque continuity. 14 native packages, D07/CD12 replays and strict53 all passed: valid 49/50, invalid rejected 3/3, global median 1.421 s. <b>0 physical runs<\/b>.",
+"h033": "Just evaluated",
+"h034": "v291: one controller owns the goal, but drift did not consistently drop",
+"h035": "Terminal position correction, turning and braking are all handled by <code>TrackingNode<\/code>; during zero command, still legs that already carry load are locked with torque continuity. Components, replays and strict53 all passed (49/50, 3/3, median 1.421 s). The frozen paired physical evaluation that followed (D07/CD12/S04/A04 × 3 runs × 2 versions): <b>both versions reached 3/12 complete successes<\/b>; the A04 median stop displacement went from 1.48 cm to 8.07 cm. <b>v291 is not promoted<\/b>; the remaining 26 runs are deferred.",
 "h036": "Data flow",
 "h037": "Solid lines with moving dots are the <b>command flow<\/b>: goal → route → trajectory → velocity → joints. Teal dashed lines are the <b>perception flow<\/b>: simulated world → point cloud / pose → 3D map. Grey dotted lines are <b>offline geometry inputs<\/b>. Hover to highlight upstream and downstream, <b>click a module<\/b> for details, <b>click a link or its label<\/b> to see what flows along it, and press <b>▶ Play one navigation<\/b> to light up the whole chain in time order.",
 "h038": "<i style=\"border-color:#1e293b\"><\/i>Command flow",
@@ -704,7 +706,7 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 "h098": "v287 pure turn in place",
 "h099": "v288 2 cm centring",
 "h100": "v290 drift after zero cmd",
-"h101": "v291 candidate (not run)",
+"h101": "v291 candidate (evaluated, not promoted)",
 "h102": "↺ Replay",
 "h103": "Static diagnostic: placing the body at the goal centre in 32 headings",
 "h104": "A geometric query at nominal body height with the 0.35 m radius. It is not a new run and does not claim the robot actually spins a full circle; it only shows that <b>the final pose being legal does not mean every heading during the turn is legal<\/b>. Bars show the minimum extra margin over all sampled headings.",
@@ -718,17 +720,17 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 "h112": "Worst source-solid margin",
 "h113": "Conclusion: on D07 the body breached first while turning and SCAN then e-stopped; on CD12 the outer terminal control stopped adjusting position as soon as the heading was within tolerance. In both, the large motion <b>happened mainly before PD took over<\/b>, while RL was still in control during zero command.",
 "h114": "Hard safety and timing gates",
-"h115": "These thresholds <b>stay fixed<\/b> across experiments, with no special cases per scene, route ID or coordinates. In the v290 ten-route batch each route ran once and failures were kept; the v291 convergence plan fixes the paired repeat count in advance (3 per route per version), all of which count; no extra runs after a failure and no cherry-picking.",
+"h115": "These thresholds <b>stay fixed<\/b> across experiments, with no special cases per scene, route ID or coordinates. In the v290 ten-route batch each route ran once and failures were kept; the v291 convergence plan fixes the paired repeat count in advance (3 per route per version), all of which count; no extra runs after a failure and no cherry-picking. The 24 v291 runs followed this rule, and all 7 LiDAR-deadline interruptions count as failures.",
 "h116": "Acceptance funnel: how many gates a version must pass",
 "h117": "Gate one is an offline check on 50 valid and 3 invalid start/goal pairs, with no physics. Gate two runs each of 10 fixed routes once in physics and requires native arrival, a measured PD stand, and full-record geometry margin ≥ 0 at 10 Hz measured poses. v290 is shown below.",
 "h118": "This is a <b>single<\/b> trial and cannot be read as statistical reliability; sampled checks are not continuous-time certification or foot-contact certification. If native static pose verdicts must also all be Free, v290 joint arrival is only 3/10.",
-"h119": "Convergence plan (decided 2026-10-22)",
+"h119": "Convergence plan (decided 2026-10-22; step ① done)",
 "h120": "First make the robot stop reliably, then talk about generalization. At most 50 complete simulations per frozen candidate:",
 "h121": "① Paired comparison",
-"h122": "4 routes × 3 runs × 2 versions = 24",
-"h123": "② Original 10 routes",
-"h124": "③ New-route pairs",
-"h125": "Control is v290, candidate is v291. <a href=\"../../plans/2026-10-22-convergence/index.html\">Open the interactive convergence plan →<\/a>",
+"h122": "4 routes × 3 runs × 2 versions = 24 · done",
+"h123": "② Original 10 routes (deferred)",
+"h124": "③ New-route pairs (deferred)",
+"h125": "Control is v290, candidate is v291. Result of ①: both versions reached 3/12 complete successes; v291 did not consistently reduce drift and is not promoted; ② and ③ (26 runs) are deferred. <a href=\"../../plans/2026-10-22-convergence/index.html\">Open the interactive convergence plan →<\/a> · <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v291_paired24/REPORT.md\">24-run paired report →<\/a>",
 "h126": "History",
 "h127": "From 12 m on open floor to the stairs of a whole building, then to generalization over 50+3 start/goal pairs. Below: the major phases, a bar chart of the last 9 versions, and a “10 routes × 4 versions” result matrix (hover for failure causes).",
 "h128": "10 single runs: arrival+PD / geometry clean, and global median time",
@@ -736,8 +738,8 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 "h130": "<i style=\"border:0;width:14px;height:14px;border-radius:4px;background:#10b981\"><\/i>arrival+PD+geometry clean",
 "h131": "<i style=\"border:0;width:14px;height:14px;border-radius:4px;background:#f59e0b\"><\/i>arrival+PD, geometry breach",
 "h132": "<i style=\"border:0;width:14px;height:14px;border-radius:4px;background:#fecaca\"><\/i>not arrived",
-"h133": "Current issue map (after v290) and next steps",
-"h134": "Each item carries an evidence level: confirmed, measured or inferred. Among the fixes, only v291 has code written; the rest are not implemented yet.",
+"h133": "Current issue map (after v290 / v291) and next steps",
+"h134": "Each item carries an evidence level: confirmed, measured or inferred. The v291 fixes for items 1 and 2 went through a 24-run frozen paired physical evaluation: drift did not consistently drop and v291 is not promoted. Items 3 and 4 are control problems newly found in that evaluation.",
 "h135": "Evidence boundary and source index",
 "h136": "This page is explanatory material, not experimental evidence. All numbers defer to the original reports linked below.",
 "h137": "Direct evidence",
@@ -747,14 +749,14 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 "h141": "v289 / v290: 0 body timestamp regression errors; v290 offline gate 49/50, 3/3, global median 1.361 s.",
 "h142": "Telemetry review of the v290 D07/CD12 stopping process (0 new physics steps).",
 "h143": "Not yet proven",
-"h144": "Repeat reliability: every route ran only once per version.",
+"h144": "Repeat reliability: v290 / v291 were repeated 3 times on only 4 routes, both reaching just 3/12 complete successes; shared-host CPU contention caused 7 LiDAR timeouts, so these rates are not a clean algorithm ranking.",
 "h145": "Sustained 30 Hz: the baseline mean success rate corresponds to 25.44 Hz; v290 passes on the median but not on P95.",
 "h146": "Generalization: the best recent geometry-clean result is 5/10.",
 "h147": "Per-foot contact and swing-leg geometry: only the body dual-circle is used so far.",
-"h148": "Whether v291 reduces drift: strict53 passed offline, but there are no new physical runs yet.",
+"h148": "That v291 reduces drift: <b>the 24 paired runs did not show it<\/b>; A04 and S04 stop displacement actually grew, and the two changes have not yet been tested separately.",
 "h149": "Jetson hardware motion of this Newton navigation stack and the VLA navigation loop: <b>no evidence cited on this page<\/b>; an ARM64 build passing is not a hardware run passing.",
 "h150": "Sources and reports",
-"h151": "Frozen source root: <code>.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v290/src/<\/code> (the v291 candidate sits in the sibling <code>v291/<\/code> directory)",
+"h151": "Frozen source root: <code>.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v290/src/<\/code> (the v291 candidate sits in the sibling <code>v291/<\/code> directory; evaluated, not promoted)",
 "h152": "Module",
 "h153": "Source (relative to src/)",
 "h154": "Mission entry / behavior tree",
@@ -767,10 +769,11 @@ footer{max-width:1240px;margin:72px auto 0;padding:28px 32px 64px;color:var(--mu
 "h161": "Gait / PD hand-off<br><small class=\"muted\">(relative to the experiment root)<\/small>",
 "h162": "<code>versions/v216/stance_hold.py<\/code> · <code>versions/v216/newton_stance.py<\/code>; the frozen ONNX policy is loaded by the neighbouring <code>2026-09-26_newton_macos_policy/scripts/lite3_newton.py<\/code>",
 "h163": "Simulation / LiDAR / stand-up<br><small class=\"muted\">(relative to the experiment root, not under src/)<\/small>",
-"h164": "Reports:\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-21_v290_terrain_terminal/ultra9/RESULTS_zh.md\">v290 report (zh)<\/a> ·\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v290_stop_timeline/REPORT.md\">D07/CD12 stop timeline<\/a> ·\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v291/RESULTS.md\">v291 progress<\/a> ·\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-20_v289_ordered_input_terminal/ultra9/RESULTS_zh.md\">v289 report (zh)<\/a> ·\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-20_v288_reentrant_work_terminal/ultra9/RESULTS_zh.md\">v288 report (zh)<\/a> ·\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/README.md\">Version index<\/a> ·\n      <a href=\"../2026-10-20_lite3_navigation_architecture.html\">Previous static architecture page (up to v288)<\/a>\n    ",
-"h165": "\n  Generated on 2026-10-22 from the local repository’s frozen v288–v290 sources, runtime configurations and audit reports, plus the v291 progress records. All animations on this page are <b>illustrations<\/b>: floor layout, trajectories and timing are synthetic, and only numbers marked as measured come from the original reports. This page is not experimental evidence; numbers defer to the linked reports. Standalone HTML, no external dependencies, no network requests.\n",
+"h164": "Reports:\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-21_v290_terrain_terminal/ultra9/RESULTS_zh.md\">v290 report (zh)<\/a> ·\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v290_stop_timeline/REPORT.md\">D07/CD12 stop timeline<\/a> ·\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/v291/RESULTS.md\">v291 component record<\/a> ·\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-22_v291_paired24/REPORT.md\">v291 24-run paired report<\/a> ·\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-20_v289_ordered_input_terminal/ultra9/RESULTS_zh.md\">v289 report (zh)<\/a> ·\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/audits/2026-10-20_v288_reentrant_work_terminal/ultra9/RESULTS_zh.md\">v288 report (zh)<\/a> ·\n      <a href=\"../../../../.pipeline/experiments/2026-09-26_newton_stair_reproduction/versions/README.md\">Version index<\/a> ·\n      <a href=\"../2026-10-20_lite3_navigation_architecture.html\">Previous static architecture page (up to v288)<\/a>\n    ",
+"h165": "\n  Generated on 2026-10-22 from the local repository’s frozen v288–v290 sources, runtime configurations and audit reports, plus the v291 component record and the 24-run paired evaluation report. All animations on this page are <b>illustrations<\/b>: floor layout, trajectories and timing are synthetic, and only numbers marked as measured come from the original reports. This page is not experimental evidence; numbers defer to the linked reports. Standalone HTML, no external dependencies, no network requests.\n",
 "h166": "✕ Close",
-"__title": "Lite3 Building Navigation Architecture · Animated (through v290 / v291 in progress)",
+"h167": "v291 / v290 24-run frozen paired physical evaluation: 3/12 complete successes each, every failure kept and none rerun; raw records (28,777 files, 9.81 GB) checked file-by-file with SHA256 and kept on ultra9.",
+"__title": "Lite3 Building Navigation Architecture · Animated (through v291 paired evaluation)",
 "__description": "Interactive animated page of the complete autonomous navigation stack of the Lite3 quadruped in a building with stairs. Standalone HTML, no external dependencies.",
 "__archLabel": "Lite3 navigation system architecture overview"
 }
@@ -1813,9 +1816,9 @@ function openEdge(id){
     v291:{wall:0.48, dur:9, title:ZE('v291 候选：终点只由 TrackingNode 管，静止腿提前锁住', 'v291 candidate: only TrackingNode owns the goal, still legs lock early'),
       text:ZE(`<p><b>① 统一所有权：</b>位置修正、转向和刹车都由 <code>TrackingNode</code> 负责，<code>Controller</code> 只消费它的决定，仍要求实测停稳和 PD 完成。原有的 5 cm 居中死区变成内层刹车进入带（再加半个 yaw 带 0.125 rad）；最终验收仍是 25 cm / 20 cm / 0.25 rad。</p>
         <p><b>② 站立辅助：</b>零命令的 STAND_SETTLING 期间，受力 ≥ 10 N 的静止腿以力矩连续的方式锁住当前目标（原 RL 增益 20 / 0.5），受力 ≤ 1 N 就释放。正式 PD 仍要求每只脚 ≥ 10 N 持续 0.25 s。</p>
-        <div class="warnbox small"><b>这是预期行为的示意，还没有实测结果。</b>14 个原生包、D07/CD12 回放及 strict53 已通过（49/50、3/3、全局中位 1.421 s），物理实跑 0 次。</div>`, `<p><b>① Single ownership: </b>position correction, turning and braking all belong to <code>TrackingNode</code>; <code>Controller</code> only consumes its decisions and still requires a measured stop and completed PD. The old 5 cm centring dead band becomes the inner brake-entry band (plus a half yaw band of 0.125 rad); final acceptance is still 25 cm / 20 cm / 0.25 rad.</p>
+        <div class="warnbox small"><b>动画是设计预期，不是实测轨迹。</b>24 次冻结配对的实测：完整成功 3/12（v290 也是 3/12）；A04 停步位移中位 8.07 cm（v290 为 1.48 cm），S04 第三次的后续停步达 42.31 cm；S04 首轮开始 PD 交接约 0.06 s 后就因机身速度退回 RL。</div>`, `<p><b>① Single ownership: </b>position correction, turning and braking all belong to <code>TrackingNode</code>; <code>Controller</code> only consumes its decisions and still requires a measured stop and completed PD. The old 5 cm centring dead band becomes the inner brake-entry band (plus a half yaw band of 0.125 rad); final acceptance is still 25 cm / 20 cm / 0.25 rad.</p>
         <p><b>② Stance assist: </b>during zero-command STAND_SETTLING, still legs carrying ≥ 10 N lock their current targets with torque continuity (original RL gains 20 / 0.5) and release at ≤ 1 N. Formal PD still requires every foot ≥ 10 N for 0.25 s.</p>
-        <div class="warnbox small"><b>This illustrates the expected behaviour; there are no measured results yet. </b>14 native packages, D07/CD12 replays and strict53 passed (49/50, 3/3, global median 1.421 s); 0 physical runs.</div>`)},
+        <div class="warnbox small"><b>The animation shows the design intent, not a measured trajectory. </b>Measured in the 24 frozen paired runs: 3/12 complete (v290 also 3/12); A04 median stop displacement 8.07 cm (v290: 1.48 cm), and a later stop in the third S04 run reached 42.31 cm; in the first S04 run the PD hand-off fell back to RL about 0.06 s after it started because of body speed.</div>`)},
   };
   // v290 scripted pose
   const P0 = [-0.05, 0.048];
@@ -1939,7 +1942,7 @@ function openEdge(id){
   onShow(fbox.closest('.panel'), () => fbox.querySelectorAll('.fb').forEach((b,i) => setTimeout(() => b.style.width = b.dataset.w + '%', i*140)));
 
   const PH = [['v3–v36',ZE('起步', 'Start'),ZE('空地 12 m → 接入 Building 楼梯；时钟、建图、高度优化逐个修', 'open floor 12 m → Building stairs; clock, mapping and height optimization fixed one by one'),'#64748b'],['v37–v87',ZE('性能', 'Performance'),ZE('30 Hz 目标、热启动、缓存、异步建图', '30 Hz target, warm start, caching, async mapping'),'#2563eb'],['v88–v100+',ZE('Nav2 集成', 'Nav2 integration'),ZE('PCT 插件、SCAN 控制插件、行为树、停稳证明', 'PCT plugin, SCAN controller plugin, behavior tree, stop proof'),'#7c3aed'],
-    ['v219–v233',ZE('原路线打通', 'Original route works'),ZE('采纳基线：121.565 s FINISHED，PD 4.398 s', 'adopted baseline: 121.565 s FINISHED, PD 4.398 s'),'#059669'],['v237 · v241',ZE('复验', 'Re-verification'),ZE('雷达截止修复、终点连续性；各单次通过', 'LiDAR deadline fix, terminal continuity; single passes each'),'#0d9488'],['v242–v290',ZE('泛化', 'Generalization'),ZE('50+3 起终点，统一实体几何，局部搜索 / 跟踪 / 终点', '50+3 start/goal pairs, unified solid geometry, local search / tracking / terminal'),'#d97706'],['v291',ZE('终点收敛', 'Terminal convergence'),ZE('组件、回放、strict53 已通过；物理 0 次', 'components, replays, strict53 passed; 0 physical runs'),'#db2777']];
+    ['v219–v233',ZE('原路线打通', 'Original route works'),ZE('采纳基线：121.565 s FINISHED，PD 4.398 s', 'adopted baseline: 121.565 s FINISHED, PD 4.398 s'),'#059669'],['v237 · v241',ZE('复验', 'Re-verification'),ZE('雷达截止修复、终点连续性；各单次通过', 'LiDAR deadline fix, terminal continuity; single passes each'),'#0d9488'],['v242–v290',ZE('泛化', 'Generalization'),ZE('50+3 起终点，统一实体几何，局部搜索 / 跟踪 / 终点', '50+3 start/goal pairs, unified solid geometry, local search / tracking / terminal'),'#d97706'],['v291',ZE('终点收敛', 'Terminal convergence'),ZE('24 次配对：完整成功 3/12，与 v290 持平；未升级', '24 paired runs: 3/12 complete, same as v290; not promoted'),'#db2777']];
   $('#phases').innerHTML = PH.map(([v,n,d,c],i) => `<div class="phase reveal" style="--c:${c};transition-delay:${i*90}ms"><div class="v">${v}</div><div class="n">${n}</div><div class="d">${d}</div></div>`).join('');
   $$('#phases .reveal').forEach(n => revealIO.observe(n));
 
@@ -1990,15 +1993,17 @@ function openEdge(id){
 
   // issues
   const IS = [
-    ['r',ZE('终点控制有两个“主人”', 'The goal has two “owners”'),ZE('外层 <code>Controller::computeVelocityCommands()</code> 在 25 cm 容差内进入 <code>goal_braking_</code>，直接 <code>brakeCommand()</code> → <code>publishStop()</code>，绕开了持续归中；tracker 自己也是朝向合格就停 XY。', 'The outer <code>Controller::computeVelocityCommands()</code> enters <code>goal_braking_</code> inside the 25 cm tolerance and goes straight to <code>brakeCommand()</code> → <code>publishStop()</code>, bypassing continuous centring; the tracker also stops XY once the heading is acceptable.'),ZE('已证实：代码路径 + 遥测', 'Confirmed: code path + telemetry'),['D07 −27.60 cm','CD12 −13.77 cm','CS03 −4.65 cm','S04 −2.95 cm','CE03 −1.97 cm'],ZE('v291：TrackingNode 独占终点修正、转向和刹车（代码已写，未实跑）', 'v291: TrackingNode exclusively owns terminal correction, turning and braking (code written, not run)')],
-    ['r',ZE('零命令后到 PD 接管前，RL 还在踏步', 'Between zero command and PD takeover, RL keeps stepping'),ZE('PD 接管要求每只脚受力达标，这之前的 STAND_SETTLING 仍由 RL 控制。', 'PD takeover requires load on every foot; STAND_SETTLING before that is still controlled by RL.'),ZE('已测量：D07 / CD12 遥测复核', 'Measured: D07 / CD12 telemetry review'),[ZE('D07 等 12.57 s · 漂 22.13 cm', 'D07 waited 12.57 s · drifted 22.13 cm'),ZE('CD12 等 4.56 s · 漂 20.24 cm', 'CD12 waited 4.56 s · drifted 20.24 cm')],ZE('v291：受力 ≥ 10 N 的静止腿力矩连续锁住；正式 PD 门槛不变', 'v291: loaded (≥ 10 N) still legs lock with torque continuity; formal PD gate unchanged')],
-    ['w',ZE('扫描超时 2 次（G05、CS03）', '2 scan timeouts (G05, CS03)'),ZE('超时的那帧，线程 CPU 只用了 35–40 ms，可运行等待却有 64–76 ms，有直接的主机调度干扰证据。实跑跑在与 CARLA/ROS 共享的负载下。', 'In the late frames the thread used only 35–40 ms of CPU but waited 64–76 ms runnable, direct evidence of host scheduling interference. The runs shared load with CARLA/ROS.'),ZE('已测量：计时证据', 'Measured: timing evidence'),['G05 122.9 ms','CS03 102.9 ms'],ZE('隔离 CPU / 调度；0.1 s 截止不放宽', 'isolate CPU / scheduling; the 0.1 s deadline is not relaxed')],
+    ['r',ZE('终点控制有两个“主人”', 'The goal has two “owners”'),ZE('外层 <code>Controller::computeVelocityCommands()</code> 在 25 cm 容差内进入 <code>goal_braking_</code>，直接 <code>brakeCommand()</code> → <code>publishStop()</code>，绕开了持续归中；tracker 自己也是朝向合格就停 XY。', 'The outer <code>Controller::computeVelocityCommands()</code> enters <code>goal_braking_</code> inside the 25 cm tolerance and goes straight to <code>brakeCommand()</code> → <code>publishStop()</code>, bypassing continuous centring; the tracker also stops XY once the heading is acceptable.'),ZE('已证实：代码路径 + 遥测', 'Confirmed: code path + telemetry'),['D07 −27.60 cm','CD12 −13.77 cm','CS03 −4.65 cm','S04 −2.95 cm','CE03 −1.97 cm'],ZE('v291 让 TrackingNode 独占终点修正、转向和刹车；24 次配对未稳定减少漂移（A04 中位 1.48 → 8.07 cm），不升级。下一步把它与站立辅助拆开单独验证', 'v291 gave TrackingNode exclusive terminal correction, turning and braking; 24 paired runs did not consistently reduce drift (A04 median 1.48 → 8.07 cm), not promoted. Next: split it from the stance assist and test it alone')],
+    ['r',ZE('零命令后到 PD 接管前，RL 还在踏步', 'Between zero command and PD takeover, RL keeps stepping'),ZE('PD 接管要求每只脚受力达标，这之前的 STAND_SETTLING 仍由 RL 控制。', 'PD takeover requires load on every foot; STAND_SETTLING before that is still controlled by RL.'),ZE('已测量：D07 / CD12 遥测复核', 'Measured: D07 / CD12 telemetry review'),[ZE('D07 等 12.57 s · 漂 22.13 cm', 'D07 waited 12.57 s · drifted 22.13 cm'),ZE('CD12 等 4.56 s · 漂 20.24 cm', 'CD12 waited 4.56 s · drifted 20.24 cm')],ZE('v291：受力 ≥ 10 N 的静止腿力矩连续锁住，正式 PD 门槛不变；24 次配对后随 v291 一起未升级', 'v291: loaded (≥ 10 N) still legs lock with torque continuity, formal PD gate unchanged; not promoted together with v291 after the 24 paired runs')],
+    ['r',ZE('开始 PD 交接，不等于交接成功', 'Starting the PD hand-off is not the same as completing it'),ZE('v291 S04 首轮在 27.437 s 开始交接，27.497 s 因 <code>stand_transition_disturbance:linear_speed</code> 退回 RL，只隔约 0.06 s，随后继续滑动；A04 首轮也出现同类退出。这直接否定“更快进入 PD 就一定更稳”。两项改动同时生效，不能把因果全部归给其中一项。', 'In the first v291 S04 run the hand-off started at 27.437 s and fell back to RL at 27.497 s on <code>stand_transition_disturbance:linear_speed</code>, only about 0.06 s later, and the body kept sliding; the first A04 run showed the same kind of exit. This directly refutes “entering PD sooner is always more stable”. Both changes were active together, so the cause cannot be assigned to either one alone.'),ZE('已测量：v291 24 次配对', 'Measured: v291 paired 24'),[ZE('S04 交接 0.06 s 后退出', 'S04 exit 0.06 s after hand-off start'),ZE('S04 后续停步最差 42.31 cm', 'S04 worst later stop 42.31 cm')],ZE('先单独验证统一终点控制（不带站立辅助）；不调 PD 门槛来补考', 'test unified terminal control alone first (without the stance assist); do not tune the PD gate to pass')],
+    ['r',ZE('小速度指令送到了，机身却几乎不动', 'Small velocity commands arrive, but the body barely moves'),ZE('v291 CD12 首次零命令前约 2 s，平均指令 5.38 cm/s，实际净移动只有 0.56 cm，目标误差从 6.99 cm 到 6.43 cm，始终没进 5 cm 刹车入口；日志 3 次 <code>Failed to make progress</code>。实际指令与请求一致，软件没有把它清零；S04 也在 5–6 cm 附近反复重试。', 'In v291 CD12, during the ~2 s before the first zero command the mean command was 5.38 cm/s, yet net motion was only 0.56 cm and the goal error went from 6.99 cm to 6.43 cm, never entering the 5 cm brake entry; the log shows 3 × <code>Failed to make progress</code>. Actual commands matched the requests, so software did not zero them; S04 also retried repeatedly around 5–6 cm.'),ZE('已测量：v291 CD12 / S04 遥测', 'Measured: v291 CD12 / S04 telemetry'),[ZE('CD12 2 s 净移 0.56 cm', 'CD12 net 0.56 cm in 2 s'),'3 × Failed to make progress'],ZE('把 5–6 cm 附近的小指令停滞做成固定复现用例', 'turn the 5–6 cm small-command stall into a fixed repro case')],
+    ['w',ZE('扫描超时：v290 两次，配对评估又 7 次', 'Scan timeouts: 2 in v290, 7 more in the paired evaluation'),ZE('超时的那帧，线程 CPU 只用了 35–40 ms，可运行等待却有 64–76 ms，有直接的主机调度干扰证据。实跑跑在与 CARLA/ROS 共享的负载下。v291 24 次配对中又有 7 次因 100 ms 雷达期限中断（v290 2 次、v291 5 次），全部计失败；容器固定 6 CPU / 6 GiB，但仍在共享主机上。', 'In the late frames the thread used only 35–40 ms of CPU but waited 64–76 ms runnable, direct evidence of host scheduling interference. The runs shared load with CARLA/ROS. In the 24 v291 paired runs another 7 were cut by the 100 ms LiDAR deadline (v290 2, v291 5), all counted as failures; containers were fixed at 6 CPU / 6 GiB but still on a shared host.'),ZE('已测量：计时证据', 'Measured: timing evidence'),['G05 122.9 ms','CS03 102.9 ms',ZE('配对 2 + 5 次', 'paired 2 + 5')],ZE('下一轮物理验证前先解决 CPU 争用；0.1 s 截止不放宽', 'fix CPU contention before the next physical round; the 0.1 s deadline is not relaxed')],
     ['w',ZE('局部优化质量', 'Local optimization quality'),ZE('日志计数（含重试）：<code>lbfgs −1008</code> 773、<code>inside_obstacle</code> 88、<code>astar_optimization_failed</code> 27、<code>no_executable_trajectory</code> 13、<code>pool_exhaustion</code> 2。', 'Log counts (retries included): <code>lbfgs −1008</code> 773, <code>inside_obstacle</code> 88, <code>astar_optimization_failed</code> 27, <code>no_executable_trajectory</code> 13, <code>pool_exhaustion</code> 2.'),ZE('已计数，根因未分解', 'Counted; root causes not yet broken down'),[ZE('D07 完整轮次 3172/4384', 'D07 complete rounds 3172/4384'),'CE03 634/1396'],ZE('等终点收敛之后单独处理', 'handle separately after terminal convergence')],
     ['b',ZE('全局尾部耗时，以及 CS01', 'Global tail latency, and CS01'),ZE('中位 1.361 s 达标，但 P95 约 2.03 s；合法例 CS01 沿用原始的“无路”结论。', 'The 1.361 s median passes, but P95 is about 2.03 s; the valid case CS01 keeps the original “no route” result.'),ZE('已测量', 'Measured'),['P95 2.029 s',ZE('最大 2.048 s', 'max 2.048 s')],ZE('单独的性能版本', 'a separate performance version')],
     ['b',ZE('静态裁决与动态记录', 'Static verdicts vs. dynamic records'),ZE('如果要求原生静态姿态裁决全部为 Free，v290 到达联合通过只有 3/10。CM07 的动态 WrongHeight 记录保留，不和 SupportGap 混算。', 'If all native static pose verdicts must also be Free, v290 joint arrival drops to 3/10. CM07’s dynamic WrongHeight records are kept and not merged with SupportGap.'),ZE('已记录', 'Recorded'),[ZE('3/10 全 Free', '3/10 all Free')],ZE('报告中继续分列，不合并口径', 'keep reporting them separately, without merging criteria')],
   ];
   $('#issueList').innerHTML = IS.map(([c,h,p,e,chips,fix],i) => `<div class="issue"><div class="idx ${c === 'w' ? 'w' : c === 'b' ? 'b' : ''}">${i+1}</div><div><h4>${h}</h4><p>${p}</p><div class="chips"><span class="chip" style="color:#4f46e5">${e}</span>${chips.map(x => `<span class="chip">${x}</span>`).join('')}</div><p style="margin-top:8px"><span style="color:var(--ok)">→ </span>${fix}</p></div></div>`).join('') +
-    ZE(`<div class="infobox small" style="margin-top:14px"><b>下一步（已定）：</b>v291 strict53 已通过（49/50、3/3、中位 1.421 s）；选定四条未见路线并冻结物理执行配置后，按收敛计划与 v290 做配对对比（4 路线 × 3 次 × 2 版本 = 24 次），再跑原 10 条，最后做新路线配对（4 × 2 × 2 = 16 次）。每个冻结候选最多 50 次完整仿真。</div>`, `<div class="infobox small" style="margin-top:14px"><b>Next steps (decided): </b>v291 strict53 passed (49/50, 3/3, median 1.421 s). After selecting four unseen routes and freezing the physical execution configuration, run the paired comparison with v290 per the convergence plan (4 routes × 3 runs × 2 versions = 24), then the original 10 routes, and finally new-route pairs (4 × 2 × 2 = 16). Each frozen candidate gets at most 50 complete simulations.</div>`);
+    ZE(`<div class="infobox small" style="margin-top:14px"><b>下一步（2026-10-22 配对评估后）：</b>v291 不升级，采纳基线 v232/v233 不变，原 10 条与新路线配对（共 26 次）暂缓。先拆开“统一终点控制”和“接地腿停步辅助”，优先验证只保留统一控制的方案；同时把 5–6 cm 附近的小指令停滞做成固定复现用例，并在下一轮物理验证前解决 CPU 争用。不改 v291，不调容差 / PD 来补考。新路线 CU04 / CD09 / CM04 / CE04 已冻结、未运行。</div>`, `<div class="infobox small" style="margin-top:14px"><b>Next steps (after the 2026-10-22 paired evaluation): </b>v291 is not promoted, the adopted v232/v233 baseline is unchanged, and the original 10 routes plus new-route pairs (26 runs) are deferred. First split “unified terminal control” from the “loaded-leg stop assist” and prioritise testing unified control alone; meanwhile turn the small-command stall around 5–6 cm into a fixed repro case, and fix CPU contention before the next physical round. v291 is not modified, and tolerances / PD are not tuned to pass. New routes CU04 / CD09 / CM04 / CE04 are frozen and unrun.</div>`);
 })();
 </script>
 </body>
